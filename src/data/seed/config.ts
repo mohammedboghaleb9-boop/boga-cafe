@@ -98,7 +98,7 @@ export const seedSettings: Settings = {
     email: 'bogacafe1@gmail.com',
     instagram: 'https://www.instagram.com/boga.cafe1',
     tiktok: 'https://www.tiktok.com/@bogacafe795',
-    facebook: '', // no page yet: hidden everywhere until a link is set in Admin → Settings
+    facebook: 'https://www.facebook.com/profile.php?id=61594620729419',
     address: { ar: 'وجدة، المغرب', fr: 'Oujda, Maroc', en: 'Oujda, Morocco' },
   },
   notifications: {

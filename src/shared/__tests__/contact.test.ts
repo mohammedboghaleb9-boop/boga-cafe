@@ -10,6 +10,17 @@ describe('contact helpers', () => {
     expect(socialHandle('not a url')).toBe('');
   });
 
+  it('keeps the id of a Facebook profile and drops the rest', () => {
+    const shared = 'https://web.facebook.com/profile.php?id=61594620729419&locale=ar_AR';
+    expect(cleanProfileUrl(shared)).toBe('https://www.facebook.com/profile.php?id=61594620729419');
+    expect(socialHandle(shared, 'BOGA CAFÉ')).toBe('BOGA CAFÉ');
+    expect(socialHandle(shared)).toBe('');
+    expect(cleanProfileUrl('https://m.facebook.com/bogacafe?ref=share')).toBe('https://www.facebook.com/bogacafe');
+    expect(socialHandle('https://m.facebook.com/bogacafe?ref=share', 'BOGA CAFÉ')).toBe('@bogacafe');
+    expect(cleanProfileUrl('https://www.facebook.com/profile.php')).toBe('https://www.facebook.com/profile.php');
+    expect(socialHandle('https://www.facebook.com/profile.php', 'BOGA CAFÉ')).toBe(''); // id lost: hidden, not a broken link
+  });
+
   it('drops tracking parameters from profile links', () => {
     expect(cleanProfileUrl('https://www.tiktok.com/@bogacafe795?_r=1&_t=ZG-9A5ggtzHTyz')).toBe('https://www.tiktok.com/@bogacafe795');
     expect(cleanProfileUrl('https://www.instagram.com/boga.cafe1?stkn=abc')).toBe('https://www.instagram.com/boga.cafe1');

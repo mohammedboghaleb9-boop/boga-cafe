@@ -4,12 +4,26 @@
  * the owner pastes there (links with tracking parameters, spaces in numbers…).
  */
 
-/** '@boga.cafe1' from an Instagram / TikTok / Facebook profile link. Empty if none. */
-export function socialHandle(url: string): string {
+const FACEBOOK_HOSTS = /^(?:www\.|web\.|m\.|mbasic\.)?(?:facebook\.com|fb\.com)$/i;
+
+/** Facebook profiles without a username are only reachable as profile.php?id=… */
+function facebookId(u: URL): string | null {
+  if (!FACEBOOK_HOSTS.test(u.hostname) || !/^\/profile\.php\/?$/.test(u.pathname)) return null;
+  const id = u.searchParams.get('id');
+  return id && /^\d+$/.test(id) ? id : null;
+}
+
+/**
+ * '@boga.cafe1' from an Instagram / TikTok / Facebook profile link. Empty if none.
+ * A Facebook profile that has only a number (profile.php?id=…) gets `fallbackName`.
+ */
+export function socialHandle(url: string, fallbackName = ''): string {
   if (!url.trim()) return '';
   try {
-    const { pathname } = new URL(url.trim());
-    const first = pathname.split('/').find(Boolean) ?? '';
+    const u = new URL(url.trim());
+    if (facebookId(u)) return fallbackName;
+    if (/^\/profile\.php/.test(u.pathname)) return ''; // profile.php without its id: broken link
+    const first = u.pathname.split('/').find(Boolean) ?? '';
     const name = decodeURIComponent(first).replace(/^@/, '');
     return name ? `@${name}` : '';
   } catch {
@@ -17,11 +31,18 @@ export function socialHandle(url: string): string {
   }
 }
 
-/** Profile link without tracking parameters (?stkn=…, ?_r=…&_t=…). */
+/**
+ * Profile link without tracking parameters (?stkn=…, ?_r=…&_t=…, &locale=…).
+ * Facebook links open on www.facebook.com (works in the app and on every
+ * device), and a numeric profile keeps its ?id=.
+ */
 export function cleanProfileUrl(url: string): string {
   if (!url.trim()) return '';
   try {
     const u = new URL(url.trim());
+    const id = facebookId(u);
+    if (id) return `https://www.facebook.com/profile.php?id=${id}`;
+    if (FACEBOOK_HOSTS.test(u.hostname)) return `https://www.facebook.com${u.pathname}`;
     return `${u.origin}${u.pathname}`;
   } catch {
     return url.trim();

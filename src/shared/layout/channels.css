@@ -44,6 +44,26 @@
   .channels {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* an odd card out takes the full row */
+  .channel:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+/* wide screens: messaging (2 per row), then social media (3 per row) */
+@media (min-width: 1000px) {
+  .channels {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .channel {
+    grid-column: span 2;
+  }
+  .channel--whatsapp,
+  .channel--gmail {
+    grid-column: span 3;
+  }
+  .channel:last-child:nth-child(odd) {
+    grid-column: span 2;
+  }
 }
 .channel {
   position: relative;

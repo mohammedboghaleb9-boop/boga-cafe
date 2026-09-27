@@ -182,7 +182,7 @@ flowchart TD
 **النموذج الحالي يعمل بالكامل ببيانات تجريبية.** المتبقي هو الربط بالخدمات الخارجية. التفاصيل: [`docs/05-roadmap.md`](docs/05-roadmap.md).
 
 > المنتجات والأسعار والمخزون الموجودة حالياً **أمثلة** تُستبدل بالمعلومات الحقيقية (من لوحة الإدارة أو من `src/data/seed`).
-> **قنوات التواصل حقيقية:** WhatsApp ‎+212 6 09 03 63 78 · bogacafe1@gmail.com · Instagram [@boga.cafe1](https://www.instagram.com/boga.cafe1) · TikTok [@bogacafe795](https://www.tiktok.com/@bogacafe795).
+> **قنوات التواصل حقيقية:** WhatsApp ‎+212 6 09 03 63 78 · bogacafe1@gmail.com · Instagram [@boga.cafe1](https://www.instagram.com/boga.cafe1) · TikTok [@bogacafe795](https://www.tiktok.com/@bogacafe795) · [Facebook](https://www.facebook.com/profile.php?id=61594620729419).
 
 ## 11. التقنيات
 
