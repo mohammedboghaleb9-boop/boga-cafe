@@ -14,6 +14,11 @@ import packshot from '@/assets/photos/packshot.webp';
 import ritualTray from '@/assets/photos/ritual-tray.webp';
 import roaster from '@/assets/photos/roaster.webp';
 import roastery from '@/assets/photos/roastery.webp';
+import blendFlatlay from '@/assets/photos/blend-flatlay.webp';
+import roastLight from '@/assets/photos/roast-light.webp';
+import roastMedium from '@/assets/photos/roast-medium.webp';
+import roastMediumDark from '@/assets/photos/roast-medium-dark.webp';
+import roastDark from '@/assets/photos/roast-dark.webp';
 
 export interface Media {
   src: string;
@@ -35,6 +40,13 @@ export const media = {
   label: { src: label, width: 720, height: 1218 },
   /** Custom Blend round seal, transparent outside the circle. */
   seal: { src: seal, width: 640, height: 640 },
+  /** Three piles, light to dark, a brass scale and a copper scoop: the Custom Blend idea. */
+  blendFlatlay: { src: blendFlatlay, width: 1600, height: 893 },
+  /** Close-ups of roasted beans, one per roast level (illustrative, not a specific origin). */
+  roastLight: { src: roastLight, width: 480, height: 480 },
+  roastMedium: { src: roastMedium, width: 480, height: 480 },
+  roastMediumDark: { src: roastMediumDark, width: 480, height: 480 },
+  roastDark: { src: roastDark, width: 480, height: 480 },
 } satisfies Record<string, Media>;
 
 export type MediaName = keyof typeof media;

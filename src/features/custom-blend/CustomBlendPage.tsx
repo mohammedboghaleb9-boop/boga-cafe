@@ -13,13 +13,13 @@ import { recipeView } from '@/shared/recipe-view';
 import { customBlendSticker } from '@/shared/sticker';
 import { Photo } from '@/shared/ui/Photo';
 import { ProductVisual } from '@/shared/ui/ProductVisual';
-import { BeanSwatch } from '@/shared/ui/BeanSwatch';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { QtyStepper, SpeciesBar } from '@/shared/ui/bits';
 import { whatsappLink } from '@/services/notifications';
 import { addLine, issueText, removeLine } from './blend-helpers';
 import './custom-blend.css';
+import { RoastChip } from '@/shared/ui/Roast';
 
 /** Starts from the concept's example so the builder opens in a working state. */
 const EXAMPLE: RecipeLine[] = [
@@ -80,6 +80,10 @@ export function CustomBlendPage() {
         <p className="lead">{t.blend.intro}</p>
       </div>
 
+      <figure className="page-banner blend-banner">
+        <Photo name="blendFlatlay" alt={t.media.flatlay} priority sizes="(min-width: 1180px) 1180px, 100vw" />
+      </figure>
+
       <div className="builder">
         <div className="builder-steps">
           {/* Step 1 — coffees */}
@@ -118,7 +122,7 @@ export function CustomBlendPage() {
                         </span>
                       </span>
                       <span className="origin-tile-roast small">
-                        <BeanSwatch roast={o.roastLevel} species={o.species} size={46} />
+                        <RoastChip level={o.roastLevel} size={30} />
                         {t.roast[o.roastLevel]}
                       </span>
                       <span className="small origin-tile-notes">{l(o.tastingNotes)}</span>

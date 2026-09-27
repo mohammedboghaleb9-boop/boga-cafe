@@ -70,16 +70,3 @@
   background: var(--surface);
 }
 
-.page-banner {
-  margin: 0 0 22px;
-  overflow: hidden;
-  border-radius: var(--radius);
-  aspect-ratio: 21 / 7;
-}
-.page-banner img {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-  object-position: 50% 55%;
-  display: block;
-}

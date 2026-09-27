@@ -112,6 +112,7 @@ export const fr: Dict = {
     greenBeans: 'Sacs de jute remplis de café vert avec une pelle en bois',
     barista: 'Un barista prépare un double espresso à côté d’un sachet BOGA CAFÉ',
     tray: 'Tasse de café sur un plateau marocain en laiton, à côté d’un sachet BOGA CAFÉ',
+    flatlay: 'Trois tas de café torréfié, du plus clair au plus foncé, à côté d’une balance en laiton et d’une pelle en cuivre',
   },
 
   home: {

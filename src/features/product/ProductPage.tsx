@@ -16,6 +16,7 @@ import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { Availability, QtyStepper, SpeciesBar } from '@/shared/ui/bits';
 import './product.css';
+import { RoastScale } from '@/shared/ui/Roast';
 
 export function ProductPage() {
   const { slug } = useParams();
@@ -64,7 +65,9 @@ export function ProductPage() {
           <dl className="facts">
             <div>
               <dt>{t.common.roast}</dt>
-              <dd>{t.roast[product.roastLevel]}</dd>
+              <dd>
+                <RoastScale level={product.roastLevel} />
+              </dd>
             </div>
             <div>
               <dt>{t.common.tastingNotes}</dt>

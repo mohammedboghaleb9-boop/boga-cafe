@@ -114,6 +114,7 @@ export const en = {
     greenBeans: 'Jute sacks of green coffee beans with a wooden scoop',
     barista: 'A barista pulling a double espresso next to a BOGA CAFÉ pouch',
     tray: 'Coffee cup on a Moroccan brass tray beside a BOGA CAFÉ pouch',
+    flatlay: 'Three piles of roasted coffee, from light to dark, beside a brass scale and a copper scoop',
   },
 
   home: {
