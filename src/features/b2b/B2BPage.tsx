@@ -1,0 +1,81 @@
+import { useEffect } from 'react';
+import { useLocation } from 'react-router';
+import { useCatalog, useDb } from '@/data/hooks';
+import { ProductCard } from '@/features/shop/ProductCard';
+import { useI18n } from '@/i18n';
+import { whatsappLink } from '@/services/notifications';
+import { Icon } from '@/shared/ui/Icon';
+import { ZelligePattern } from '@/shared/ui/Pattern';
+import { SampleRequestForm } from './SampleRequestForm';
+import './b2b.css';
+
+export function B2BPage() {
+  const { t } = useI18n();
+  const { products } = useCatalog();
+  const { settings } = useDb();
+  const { hash } = useLocation();
+  const blends = products.filter((p) => p.active && p.kind === 'b2b');
+
+  useEffect(() => {
+    if (hash === '#sample') document.getElementById('sample')?.scrollIntoView({ behavior: 'smooth' });
+  }, [hash]);
+
+  return (
+    <>
+      <section className="b2b-hero">
+        <ZelligePattern className="b2b-hero-pattern" opacity={0.08} />
+        <div className="container b2b-hero-inner">
+          <span className="eyebrow">{t.b2b.eyebrow}</span>
+          <h1>{t.b2b.title}</h1>
+          <p className="lead">{t.b2b.intro}</p>
+        </div>
+      </section>
+
+      <div className="container page">
+        <section className="b2b-rules">
+          <h2>{t.b2b.rulesTitle}</h2>
+          <ul>
+            {t.b2b.rules.map((rule) => (
+              <li key={rule}>
+                <Icon name="check" size={18} />
+                <span>{rule}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="section">
+          <h2 className="b2b-h2">{t.b2b.blendsTitle}</h2>
+          <div className="pgrid">
+            {blends.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+
+        <div className="b2b-forms">
+          <section id="sample" className="panel stack">
+            <h2>{t.b2b.sampleTitle}</h2>
+            <p className="muted">{t.b2b.sampleText}</p>
+            <SampleRequestForm />
+          </section>
+          <section className="panel stack b2b-large">
+            <h2>{t.b2b.largeTitle}</h2>
+            <p className="muted">{t.b2b.largeText}</p>
+            <a
+              className="btn btn-primary"
+              href={whatsappLink(settings.contact.whatsapp, `${t.contact.whatsappText} B2B / HORECA`)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Icon name="whatsapp" size={18} /> {t.b2b.largeCta}
+            </a>
+            <p className="small muted num" dir="ltr">
+              {settings.contact.whatsapp}
+            </p>
+          </section>
+        </div>
+      </div>
+    </>
+  );
+}

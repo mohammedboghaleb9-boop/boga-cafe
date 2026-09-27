@@ -1,0 +1,65 @@
+.b2b-hero {
+  position: relative;
+  overflow: hidden;
+  background: #121211;
+  color: #ecebe8;
+  padding-block: 56px 48px;
+}
+.b2b-hero .eyebrow {
+  color: #d09a6a;
+}
+.b2b-hero .lead {
+  color: #c9c5c0;
+}
+.b2b-hero-pattern {
+  position: absolute;
+  inset: 0;
+  color: #fff;
+}
+.b2b-hero-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.b2b-hero h1 {
+  max-width: 22ch;
+}
+
+.b2b-rules h2 {
+  margin-block-end: 14px;
+}
+.b2b-rules ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px 24px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}
+.b2b-rules li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.b2b-rules svg {
+  color: var(--ok);
+  flex-shrink: 0;
+  margin-block-start: 3px;
+}
+.b2b-h2 {
+  margin-block-end: 18px;
+}
+.b2b-forms {
+  display: grid;
+  gap: 20px;
+}
+@media (min-width: 980px) {
+  .b2b-forms {
+    grid-template-columns: 1.6fr 1fr;
+    align-items: start;
+  }
+}
+.b2b-large .btn {
+  align-self: flex-start;
+}

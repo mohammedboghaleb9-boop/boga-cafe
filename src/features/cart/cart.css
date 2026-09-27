@@ -1,0 +1,75 @@
+.cart-title {
+  margin-block-end: 20px;
+}
+.cart-layout {
+  display: grid;
+  gap: 24px;
+}
+@media (min-width: 900px) {
+  .cart-layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+  }
+  .cart-summary {
+    position: sticky;
+    top: calc(84px + env(safe-area-inset-top, 0px));
+  }
+}
+.cart-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.cart-line {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+@media (min-width: 640px) {
+  .cart-line {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+}
+.cart-line-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-content: space-between;
+}
+.cart-line-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-inline-size: 90px;
+}
+.cart-line-problem {
+  grid-column: 1 / -1;
+}
+.line-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.line-recipe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--ink-2);
+}
+.line-recipe .flag {
+  vertical-align: -2px;
+}
+.cart-subtotal {
+  font-size: 1.25rem;
+}
+.b2b-box {
+  margin-block-start: 24px;
+  border-color: var(--warn);
+}
