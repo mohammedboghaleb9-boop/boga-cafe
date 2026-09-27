@@ -1,0 +1,123 @@
+/*
+ * BOGA CAFÉ design tokens.
+ * Light theme = the silver label (silver-white, black ink, walnut wood).
+ * Dark theme  = the black bag (matte black, silver text, warm copper wood).
+ * Change colours and fonts here only.
+ */
+:root {
+  --paper: #eceded;
+  --surface: #f8f8f7;
+  --surface-2: #e2e3e3;
+  --ink: #161514;
+  --ink-2: #4f4a46;
+  --muted: #736d68;
+  --line: #d0d0ce;
+  --line-strong: #a9a8a5;
+
+  --accent: #6b4428;          /* carved walnut */
+  --accent-ink: #ffffff;
+  --accent-soft: #e7dcd3;
+
+  --primary: #161514;         /* the black bag */
+  --primary-ink: #f4f4f3;
+  --primary-hover: #33302d;
+
+  --silver-1: #fbfbfb;
+  --silver-2: #cfd0d2;
+  --silver-3: #b8b9bb;
+  --label-ink: #151414;
+  --bag: #151515;
+  --bag-2: #262626;
+
+  --ok: #2f6b45;
+  --ok-soft: #dcebe1;
+  --warn: #8a5a10;
+  --warn-soft: #f3e6cf;
+  --bad: #a23b2c;
+  --bad-soft: #f4dcd7;
+  --info: #2d5b87;
+  --info-soft: #dce6f0;
+
+  --arabica: #6b4428;
+  --robusta: #1f1d1c;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 2px rgb(20 18 16 / 0.06), 0 8px 24px rgb(20 18 16 / 0.08);
+
+  --font-display: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  --font-body: 'Montserrat', 'Segoe UI', system-ui, sans-serif;
+
+  --gutter: 16px;
+  --maxw: 1180px;
+  color-scheme: light;
+}
+
+:root[lang='ar'] {
+  --font-display: 'Reem Kufi', 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
+  --font-body: 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #0f0f0e;
+    --surface: #1a1918;
+    --surface-2: #242221;
+    --ink: #ecebe8;
+    --ink-2: #c9c5c0;
+    --muted: #9d978f;
+    --line: #34312e;
+    --line-strong: #56514c;
+    --accent: #d09a6a;
+    --accent-ink: #1a1512;
+    --accent-soft: #3a2a1f;
+    --primary: #e4e4e2;
+    --primary-ink: #121212;
+    --primary-hover: #ffffff;
+    --bag: #0b0b0b;
+    --bag-2: #1d1d1d;
+    --ok: #7fc59a;
+    --ok-soft: #1d3326;
+    --warn: #e2b060;
+    --warn-soft: #3a2c14;
+    --bad: #ef8a78;
+    --bad-soft: #3d1f1a;
+    --info: #8db8e4;
+    --info-soft: #1b2b3b;
+    --arabica: #d09a6a;
+    --robusta: #8f8a84;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.35);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --paper: #0f0f0e;
+  --surface: #1a1918;
+  --surface-2: #242221;
+  --ink: #ecebe8;
+  --ink-2: #c9c5c0;
+  --muted: #9d978f;
+  --line: #34312e;
+  --line-strong: #56514c;
+  --accent: #d09a6a;
+  --accent-ink: #1a1512;
+  --accent-soft: #3a2a1f;
+  --primary: #e4e4e2;
+  --primary-ink: #121212;
+  --primary-hover: #ffffff;
+  --bag: #0b0b0b;
+  --bag-2: #1d1d1d;
+  --ok: #7fc59a;
+  --ok-soft: #1d3326;
+  --warn: #e2b060;
+  --warn-soft: #3a2c14;
+  --bad: #ef8a78;
+  --bad-soft: #3d1f1a;
+  --info: #8db8e4;
+  --info-soft: #1b2b3b;
+  --arabica: #d09a6a;
+  --robusta: #8f8a84;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.35);
+  color-scheme: dark;
+}

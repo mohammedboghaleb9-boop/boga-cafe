@@ -1,0 +1,37 @@
+/**
+ * Notification service.
+ *
+ * Prototype: messages are written to the notification log (status "simulated")
+ *            and the admin can open them in WhatsApp with one click.
+ * Production: the server writes the same messages to an outbox table and an
+ *            Edge Function delivers them (WhatsApp Cloud API + Gmail SMTP),
+ *            retrying on failure. See docs/03-architecture.md.
+ */
+import type { NotificationEvent, NotificationLog, Settings } from '@/core/types';
+import type { MessageDraft } from './templates';
+
+export * from './templates';
+
+export function draftsToLogs(
+  event: NotificationEvent,
+  draft: MessageDraft,
+  settings: Settings,
+  now: string,
+  newId: () => string,
+): NotificationLog[] {
+  const logs: NotificationLog[] = [];
+  const n = settings.notifications;
+  if (n.whatsappEnabled) {
+    logs.push({ id: newId(), at: now, channel: 'whatsapp', event, to: n.adminWhatsapp, subject: draft.subject, body: draft.whatsapp, status: 'simulated' });
+  }
+  if (n.emailEnabled) {
+    logs.push({ id: newId(), at: now, channel: 'email', event, to: n.adminEmail, subject: draft.subject, body: draft.email, status: 'simulated' });
+  }
+  return logs;
+}
+
+/** wa.me link with a pre-filled message (customer → BOGA or admin → customer). */
+export function whatsappLink(phone: string, text: string): string {
+  const digits = phone.replace(/\D/g, '');
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+}

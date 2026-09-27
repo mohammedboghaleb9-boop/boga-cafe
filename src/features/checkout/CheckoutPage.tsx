@@ -1,0 +1,255 @@
+import { useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { summarizeCart } from '@/core/cart';
+import { formatKg } from '@/core/format';
+import type { CheckoutError } from '@/core/order';
+import { shippingFee } from '@/core/shipping';
+import type { CustomerInfo, PaymentMethodId } from '@/core/types';
+import { api } from '@/data/api';
+import { useCatalog, useDb } from '@/data/hooks';
+import { useCart } from '@/features/cart/CartProvider';
+import { LineDetails } from '@/features/cart/CartLineView';
+import { fmt, useI18n } from '@/i18n';
+import { Icon, type IconName } from '@/shared/ui/Icon';
+import { Field } from '@/shared/ui/bits';
+import './checkout.css';
+
+const methodIcon: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
+
+const emptyCustomer: CustomerInfo = {
+  fullName: '',
+  phone: '',
+  email: '',
+  cityId: '',
+  address: '',
+  company: '',
+  notes: '',
+};
+
+/** One-page checkout, no account needed. */
+export function CheckoutPage() {
+  const { t, l, money, locale } = useI18n();
+  const cart = useCart();
+  const navigate = useNavigate();
+  const { products, originIndex } = useCatalog();
+  const { settings, shippingRates, paymentMethods } = useDb();
+  const [customer, setCustomer] = useState<CustomerInfo>(emptyCustomer);
+  const methods = paymentMethods.filter((m) => m.enabled);
+  const [method, setMethod] = useState<PaymentMethodId | ''>(methods[0]?.id ?? '');
+  const [errors, setErrors] = useState<CheckoutError[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const summary = summarizeCart(cart.items, { products, origins: originIndex }, settings);
+  const rate = shippingRates.find((r) => r.id === customer.cityId && r.active);
+  const fee = rate ? shippingFee(rate, summary.weightKg, summary.subtotal, settings) : null;
+  const set = <K extends keyof CustomerInfo>(k: K, v: CustomerInfo[K]) => setCustomer((c) => ({ ...c, [k]: v }));
+  const err = (k: CheckoutError) => (errors.includes(k) ? t.checkout.errors[k] : undefined);
+
+  if (cart.items.length === 0) {
+    return (
+      <div className="container page stack" style={{ alignItems: 'flex-start' }}>
+        <h1>{t.checkout.title}</h1>
+        <p className="lead">{t.cart.empty}</p>
+        <Link to="/shop" className="btn btn-primary">
+          {t.cart.emptyCta}
+        </Link>
+      </div>
+    );
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!method) return setErrors(['payment_method']);
+    setBusy(true);
+    const r = await api.placeOrder({ items: cart.items, customer, paymentMethod: method, locale });
+    setBusy(false);
+    if (!r.ok) {
+      setErrors(r.errors);
+      return;
+    }
+    cart.clear();
+    navigate(`/order/${r.order.id}`);
+  }
+
+  const globalErrors = errors.filter((e) =>
+    (['empty_cart', 'cart_problem', 'b2b_required', 'out_of_stock'] as CheckoutError[]).includes(e),
+  );
+
+  return (
+    <div className="container page">
+      <div className="page-head">
+        <h1>{t.checkout.title}</h1>
+        <p className="muted">{t.checkout.noAccount}</p>
+      </div>
+
+      {(summary.isB2B || summary.hasProblems) && (
+        <p className="notice notice-warn" style={{ marginBlockEnd: 16 }}>
+          {summary.isB2B ? t.checkout.errors.b2b_required : t.checkout.errors.cart_problem}{' '}
+          <Link to="/cart">{t.nav.cart} →</Link>
+        </p>
+      )}
+
+      <form className="checkout" onSubmit={submit} noValidate>
+        <div className="checkout-main">
+          <section className="panel stack">
+            <h2 className="checkout-h2">
+              <span className="step-n">1</span> {t.checkout.contactTitle}
+            </h2>
+            <div className="form-grid">
+              <Field label={t.checkout.fullName} htmlFor="co-name" error={err('name')}>
+                <input
+                  id="co-name"
+                  className="input"
+                  autoComplete="name"
+                  value={customer.fullName}
+                  aria-invalid={errors.includes('name')}
+                  onChange={(e) => set('fullName', e.target.value)}
+                />
+              </Field>
+              <Field label={t.checkout.phone} htmlFor="co-phone" error={err('phone')}>
+                <input
+                  id="co-phone"
+                  className="input"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="06 12 34 56 78"
+                  value={customer.phone}
+                  aria-invalid={errors.includes('phone')}
+                  onChange={(e) => set('phone', e.target.value)}
+                />
+              </Field>
+              <Field label={t.checkout.email} htmlFor="co-email" optional error={err('email')}>
+                <input
+                  id="co-email"
+                  className="input"
+                  type="email"
+                  autoComplete="email"
+                  value={customer.email}
+                  onChange={(e) => set('email', e.target.value)}
+                />
+              </Field>
+              <Field label={t.checkout.city} htmlFor="co-city" error={err('city')}>
+                <select
+                  id="co-city"
+                  className="select"
+                  value={customer.cityId}
+                  aria-invalid={errors.includes('city')}
+                  onChange={(e) => set('cityId', e.target.value)}
+                >
+                  <option value="">{t.b2b.chooseCity}</option>
+                  {shippingRates
+                    .filter((r) => r.active)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {l(r.city)}
+                      </option>
+                    ))}
+                </select>
+              </Field>
+              <Field label={t.checkout.address} htmlFor="co-address" error={err('address')} className="span-all">
+                <input
+                  id="co-address"
+                  className="input"
+                  autoComplete="street-address"
+                  value={customer.address}
+                  aria-invalid={errors.includes('address')}
+                  onChange={(e) => set('address', e.target.value)}
+                />
+              </Field>
+              <Field label={t.checkout.notes} htmlFor="co-notes" optional className="span-all">
+                <input id="co-notes" className="input" value={customer.notes} onChange={(e) => set('notes', e.target.value)} />
+              </Field>
+            </div>
+          </section>
+
+          <section className="panel stack">
+            <h2 className="checkout-h2">
+              <span className="step-n">2</span> {t.checkout.paymentTitle}
+            </h2>
+            <div className="pay-options" role="radiogroup" aria-label={t.checkout.paymentTitle}>
+              {methods.map((m) => (
+                <label key={m.id} className="pay-option" data-checked={method === m.id}>
+                  <input
+                    type="radio"
+                    name="payment"
+                    value={m.id}
+                    checked={method === m.id}
+                    onChange={() => setMethod(m.id)}
+                  />
+                  <Icon name={methodIcon[m.id]} size={22} />
+                  <span className="stack" style={{ ['--gap' as string]: '2px' }}>
+                    <strong>{l(m.label)}</strong>
+                    <span className="small muted">{l(m.instructions)}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {err('payment_method') && <span className="field-error">{err('payment_method')}</span>}
+            <p className="small muted icon-line">
+              <Icon name="lock" size={16} /> {t.checkout.noCod}
+            </p>
+          </section>
+        </div>
+
+        <aside className="checkout-summary panel stack">
+          <h2 className="checkout-h2">
+            <span className="step-n">3</span> {t.checkout.summaryTitle}
+          </h2>
+          <ul className="co-lines">
+            {summary.lines.map(({ item, line }) =>
+              line ? (
+                <li key={item.id}>
+                  <LineDetails line={line} />
+                  <span className="num small">×{line.qty}</span>
+                  <strong className="num">{money(line.lineTotal)}</strong>
+                </li>
+              ) : null,
+            )}
+          </ul>
+          <div className="co-totals">
+            <div className="spread">
+              <span>{t.common.weight}</span>
+              <span className="num">{formatKg(summary.weightKg)}</span>
+            </div>
+            <div className="spread">
+              <span>{t.common.subtotal}</span>
+              <span className="num">{money(summary.subtotal)}</span>
+            </div>
+            <div className="spread">
+              <span>{t.common.delivery}</span>
+              <span className="num">{fee === null ? '—' : fee === 0 ? t.common.free : money(fee)}</span>
+            </div>
+            <span className="small muted">
+              {rate
+                ? fmt(t.checkout.deliveryTo, {
+                    city: l(rate.city),
+                    days: rate.deliveryDays === '1' ? t.common.day1 : fmt(t.common.days, { d: rate.deliveryDays }),
+                  })
+                : t.checkout.chooseCityFirst}
+            </span>
+            {settings.freeShippingOver > 0 && (
+              <span className="small muted">{fmt(t.checkout.freeFrom, { amount: money(settings.freeShippingOver) })}</span>
+            )}
+            <div className="spread co-total">
+              <span>{t.common.total}</span>
+              <strong className="num">{money(summary.subtotal + (fee ?? 0))}</strong>
+            </div>
+          </div>
+          {globalErrors.map((e) => (
+            <p key={e} className="notice notice-bad small">
+              {t.checkout.errors[e]}
+            </p>
+          ))}
+          <button
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={busy || summary.isB2B || summary.hasProblems}
+          >
+            {busy ? t.common.loading : fmt(t.checkout.place, { total: money(summary.subtotal + (fee ?? 0)) })}
+          </button>
+        </aside>
+      </form>
+    </div>
+  );
+}

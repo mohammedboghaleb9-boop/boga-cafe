@@ -1,0 +1,533 @@
+-- ════════════════════════════════════════════════════════════════════
+-- BOGA CAFÉ — production database (Supabase / PostgreSQL)
+--
+-- Mirrors src/core/types.ts. Principles:
+--   • Stock is counted in kg per origin and only changes through functions
+--     that also write a stock_movements line (full history).
+--   • Orders are written by the server only (Edge Function "create-order"
+--     recomputes prices with src/core, then calls commit_order()).
+--     commit_order() locks the origin rows, so two customers can never
+--     buy the same last kilo.
+--   • Customers never read other customers' data (Row Level Security).
+--   • Admin roles: owner / manager / staff (same matrix as the prototype).
+-- ════════════════════════════════════════════════════════════════════
+
+create extension if not exists pgcrypto;
+
+-- ───────────── Admin users & roles ─────────────
+
+create table public.admin_users (
+  user_id    uuid primary key references auth.users (id) on delete cascade,
+  role       text not null check (role in ('owner', 'manager', 'staff')),
+  full_name  text not null default '',
+  created_at timestamptz not null default now()
+);
+
+-- Role of the signed-in user, or null for customers / anonymous visitors.
+create or replace function public.admin_role() returns text
+language sql stable security definer set search_path = public as $$
+  select role from public.admin_users where user_id = auth.uid()
+$$;
+
+create or replace function public.is_admin(allowed text[] default array['owner', 'manager', 'staff'])
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce(public.admin_role() = any (allowed), false)
+$$;
+
+-- ───────────── Catalog ─────────────
+
+create table public.origins (
+  id                   text primary key,
+  name                 jsonb not null,               -- {"ar": "...", "fr": "...", "en": "..."}
+  country_code         char(2) not null,
+  species              text not null check (species in ('arabica', 'robusta')),
+  region               text not null default '',
+  roast_level          text not null check (roast_level in ('light', 'medium', 'medium-dark', 'dark')),
+  tasting_notes        jsonb not null default '{}'::jsonb,
+  stock_kg             numeric(10, 3) not null default 0 check (stock_kg >= 0),
+  low_stock_kg         numeric(10, 3) not null default 5 check (low_stock_kg >= 0),
+  price_per_kg         numeric(10, 2) not null check (price_per_kg >= 0),
+  custom_blend_enabled boolean not null default true,
+  restock_date         date,
+  active               boolean not null default true,
+  updated_at           timestamptz not null default now()
+);
+
+create table public.products (
+  id            text primary key,
+  slug          text not null unique,
+  kind          text not null check (kind in ('signature', 'single-origin', 'b2b')),
+  name          jsonb not null,
+  tagline       jsonb not null default '{}'::jsonb,
+  description   jsonb not null default '{}'::jsonb,
+  roast_level   text not null check (roast_level in ('light', 'medium', 'medium-dark', 'dark')),
+  tasting_notes jsonb not null default '{}'::jsonb,
+  -- price per bag size in MAD, e.g. {"250": 65, "500": 120, "1000": 225}; missing size = not offered
+  prices        jsonb not null default '{}'::jsonb,
+  image_url     text,
+  featured      boolean not null default false,
+  active        boolean not null default false,
+  sort_order    integer not null default 0,
+  updated_at    timestamptz not null default now()
+);
+
+create table public.product_recipes (
+  product_id text not null references public.products (id) on delete cascade,
+  origin_id  text not null references public.origins (id),
+  percent    integer not null check (percent between 1 and 100),
+  primary key (product_id, origin_id)
+);
+
+-- A recipe must add up to exactly 100 % (checked at commit time so it can be edited line by line).
+create or replace function public.check_recipe_total() returns trigger
+language plpgsql as $$
+declare
+  pid   text := coalesce(new.product_id, old.product_id);
+  total integer;
+begin
+  if not exists (select 1 from public.products where id = pid) then
+    return null; -- product deleted
+  end if;
+  select coalesce(sum(percent), 0) into total from public.product_recipes where product_id = pid;
+  if total <> 100 then
+    raise exception 'recipe_total: product % adds up to % %%, expected 100', pid, total;
+  end if;
+  return null;
+end $$;
+
+create constraint trigger product_recipes_total
+  after insert or update or delete on public.product_recipes
+  deferrable initially deferred
+  for each row execute function public.check_recipe_total();
+
+-- ───────────── Delivery, payment methods, configuration ─────────────
+
+create table public.shipping_rates (
+  id            text primary key,
+  city          jsonb not null,
+  distance_km   integer not null default 0,
+  base_fee      numeric(10, 2) not null check (base_fee >= 0),
+  included_kg   numeric(10, 3) not null default 3,
+  extra_per_kg  numeric(10, 2) not null default 0,
+  delivery_days text not null default '',
+  active        boolean not null default true
+);
+
+create table public.payment_methods (
+  id           text primary key check (id in ('card', 'cashplus', 'bank_transfer')),
+  enabled      boolean not null default true,
+  label        jsonb not null,
+  instructions jsonb not null default '{}'::jsonb
+);
+
+-- Public configuration (business rules, texts, contact, bank details shown at payment).
+create table public.site_config (
+  id       smallint primary key default 1 check (id = 1),
+  settings jsonb not null,
+  content  jsonb not null
+);
+
+-- Private configuration (who receives notifications).
+create table public.admin_config (
+  id              smallint primary key default 1 check (id = 1),
+  admin_whatsapp  text not null default '',
+  admin_email     text not null default '',
+  whatsapp_on     boolean not null default true,
+  email_on        boolean not null default true
+);
+
+-- ───────────── Orders ─────────────
+
+create sequence public.order_number_seq;
+create sequence public.sample_number_seq;
+create sequence public.quote_number_seq;
+
+create table public.orders (
+  id               uuid primary key default gen_random_uuid(),
+  number           text not null unique,
+  created_at       timestamptz not null default now(),
+  locale           text not null default 'fr' check (locale in ('ar', 'fr', 'en')),
+  customer_name    text not null,
+  phone            text not null,
+  email            text not null default '',
+  city_id          text not null references public.shipping_rates (id),
+  address          text not null,
+  company          text not null default '',
+  notes            text not null default '',
+  lines            jsonb not null,             -- frozen copy: name, size, qty, prices, grams per origin
+  weight_kg        numeric(10, 3) not null check (weight_kg > 0),
+  subtotal         numeric(10, 2) not null,
+  shipping_fee     numeric(10, 2) not null,
+  total            numeric(10, 2) not null,
+  payment_method   text not null references public.payment_methods (id),
+  payment_status   text not null default 'pending'
+                   check (payment_status in ('pending', 'awaiting_verification', 'paid', 'failed', 'refunded')),
+  payment_ref      text,
+  status           text not null default 'new'
+                   check (status in ('new', 'confirmed', 'in_production', 'shipped', 'delivered', 'cancelled')),
+  stock_deductions jsonb not null,             -- [{"originId": "brazil", "kg": 0.4}, ...]
+  stock_returned   boolean not null default false
+);
+
+create index orders_created_idx on public.orders (created_at desc);
+create index orders_status_idx on public.orders (status);
+
+create table public.order_events (
+  id       bigint generated always as identity primary key,
+  order_id uuid not null references public.orders (id) on delete cascade,
+  at       timestamptz not null default now(),
+  label    text not null,                      -- e.g. order.created, payment.paid, status.shipped
+  actor    uuid                                -- admin user, null = system / customer
+);
+
+create table public.stock_movements (
+  id        bigint generated always as identity primary key,
+  at        timestamptz not null default now(),
+  origin_id text not null references public.origins (id),
+  delta_kg  numeric(10, 3) not null,
+  reason    text not null check (reason in ('order', 'order_cancelled', 'restock', 'correction')),
+  ref       text not null default '',
+  note      text not null default '',
+  actor     uuid
+);
+
+create index stock_movements_origin_idx on public.stock_movements (origin_id, at desc);
+
+-- ───────────── B2B ─────────────
+
+create table public.sample_requests (
+  id              uuid primary key default gen_random_uuid(),
+  number          text not null unique,
+  created_at      timestamptz not null default now(),
+  business_type   text not null check (business_type in ('cafe', 'hotel', 'restaurant', 'company', 'individual', 'other')),
+  company         text not null default '',
+  contact_name    text not null,
+  phone           text not null,
+  email           text not null default '',
+  city_id         text not null references public.shipping_rates (id),
+  product_id      text not null references public.products (id),
+  est_monthly_kg  numeric(10, 2) not null default 0,
+  notes           text not null default '',
+  status          text not null default 'new'
+                  check (status in ('new', 'contacted', 'approved', 'shipped', 'closed', 'rejected')),
+  free            boolean,                    -- null = not decided
+  delivery_fee    numeric(10, 2) not null default 0,
+  admin_notes     text not null default ''
+);
+
+create table public.quote_requests (
+  id               uuid primary key default gen_random_uuid(),
+  number           text not null unique,
+  created_at       timestamptz not null default now(),
+  business_type    text not null check (business_type in ('cafe', 'hotel', 'restaurant', 'company', 'individual', 'other')),
+  company          text not null default '',
+  contact_name     text not null,
+  phone            text not null,
+  email            text not null default '',
+  city_id          text not null references public.shipping_rates (id),
+  lines            jsonb not null,
+  weight_kg        numeric(10, 3) not null,
+  indicative_total numeric(10, 2) not null,
+  notes            text not null default '',
+  status           text not null default 'new' check (status in ('new', 'negotiating', 'confirmed', 'closed')),
+  final_price      numeric(10, 2),
+  admin_notes      text not null default ''
+);
+
+-- ───────────── Notifications (outbox) ─────────────
+-- Rows are written in the same transaction as the order; the Edge Function
+-- "send-notifications" delivers them (WhatsApp Cloud API, Gmail SMTP) and retries.
+
+create table public.notification_outbox (
+  id         bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  channel    text not null check (channel in ('whatsapp', 'email')),
+  event      text not null check (event in ('order.created', 'sample.created', 'quote.created', 'stock.low')),
+  recipient  text not null,
+  subject    text not null default '',
+  body       text not null,
+  status     text not null default 'pending' check (status in ('pending', 'sent', 'failed')),
+  attempts   integer not null default 0,
+  last_error text,
+  sent_at    timestamptz
+);
+
+create index notification_outbox_pending_idx on public.notification_outbox (created_at) where status = 'pending';
+
+-- ───────────── Helpers ─────────────
+
+create or replace function public.touch_updated_at() returns trigger
+language plpgsql as $$
+begin
+  new.updated_at := now();
+  return new;
+end $$;
+
+create trigger origins_touch before update on public.origins
+  for each row execute function public.touch_updated_at();
+create trigger products_touch before update on public.products
+  for each row execute function public.touch_updated_at();
+
+-- Queues one message per enabled channel.
+create or replace function public.queue_notification(p_event text, p_subject text, p_whatsapp text, p_email text)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  cfg public.admin_config;
+begin
+  select * into cfg from public.admin_config where id = 1;
+  if not found then
+    return;
+  end if;
+  if cfg.whatsapp_on and cfg.admin_whatsapp <> '' then
+    insert into public.notification_outbox (channel, event, recipient, subject, body)
+    values ('whatsapp', p_event, cfg.admin_whatsapp, p_subject, p_whatsapp);
+  end if;
+  if cfg.email_on and cfg.admin_email <> '' then
+    insert into public.notification_outbox (channel, event, recipient, subject, body)
+    values ('email', p_event, cfg.admin_email, p_subject, p_email);
+  end if;
+end $$;
+
+-- Low-stock alert when an origin crosses its threshold.
+create or replace function public.alert_low_stock() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.stock_kg <= new.low_stock_kg and old.stock_kg > old.low_stock_kg then
+    perform public.queue_notification(
+      'stock.low',
+      '[BOGA CAFÉ] Stock bas : ' || (new.name ->> 'fr'),
+      'Stock bas : ' || (new.name ->> 'fr') || ' - ' || new.stock_kg || ' kg restant',
+      'Stock bas : ' || (new.name ->> 'fr') || ' - ' || new.stock_kg || ' kg restant (seuil ' || new.low_stock_kg || ' kg)'
+    );
+  end if;
+  return new;
+end $$;
+
+create trigger origins_low_stock after update of stock_kg on public.origins
+  for each row execute function public.alert_low_stock();
+
+-- ───────────── Order commit (server only) ─────────────
+-- p_order is the object produced by src/core/order.ts buildOrder(), already
+-- validated by the Edge Function. This function makes it durable atomically:
+-- lock origins → check stock → deduct → insert order + history + movements + notifications.
+
+create or replace function public.commit_order(p_order jsonb, p_whatsapp text, p_email text, p_subject text)
+returns table (id uuid, number text)
+language plpgsql security definer set search_path = public as $$
+declare
+  d          jsonb;
+  v_origin   public.origins;
+  v_id       uuid := gen_random_uuid();
+  v_number   text := 'BC-' || to_char(now(), 'YYYY') || '-' || lpad(nextval('public.order_number_seq')::text, 4, '0');
+begin
+  -- Lock every origin used, in a fixed order to avoid deadlocks.
+  for d in
+    select value from jsonb_array_elements(p_order -> 'stockDeductions') order by value ->> 'originId'
+  loop
+    select * into v_origin from public.origins o where o.id = d ->> 'originId' for update;
+    if not found or not v_origin.active then
+      raise exception 'out_of_stock:%', d ->> 'originId';
+    end if;
+    if v_origin.stock_kg < (d ->> 'kg')::numeric then
+      raise exception 'out_of_stock:%', d ->> 'originId';
+    end if;
+    update public.origins o set stock_kg = o.stock_kg - (d ->> 'kg')::numeric where o.id = v_origin.id;
+    insert into public.stock_movements (origin_id, delta_kg, reason, ref)
+    values (v_origin.id, -((d ->> 'kg')::numeric), 'order', v_number);
+  end loop;
+
+  insert into public.orders (
+    id, number, locale, customer_name, phone, email, city_id, address, company, notes,
+    lines, weight_kg, subtotal, shipping_fee, total, payment_method, stock_deductions
+  ) values (
+    v_id, v_number,
+    coalesce(p_order ->> 'locale', 'fr'),
+    p_order #>> '{customer,fullName}',
+    p_order #>> '{customer,phone}',
+    coalesce(p_order #>> '{customer,email}', ''),
+    p_order #>> '{customer,cityId}',
+    p_order #>> '{customer,address}',
+    coalesce(p_order #>> '{customer,company}', ''),
+    coalesce(p_order #>> '{customer,notes}', ''),
+    p_order -> 'lines',
+    (p_order ->> 'weightKg')::numeric,
+    (p_order ->> 'subtotal')::numeric,
+    (p_order ->> 'shippingFee')::numeric,
+    (p_order ->> 'total')::numeric,
+    p_order ->> 'paymentMethod',
+    p_order -> 'stockDeductions'
+  );
+
+  insert into public.order_events (order_id, label) values (v_id, 'order.created');
+  perform public.queue_notification('order.created', replace(p_subject, '{number}', v_number),
+                                    replace(p_whatsapp, '{number}', v_number), replace(p_email, '{number}', v_number));
+  return query select v_id, v_number;
+end $$;
+
+-- ───────────── Admin actions ─────────────
+
+create or replace function public.set_order_status(p_order_id uuid, p_status text)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_order public.orders;
+  d       jsonb;
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found then
+    raise exception 'not_found';
+  end if;
+  if v_order.status = 'cancelled' then
+    raise exception 'order_cancelled';
+  end if;
+
+  -- Cancelling gives the reserved coffee back, exactly once.
+  if p_status = 'cancelled' and not v_order.stock_returned then
+    for d in select value from jsonb_array_elements(v_order.stock_deductions) order by value ->> 'originId' loop
+      update public.origins set stock_kg = stock_kg + (d ->> 'kg')::numeric where id = d ->> 'originId';
+      insert into public.stock_movements (origin_id, delta_kg, reason, ref, actor)
+      values (d ->> 'originId', (d ->> 'kg')::numeric, 'order_cancelled', v_order.number, auth.uid());
+    end loop;
+    update public.orders set stock_returned = true where id = p_order_id;
+  end if;
+
+  update public.orders set status = p_status where id = p_order_id;
+  insert into public.order_events (order_id, label, actor) values (p_order_id, 'status.' || p_status, auth.uid());
+end $$;
+
+create or replace function public.set_payment_status(p_order_id uuid, p_status text)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  update public.orders
+     set payment_status = p_status,
+         status = case when p_status = 'paid' and status = 'new' then 'confirmed' else status end
+   where id = p_order_id;
+  insert into public.order_events (order_id, label, actor) values (p_order_id, 'payment.' || p_status, auth.uid());
+end $$;
+
+create or replace function public.adjust_stock(p_origin_id text, p_delta_kg numeric, p_reason text, p_note text default '')
+returns numeric
+language plpgsql security definer set search_path = public as $$
+declare
+  v_stock numeric;
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  if p_reason not in ('restock', 'correction') then
+    raise exception 'invalid_reason';
+  end if;
+  update public.origins set stock_kg = greatest(0, stock_kg + p_delta_kg)
+   where id = p_origin_id
+   returning stock_kg into v_stock;
+  if not found then
+    raise exception 'not_found';
+  end if;
+  insert into public.stock_movements (origin_id, delta_kg, reason, note, actor)
+  values (p_origin_id, p_delta_kg, p_reason, p_note, auth.uid());
+  return v_stock;
+end $$;
+
+-- Customer order page: the order id is an unguessable UUID shared only with the buyer.
+create or replace function public.get_order_public(p_order_id uuid)
+returns table (
+  number text, created_at timestamptz, customer_name text, city_id text, lines jsonb,
+  weight_kg numeric, subtotal numeric, shipping_fee numeric, total numeric,
+  payment_method text, payment_status text, status text
+)
+language sql stable security definer set search_path = public as $$
+  select o.number, o.created_at, o.customer_name, o.city_id, o.lines, o.weight_kg, o.subtotal,
+         o.shipping_fee, o.total, o.payment_method, o.payment_status, o.status
+    from public.orders o
+   where o.id = p_order_id
+$$;
+
+-- Customer reports a Cash Plus / transfer payment (only while it is pending).
+create or replace function public.report_offline_payment(p_order_id uuid, p_ref text)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  update public.orders
+     set payment_status = 'awaiting_verification', payment_ref = left(p_ref, 80)
+   where id = p_order_id and payment_status = 'pending' and payment_method <> 'card';
+  if found then
+    insert into public.order_events (order_id, label) values (p_order_id, 'payment.reported');
+  end if;
+end $$;
+
+-- ───────────── Row Level Security ─────────────
+
+alter table public.admin_users         enable row level security;
+alter table public.origins             enable row level security;
+alter table public.products            enable row level security;
+alter table public.product_recipes     enable row level security;
+alter table public.shipping_rates      enable row level security;
+alter table public.payment_methods     enable row level security;
+alter table public.site_config         enable row level security;
+alter table public.admin_config        enable row level security;
+alter table public.orders              enable row level security;
+alter table public.order_events        enable row level security;
+alter table public.stock_movements     enable row level security;
+alter table public.sample_requests     enable row level security;
+alter table public.quote_requests      enable row level security;
+alter table public.notification_outbox enable row level security;
+
+-- Public catalog: everyone reads what is active.
+create policy "catalog read" on public.origins for select using (active or public.is_admin());
+create policy "catalog read" on public.products for select using (active or public.is_admin());
+create policy "catalog read" on public.product_recipes for select using (true);
+create policy "catalog read" on public.shipping_rates for select using (active or public.is_admin());
+create policy "catalog read" on public.payment_methods for select using (enabled or public.is_admin());
+create policy "config read" on public.site_config for select using (true);
+
+-- Catalog, prices, delivery and texts: owner + manager. (Staff moves stock via adjust_stock().)
+create policy "catalog write" on public.origins for all
+  using (public.is_admin(array['owner', 'manager'])) with check (public.is_admin(array['owner', 'manager']));
+create policy "catalog write" on public.products for all
+  using (public.is_admin(array['owner', 'manager'])) with check (public.is_admin(array['owner', 'manager']));
+create policy "catalog write" on public.product_recipes for all
+  using (public.is_admin(array['owner', 'manager'])) with check (public.is_admin(array['owner', 'manager']));
+create policy "catalog write" on public.shipping_rates for all
+  using (public.is_admin(array['owner', 'manager'])) with check (public.is_admin(array['owner', 'manager']));
+create policy "config write" on public.site_config for update
+  using (public.is_admin(array['owner', 'manager'])) with check (public.is_admin(array['owner', 'manager']));
+
+-- Money and access: owner only.
+create policy "owner only" on public.payment_methods for update
+  using (public.is_admin(array['owner'])) with check (public.is_admin(array['owner']));
+create policy "owner only" on public.admin_config for all
+  using (public.is_admin(array['owner'])) with check (public.is_admin(array['owner']));
+create policy "owner manages admins" on public.admin_users for all
+  using (public.is_admin(array['owner'])) with check (public.is_admin(array['owner']));
+create policy "see own admin row" on public.admin_users for select using (user_id = auth.uid());
+
+-- Operations: every admin role reads; status changes go through the functions above.
+create policy "admins read" on public.orders for select using (public.is_admin());
+create policy "admins read" on public.order_events for select using (public.is_admin());
+create policy "admins read" on public.stock_movements for select using (public.is_admin());
+create policy "admins read" on public.notification_outbox for select using (public.is_admin(array['owner', 'manager']));
+create policy "admins manage" on public.sample_requests for all using (public.is_admin()) with check (public.is_admin());
+create policy "admins manage" on public.quote_requests for all using (public.is_admin()) with check (public.is_admin());
+
+-- Functions: who may call what.
+revoke all on function public.commit_order(jsonb, text, text, text) from public, anon, authenticated;
+grant execute on function public.commit_order(jsonb, text, text, text) to service_role;
+revoke all on function public.queue_notification(text, text, text, text) from public, anon, authenticated;
+grant execute on function public.queue_notification(text, text, text, text) to service_role;
+revoke all on function public.set_order_status(uuid, text) from public, anon;
+revoke all on function public.set_payment_status(uuid, text) from public, anon;
+revoke all on function public.adjust_stock(text, numeric, text, text) from public, anon;
+grant execute on function public.set_order_status(uuid, text) to authenticated;
+grant execute on function public.set_payment_status(uuid, text) to authenticated;
+grant execute on function public.adjust_stock(text, numeric, text, text) to authenticated;
+grant execute on function public.get_order_public(uuid) to anon, authenticated;
+grant execute on function public.report_offline_payment(uuid, text) to anon, authenticated;
