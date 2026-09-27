@@ -1,0 +1,138 @@
+/*
+ * Motion: slow, subtle, and never needed to read the page.
+ * - one entrance moment on the hero (photo settles, a light glint crosses the pouches)
+ * - scroll-driven reveals and parallax (CSS only, no JavaScript; browsers without
+ *   support simply show the page still)
+ * - nothing moves for visitors who ask their device to reduce motion
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-img {
+    animation: hero-settle 2.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .hero-media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: linear-gradient(104deg, transparent 38%, rgb(255 236 208 / 0.28) 50%, transparent 62%) no-repeat;
+    background-size: 260% 100%;
+    mix-blend-mode: soft-light;
+    animation: glint 2.4s ease-out 0.7s both;
+  }
+  .hero-text > * {
+    animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .hero-text > :nth-child(2) {
+    animation-delay: 0.08s;
+  }
+  .hero-text > :nth-child(3) {
+    animation-delay: 0.16s;
+  }
+  .hero-text > :nth-child(4) {
+    animation-delay: 0.24s;
+  }
+
+  .pcard:hover .pv-inner {
+    transform: scale(1.035);
+  }
+
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 26%;
+    }
+    .pgrid > * {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 24%;
+    }
+    .parallax {
+      animation: parallax linear both;
+      animation-timeline: view();
+      animation-range: entry 0% exit 100%;
+    }
+    /* the Custom Blend seal is "placed" on the page as you reach it */
+    .seal-spin {
+      animation: seal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 45%;
+    }
+    .site-header {
+      animation: header-solid linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 140px;
+    }
+    .logo-mark {
+      animation: logo-compact linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 140px;
+    }
+  }
+}
+
+@keyframes hero-settle {
+  from {
+    transform: scale(1.09);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes glint {
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -30% 0;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+/* transform only: content stays readable even before it has moved */
+@keyframes reveal {
+  from {
+    transform: translateY(32px);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes parallax {
+  from {
+    transform: scale(1.14) translateY(-3%);
+  }
+  to {
+    transform: scale(1.03) translateY(3%);
+  }
+}
+@keyframes seal-in {
+  from {
+    transform: rotate(-26deg) scale(0.86);
+  }
+  to {
+    transform: rotate(-6deg) scale(1);
+  }
+}
+@keyframes header-solid {
+  from {
+    background-color: rgb(15 13 11 / 0);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  to {
+    background-color: color-mix(in srgb, var(--paper) 90%, transparent);
+    border-color: var(--line);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+  }
+}
+@keyframes logo-compact {
+  to {
+    transform: scale(0.86);
+  }
+}

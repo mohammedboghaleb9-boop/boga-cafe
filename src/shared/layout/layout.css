@@ -8,8 +8,9 @@
 }
 
 .announce {
-  background: var(--primary);
-  color: var(--primary-ink);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border-block-end: 1px solid var(--line);
   font-size: 0.78rem;
   text-align: center;
   padding-block: 7px;
@@ -48,6 +49,17 @@
   text-decoration: none;
   color: var(--ink);
   flex-shrink: 0;
+}
+.logo-mark {
+  display: inline-flex;
+  inline-size: 25px;
+  block-size: 39px;
+  color: var(--ink);
+  transform-origin: center;
+}
+.logo-mark svg {
+  inline-size: 100%;
+  block-size: 100%;
 }
 .logo-word {
   font-family: 'Cinzel', Georgia, serif;

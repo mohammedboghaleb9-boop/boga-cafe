@@ -103,6 +103,19 @@ export const en = {
     openAdmin: 'Open the Admin Panel',
   },
 
+  media: {
+    hero: 'Three BOGA CAFÉ pouches, 250 g, 500 g and 1 kg, on a wooden table with roasted beans',
+    pouch: 'BOGA CAFÉ pouch: {name}, {size}',
+    openBag: 'Open BOGA CAFÉ pouch with whole roasted beans spilling onto wood',
+    seal: 'The round Custom Blend seal of BOGA CAFÉ',
+    label: 'The BOGA CAFÉ hexagonal label',
+    roaster: 'Freshly roasted beans pouring into the cooling tray of the roaster',
+    roastery: 'The roaster and jute sacks of green coffee in the roastery',
+    greenBeans: 'Jute sacks of green coffee beans with a wooden scoop',
+    barista: 'A barista pulling a double espresso next to a BOGA CAFÉ pouch',
+    tray: 'Coffee cup on a Moroccan brass tray beside a BOGA CAFÉ pouch',
+  },
+
   home: {
     eyebrow: 'Roasting & sales · Oujda, Morocco',
     ctaShop: 'Shop the coffee',
@@ -133,6 +146,7 @@ export const en = {
       'Three blends designed for professionals, a 500 g sample on request, and orders above 10 kg handled directly by our team.',
     b2bCta: 'Discover B2B / HORECA',
     followTitle: 'Follow BOGA CAFÉ',
+    followText: 'Behind the scenes of the roastery, recipes and new origins.',
   },
 
   shop: {

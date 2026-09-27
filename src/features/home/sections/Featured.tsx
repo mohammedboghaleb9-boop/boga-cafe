@@ -10,7 +10,7 @@ export function Featured() {
   if (featured.length === 0) return null;
   return (
     <section className="section container">
-      <div className="section-head">
+      <div className="section-head reveal">
         <div className="stack">
           <h2>{t.home.featuredTitle}</h2>
           <p className="muted">{t.home.featuredText}</p>

@@ -1,10 +1,10 @@
 import { Link } from 'react-router';
-import heroImage from '@/assets/brand/bag-hero.jpg';
 import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
-import { ZelligePattern } from '@/shared/ui/Pattern';
+import { Photo } from '@/shared/ui/Photo';
 
+/** The three real pouch sizes open the site: the whole offer in one image. */
 export function Hero() {
   const { t, l } = useI18n();
   const { content } = useDb();
@@ -16,8 +16,7 @@ export function Hero() {
   ];
   return (
     <section className="hero">
-      <ZelligePattern className="hero-pattern" opacity={0.07} />
-      <div className="container hero-grid">
+      <div className="hero-grid">
         <div className="hero-text">
           <span className="eyebrow">{t.home.eyebrow}</span>
           <h1>{l(content.heroTitle)}</h1>
@@ -31,8 +30,8 @@ export function Hero() {
             </Link>
           </div>
         </div>
-        <figure className="hero-photo">
-          <img src={heroImage} alt="BOGA CAFÉ — sachet 1 kg" />
+        <figure className="hero-media">
+          <Photo name="bagsTrio" alt={t.media.hero} className="hero-img" priority sizes="(min-width: 900px) 55vw, 100vw" />
         </figure>
       </div>
       <div className="container">

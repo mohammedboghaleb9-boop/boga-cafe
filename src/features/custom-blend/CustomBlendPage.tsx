@@ -10,7 +10,9 @@ import { useCatalog, useSettings } from '@/data/hooks';
 import { useCart } from '@/features/cart/CartProvider';
 import { fmt, useI18n } from '@/i18n';
 import { recipeView } from '@/shared/recipe-view';
-import { BagMockup } from '@/shared/ui/BagMockup';
+import { customBlendSticker } from '@/shared/sticker';
+import { Photo } from '@/shared/ui/Photo';
+import { ProductVisual } from '@/shared/ui/ProductVisual';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { QtyStepper, SpeciesBar } from '@/shared/ui/bits';
@@ -237,13 +239,14 @@ export function CustomBlendPage() {
 
         {/* Summary */}
         <aside className="builder-summary panel" aria-live="polite">
-          <h2 className="summary-title">{t.blend.summary}</h2>
-          <BagMockup
-            size="sm"
-            name={l(CUSTOM_BLEND_NAME)}
-            subtitle={lines.map((x) => `${x.percent}%`).join(' · ')}
-            flags={view.flags}
-            weightGrams={size}
+          <div className="summary-head">
+            <Photo name="seal" alt={t.media.seal} className="summary-seal" />
+            <h2 className="summary-title">{t.blend.summary}</h2>
+          </div>
+          <ProductVisual
+            className="summary-visual"
+            sticker={customBlendSticker(lines, size, originIndex)}
+            alt={fmt(t.media.pouch, { name: l(CUSTOM_BLEND_NAME), size: formatSize(size) })}
           />
           {lines.length > 0 && <SpeciesBar {...view.split} />}
 

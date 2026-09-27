@@ -204,8 +204,25 @@
   flex-direction: column;
   gap: 14px;
 }
+.summary-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.summary-seal {
+  inline-size: 52px;
+  block-size: 52px;
+  transform: rotate(-8deg);
+  filter: drop-shadow(0 4px 8px rgb(0 0 0 / 0.45));
+}
 .summary-title {
   font-size: 1.2rem;
+}
+.summary-visual {
+  inline-size: 100%;
+  max-inline-size: 260px;
+  margin-inline: auto;
+  border-radius: var(--radius-sm);
 }
 .summary-block {
   --gap: 6px;

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/assets/brand/label.jpg" alt="BOGA CAFÉ — الملصق" width="230" />
+  <img src="src/assets/brand/label.webp" alt="BOGA CAFÉ — الملصق المعتمد" width="230" />
 </p>
 
 <h1 align="center">BOGA CAFÉ</h1>
@@ -48,7 +48,7 @@
 - الموقع هو **الحضور الرسمي الكامل** للعلامة على الإنترنت: الهوية، عرض المنتجات، البيع، B2B، التواصل، الشبكات الاجتماعية، ولوحة الإدارة.
 
 <p align="center">
-  <img src="src/assets/brand/bag-hero.jpg" alt="كيس BOGA CAFÉ 1 كلغ" width="720" />
+  <img src="src/assets/photos/bags-trio.webp" alt="أكياس BOGA CAFÉ: 250 غ، 500 غ، 1 كلغ" width="720" />
 </p>
 
 > **الرؤية:** موقع واحد رسمي يمثل العلامة، ويعمل في نفس الوقت كمتجر إلكتروني ونظام للزبائن العاديين والمهنيين.
@@ -188,7 +188,7 @@ flowchart TD
 | الطبقة | التقنية |
 |---|---|
 | الواجهة | React 19 · TypeScript · Vite · React Router |
-| التصميم | CSS بمتغيرات (tokens) وخصائص منطقية لدعم العربية RTL تلقائياً · وضع فاتح (الملصق الفضي) ووضع داكن (الكيس الأسود) |
+| التصميم | CSS بمتغيرات (tokens) وخصائص منطقية لدعم العربية RTL تلقائياً · المتجر بألوان «الكيس الأسود» · حركة هادئة مع السكرول بـ CSS فقط، تحترم إعداد تقليل الحركة |
 | اللغات | قواميس TypeScript للعربية والفرنسية والإنجليزية (نسيان ترجمة = المشروع يرفض البناء) |
 | منطق الأعمال | `src/core` بـ TypeScript خالص: نفس الكود في المتصفح وفي الخادم |
 | الإنتاج | Supabase: PostgreSQL + أمان على مستوى الصفوف (RLS) + Auth + Storage + Edge Functions |
@@ -207,7 +207,7 @@ src/
   data/          البيانات: التجريبية الآن (seed + store)، Supabase في المرحلة 2
   services/      الدفع والإشعارات كمحوّلات قابلة للاستبدال
   i18n/          العربية / الفرنسية / الإنجليزية
-  shared/        مكونات مشتركة: الكيس السداسي، الأعلام، الرأس، التذييل
+  shared/        مكونات مشتركة: صورة المنتج وملصقه، سجل الصور، الأعلام، الرأس، التذييل
   features/      الأقسام، كل قسم في مجلده
     home/ shop/ product/ single-origin/ custom-blend/ b2b/ cart/ checkout/ contact/
     admin/       dashboard/ orders/ b2b/ products/ stock/ shipping/ payments/ notifications/ content/ settings/
@@ -270,6 +270,7 @@ npm run build:demo   # النموذج في ملف HTML واحد يفتح مبا�
 | [05 · خطوات البناء](docs/05-roadmap.md) | المراحل 0 → 7 وشروط الإنهاء |
 | [06 · دليل الأقسام](docs/06-modules.md) | كيف تعدّل كل قسم |
 | [07 · أسئلة مفتوحة](docs/07-open-questions.md) | ما ينتظر قرار صاحب المشروع |
+| [08 · الصور والهوية البصرية](docs/08-visual-assets.md) | الأصول المعتمدة، المرفوضة، وقواعد طلب صور جديدة |
 | [التقرير الأصلي](docs/source/BOGA_CAFE_Project_Website_Concept.docx) | Project & Website Concept |
 
 ## 16. En bref · In short

@@ -2,6 +2,7 @@ import { useCatalog } from '@/data/hooks';
 import { ProductCard } from '@/features/shop/ProductCard';
 import { fmt, useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
+import { Photo } from '@/shared/ui/Photo';
 
 export function SingleOriginPage() {
   const { t, l, date } = useI18n();
@@ -15,6 +16,10 @@ export function SingleOriginPage() {
         <h1>{t.single.title}</h1>
         <p className="lead">{t.single.intro}</p>
       </div>
+
+      <figure className="page-banner">
+        <Photo name="greenBeans" alt={t.media.greenBeans} priority sizes="(min-width: 1180px) 1180px, 100vw" />
+      </figure>
 
       <div className="origin-strip">
         {origins

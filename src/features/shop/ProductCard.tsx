@@ -2,9 +2,10 @@ import { Link } from 'react-router';
 import { lowestPrice, offeredSizes } from '@/core/pricing';
 import type { Product } from '@/core/types';
 import { useCatalog, useSettings } from '@/data/hooks';
-import { fmt, useI18n } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { recipeView } from '@/shared/recipe-view';
-import { BagMockup } from '@/shared/ui/BagMockup';
+import { productSticker } from '@/shared/sticker';
+import { ProductVisual } from '@/shared/ui/ProductVisual';
 import { Availability, SpeciesBar } from '@/shared/ui/bits';
 import './shop.css';
 
@@ -17,16 +18,14 @@ export function ProductCard({ product }: { product: Product }) {
   const sizes = offeredSizes(product);
   const from = lowestPrice(product);
   const url = `/product/${product.slug}`;
+  const shownSize = sizes.includes(1000) ? 1000 : (sizes.at(-1) ?? 1000);
 
   return (
     <article className="pcard">
       <Link to={url} className="pcard-media" tabIndex={-1} aria-hidden="true">
-        <BagMockup
-          size="sm"
-          name={l(product.name)}
-          subtitle={fmt(t.product.splitLabel, { a: view.split.arabica, r: view.split.robusta })}
-          flags={view.flags}
-          weightGrams={sizes.at(-1) ?? 1000}
+        <ProductVisual
+          sticker={productSticker(product.name.fr, product.recipe, product.roastLevel, shownSize, originIndex)}
+          alt=""
           image={product.image}
         />
       </Link>

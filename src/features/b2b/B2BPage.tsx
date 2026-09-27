@@ -5,7 +5,7 @@ import { ProductCard } from '@/features/shop/ProductCard';
 import { useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
-import { ZelligePattern } from '@/shared/ui/Pattern';
+import { Photo } from '@/shared/ui/Photo';
 import { SampleRequestForm } from './SampleRequestForm';
 import './b2b.css';
 
@@ -23,7 +23,8 @@ export function B2BPage() {
   return (
     <>
       <section className="b2b-hero">
-        <ZelligePattern className="b2b-hero-pattern" opacity={0.08} />
+        <Photo name="barista" alt="" className="b2b-hero-img" priority sizes="100vw" />
+        <div className="b2b-hero-shade" />
         <div className="container b2b-hero-inner">
           <span className="eyebrow">{t.b2b.eyebrow}</span>
           <h1>{t.b2b.title}</h1>

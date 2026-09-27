@@ -101,6 +101,19 @@ export const fr: Dict = {
     openAdmin: 'Ouvrir le Panel Admin',
   },
 
+  media: {
+    hero: 'Trois sachets BOGA CAFÉ, 250 g, 500 g et 1 kg, sur une table en bois avec des grains torréfiés',
+    pouch: 'Sachet BOGA CAFÉ : {name}, {size}',
+    openBag: 'Sachet BOGA CAFÉ ouvert, grains torréfiés répandus sur le bois',
+    seal: 'Le sceau rond Custom Blend de BOGA CAFÉ',
+    label: 'L’étiquette hexagonale BOGA CAFÉ',
+    roaster: 'Grains fraîchement torréfiés tombant dans le bac de refroidissement',
+    roastery: 'Le torréfacteur et des sacs de jute de café vert',
+    greenBeans: 'Sacs de jute remplis de café vert avec une pelle en bois',
+    barista: 'Un barista prépare un double espresso à côté d’un sachet BOGA CAFÉ',
+    tray: 'Tasse de café sur un plateau marocain en laiton, à côté d’un sachet BOGA CAFÉ',
+  },
+
   home: {
     eyebrow: 'Torréfaction & vente · Oujda, Maroc',
     ctaShop: 'Découvrir les cafés',
@@ -131,6 +144,7 @@ export const fr: Dict = {
       'Trois blends pensés pour les professionnels, un échantillon de 500 g sur demande, et les commandes de plus de 10 kg traitées directement par notre équipe.',
     b2bCta: 'Découvrir B2B / HORECA',
     followTitle: 'Suivre BOGA CAFÉ',
+    followText: 'Les coulisses de la torréfaction, les recettes et les nouvelles origines.',
   },
 
   shop: {

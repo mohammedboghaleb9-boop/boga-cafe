@@ -10,7 +10,8 @@ import { useCart } from '@/features/cart/CartProvider';
 import { ProductCard } from '@/features/shop/ProductCard';
 import { fmt, useI18n } from '@/i18n';
 import { recipeView } from '@/shared/recipe-view';
-import { BagMockup } from '@/shared/ui/BagMockup';
+import { productSticker } from '@/shared/sticker';
+import { ProductVisual } from '@/shared/ui/ProductVisual';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { Availability, QtyStepper, SpeciesBar } from '@/shared/ui/bits';
@@ -46,13 +47,11 @@ export function ProductPage() {
 
       <div className="product">
         <div className="product-media">
-          <BagMockup
-            size="lg"
-            name={l(product.name)}
-            subtitle={fmt(t.product.splitLabel, { a: view.split.arabica, r: view.split.robusta })}
-            flags={view.flags}
-            weightGrams={size}
+          <ProductVisual
+            sticker={productSticker(product.name.fr, product.recipe, product.roastLevel, size, originIndex)}
+            alt={fmt(t.media.pouch, { name: l(product.name), size: formatSize(size) })}
             image={product.image}
+            priority
           />
         </div>
 

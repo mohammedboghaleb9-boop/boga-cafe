@@ -626,3 +626,20 @@ textarea {
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
 }
+
+/* Country flags (shared by shop, Custom Blend, admin) */
+.flag {
+  display: inline-block;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.14);
+  flex-shrink: 0;
+}
+.flag-fallback {
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.55rem;
+  font-weight: 700;
+  border-radius: 2px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}

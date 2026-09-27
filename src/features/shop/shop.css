@@ -16,18 +16,9 @@
 .pcard:hover {
   border-color: var(--line-strong);
 }
-.pcard:hover .bag {
-  transform: translateY(-4px) rotate(-1deg);
-}
 .pcard-media {
   display: block;
-  padding: 22px 16px 16px;
-  background:
-    radial-gradient(circle at 50% 110%, rgb(0 0 0 / 0.14), transparent 60%),
-    linear-gradient(180deg, var(--surface-2), var(--surface));
-}
-.pcard-media .bag {
-  transition: transform 0.3s ease;
+  border-block-end: 1px solid var(--line);
 }
 .pcard-body {
   display: flex;
@@ -77,4 +68,18 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface);
+}
+
+.page-banner {
+  margin: 0 0 22px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  aspect-ratio: 21 / 7;
+}
+.page-banner img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  object-position: 50% 55%;
+  display: block;
 }

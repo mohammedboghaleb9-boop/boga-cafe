@@ -121,3 +121,39 @@
   --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.35);
   color-scheme: dark;
 }
+
+/*
+ * Storefront = the black bag world, whatever the device theme.
+ * The photos are dark and warm; a light page would fight them.
+ * The Admin Panel keeps the light / system palette above for long reading sessions.
+ */
+:root:has(.store) {
+  --paper: #0f0d0b;
+  --surface: #181513;
+  --surface-2: #221e1a;
+  --ink: #eeeae4;
+  --ink-2: #cdc6bc;
+  --muted: #9a9187;
+  --line: #2d2824;
+  --line-strong: #4b443d;
+  --accent: #c99a66;
+  --accent-ink: #16110c;
+  --accent-soft: #3a2b1e;
+  --primary: #e4e2dd;
+  --primary-ink: #141210;
+  --primary-hover: #ffffff;
+  --bag: #0b0b0b;
+  --bag-2: #1d1d1d;
+  --ok: #86c9a0;
+  --ok-soft: #1c3024;
+  --warn: #e2b060;
+  --warn-soft: #362914;
+  --bad: #ef8a78;
+  --bad-soft: #3b1e19;
+  --info: #93bde6;
+  --info-soft: #1a2a3a;
+  --arabica: #c99a66;
+  --robusta: #7d766f;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 14px 34px rgb(0 0 0 / 0.4);
+  color-scheme: dark;
+}
