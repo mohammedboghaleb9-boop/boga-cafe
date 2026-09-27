@@ -29,4 +29,5 @@ export interface DbState {
   counters: { order: number; sample: number; quote: number };
 }
 
-export const STATE_VERSION = 1;
+/** Bump when the seed changes, so saved demo data in browsers is replaced. */
+export const STATE_VERSION = 2;

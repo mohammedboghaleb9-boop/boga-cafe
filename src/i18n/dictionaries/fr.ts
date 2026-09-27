@@ -363,6 +363,17 @@ export const fr: Dict = {
     address: 'Adresse',
     social: 'Réseaux sociaux',
     whatsappText: 'Bonjour BOGA CAFÉ,',
+    channels: 'Nos canaux',
+    channelsText: 'Choisissez celui qui vous convient : commandes et reçus de paiement passent plus vite sur WhatsApp.',
+    whatsappDesc: 'Commandes, reçus de paiement et questions B2B. Le moyen le plus rapide de nous joindre.',
+    whatsappCta: 'Écrire sur WhatsApp',
+    instagramDesc: 'Nouveaux blends, retours en stock et la vie de la torréfaction.',
+    tiktokDesc: 'Conseils de préparation et coulisses, en vidéo.',
+    facebookDesc: 'Actualités et événements.',
+    followCta: 'Suivre',
+    gmailDesc: 'Factures, devis B2B et partenariats.',
+    gmailCta: 'Écrire via Gmail',
+    emailSubject: 'BOGA CAFÉ — demande',
   },
 
   footer: {

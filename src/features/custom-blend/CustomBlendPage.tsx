@@ -13,6 +13,7 @@ import { recipeView } from '@/shared/recipe-view';
 import { customBlendSticker } from '@/shared/sticker';
 import { Photo } from '@/shared/ui/Photo';
 import { ProductVisual } from '@/shared/ui/ProductVisual';
+import { BeanSwatch } from '@/shared/ui/BeanSwatch';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { QtyStepper, SpeciesBar } from '@/shared/ui/bits';
@@ -115,6 +116,10 @@ export function CustomBlendPage() {
                         <span className="origin-tile-check" aria-hidden="true">
                           {isOn && <Icon name="check" size={16} />}
                         </span>
+                      </span>
+                      <span className="origin-tile-roast small">
+                        <BeanSwatch roast={o.roastLevel} species={o.species} size={46} />
+                        {t.roast[o.roastLevel]}
                       </span>
                       <span className="small origin-tile-notes">{l(o.tastingNotes)}</span>
                       <span className="origin-tile-foot small">

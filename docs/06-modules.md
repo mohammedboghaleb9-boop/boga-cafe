@@ -17,6 +17,8 @@
 | اتصل بنا | `/contact` | `src/features/contact` | |
 | الإدارة | `/admin/...` | `src/features/admin` | مجلد لكل قسم + `permissions.ts` |
 | الرأس والتذييل | كل الصفحات | `src/shared/layout` | `Header.tsx`، `Footer.tsx`، `SocialLinks.tsx` |
+| قنوات التواصل | صفحة الاتصال، الرئيسية، التذييل | `src/shared/layout`، `src/shared/contact.ts` | `ChannelCards.tsx` (الإطارات)، `channels.ts` (القائمة من الإعدادات)، `BrandIcon.tsx` (الشعارات الأصلية) |
+| الشعار | كل الصفحات | `brand/` | `brand/source/build_logo.py` ثم تُنسخ النسخ تلقائياً إلى `src/assets/brand` |
 | صورة المنتج | المتجر، المنتج، الخلطة الخاصة | `src/shared/ui/ProductVisual.tsx` + `src/shared/sticker.ts` | الكيس الحقيقي + ملصق المنتج المولَّد من البيانات |
 | الصور والشعار | كل الصفحات | `src/shared/media.ts` + `src/assets/` | القائمة المعتمدة في `docs/08-visual-assets.md` |
 | الحركة مع السكرول | كل المتجر | `src/styles/motion.css` | تُطفأ تلقائياً عند من يطلب تقليل الحركة |

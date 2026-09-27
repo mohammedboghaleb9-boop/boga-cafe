@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import { SocialLinks } from '@/shared/layout/SocialLinks';
+import { ChannelCards } from '@/shared/layout/ChannelCards';
 import { Photo } from '@/shared/ui/Photo';
 
 export function Follow() {
@@ -9,7 +9,7 @@ export function Follow() {
       <div className="follow-head reveal">
         <h2>{t.home.followTitle}</h2>
         <p className="muted">{t.home.followText}</p>
-        <SocialLinks withLabels />
+        <ChannelCards variant="compact" only={['instagram', 'tiktok', 'facebook']} />
       </div>
       <div className="follow-grid">
         <figure className="reveal">

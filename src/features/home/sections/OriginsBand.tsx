@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { useCatalog } from '@/data/hooks';
 import { useI18n } from '@/i18n';
+import { BeanSwatch } from '@/shared/ui/BeanSwatch';
 import { Flag } from '@/shared/ui/Flag';
 import { Photo } from '@/shared/ui/Photo';
 
@@ -36,7 +37,10 @@ export function OriginsBand() {
                   </span>
                   <p className="small origin-notes">{l(o.tastingNotes)}</p>
                 </div>
-                <span className="small muted origin-roast">{t.roast[o.roastLevel]}</span>
+                <span className="small muted origin-roast">
+                  <BeanSwatch roast={o.roastLevel} species={o.species} size={60} />
+                  {t.roast[o.roastLevel]}
+                </span>
               </li>
             ))}
         </ul>

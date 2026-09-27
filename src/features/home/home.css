@@ -233,6 +233,10 @@
   margin-block-start: 2px;
 }
 .origin-roast {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   white-space: nowrap;
 }
 
@@ -390,8 +394,9 @@
   text-align: center;
   gap: 12px;
 }
-.follow-head .social {
-  justify-content: center;
+.follow-head .channel-pills {
+  max-inline-size: 760px;
+  margin-block-start: 6px;
 }
 .follow-grid {
   display: grid;

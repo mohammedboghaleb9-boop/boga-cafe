@@ -4,6 +4,7 @@ import { api } from '@/data/api';
 import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { LocalizedInput, SavedFlash, useSavedFlash } from '../ui';
+import { cleanProfileUrl } from '@/shared/contact';
 
 export function ContentPage() {
   const { t } = useI18n();
@@ -53,15 +54,36 @@ export function ContentPage() {
             </label>
             <label className="field span-all">
               <span className="label">{t.admin.content.instagram}</span>
-              <input className="input" dir="ltr" value={contact.instagram} onChange={(e) => setK('instagram', e.target.value)} />
+              <input
+                className="input"
+                dir="ltr"
+                placeholder="https://www.instagram.com/…"
+                value={contact.instagram}
+                onChange={(e) => setK('instagram', e.target.value)}
+                onBlur={(e) => setK('instagram', cleanProfileUrl(e.target.value))}
+              />
             </label>
             <label className="field span-all">
               <span className="label">{t.admin.content.tiktok}</span>
-              <input className="input" dir="ltr" value={contact.tiktok} onChange={(e) => setK('tiktok', e.target.value)} />
+              <input
+                className="input"
+                dir="ltr"
+                placeholder="https://www.tiktok.com/@…"
+                value={contact.tiktok}
+                onChange={(e) => setK('tiktok', e.target.value)}
+                onBlur={(e) => setK('tiktok', cleanProfileUrl(e.target.value))}
+              />
             </label>
             <label className="field span-all">
               <span className="label">{t.admin.content.facebook}</span>
-              <input className="input" dir="ltr" value={contact.facebook} onChange={(e) => setK('facebook', e.target.value)} />
+              <input
+                className="input"
+                dir="ltr"
+                placeholder="https://www.facebook.com/…"
+                value={contact.facebook}
+                onChange={(e) => setK('facebook', e.target.value)}
+                onBlur={(e) => setK('facebook', cleanProfileUrl(e.target.value))}
+              />
             </label>
           </div>
           <LocalizedInput id="c-addr" label={t.admin.content.address} value={contact.address} onChange={(v) => setK('address', v)} />

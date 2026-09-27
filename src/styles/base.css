@@ -151,10 +151,57 @@ textarea {
   padding-block: 28px 64px;
 }
 .page-head {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-block-end: 24px;
+  padding-block: 18px 28px;
+  margin-block-end: 28px;
+}
+/* full-bleed band: the logo's star-and-cross zellige, fading into the page */
+.page-head::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: -44px 0;
+  inset-inline: calc(50% - 50vw);
+  background:
+    radial-gradient(60% 110% at 50% 0%, rgb(201 154 102 / 0.14), transparent 72%),
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><path d='M48 24 40.97 31.03 40.97 40.97 31.03 40.97 24 48 16.97 40.97 7.03 40.97 7.03 31.03 0 24 7.03 16.97 7.03 7.03 16.97 7.03 24 0 31.03 7.03 40.97 7.03 40.97 16.97Z' fill='none' stroke='%23c99a66' stroke-opacity='.2' stroke-width='1'/></svg>") 50% 0 / 56px 56px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 10%, rgb(0 0 0 / 0.5) 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 10%, rgb(0 0 0 / 0.5) 55%, transparent 100%);
+}
+.page-head::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  block-size: 1px;
+  background: linear-gradient(90deg, var(--line-strong), transparent 80%);
+}
+:root[dir='rtl'] .page-head::after {
+  background: linear-gradient(-90deg, var(--line-strong), transparent 80%);
+}
+.page-head h1::before {
+  content: '';
+  display: block;
+  inline-size: 44px;
+  block-size: 2px;
+  margin-block-end: 16px;
+  background: var(--accent);
+}
+.store main {
+  overflow-x: clip;
+}
+
+/* Handles, emails and phone numbers people retype: Tajawal's "1" cannot be
+   mistaken for an "l" (@boga.cafe1, bogacafe1@gmail.com). */
+.handle {
+  font-family: 'Tajawal', var(--font-body);
+  font-weight: 700;
+  font-size: 1.1em;
+  letter-spacing: 0.015em;
 }
 
 .section {
@@ -619,12 +666,6 @@ textarea {
     animation: none !important;
     transition: none !important;
   }
-}
-
-.contact-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
 }
 
 /* Country flags (shared by shop, Custom Blend, admin) */

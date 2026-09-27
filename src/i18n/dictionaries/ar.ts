@@ -359,6 +359,17 @@ export const ar: Dict = {
     address: 'العنوان',
     social: 'مواقع التواصل',
     whatsappText: 'مرحباً BOGA CAFÉ،',
+    channels: 'قنواتنا',
+    channelsText: 'اختر ما يناسبك: الطلبات ووصولات الدفع أسرع عبر واتساب.',
+    whatsappDesc: 'الطلبات، وصولات الدفع وأسئلة المهنيين. أسرع طريقة للتواصل معنا.',
+    whatsappCta: 'راسلنا على واتساب',
+    instagramDesc: 'خلطات جديدة، عودة المخزون، ويوميات المحمصة.',
+    tiktokDesc: 'نصائح التحضير وكواليس العمل بالفيديو.',
+    facebookDesc: 'الأخبار والفعاليات.',
+    followCta: 'تابعنا',
+    gmailDesc: 'الفواتير، عروض الأسعار للمهنيين والشراكات.',
+    gmailCta: 'اكتب لنا عبر Gmail',
+    emailSubject: 'BOGA CAFÉ — استفسار',
   },
 
   footer: {

@@ -1,0 +1,39 @@
+.contact-channels {
+  gap: 18px;
+}
+.contact-channels .section-head {
+  margin: 0;
+}
+.contact-place {
+  margin-block-start: 28px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(80% 120% at 0% 50%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    var(--surface);
+}
+:root[dir='rtl'] .contact-place {
+  background:
+    radial-gradient(80% 120% at 100% 50%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    var(--surface);
+}
+.contact-emblem {
+  display: block;
+  inline-size: 86px;
+  flex-shrink: 0;
+  color: var(--ink);
+}
+.contact-emblem svg {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+}
+.contact-city {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+}

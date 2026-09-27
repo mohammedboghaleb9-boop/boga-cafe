@@ -1,9 +1,16 @@
 import monogram from '@/assets/brand/monogram.svg?raw';
+import monogramSmall from '@/assets/brand/monogram-small.svg?raw';
+import logo from '@/assets/brand/logo.svg?raw';
 
 /**
- * The BOGA CAFÉ monogram (hexagon, B, two beans), vector traced from the
- * approved icon. It takes the text colour, so it works on dark and light.
+ * The BOGA CAFÉ vector marks, built in brand/source/build_logo.py. They take
+ * the text colour, so they work on dark and light backgrounds.
+ * - `small`: no engraved inline, for sizes under ~48 px (header, favicon).
+ * - `full`: the standard monogram.
+ * - `emblem`: the primary logo (zellige crown + wordmark), 96 px tall or more.
  */
-export function Monogram({ className }: { className?: string }) {
-  return <span className={`monogram ${className ?? ''}`} aria-hidden="true" dangerouslySetInnerHTML={{ __html: monogram }} />;
+const marks = { small: monogramSmall, full: monogram, emblem: logo };
+
+export function Monogram({ className, variant = 'small' }: { className?: string; variant?: keyof typeof marks }) {
+  return <span className={`monogram ${className ?? ''}`} aria-hidden="true" dangerouslySetInnerHTML={{ __html: marks[variant] }} />;
 }

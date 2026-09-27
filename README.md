@@ -181,7 +181,8 @@ flowchart TD
 
 **النموذج الحالي يعمل بالكامل ببيانات تجريبية.** المتبقي هو الربط بالخدمات الخارجية. التفاصيل: [`docs/05-roadmap.md`](docs/05-roadmap.md).
 
-> المنتجات والأسعار والمخزون والأرقام وروابط التواصل الموجودة حالياً **أمثلة** تُستبدل بالمعلومات الحقيقية (من لوحة الإدارة أو من `src/data/seed`).
+> المنتجات والأسعار والمخزون الموجودة حالياً **أمثلة** تُستبدل بالمعلومات الحقيقية (من لوحة الإدارة أو من `src/data/seed`).
+> **قنوات التواصل حقيقية:** WhatsApp ‎+212 6 09 03 63 78 · bogacafe1@gmail.com · Instagram [@boga.cafe1](https://www.instagram.com/boga.cafe1) · TikTok [@bogacafe795](https://www.tiktok.com/@bogacafe795).
 
 ## 11. التقنيات
 
@@ -213,6 +214,7 @@ src/
     admin/       dashboard/ orders/ b2b/ products/ stock/ shipping/ payments/ notifications/ content/ settings/
   styles/        الألوان والخطوط
 supabase/        مخطط قاعدة البيانات للإنتاج + اختباره
+brand/           الشعار المتجهي بكل نسخه، PNG، صور مواقع التواصل، ودليل الاستعمال
 docs/            التحليل والدراسة والخطة
 ```
 
@@ -271,6 +273,7 @@ npm run build:demo   # النموذج في ملف HTML واحد يفتح مبا�
 | [06 · دليل الأقسام](docs/06-modules.md) | كيف تعدّل كل قسم |
 | [07 · أسئلة مفتوحة](docs/07-open-questions.md) | ما ينتظر قرار صاحب المشروع |
 | [08 · الصور والهوية البصرية](docs/08-visual-assets.md) | الأصول المعتمدة، المرفوضة، وقواعد طلب صور جديدة |
+| [دليل الشعار](brand/README.md) | نسخ الشعار، الألوان (HEX / CMYK / Pantone)، الأحجام الدنيا، الممنوعات، إعادة البناء |
 | [التقرير الأصلي](docs/source/BOGA_CAFE_Project_Website_Concept.docx) | Project & Website Concept |
 
 ## 16. En bref · In short

@@ -263,3 +263,9 @@
   display: grid;
   gap: 4px;
 }
+.origin-tile-roast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}

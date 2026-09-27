@@ -365,6 +365,17 @@ export const en = {
     address: 'Address',
     social: 'Social media',
     whatsappText: 'Hello BOGA CAFÉ,',
+    channels: 'Our channels',
+    channelsText: 'Choose the one that suits you: orders and payment receipts go fastest on WhatsApp.',
+    whatsappDesc: 'Orders, payment receipts and B2B questions. The fastest way to reach us.',
+    whatsappCta: 'Message us',
+    instagramDesc: 'New blends, restocks and life at the roastery.',
+    tiktokDesc: 'Brewing tips and behind the scenes, in video.',
+    facebookDesc: 'News and events.',
+    followCta: 'Follow',
+    gmailDesc: 'Invoices, B2B quotes and partnerships.',
+    gmailCta: 'Write in Gmail',
+    emailSubject: 'BOGA CAFÉ — enquiry',
   },
 
   footer: {

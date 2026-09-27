@@ -6,3 +6,6 @@ dist-demo
 .env.*.local
 .DS_Store
 coverage
+
+# Python (brand/source)
+__pycache__/

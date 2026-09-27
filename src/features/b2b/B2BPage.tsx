@@ -8,6 +8,7 @@ import { Icon } from '@/shared/ui/Icon';
 import { Photo } from '@/shared/ui/Photo';
 import { SampleRequestForm } from './SampleRequestForm';
 import './b2b.css';
+import { formatPhone } from '@/shared/contact';
 
 export function B2BPage() {
   const { t } = useI18n();
@@ -71,8 +72,8 @@ export function B2BPage() {
             >
               <Icon name="whatsapp" size={18} /> {t.b2b.largeCta}
             </a>
-            <p className="small muted num" dir="ltr">
-              {settings.contact.whatsapp}
+            <p className="small muted handle" dir="ltr">
+              {formatPhone(settings.contact.whatsapp)}
             </p>
           </section>
         </div>
