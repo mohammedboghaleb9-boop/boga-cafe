@@ -24,6 +24,7 @@ import type {
   StockReason,
 } from '@/core/types';
 import { draftsToLogs, lowStockMessage, orderMessage, quoteMessage, sampleMessage } from '@/services/notifications';
+import { deliver } from '@/services/notifications/deliver';
 import { checkoutContext, templateContext } from './context';
 import { reference, uid } from './ids';
 import type { DbState } from './state';
@@ -71,7 +72,9 @@ function validateContact(input: ContactRequestInput, s: DbState): RequestError[]
 export const api = {
   /* ───────── Storefront ───────── */
 
-  async placeOrder(input: CheckoutInput): Promise<{ ok: true; order: Order } | { ok: false; errors: CheckoutError[] }> {
+  async placeOrder(
+    input: CheckoutInput,
+  ): Promise<{ ok: true; order: Order; delivered: boolean } | { ok: false; errors: CheckoutError[] }> {
     await latency();
     const s = db.get();
     const at = now();
@@ -79,6 +82,7 @@ export const api = {
     const result = buildOrder(input, checkoutContext(s), { id: uid(), number, now: at });
     if (!result.ok) return result;
     const order = result.order;
+    const message = orderMessage(order, templateContext(s));
 
     db.update((cur) => {
       const origins = applyStock(cur.origins, order.stockDeductions, -1);
@@ -86,7 +90,7 @@ export const api = {
         id: uid(), at, originId: d.originId, deltaKg: -d.kg, reason: 'order', ref: order.number, note: '',
       }));
       const logs = [
-        ...draftsToLogs('order.created', orderMessage(order, templateContext(cur)), cur.settings, at, uid),
+        ...draftsToLogs('order.created', message, cur.settings, at, uid),
         ...withLowStockAlerts(cur.origins, origins, cur, at),
       ];
       return {
@@ -98,7 +102,8 @@ export const api = {
         counters: { ...cur.counters, order: cur.counters.order + 1 },
       };
     });
-    return { ok: true, order };
+    const delivered = await deliver('order.created', order.number, message);
+    return { ok: true, order, delivered };
   },
 
   /** Card gateway answer (CMI callback in production). */
@@ -140,13 +145,15 @@ export const api = {
       deliveryFee: rate?.baseFee ?? 0,
       adminNotes: '',
     };
+    const message = sampleMessage(sample, templateContext(s));
     db.update((cur) => ({
       ...cur,
       samples: [sample, ...cur.samples],
-      notifications: [...draftsToLogs('sample.created', sampleMessage(sample, templateContext(cur)), cur.settings, at, uid), ...cur.notifications],
+      notifications: [...draftsToLogs('sample.created', message, cur.settings, at, uid), ...cur.notifications],
       counters: { ...cur.counters, sample: cur.counters.sample + 1 },
     }));
-    return { ok: true as const, sample };
+    const delivered = await deliver('sample.created', sample.number, message);
+    return { ok: true as const, sample, message, delivered };
   },
 
   /** Cart above the B2B threshold → request handled by the administration. */
@@ -175,13 +182,15 @@ export const api = {
       finalPrice: null,
       adminNotes: '',
     };
+    const message = quoteMessage(quote, templateContext(s));
     db.update((cur) => ({
       ...cur,
       quotes: [quote, ...cur.quotes],
-      notifications: [...draftsToLogs('quote.created', quoteMessage(quote, templateContext(cur)), cur.settings, at, uid), ...cur.notifications],
+      notifications: [...draftsToLogs('quote.created', message, cur.settings, at, uid), ...cur.notifications],
       counters: { ...cur.counters, quote: cur.counters.quote + 1 },
     }));
-    return { ok: true as const, quote };
+    const delivered = await deliver('quote.created', quote.number, message);
+    return { ok: true as const, quote, message, delivered };
   },
 
   /* ───────── Admin ───────── */

@@ -27,5 +27,7 @@ describe('contact helpers', () => {
     expect(link.hostname).toBe('mail.google.com');
     expect(link.searchParams.get('to')).toBe('bogacafe1@gmail.com');
     expect(link.searchParams.get('su')).toBe('BOGA CAFÉ — B2B');
+    const withBody = new URL(gmailComposeLink('bogacafe1@gmail.com', 'Échantillon SR-0004', 'Ligne 1\nLigne 2 & 50%'));
+    expect(withBody.searchParams.get('body')).toBe('Ligne 1\nLigne 2 & 50%');
   });
 });

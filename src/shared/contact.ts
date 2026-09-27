@@ -41,8 +41,9 @@ export function formatPhone(phone: string): string {
 }
 
 /** Opens a new Gmail message (web and app); mailto: depends on a mail client being set up. */
-export function gmailComposeLink(email: string, subject = ''): string {
+export function gmailComposeLink(email: string, subject = '', body = ''): string {
   const q = new URLSearchParams({ view: 'cm', fs: '1', to: email });
   if (subject) q.set('su', subject);
+  if (body) q.set('body', body);
   return `https://mail.google.com/mail/?${q.toString()}`;
 }

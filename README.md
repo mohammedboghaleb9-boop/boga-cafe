@@ -273,6 +273,7 @@ npm run build:demo   # النموذج في ملف HTML واحد يفتح مبا�
 | [06 · دليل الأقسام](docs/06-modules.md) | كيف تعدّل كل قسم |
 | [07 · أسئلة مفتوحة](docs/07-open-questions.md) | ما ينتظر قرار صاحب المشروع |
 | [08 · الصور والهوية البصرية](docs/08-visual-assets.md) | الأصول المعتمدة، المرفوضة، وقواعد طلب صور جديدة |
+| [09 · وصول الطلبات إلى واتساب و Gmail](docs/09-notifications.md) | الإرسال من طرف الزبون (يعمل الآن) والإرسال الآلي من الخادم (3 مفاتيح + النشر) |
 | [دليل الشعار](brand/README.md) | نسخ الشعار، الألوان (HEX / CMYK / Pantone)، الأحجام الدنيا، الممنوعات، إعادة البناء |
 | [التقرير الأصلي](docs/source/BOGA_CAFE_Project_Website_Concept.docx) | Project & Website Concept |
 

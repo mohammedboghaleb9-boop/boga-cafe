@@ -1,9 +1,12 @@
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 import { formatKg } from '@/core/format';
 import type { OrderStatus } from '@/core/types';
+import { templateContext } from '@/data/context';
 import { useDb } from '@/data/hooks';
 import { LineDetails } from '@/features/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
+import { orderMessage } from '@/services/notifications';
+import { SendToBoga } from '@/shared/layout/SendToBoga';
 import { CopyButton } from '@/shared/ui/bits';
 import { PaymentPanel } from './PaymentPanel';
 import './checkout.css';
@@ -12,8 +15,11 @@ const FLOW: OrderStatus[] = ['new', 'confirmed', 'in_production', 'shipped', 'de
 
 export function OrderPage() {
   const { id } = useParams();
+  // set by the checkout when the notification function confirmed delivery
+  const delivered = (useLocation().state as { delivered?: boolean } | null)?.delivered === true;
   const { t, l, money, date } = useI18n();
-  const { orders, shippingRates } = useDb();
+  const db = useDb();
+  const { orders, shippingRates } = db;
   const order = orders.find((o) => o.id === id);
 
   if (!order) {
@@ -43,6 +49,9 @@ export function OrderPage() {
 
       <div className="order-grid">
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>
+          {order.status !== 'cancelled' && order.status !== 'delivered' && (
+            <SendToBoga draft={orderMessage(order, templateContext(db))} delivered={delivered} />
+          )}
           <PaymentPanel order={order} />
 
           <section className="panel stack">

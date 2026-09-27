@@ -379,6 +379,16 @@ export const en = {
     emailSubject: 'BOGA CAFÉ — enquiry',
   },
 
+  handoff: {
+    title: 'Last step: send us your request',
+    text: 'It reaches our WhatsApp from your number, so we answer you directly. Everything is already written: just press send.',
+    titleAuto: 'Your request has reached us',
+    textAuto: 'The team has been notified. To speed things up, you can also send it on WhatsApp.',
+    whatsapp: 'Send on WhatsApp',
+    gmail: 'Send by Gmail',
+    preview: 'See the message',
+  },
+
   footer: {
     tagline: 'Whole-bean coffee, roasted to our recipes and delivered across Morocco.',
     shop: 'Shop',

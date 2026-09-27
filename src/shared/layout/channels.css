@@ -201,3 +201,73 @@
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
+
+/* ───── After a request: send it to BOGA on WhatsApp / Gmail ───── */
+.handoff {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, #25d366 45%, var(--line));
+  background:
+    radial-gradient(90% 120% at 0% 0%, rgb(37 211 102 / 0.1), transparent 70%),
+    var(--surface);
+}
+.handoff-auto {
+  border-color: var(--line);
+  background: var(--surface);
+}
+.handoff-text strong {
+  font-size: 1.02rem;
+}
+.handoff-text p {
+  margin: 4px 0 0;
+  color: var(--ink-2);
+  font-size: 0.92rem;
+}
+.handoff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.handoff .handoff-btn {
+  gap: 10px;
+  padding-inline: 14px 18px;
+  font-weight: 700;
+}
+.handoff .handoff-btn .brand-icon {
+  border-radius: 6px;
+}
+.handoff .handoff-wa {
+  background: #25d366;
+  color: #06301a;
+}
+.handoff .handoff-wa .brand-icon rect {
+  fill: #06301a;
+}
+.handoff .handoff-gmail {
+  background: #fff;
+  color: #1f1f1f;
+}
+.handoff .handoff-btn:hover {
+  filter: brightness(1.07);
+}
+.handoff-preview summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.handoff-preview pre {
+  margin: 8px 0 0;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: start;
+  color: var(--ink-2);
+}

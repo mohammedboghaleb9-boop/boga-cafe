@@ -68,7 +68,7 @@ export function CheckoutPage() {
       return;
     }
     cart.clear();
-    navigate(`/order/${r.order.id}`);
+    navigate(`/order/${r.order.id}`, { state: { delivered: r.delivered } });
   }
 
   const globalErrors = errors.filter((e) =>

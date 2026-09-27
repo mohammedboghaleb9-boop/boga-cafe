@@ -377,6 +377,16 @@ export const fr: Dict = {
     emailSubject: 'BOGA CAFÉ — demande',
   },
 
+  handoff: {
+    title: 'Dernière étape : envoyez-nous votre demande',
+    text: 'Elle arrive sur notre WhatsApp depuis votre numéro, pour qu’on vous réponde directement. Tout est déjà rédigé : il suffit d’appuyer sur envoyer.',
+    titleAuto: 'Votre demande nous est parvenue',
+    textAuto: 'L’équipe a été prévenue. Pour aller plus vite, vous pouvez aussi l’envoyer sur WhatsApp.',
+    whatsapp: 'Envoyer sur WhatsApp',
+    gmail: 'Envoyer par Gmail',
+    preview: 'Voir le message',
+  },
+
   footer: {
     tagline: 'Café en grains, torréfié selon nos recettes et livré partout au Maroc.',
     shop: 'Boutique',

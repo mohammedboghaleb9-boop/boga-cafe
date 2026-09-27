@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { api, type RequestError } from '@/data/api';
 import { useCatalog, useDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
+import type { MessageDraft } from '@/services/notifications';
+import { SendToBoga } from '@/shared/layout/SendToBoga';
 import { Field } from '@/shared/ui/bits';
 import { RequestFields, emptyRequest } from './RequestFields';
 
@@ -15,7 +17,7 @@ export function SampleRequestForm({ initialProductId }: { initialProductId?: str
   const [monthly, setMonthly] = useState(20);
   const [errors, setErrors] = useState<RequestError[]>([]);
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState<string | null>(null);
+  const [sent, setSent] = useState<{ ref: string; message: MessageDraft; delivered: boolean } | null>(null);
   const rate = shippingRates.find((r) => r.id === contact.cityId);
 
   async function submit(e: FormEvent) {
@@ -25,14 +27,17 @@ export function SampleRequestForm({ initialProductId }: { initialProductId?: str
     setBusy(false);
     if (!r.ok) return setErrors(r.errors);
     setErrors([]);
-    setSent(r.sample.number);
+    setSent({ ref: r.sample.number, message: r.message, delivered: r.delivered });
     setContact(emptyRequest);
   }
 
   if (sent) {
     return (
-      <div className="notice notice-ok stack">
-        <strong>{fmt(t.b2b.sampleSent, { ref: sent })}</strong>
+      <div className="stack">
+        <p className="notice notice-ok">
+          <strong>{fmt(t.b2b.sampleSent, { ref: sent.ref })}</strong>
+        </p>
+        <SendToBoga draft={sent.message} delivered={sent.delivered} />
         <button type="button" className="btn-link small" onClick={() => setSent(null)} style={{ alignSelf: 'flex-start' }}>
           {t.common.back}
         </button>

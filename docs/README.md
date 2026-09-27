@@ -10,5 +10,6 @@
 | 06 | [دليل الأقسام](06-modules.md) | أين يوجد كل قسم وكيف تعدّله |
 | 07 | [أسئلة مفتوحة](07-open-questions.md) | ما أحتاج جوابك عليه، والافتراض المستعمل حالياً |
 | 08 | [الصور والهوية البصرية](08-visual-assets.md) | الأصول المعتمدة، الصور المرفوضة، وقواعد طلب صور جديدة |
+| 09 | [وصول الطلبات إلى واتساب و Gmail](09-notifications.md) | لماذا لم تكن الرسائل تصل، الحل بطبقتين، وخطوات التفعيل (Gmail، CallMeBot، Vercel) |
 
 التقرير الأصلي: [`source/BOGA_CAFE_Project_Website_Concept.docx`](source/BOGA_CAFE_Project_Website_Concept.docx)
