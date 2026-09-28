@@ -12,10 +12,17 @@ export const reference = (prefix: RefPrefix, n: number, year = new Date().getFul
 // no 0/O, 1/I/L: the code is read aloud on the phone and typed in bank transfers
 const ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
+// bytes from 248 up would make the first 8 characters more likely: they are drawn again
+const FAIR_LIMIT = 256 - (256 % ALPHABET.length);
+
 function randomCode(length: number): string {
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join('');
+  let code = '';
+  const bytes = new Uint8Array(length * 2);
+  while (code.length < length) {
+    crypto.getRandomValues(bytes);
+    for (const b of bytes) if (b < FAIR_LIMIT && code.length < length) code += ALPHABET[b % ALPHABET.length];
+  }
+  return code;
 }
 
 /**
