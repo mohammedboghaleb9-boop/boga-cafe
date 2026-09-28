@@ -331,7 +331,7 @@ export const fr: Dict = {
     nextPaid: 'Votre paiement est confirmé. Nous préparons votre café avec notre torréfacteur, puis il part dans l’emballage BOGA CAFÉ.',
     nextPending: 'Nous préparons la commande dès que le paiement est confirmé.',
     cancelledText: 'Cette commande est annulée et son café est remis en stock. Si vous aviez déjà payé, contactez-nous sur WhatsApp : nous vous remboursons.',
-    refundedText: 'Cette commande est annulée et votre paiement a été remboursé. Pour toute question, nous sommes sur WhatsApp.',
+    refundedText: 'Votre paiement a été remboursé. Pour toute question, nous sommes sur WhatsApp.',
     deliveredText: 'Commande livrée. Bonne dégustation ! Pour une nouvelle commande ou une question, nous sommes sur WhatsApp.',
     notFound: 'Commande introuvable sur cet appareil.',
   },

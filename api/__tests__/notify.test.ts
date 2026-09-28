@@ -189,7 +189,16 @@ describe('POST /api/notify', () => {
       ['evil。com', 'evil[.]com'],
       ['45.33.12.9/pay', '45[.]33[.]12[.]9/pay'],
       ['evil.com@x', 'evil[.]com@x'],
-      ['https://user@evil.com/pay', 'hxxps://user@evil.com/pay'], // only a mail address is left, no web link
+      // an address inside a link is part of the link (review): defanged too
+      ['https://user:pw@evil.com/pay', 'hxxps://user:pw@evil[.]com/pay'],
+      ['https://user@evil.com/pay', 'hxxps://user@evil[.]com/pay'],
+      ['https://user:pw@evil.com http://x@evil.com', 'hxxps://user:pw@evil[.]com hxxp://x@evil[.]com'],
+      ['a@evil.com/pay x@evil.com?ref=1 u@evil.com:8443/pay', 'a@evil[.]com/pay x@evil[.]com?ref=1 u@evil[.]com:8443/pay'],
+      ['a@evil.com.fr/pay', 'a@evil[.]com[.]fr/pay'],
+      ['_45.33.12.9/pay_ x45.33.12.9/pay', '_45[.]33[.]12[.]9/pay_ x45[.]33[.]12[.]9/pay'],
+      ['evil․com evil﹒com', 'evil[.]com evil[.]com'],
+      // real addresses at the end of a sentence or in brackets stay usable
+      ['Email : sara@gmail.com. Merci (nadia.b@hotel.ma)', 'Email : sara@gmail.com. Merci (nadia.b@hotel.ma)'],
       // what is not a link stays readable
       ['S.A.R.L Nord, v1.2, 3.5 kg, sara@пример.рф', 'S.A.R.L Nord, v1.2, 3.5 kg, sara@пример.рф'],
       ['\u00000\u0000 a@b.ma', '0 a@b.ma'], // a forged placeholder is dropped, not replaced by an address

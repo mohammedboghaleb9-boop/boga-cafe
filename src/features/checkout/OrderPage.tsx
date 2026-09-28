@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router';
 import { formatKg } from '@/core/format';
+import { orderPhase } from '@/core/orderFlow';
 import type { OrderStatus } from '@/core/types';
 import { templateContext } from '@/data/context';
 import { useDb } from '@/data/hooks';
@@ -67,15 +68,15 @@ export function OrderPage() {
               </ol>
             )}
             <p className="small muted">
-              {order.status === 'cancelled'
-                ? order.paymentStatus === 'refunded'
-                  ? t.order.refundedText
-                  : t.order.cancelledText
-                : order.status === 'delivered'
-                  ? t.order.deliveredText
-                  : order.paymentStatus === 'paid'
-                    ? t.order.nextPaid
-                    : t.order.nextPending}
+              {
+                {
+                  refunded: t.order.refundedText,
+                  cancelled: t.order.cancelledText,
+                  delivered: t.order.deliveredText,
+                  paid: t.order.nextPaid,
+                  awaiting_payment: t.order.nextPending,
+                }[orderPhase(order)]
+              }
             </p>
           </section>
 

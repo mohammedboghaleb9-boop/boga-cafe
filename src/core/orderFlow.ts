@@ -63,6 +63,20 @@ export function canSetPayment(order: Pick<Order, 'paymentStatus' | 'status'>, ne
   return PAYMENT_FROM[next].includes(order.paymentStatus);
 }
 
+/** The customer still has a payment to make: only then does the order page show the payment steps. */
+export const awaitsPayment = (order: Pick<Order, 'status' | 'paymentStatus'>): boolean =>
+  order.status !== 'cancelled' && (order.paymentStatus === 'pending' || order.paymentStatus === 'failed');
+
+/** What the order page tells the customer about the order as a whole. */
+export type OrderPhase = 'refunded' | 'cancelled' | 'delivered' | 'paid' | 'awaiting_payment';
+
+export function orderPhase(order: Pick<Order, 'status' | 'paymentStatus'>): OrderPhase {
+  if (order.paymentStatus === 'refunded') return 'refunded';
+  if (order.status === 'cancelled') return 'cancelled';
+  if (order.status === 'delivered') return 'delivered';
+  return order.paymentStatus === 'paid' ? 'paid' : 'awaiting_payment';
+}
+
 /**
  * A refund before production ends the order: it is cancelled and its coffee
  * goes back to stock, so the customer is not asked to pay again and nothing

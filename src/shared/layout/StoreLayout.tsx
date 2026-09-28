@@ -7,17 +7,9 @@ import { whatsappLink } from '@/services/notifications';
 import { Icon } from '../ui/Icon';
 import { Footer } from './Footer';
 import { Header } from './Header';
+import { sectionId } from './sectionId';
 import './layout.css';
 import { api } from '@/data/api';
-
-/** The section named after # in the link; a badly encoded one (#%E0%A4) is ignored, not a crash. */
-function sectionId(hash: string): string {
-  try {
-    return decodeURIComponent(hash.slice(1));
-  } catch {
-    return '';
-  }
-}
 
 export function StoreLayout() {
   const { pathname, hash } = useLocation();

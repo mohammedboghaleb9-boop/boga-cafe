@@ -333,7 +333,7 @@ export const en = {
     nextPaid: 'Your payment is confirmed. We prepare your coffee with our roaster, then it leaves in BOGA CAFÉ packaging.',
     nextPending: 'We prepare the order as soon as the payment is confirmed.',
     cancelledText: 'This order is cancelled and its coffee is back in stock. If you had already paid, contact us on WhatsApp: we refund you.',
-    refundedText: 'This order is cancelled and your payment has been refunded. For any question, we are on WhatsApp.',
+    refundedText: 'Your payment has been refunded. For any question, we are on WhatsApp.',
     deliveredText: 'Delivered. Enjoy your coffee! For a new order or a question, we are on WhatsApp.',
     notFound: 'Order not found on this device.',
   },

@@ -77,13 +77,14 @@ export const LIMITS = { body: 20_000, subject: 200, whatsapp: 4_000, email: 12_0
 
 const FOOTER = 'Envoyé par le formulaire du site. Un message ne prouve jamais un paiement : vérifiez-le à la banque ou au CMI.';
 
-// Email addresses stay as they are: the team answers to them.
-const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.\p{L}{2,}/gu;
+// Email addresses stay as they are: the team answers to them. Not when they are
+// part of a link (https://user:pw@evil.com, a@evil.com/pay, x@evil.com:8443).
+const EMAIL = /(?<![\p{L}\p{N}._%+\-:/])[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.\p{L}{2,}(?!\.?[\p{L}\p{N}\-/:?#])/gu;
 // A dot (or a full-width one) between a name and what could be a domain ending
 // (2+ characters starting with a letter: com, ma, icu, рф, xn--p1ai…). Numbers
 // such as 0.25 kg or 12.50 DH are followed by a digit and stay untouched.
-const DOMAIN_DOT = /(?<=[^\s[])[.。．｡](?=\p{L}[\p{L}\p{N}-])/gu;
-const IP = /\b\d{1,3}(?:\.\d{1,3}){3}\b/g;
+const DOMAIN_DOT = /(?<=[^\s[])[.。．｡․﹒](?=\p{L}[\p{L}\p{N}-])/gu;
+const IP = /(?<!\d)\d{1,3}(?:\.\d{1,3}){3}(?!\d)/g;
 
 /**
  * Links have no place in these messages: a forged one could carry phishing.

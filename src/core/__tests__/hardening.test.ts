@@ -213,3 +213,26 @@ describe('stock returns add up across orders', () => {
     expect(back.map((o) => o.stockKg)).toEqual([1.75, 1.2]);
   });
 });
+
+describe('what the customer sees after a refund (review)', () => {
+  it('never shows the payment steps again once refunded, cancelled or paid', async () => {
+    const { awaitsPayment } = await import('../orderFlow');
+    const o = (status: string, paymentStatus: string) => ({ status, paymentStatus }) as never;
+    expect(awaitsPayment(o('new', 'pending'))).toBe(true);
+    expect(awaitsPayment(o('confirmed', 'failed'))).toBe(true);
+    for (const [status, pay] of [['delivered', 'refunded'], ['cancelled', 'pending'], ['confirmed', 'paid'], ['new', 'awaiting_verification']]) {
+      expect(awaitsPayment(o(status, pay)), `${status}/${pay}`).toBe(false);
+    }
+  });
+
+  it('tells a refunded customer so, whatever the order became', async () => {
+    const { orderPhase } = await import('../orderFlow');
+    const o = (status: string, paymentStatus: string) => ({ status, paymentStatus }) as never;
+    expect(orderPhase(o('delivered', 'refunded'))).toBe('refunded');
+    expect(orderPhase(o('cancelled', 'refunded'))).toBe('refunded');
+    expect(orderPhase(o('cancelled', 'pending'))).toBe('cancelled');
+    expect(orderPhase(o('delivered', 'paid'))).toBe('delivered');
+    expect(orderPhase(o('confirmed', 'paid'))).toBe('paid');
+    expect(orderPhase(o('new', 'awaiting_verification'))).toBe('awaiting_payment');
+  });
+});

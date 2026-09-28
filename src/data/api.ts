@@ -29,7 +29,7 @@ import { checkoutContext, templateContext } from './context';
 import { newReference, uid } from './ids';
 import type { DbState } from './state';
 import { db } from './store';
-import { canSetPayment, refundCancelsOrder, settingsChangeRefused, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
+import { awaitsPayment, canSetPayment, refundCancelsOrder, settingsChangeRefused, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
 const now = () => new Date().toISOString();
@@ -125,7 +125,7 @@ export const api = {
     await latency();
     const o = db.get().orders.find((x) => x.id === orderId);
     // only an open card order waiting for the gateway can be paid this way
-    if (!o || o.paymentMethod !== 'card' || o.status === 'cancelled' || !['pending', 'failed'].includes(o.paymentStatus)) return;
+    if (!o || o.paymentMethod !== 'card' || !awaitsPayment(o)) return;
     patchOrder(orderId, (o) => ({
       paymentStatus: success ? 'paid' : 'failed',
       status: success && o.status === 'new' ? 'confirmed' : o.status,
