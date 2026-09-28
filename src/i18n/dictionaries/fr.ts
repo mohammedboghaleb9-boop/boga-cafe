@@ -96,7 +96,7 @@ export const fr: Dict = {
   },
 
   demo: {
-    banner: 'Prototype : données d’exemple, aucun paiement ni message réel.',
+    banner: 'Prototype : produits, prix et stock sont des exemples, aucun paiement n’est réel. Les messages WhatsApp et Gmail que vous envoyez arrivent vraiment chez BOGA CAFÉ.',
     reset: 'Réinitialiser',
     openAdmin: 'Ouvrir le Panel Admin',
   },
@@ -212,6 +212,7 @@ export const fr: Dict = {
   },
 
   b2b: {
+    blendError: 'Choisissez un blend disponible.',
     eyebrow: 'B2B / HORECA',
     title: 'Du café pour les cafés, hôtels et restaurants',
     intro:
@@ -329,15 +330,13 @@ export const fr: Dict = {
 
   order: {
     thanks: 'Merci {name} !',
-    received: 'Commande {ref} reçue.',
+    received: 'Commande {ref} enregistrée.',
     statusTitle: 'Suivi de la commande',
     paymentStatus: 'Paiement',
     itemsTitle: 'Articles',
     nextTitle: 'La suite',
     nextPaid: 'Votre paiement est confirmé. Nous préparons votre café avec notre torréfacteur, puis il part dans l’emballage BOGA CAFÉ.',
     nextPending: 'Nous préparons la commande dès que le paiement est confirmé.',
-    adminNotified: 'L’administration a reçu un WhatsApp et un email pour cette commande.',
-    seeInAdmin: 'La voir dans le Panel Admin',
     notFound: 'Commande introuvable sur cet appareil.',
   },
 
@@ -378,13 +377,16 @@ export const fr: Dict = {
   },
 
   handoff: {
+    saved: 'Demande {ref} enregistrée.',
+    pending: 'Transmission à l’équipe BOGA CAFÉ…',
     title: 'Dernière étape : envoyez-nous votre demande',
     text: 'Elle arrive sur notre WhatsApp depuis votre numéro, pour qu’on vous réponde directement. Tout est déjà rédigé : il suffit d’appuyer sur envoyer.',
     titleAuto: 'Votre demande nous est parvenue',
     textAuto: 'L’équipe a été prévenue. Pour aller plus vite, vous pouvez aussi l’envoyer sur WhatsApp.',
     whatsapp: 'Envoyer sur WhatsApp',
     gmail: 'Envoyer par Gmail',
-    preview: 'Voir le message',
+    otherMail: 'Utiliser une autre application mail',
+    preview: 'Voir le message (en français, pour notre équipe)',
   },
 
   footer: {

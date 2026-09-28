@@ -233,17 +233,59 @@
     radial-gradient(90% 120% at 0% 0%, rgb(37 211 102 / 0.1), transparent 70%),
     var(--surface);
 }
-.handoff-auto {
-  border-color: var(--line);
-  background: var(--surface);
+.handoff-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  outline: none;
+}
+.handoff-text:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+.handoff-saved {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
 }
 .handoff-text strong {
-  font-size: 1.02rem;
+  font-size: 1.05rem;
 }
-.handoff-text p {
-  margin: 4px 0 0;
+.handoff-text > span:last-child:not(.handoff-saved) {
   color: var(--ink-2);
   font-size: 0.92rem;
+}
+.handoff-pending strong::after {
+  content: '';
+  display: inline-block;
+  inline-size: 0.9em;
+  block-size: 0.9em;
+  margin-inline-start: 10px;
+  vertical-align: -0.1em;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: handoff-spin 0.9s linear infinite;
+}
+@keyframes handoff-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .handoff-pending strong::after {
+    animation: none;
+  }
+}
+.handoff-sent {
+  border-color: color-mix(in srgb, #25d366 30%, var(--line));
+}
+.handoff-other {
+  justify-self: start;
+  color: var(--muted);
 }
 .handoff-actions {
   display: flex;

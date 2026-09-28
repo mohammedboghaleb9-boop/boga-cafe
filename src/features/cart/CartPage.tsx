@@ -22,16 +22,13 @@ export function CartPage() {
   const max = settings.b2bThresholdKg;
   const ratio = summary.weightKg / max;
   // kept here: sending the quote empties the cart, and the confirmation must stay on screen
-  const [quote, setQuote] = useState<{ ref: string; message: MessageDraft; delivered: boolean } | null>(null);
+  const [quote, setQuote] = useState<{ ref: string; message: MessageDraft } | null>(null);
 
   if (quote) {
     return (
       <div className="container page stack quote-done">
         <h1>{t.cart.title}</h1>
-        <p className="notice notice-ok">
-          <strong>{fmt(t.cart.b2bSent, { ref: quote.ref })}</strong>
-        </p>
-        <SendToBoga draft={quote.message} delivered={quote.delivered} />
+        <SendToBoga draft={quote.message} refNumber={quote.ref} reveal />
         <Link to="/shop" className="btn btn-ghost" style={{ alignSelf: 'flex-start' }}>
           {t.cart.emptyCta}
         </Link>
@@ -150,8 +147,8 @@ export function CartPage() {
           </a>
           <QuoteRequestForm
             items={cart.items}
-            onSent={(ref, message, delivered) => {
-              setQuote({ ref, message, delivered });
+            onSent={(ref, message) => {
+              setQuote({ ref, message });
               cart.clear();
             }}
           />

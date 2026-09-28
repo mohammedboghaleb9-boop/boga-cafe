@@ -37,8 +37,14 @@ const establishment = (company: string, type: BusinessType) =>
  * direction marks the site uses around numbers in Arabic pages.
  */
 const plain = (d: MessageDraft): MessageDraft => {
-  const clean = (x: string) => x.replace(/[\u2066-\u2069]/g, '');
-  return { subject: clean(d.subject), whatsapp: clean(d.whatsapp), email: clean(d.email) };
+  const clean = (x: string) => x.replace(/[\u2066-\u2069\u200e\u200f]/g, '');
+  // stay under what WhatsApp links and the notification function accept (api/_lib/notify.ts)
+  const fit = (x: string, max: number, more: string) => (x.length <= max ? x : `${x.slice(0, max - more.length - 2)}…\n${more}`);
+  return {
+    subject: fit(clean(d.subject), 190, ''),
+    whatsapp: fit(clean(d.whatsapp), 3_800, '(suite dans l’email)'),
+    email: fit(clean(d.email), 11_500, '(message raccourci)'),
+  };
 };
 const cityName = (ctx: TemplateContext, id: string) =>
   ctx.shippingRates.find((r) => r.id === id)?.city.fr ?? id;

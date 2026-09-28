@@ -1,13 +1,14 @@
 import { useState, type FormEvent } from 'react';
+import { TEXT_MAX } from '@/core/limits';
 import type { CartItem } from '@/core/types';
 import { api, type RequestError } from '@/data/api';
 import type { MessageDraft } from '@/services/notifications';
 import { useI18n } from '@/i18n';
 import { Field } from '@/shared/ui/bits';
-import { RequestFields, emptyRequest } from './RequestFields';
+import { RequestFields, emptyRequest, focusFirstError } from './RequestFields';
 
 /** Sends a cart above 10 kg to the administration, which sets the final price. */
-export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent: (ref: string, message: MessageDraft, delivered: boolean) => void }) {
+export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent: (ref: string, message: MessageDraft) => void }) {
   const { t } = useI18n();
   const [contact, setContact] = useState(emptyRequest);
   const [errors, setErrors] = useState<RequestError[]>([]);
@@ -18,8 +19,12 @@ export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent:
     setBusy(true);
     const r = await api.requestQuote({ ...contact, items });
     setBusy(false);
-    if (!r.ok) return setErrors(r.errors);
-    onSent(r.quote.number, r.message, r.delivered);
+    if (!r.ok) {
+      setErrors(r.errors);
+      focusFirstError('quote', r.errors);
+      return;
+    }
+    onSent(r.quote.number, r.message);
   }
 
   return (
@@ -29,6 +34,7 @@ export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent:
         <textarea
           id="quote-notes"
           className="textarea"
+          maxLength={TEXT_MAX.notes}
           value={contact.notes}
           onChange={(e) => setContact({ ...contact, notes: e.target.value })}
         />

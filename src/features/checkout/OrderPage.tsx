@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { formatKg } from '@/core/format';
 import type { OrderStatus } from '@/core/types';
 import { templateContext } from '@/data/context';
@@ -15,8 +15,6 @@ const FLOW: OrderStatus[] = ['new', 'confirmed', 'in_production', 'shipped', 'de
 
 export function OrderPage() {
   const { id } = useParams();
-  // set by the checkout when the notification function confirmed delivery
-  const delivered = (useLocation().state as { delivered?: boolean } | null)?.delivered === true;
   const { t, l, money, date } = useI18n();
   const db = useDb();
   const { orders, shippingRates } = db;
@@ -50,7 +48,7 @@ export function OrderPage() {
       <div className="order-grid">
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>
           {order.status !== 'cancelled' && order.status !== 'delivered' && (
-            <SendToBoga draft={orderMessage(order, templateContext(db))} delivered={delivered} />
+            <SendToBoga draft={orderMessage(order, templateContext(db))} refNumber={order.number} showSaved={false} />
           )}
           <PaymentPanel order={order} />
 
@@ -73,9 +71,6 @@ export function OrderPage() {
             </p>
           </section>
 
-          <p className="notice small">
-            {t.order.adminNotified} <Link to="/admin/notifications">{t.order.seeInAdmin} →</Link>
-          </p>
         </div>
 
         <aside className="panel stack">

@@ -26,7 +26,7 @@ import type {
 import { draftsToLogs, lowStockMessage, orderMessage, quoteMessage, sampleMessage } from '@/services/notifications';
 import { deliver } from '@/services/notifications/deliver';
 import { checkoutContext, templateContext } from './context';
-import { reference, uid } from './ids';
+import { newReference, uid } from './ids';
 import type { DbState } from './state';
 import { db } from './store';
 
@@ -74,11 +74,11 @@ export const api = {
 
   async placeOrder(
     input: CheckoutInput,
-  ): Promise<{ ok: true; order: Order; delivered: boolean } | { ok: false; errors: CheckoutError[] }> {
+  ): Promise<{ ok: true; order: Order } | { ok: false; errors: CheckoutError[] }> {
     await latency();
     const s = db.get();
     const at = now();
-    const number = reference('BC', s.counters.order + 1);
+    const number = newReference('BC', (r) => s.orders.some((o) => o.number === r));
     const result = buildOrder(input, checkoutContext(s), { id: uid(), number, now: at });
     if (!result.ok) return result;
     const order = result.order;
@@ -102,8 +102,8 @@ export const api = {
         counters: { ...cur.counters, order: cur.counters.order + 1 },
       };
     });
-    const delivered = await deliver('order.created', order.number, message);
-    return { ok: true, order, delivered };
+    deliver('order.created', order.number, message);
+    return { ok: true, order };
   },
 
   /** Card gateway answer (CMI callback in production). */
@@ -137,7 +137,7 @@ export const api = {
     const sample: SampleRequest = {
       ...input,
       id: uid(),
-      number: reference('SR', s.counters.sample + 1),
+      number: newReference('SR', (r) => s.samples.some((x) => x.number === r)),
       createdAt: at,
       phone: normalizePhone(input.phone)!,
       status: 'new',
@@ -152,8 +152,8 @@ export const api = {
       notifications: [...draftsToLogs('sample.created', message, cur.settings, at, uid), ...cur.notifications],
       counters: { ...cur.counters, sample: cur.counters.sample + 1 },
     }));
-    const delivered = await deliver('sample.created', sample.number, message);
-    return { ok: true as const, sample, message, delivered };
+    deliver('sample.created', sample.number, message);
+    return { ok: true as const, sample, message };
   },
 
   /** Cart above the B2B threshold → request handled by the administration. */
@@ -166,7 +166,7 @@ export const api = {
     const at = now();
     const quote: QuoteRequest = {
       id: uid(),
-      number: reference('QR', s.counters.quote + 1),
+      number: newReference('QR', (r) => s.quotes.some((q) => q.number === r)),
       createdAt: at,
       businessType: input.businessType,
       company: input.company,
@@ -189,8 +189,8 @@ export const api = {
       notifications: [...draftsToLogs('quote.created', message, cur.settings, at, uid), ...cur.notifications],
       counters: { ...cur.counters, quote: cur.counters.quote + 1 },
     }));
-    const delivered = await deliver('quote.created', quote.number, message);
-    return { ok: true as const, quote, message, delivered };
+    deliver('quote.created', quote.number, message);
+    return { ok: true as const, quote, message };
   },
 
   /* ───────── Admin ───────── */

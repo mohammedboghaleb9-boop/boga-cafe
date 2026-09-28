@@ -98,7 +98,7 @@ export const en = {
   },
 
   demo: {
-    banner: 'Prototype: example data, no real payment and no real messages.',
+    banner: 'Prototype: products, prices and stock are examples, and no payment is real. WhatsApp and Gmail messages you send really reach BOGA CAFÉ.',
     reset: 'Reset demo',
     openAdmin: 'Open the Admin Panel',
   },
@@ -214,6 +214,7 @@ export const en = {
   },
 
   b2b: {
+    blendError: 'Choose an available blend.',
     eyebrow: 'B2B / HORECA',
     title: 'Coffee for cafés, hotels and restaurants',
     intro:
@@ -331,15 +332,13 @@ export const en = {
 
   order: {
     thanks: 'Thank you {name}!',
-    received: 'Order {ref} received.',
+    received: 'Order {ref} saved.',
     statusTitle: 'Order status',
     paymentStatus: 'Payment',
     itemsTitle: 'Items',
     nextTitle: 'What happens next',
     nextPaid: 'Your payment is confirmed. We prepare your coffee with our roaster, then it leaves in BOGA CAFÉ packaging.',
     nextPending: 'We prepare the order as soon as the payment is confirmed.',
-    adminNotified: 'The administration received a WhatsApp and an email for this order.',
-    seeInAdmin: 'See it in the Admin Panel',
     notFound: 'Order not found on this device.',
   },
 
@@ -380,13 +379,16 @@ export const en = {
   },
 
   handoff: {
+    saved: 'Request {ref} saved.',
+    pending: 'Passing it on to the BOGA CAFÉ team…',
     title: 'Last step: send us your request',
     text: 'It reaches our WhatsApp from your number, so we answer you directly. Everything is already written: just press send.',
     titleAuto: 'Your request has reached us',
     textAuto: 'The team has been notified. To speed things up, you can also send it on WhatsApp.',
     whatsapp: 'Send on WhatsApp',
     gmail: 'Send by Gmail',
-    preview: 'See the message',
+    otherMail: 'Use another mail app',
+    preview: 'See the message (in French, for our team)',
   },
 
   footer: {

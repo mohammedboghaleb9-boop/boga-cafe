@@ -13,6 +13,7 @@ import { fmt, useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { Field } from '@/shared/ui/bits';
 import './checkout.css';
+import { TEXT_MAX } from '@/core/limits';
 
 const methodIcon: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
 
@@ -27,6 +28,26 @@ const emptyCustomer: CustomerInfo = {
 };
 
 /** One-page checkout, no account needed. */
+/** Where the keyboard goes when an error needs fixing (fields first, in page order). */
+const FIELD_OF: Partial<Record<CheckoutError, string>> = {
+  name: 'co-name',
+  phone: 'co-phone',
+  email: 'co-email',
+  city: 'co-city',
+  address: 'co-address',
+};
+
+function focusField(error: CheckoutError | undefined) {
+  if (!error) return;
+  requestAnimationFrame(() => {
+    const el =
+      (FIELD_OF[error] && document.getElementById(FIELD_OF[error])) ||
+      (error === 'payment_method' ? document.querySelector<HTMLElement>('.pay-options input') : null) ||
+      document.querySelector<HTMLElement>('.checkout-errors');
+    el?.focus();
+  });
+}
+
 export function CheckoutPage() {
   const { t, l, money, locale } = useI18n();
   const cart = useCart();
@@ -59,16 +80,21 @@ export function CheckoutPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!method) return setErrors(['payment_method']);
+    if (!method) {
+      setErrors(['payment_method']);
+      focusField('payment_method');
+      return;
+    }
     setBusy(true);
     const r = await api.placeOrder({ items: cart.items, customer, paymentMethod: method, locale });
     setBusy(false);
     if (!r.ok) {
       setErrors(r.errors);
+      focusField(r.errors.find((e) => e in FIELD_OF) ?? r.errors[0]);
       return;
     }
     cart.clear();
-    navigate(`/order/${r.order.id}`, { state: { delivered: r.delivered } });
+    navigate(`/order/${r.order.id}`);
   }
 
   const globalErrors = errors.filter((e) =>
@@ -100,6 +126,7 @@ export function CheckoutPage() {
                 <input
                   id="co-name"
                   className="input"
+                  maxLength={TEXT_MAX.name}
                   autoComplete="name"
                   value={customer.fullName}
                   aria-invalid={errors.includes('name')}
@@ -110,6 +137,7 @@ export function CheckoutPage() {
                 <input
                   id="co-phone"
                   className="input"
+                  maxLength={TEXT_MAX.phone}
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
@@ -123,6 +151,7 @@ export function CheckoutPage() {
                 <input
                   id="co-email"
                   className="input"
+                  maxLength={TEXT_MAX.email}
                   type="email"
                   autoComplete="email"
                   value={customer.email}
@@ -151,6 +180,7 @@ export function CheckoutPage() {
                 <input
                   id="co-address"
                   className="input"
+                  maxLength={TEXT_MAX.address}
                   autoComplete="street-address"
                   value={customer.address}
                   aria-invalid={errors.includes('address')}
@@ -158,7 +188,7 @@ export function CheckoutPage() {
                 />
               </Field>
               <Field label={t.checkout.notes} htmlFor="co-notes" optional className="span-all">
-                <input id="co-notes" className="input" value={customer.notes} onChange={(e) => set('notes', e.target.value)} />
+                <input id="co-notes" className="input" maxLength={TEXT_MAX.notes} value={customer.notes} onChange={(e) => set('notes', e.target.value)} />
               </Field>
             </div>
           </section>
@@ -236,11 +266,15 @@ export function CheckoutPage() {
               <strong className="num">{money(summary.subtotal + (fee ?? 0))}</strong>
             </div>
           </div>
-          {globalErrors.map((e) => (
-            <p key={e} className="notice notice-bad small">
-              {t.checkout.errors[e]}
-            </p>
-          ))}
+          {globalErrors.length > 0 && (
+            <div className="checkout-errors stack" tabIndex={-1} role="alert">
+              {globalErrors.map((e) => (
+                <p key={e} className="notice notice-bad small">
+                  {t.checkout.errors[e]}
+                </p>
+              ))}
+            </div>
+          )}
           <button
             type="submit"
             className="btn btn-primary btn-block"

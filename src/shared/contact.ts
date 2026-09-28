@@ -61,10 +61,21 @@ export function formatPhone(phone: string): string {
   return digits ? `+${digits}` : '';
 }
 
+/** Invisible direction marks the site puts around numbers in Arabic pages: never in a message. */
+export const plainText = (text: string) => text.replace(/[\u2066-\u2069\u200e\u200f]/g, '');
+
 /** Opens a new Gmail message (web and app); mailto: depends on a mail client being set up. */
 export function gmailComposeLink(email: string, subject = '', body = ''): string {
   const q = new URLSearchParams({ view: 'cm', fs: '1', to: email });
-  if (subject) q.set('su', subject);
-  if (body) q.set('body', body);
+  if (subject) q.set('su', plainText(subject));
+  if (body) q.set('body', plainText(body));
   return `https://mail.google.com/mail/?${q.toString()}`;
+}
+
+/** The phone's own mail application (fallback when Gmail compose does not pre-fill). */
+export function mailtoLink(email: string, subject = '', body = ''): string {
+  const q: string[] = [];
+  if (subject) q.push(`subject=${encodeURIComponent(plainText(subject))}`);
+  if (body) q.push(`body=${encodeURIComponent(plainText(body))}`);
+  return `mailto:${email}${q.length ? `?${q.join('&')}` : ''}`;
 }
