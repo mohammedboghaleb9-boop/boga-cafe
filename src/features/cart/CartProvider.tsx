@@ -6,6 +6,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { CartItem, CustomBlendSpec, PackSize } from '@/core/types';
 import { uid } from '@/data/ids';
+import { isWellFormedItem, MAX_QTY_PER_LINE } from '@/core/cart';
 
 const STORAGE_KEY = 'boga-cart';
 
@@ -23,10 +24,14 @@ interface CartApi {
 
 const CartContext = createContext<CartApi | null>(null);
 
+const clampQty = (qty: number) => Math.min(MAX_QTY_PER_LINE, Math.max(1, Math.floor(Number.isFinite(qty) ? qty : 1)));
+
 function load(): CartItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CartItem[]) : [];
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    // anything edited by hand or left by an older version is dropped, never priced
+    return Array.isArray(parsed) ? parsed.filter(isWellFormedItem) : [];
   } catch {
     return [];
   }
@@ -58,8 +63,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addProduct = useCallback((productId: string, size: PackSize, qty: number, label: string) => {
     setItems((cur) => {
       const found = cur.find((i) => i.type === 'product' && i.productId === productId && i.size === size);
-      if (found) return cur.map((i) => (i === found ? { ...i, qty: i.qty + qty } : i));
-      return [...cur, { id: uid(), type: 'product', productId, size, qty }];
+      if (found) return cur.map((i) => (i === found ? { ...i, qty: clampQty(i.qty + qty) } : i));
+      return [...cur, { id: uid(), type: 'product', productId, size, qty: clampQty(qty) }];
     });
     setToast(label);
   }, []);
@@ -67,8 +72,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addCustom = useCallback((blend: CustomBlendSpec, qty: number, label: string) => {
     setItems((cur) => {
       const found = cur.find((i) => i.type === 'custom' && sameBlend(i.blend, blend));
-      if (found) return cur.map((i) => (i === found ? { ...i, qty: i.qty + qty } : i));
-      return [...cur, { id: uid(), type: 'custom', blend, qty }];
+      if (found) return cur.map((i) => (i === found ? { ...i, qty: clampQty(i.qty + qty) } : i));
+      return [...cur, { id: uid(), type: 'custom', blend, qty: clampQty(qty) }];
     });
     setToast(label);
   }, []);
@@ -79,7 +84,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       count: items.reduce((s, i) => s + i.qty, 0),
       addProduct,
       addCustom,
-      setQty: (id, qty) => setItems((cur) => cur.map((i) => (i.id === id ? { ...i, qty: Math.max(1, qty) } : i))),
+      setQty: (id, qty) => setItems((cur) => cur.map((i) => (i.id === id ? { ...i, qty: clampQty(qty) } : i))),
       remove: (id) => setItems((cur) => cur.filter((i) => i.id !== id)),
       clear: () => setItems([]),
       toast,

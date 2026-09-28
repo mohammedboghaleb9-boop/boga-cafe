@@ -8,6 +8,7 @@ import { Icon } from '../ui/Icon';
 import { Footer } from './Footer';
 import { Header } from './Header';
 import './layout.css';
+import { api } from '@/data/api';
 
 export function StoreLayout() {
   const { pathname } = useLocation();
@@ -18,6 +19,11 @@ export function StoreLayout() {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [pathname]);
+
+  // unpaid orders past the time limit give their stock back
+  useEffect(() => {
+    api.expireUnpaidOrders();
+  }, []);
 
   return (
     <div className="store">

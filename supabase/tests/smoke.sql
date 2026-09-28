@@ -4,11 +4,13 @@ set client_min_messages = warning;
 
 -- Seed ------------------------------------------------------------------
 insert into auth.users values ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000002');
+insert into auth.users values ('00000000-0000-0000-0000-000000000003');
 insert into public.admin_users values
   ('00000000-0000-0000-0000-000000000001', 'owner', 'Owner'),
-  ('00000000-0000-0000-0000-000000000002', 'staff', 'Staff');
+  ('00000000-0000-0000-0000-000000000002', 'staff', 'Staff'),
+  ('00000000-0000-0000-0000-000000000003', 'manager', 'Manager');
 insert into public.admin_config values (1, '+212600000000', 'admin@example.com', true, true);
-insert into public.site_config values (1, '{"b2bThresholdKg": 10}', '{}');
+insert into public.site_config values (1, '{"b2bThresholdKg": 10, "unpaidOrderTimeoutHours": 48, "bank": {"rib": "OWNER-RIB"}}', '{}');
 insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg) values
   ('brazil',  '{"fr": "Brésil"}',  'BR', 'arabica', 'medium', 10, 2, 220),
   ('vietnam', '{"fr": "Viêt Nam"}', 'VN', 'robusta', 'dark',   1, 0.5, 150);
@@ -111,7 +113,7 @@ begin
     perform public.set_order_status(v_id, 'cancelled');
     raise exception 'TEST FAILED: cancelled twice';
   exception when others then
-    if sqlerrm <> 'order_cancelled' then raise; end if;
+    if sqlerrm <> 'closed' then raise; end if;
   end;
 end $$;
 reset role;
@@ -132,3 +134,144 @@ do $$ begin
   if (select actor from public.stock_movements where reason = 'correction') <> '00000000-0000-0000-0000-000000000001' then raise exception 'TEST FAILED: actor'; end if;
 end $$;
 select 'ok 6 - stock adjustment logged with author, low-stock alert queued' as result;
+
+-- 7. commit_order refuses orders that could add stock or cost nothing; numbers go past 9999
+do $$
+declare bad text;
+begin
+  foreach bad in array array[
+    '[{"originId": "brazil", "kg": -1}]',
+    '[{"originId": "brazil", "kg": 0}]',
+    '[]'
+  ] loop
+    begin
+      perform public.commit_order(
+        ('{"customer": {"fullName": "X", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 1,
+          "subtotal": 10, "shippingFee": 0, "total": 10, "paymentMethod": "card", "stockDeductions": ' || bad || '}')::jsonb, '', '', '');
+      raise exception 'TEST FAILED: accepted deductions %', bad;
+    exception when others then
+      if sqlerrm <> 'invalid_order' then raise; end if;
+    end;
+  end loop;
+  begin
+    perform public.commit_order(
+      '{"customer": {"fullName": "X", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 1,
+        "subtotal": -40, "shippingFee": 20, "total": -20, "paymentMethod": "card", "stockDeductions": [{"originId": "brazil", "kg": 0.1}]}', '', '', '');
+    raise exception 'TEST FAILED: negative total accepted';
+  exception when check_violation then null;
+  end;
+  if (select stock_kg from public.origins where id = 'brazil') <> 10 then raise exception 'TEST FAILED: stock moved by a refused order'; end if;
+  perform setval('public.order_number_seq', 9999);
+  if (select number from public.commit_order(
+        '{"customer": {"fullName": "X", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 0.1,
+          "subtotal": 22, "shippingFee": 20, "total": 42, "paymentMethod": "bank_transfer", "stockDeductions": [{"originId": "brazil", "kg": 0.1}]}',
+        '', '', '')) not like 'BC-%-10000' then
+    raise exception 'TEST FAILED: order 10000 numbering';
+  end if;
+end $$;
+select 'ok 7 - no negative, empty or free orders; numbering past 9999' as result;
+
+-- 8. Stock moves only through the functions (never a direct UPDATE) ---------
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';
+do $$ begin
+  begin
+    update public.origins set stock_kg = 999 where id = 'brazil';
+    raise exception 'TEST FAILED: direct stock update';
+  exception when others then
+    if sqlerrm <> 'stock_changes_go_through_functions' then raise; end if;
+  end;
+  update public.origins set price_per_kg = 230 where id = 'brazil'; -- other catalog fields stay editable
+end $$;
+reset role;
+do $$ begin
+  if (select price_per_kg from public.origins where id = 'brazil') <> 230 then raise exception 'TEST FAILED: price not editable'; end if;
+end $$;
+select 'ok 8 - stock only through logged functions' as result;
+
+-- 9. Order and payment rules: no production before payment, owner records money
+do $$
+declare v_id uuid;
+begin
+  select id into v_id from public.orders where number like 'BC-%-10000';
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true); -- staff
+  set local role authenticated;
+  perform public.set_order_status(v_id, 'confirmed');
+  begin perform public.set_order_status(v_id, 'in_production'); raise exception 'TEST FAILED: produced unpaid';
+  exception when others then if sqlerrm <> 'needs_payment' then raise; end if; end;
+  begin perform public.set_order_status(v_id, 'delivered'); raise exception 'TEST FAILED: skipped steps';
+  exception when others then if sqlerrm <> 'not_next' then raise; end if; end;
+  begin perform public.set_payment_status(v_id, 'paid'); raise exception 'TEST FAILED: staff marked paid';
+  exception when others then if sqlerrm <> 'forbidden' then raise; end if; end;
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true); -- manager
+  begin perform public.set_payment_status(v_id, 'paid'); raise exception 'TEST FAILED: manager marked paid';
+  exception when others then if sqlerrm <> 'forbidden' then raise; end if; end;
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true); -- owner
+  begin perform public.set_payment_status(v_id, 'refunded'); raise exception 'TEST FAILED: refunded unpaid';
+  exception when others then if sqlerrm <> 'invalid_transition' then raise; end if; end;
+  perform public.set_payment_status(v_id, 'paid');
+  perform public.set_order_status(v_id, 'in_production');
+  begin perform public.set_order_status(v_id, 'cancelled'); raise exception 'TEST FAILED: cancelled in production';
+  exception when others then if sqlerrm <> 'too_late_to_cancel' then raise; end if; end;
+  reset role;
+  if (select status from public.orders where id = v_id) <> 'in_production' then raise exception 'TEST FAILED: status'; end if;
+end $$;
+select 'ok 9 - no production before payment; only the owner records payments' as result;
+
+-- 10. Bank details and rules: owner only; managers keep editing texts ---------
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000003';
+do $$ begin
+  begin
+    update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"ATTACKER-RIB"') where id = 1;
+    raise exception 'TEST FAILED: manager changed the RIB';
+  exception when others then
+    if sqlerrm <> 'owner_only' then raise; end if;
+  end;
+  update public.site_config set content = '{"heroTitle": {"fr": "Nouveau"}}' where id = 1;
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';
+update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"NEW-OWNER-RIB"') where id = 1;
+reset role;
+do $$ begin
+  if (select settings #>> '{bank,rib}' from public.site_config) <> 'NEW-OWNER-RIB' then raise exception 'TEST FAILED: owner could not edit'; end if;
+  if (select content #>> '{heroTitle,fr}' from public.site_config) <> 'Nouveau' then raise exception 'TEST FAILED: manager could not edit texts'; end if;
+end $$;
+select 'ok 10 - settings (bank) owner only, texts for managers' as result;
+
+-- 11. Unpaid orders past the limit are cancelled and give their stock back ----
+do $$
+declare v_id uuid; v_before numeric;
+begin
+  select id into v_id from public.commit_order(
+    '{"customer": {"fullName": "Late", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 0.5,
+      "subtotal": 110, "shippingFee": 20, "total": 130, "paymentMethod": "bank_transfer", "stockDeductions": [{"originId": "brazil", "kg": 0.5}]}',
+    '', '', '');
+  v_before := (select stock_kg from public.origins where id = 'brazil');
+  if public.expire_unpaid_orders() <> 0 then raise exception 'TEST FAILED: expired a fresh order'; end if;
+  update public.orders set created_at = now() - interval '49 hours' where id = v_id;
+  if public.expire_unpaid_orders() <> 1 then raise exception 'TEST FAILED: late order not expired'; end if;
+  if (select status from public.orders where id = v_id) <> 'cancelled' then raise exception 'TEST FAILED: not cancelled'; end if;
+  if (select stock_kg from public.origins where id = 'brazil') <> v_before + 0.5 then raise exception 'TEST FAILED: stock not returned'; end if;
+  if not exists (select 1 from public.order_events where order_id = v_id and label = 'status.expired') then raise exception 'TEST FAILED: event'; end if;
+  if public.expire_unpaid_orders() <> 0 then raise exception 'TEST FAILED: expired twice'; end if;
+end $$;
+set role authenticated;
+do $$ begin
+  begin perform public.expire_unpaid_orders(); raise exception 'TEST FAILED: callable by users';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+select 'ok 11 - unpaid orders expire, stock returns once, server-only' as result;
+
+-- 12. adjust_stock logs the change that really happened (never under 0) ------
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';
+select public.adjust_stock('vietnam', -5, 'correction', 'casse');
+reset role;
+do $$ begin
+  if (select stock_kg from public.origins where id = 'vietnam') <> 0 then raise exception 'TEST FAILED: clamp'; end if;
+  if (select delta_kg from public.stock_movements where note = 'casse') <> -0.3 then raise exception 'TEST FAILED: logged % instead of -0.3', (select delta_kg from public.stock_movements where note = 'casse'); end if;
+end $$;
+select 'ok 12 - stock history matches reality' as result;
+

@@ -258,6 +258,7 @@ export const ar: Dict = {
     checkout: 'تأكيد الطلب',
     continue: 'متابعة التسوق',
     problems: {
+      invalid_quantity: 'كمية غير صالحة: أعد تحديدها.',
       missing_product: 'هذا المنتج لم يعد متوفراً.',
       size_not_offered: 'هذا الحجم لم يعد متوفراً.',
       invalid_blend: 'هذه الخلطة لم تعد صالحة (تم إيقاف أحد المصادر).',
@@ -449,6 +450,8 @@ export const ar: Dict = {
       next: 'الانتقال إلى: {status}',
       cancel: 'إلغاء الطلب',
       cancelConfirm: 'تأكيد الإلغاء (يعود المخزون)',
+      needsPayment: 'الدفع ضروري قبل الإنتاج (لا دفع عند التوصيل).',
+      ownerPayments: 'المالك وحده يسجّل الدفعات.',
       history: 'السجل',
       stockUsed: 'المخزون المحجوز',
       contactCustomer: 'راسل الزبون على واتساب',
@@ -467,6 +470,7 @@ export const ar: Dict = {
         'status.shipped': 'الحالة: تم الشحن',
         'status.delivered': 'الحالة: تم التسليم',
         'status.cancelled': 'الحالة: ملغى',
+        'status.expired': 'أُلغيت تلقائياً: لم تُدفع في الوقت المحدد',
       },
     },
     b2b: {

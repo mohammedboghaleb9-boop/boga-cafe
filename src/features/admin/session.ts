@@ -12,9 +12,13 @@ export const DEMO_PASSWORD = 'boga2026';
 const listeners = new Set<() => void>();
 let role: Role | null = read();
 
+const ROLES: readonly Role[] = ['owner', 'manager', 'staff'];
+
+/** Anything but a known role (edited by hand, older version) means signed out. */
 function read(): Role | null {
   try {
-    return (sessionStorage.getItem(KEY) as Role | null) ?? null;
+    const stored = sessionStorage.getItem(KEY);
+    return ROLES.includes(stored as Role) ? (stored as Role) : null;
   } catch {
     return null;
   }

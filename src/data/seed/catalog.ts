@@ -5,6 +5,9 @@
  */
 import type { Origin, Product } from '@/core/types';
 
+/** Demo restock dates stay in the future: N days from today (YYYY-MM-DD). */
+const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+
 export const seedOrigins: Origin[] = [
   {
     id: 'brazil',
@@ -76,7 +79,7 @@ export const seedOrigins: Origin[] = [
     lowStockKg: 5,
     pricePerKg: 360,
     customBlendEnabled: false,
-    restockDate: '2026-10-20',
+    restockDate: inDays(22),
     active: true,
   },
   {
@@ -113,7 +116,7 @@ export const seedOrigins: Origin[] = [
     lowStockKg: 5,
     pricePerKg: 170,
     customBlendEnabled: true,
-    restockDate: '2026-10-08',
+    restockDate: inDays(10),
     active: true,
   },
 ];

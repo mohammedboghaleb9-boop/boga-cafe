@@ -106,7 +106,7 @@ export function CustomBlendPage() {
                       aria-pressed={isOn}
                       disabled={!isOn && reason !== null}
                       onClick={() =>
-                        setLines((cur) => (isOn ? removeLine(cur, o.id) : addLine(cur, o.id, minPercent)))
+                        setLines((cur) => (isOn ? removeLine(cur, o.id, minPercent) : addLine(cur, o.id, minPercent)))
                       }
                     >
                       <span className="origin-tile-head">
@@ -206,7 +206,7 @@ export function CustomBlendPage() {
                         : fmt(t.blend.over, { n: total - 100 })}
                   </strong>
                   {total !== 100 && (
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => setLines((cur) => balanceBlend(cur))}>
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => setLines((cur) => balanceBlend(cur, minPercent))}>
                       {t.blend.balance}
                     </button>
                   )}

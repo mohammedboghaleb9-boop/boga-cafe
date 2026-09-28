@@ -261,6 +261,7 @@ export const fr: Dict = {
     checkout: 'Valider la commande',
     continue: 'Continuer mes achats',
     problems: {
+      invalid_quantity: 'Quantité invalide : réglez-la à nouveau.',
       missing_product: 'Ce produit n’est plus disponible.',
       size_not_offered: 'Ce format n’est plus proposé.',
       invalid_blend: 'Ce blend n’est plus valide (une origine a été désactivée).',
@@ -453,6 +454,8 @@ export const fr: Dict = {
       next: 'Passer à : {status}',
       cancel: 'Annuler la commande',
       cancelConfirm: 'Confirmer l’annulation (le stock est rendu)',
+      needsPayment: 'Paiement requis avant la production (pas de paiement à la livraison).',
+      ownerPayments: 'Seul le propriétaire enregistre les paiements.',
       history: 'Historique',
       stockUsed: 'Stock réservé',
       contactCustomer: 'WhatsApp au client',
@@ -471,6 +474,7 @@ export const fr: Dict = {
         'status.shipped': 'Statut : expédiée',
         'status.delivered': 'Statut : livrée',
         'status.cancelled': 'Statut : annulée',
+        'status.expired': 'Annulée automatiquement : non payée dans le délai',
       },
     },
     b2b: {

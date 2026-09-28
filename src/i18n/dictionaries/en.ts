@@ -263,6 +263,7 @@ export const en = {
     checkout: 'Checkout',
     continue: 'Continue shopping',
     problems: {
+      invalid_quantity: 'Invalid quantity: set it again.',
       missing_product: 'This product is no longer available.',
       size_not_offered: 'This size is no longer offered.',
       invalid_blend: 'This blend is no longer valid (an origin was disabled).',
@@ -455,6 +456,8 @@ export const en = {
       next: 'Move to: {status}',
       cancel: 'Cancel order',
       cancelConfirm: 'Confirm cancel (stock is returned)',
+      needsPayment: 'Payment required before production (no payment on delivery).',
+      ownerPayments: 'Only the owner records payments.',
       history: 'History',
       stockUsed: 'Stock reserved',
       contactCustomer: 'WhatsApp the customer',
@@ -473,6 +476,7 @@ export const en = {
         'status.shipped': 'Status: shipped',
         'status.delivered': 'Status: delivered',
         'status.cancelled': 'Status: cancelled',
+        'status.expired': 'Cancelled automatically: not paid in time',
       } as Record<string, string>,
     },
     b2b: {

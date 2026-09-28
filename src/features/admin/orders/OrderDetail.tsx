@@ -1,32 +1,31 @@
 import { Link, useParams } from 'react-router';
 import { formatKg, formatNumber, formatSize } from '@/core/format';
-import type { OrderStatus } from '@/core/types';
+import { canSetPayment, NEXT_STATUS, statusChangeRefusal } from '@/core/orderFlow';
+import type { PaymentStatus } from '@/core/types';
 import { api } from '@/data/api';
 import { useDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
+import { useAdminRole } from '../session';
 import { ConfirmButton, OrderStatusPill, PaymentPill } from '../ui';
-
-const NEXT: Partial<Record<OrderStatus, OrderStatus>> = {
-  new: 'confirmed',
-  confirmed: 'in_production',
-  in_production: 'shipped',
-  shipped: 'delivered',
-};
 
 export function OrderDetail() {
   const { id } = useParams();
   const { t, l, money, date } = useI18n();
   const { orders, origins, shippingRates, paymentMethods } = useDb();
+  const role = useAdminRole()!;
   const order = orders.find((o) => o.id === id);
   if (!order) return <p className="muted">{t.order.notFound}</p>;
 
   const origin = (oid: string) => origins.find((o) => o.id === oid);
   const city = shippingRates.find((r) => r.id === order.customer.cityId);
   const method = paymentMethods.find((m) => m.id === order.paymentMethod);
-  const next = NEXT[order.status];
+  const next = NEXT_STATUS[order.status];
+  const nextRefusal = next ? statusChangeRefusal(order, next) : 'closed';
+  const canCancel = statusChangeRefusal(order, 'cancelled') === null;
+  const pay = (status: PaymentStatus) => canSetPayment(order, status, role);
   const c = order.customer;
 
   return (
@@ -42,12 +41,23 @@ export function OrderDetail() {
           </span>
         </div>
         <div className="toolbar">
-          {next && order.status !== 'cancelled' && (
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => api.setOrderStatus(order.id, next)}>
+          {next && nextRefusal !== 'closed' && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={nextRefusal !== null}
+              aria-describedby={nextRefusal === 'needs_payment' ? 'next-hint' : undefined}
+              onClick={() => api.setOrderStatus(order.id, next)}
+            >
               {fmt(t.admin.orders.next, { status: t.orderStatus[next] })}
             </button>
           )}
-          {!['delivered', 'cancelled'].includes(order.status) && (
+          {nextRefusal === 'needs_payment' && (
+            <span id="next-hint" className="small muted">
+              {t.admin.orders.needsPayment}
+            </span>
+          )}
+          {canCancel && (
             <ConfirmButton
               label={t.admin.orders.cancel}
               confirmLabel={t.admin.orders.cancelConfirm}
@@ -202,21 +212,22 @@ export function OrderDetail() {
               )}
             </dl>
             <div className="row">
-              {order.paymentStatus !== 'paid' && order.paymentStatus !== 'refunded' && (
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => api.setPaymentStatus(order.id, 'paid')}>
+              {pay('paid') && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => api.setPaymentStatus(order.id, 'paid', role)}>
                   {t.admin.orders.markPaid}
                 </button>
               )}
-              {['pending', 'awaiting_verification'].includes(order.paymentStatus) && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => api.setPaymentStatus(order.id, 'failed')}>
+              {pay('failed') && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => api.setPaymentStatus(order.id, 'failed', role)}>
                   {t.admin.orders.markFailed}
                 </button>
               )}
-              {order.paymentStatus === 'paid' && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => api.setPaymentStatus(order.id, 'refunded')}>
+              {pay('refunded') && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => api.setPaymentStatus(order.id, 'refunded', role)}>
                   {t.admin.orders.markRefunded}
                 </button>
               )}
+              {role !== 'owner' && <span className="small muted">{t.admin.orders.ownerPayments}</span>}
             </div>
           </section>
 

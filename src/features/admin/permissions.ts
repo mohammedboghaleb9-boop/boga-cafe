@@ -2,7 +2,8 @@
  * Admin roles and what each one can open.
  * Change a role's access here; the menu and the routes follow automatically.
  */
-export type Role = 'owner' | 'manager' | 'staff';
+export type { AdminRole as Role } from '@/core/orderFlow';
+import type { AdminRole as Role } from '@/core/orderFlow';
 
 export type Section =
   | 'dashboard'

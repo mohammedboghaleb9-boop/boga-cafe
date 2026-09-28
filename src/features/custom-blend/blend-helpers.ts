@@ -21,9 +21,9 @@ export function addLine(lines: RecipeLine[], originId: string, minPercent: numbe
 }
 
 /** Removing a coffee spreads its share over the others. */
-export function removeLine(lines: RecipeLine[], originId: string): RecipeLine[] {
+export function removeLine(lines: RecipeLine[], originId: string, minPercent = 0): RecipeLine[] {
   const rest = lines.filter((l) => l.originId !== originId);
-  return rest.length ? balanceBlend(rest) : [];
+  return rest.length ? balanceBlend(rest, minPercent) : [];
 }
 
 export function issueText(issue: BlendIssue, t: Dict, origins: OriginIndex, l: (v: Localized) => string): string {

@@ -3,7 +3,7 @@
  * production (Supabase RPC / Edge Function) — same inputs, same results.
  */
 import { summarizeCart } from '@/core/cart';
-import { buildOrder, type CheckoutError, type CheckoutInput } from '@/core/order';
+import { buildOrder, expiredUnpaidOrders, type CheckoutError, type CheckoutInput } from '@/core/order';
 import { applyStock, isLowStock } from '@/core/stock';
 import { normalizePhone, isEmail } from '@/core/validation';
 import type {
@@ -29,6 +29,7 @@ import { checkoutContext, templateContext } from './context';
 import { newReference, uid } from './ids';
 import type { DbState } from './state';
 import { db } from './store';
+import { canSetPayment, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
 const now = () => new Date().toISOString();
@@ -109,6 +110,9 @@ export const api = {
   /** Card gateway answer (CMI callback in production). */
   async completeCardPayment(orderId: string, success: boolean) {
     await latency();
+    const o = db.get().orders.find((x) => x.id === orderId);
+    // only an open card order waiting for the gateway can be paid this way
+    if (!o || o.paymentMethod !== 'card' || o.status === 'cancelled' || !['pending', 'failed'].includes(o.paymentStatus)) return;
     patchOrder(orderId, (o) => ({
       paymentStatus: success ? 'paid' : 'failed',
       status: success && o.status === 'new' ? 'confirmed' : o.status,
@@ -119,9 +123,12 @@ export const api = {
   /** Customer says "I have paid" for Cash Plus / transfer and gives the receipt reference. */
   async reportOfflinePayment(orderId: string, paymentRef: string) {
     await latency();
+    const o = db.get().orders.find((x) => x.id === orderId);
+    // Cash Plus / transfer only, and never over a payment already confirmed
+    if (!o || o.paymentMethod === 'card' || o.status === 'cancelled' || o.paymentStatus !== 'pending') return;
     patchOrder(orderId, (o) => ({
       paymentStatus: 'awaiting_verification',
-      paymentRef,
+      paymentRef: paymentRef.trim().slice(0, 80),
       history: [...o.history, { at: now(), label: 'payment.reported' }],
     }));
   },
@@ -195,7 +202,12 @@ export const api = {
 
   /* ───────── Admin ───────── */
 
-  setOrderStatus(orderId: string, status: OrderStatus) {
+  /** Returns why the change is refused (core/orderFlow), or null once done. */
+  setOrderStatus(orderId: string, status: OrderStatus): StatusRefusal | null {
+    const current = db.get().orders.find((o) => o.id === orderId);
+    if (!current) return 'closed';
+    const refusal = statusChangeRefusal(current, status);
+    if (refusal) return refusal;
     const at = now();
     patchOrder(
       orderId,
@@ -214,14 +226,50 @@ export const api = {
         };
       },
     );
+    return null;
   },
 
-  setPaymentStatus(orderId: string, paymentStatus: PaymentStatus) {
+  /**
+   * Cancels the orders nobody paid in time and gives their coffee back to
+   * stock (rule in core: expiredUnpaidOrders). Runs when the shop or the admin
+   * opens; a scheduled job does it on the server in phase 2.
+   */
+  expireUnpaidOrders(): number {
+    const s = db.get();
+    const expired = new Set(expiredUnpaidOrders(s.orders, s.settings.unpaidOrderTimeoutHours, new Date()).map((o) => o.id));
+    if (!expired.size) return 0;
+    const at = now();
+    db.update((cur) => {
+      const cancel = cur.orders.filter((o) => expired.has(o.id) && o.status !== 'cancelled');
+      return {
+        ...cur,
+        orders: cur.orders.map((o) =>
+          cancel.includes(o) ? { ...o, status: 'cancelled' as const, history: [...o.history, { at, label: 'status.expired' }] } : o,
+        ),
+        origins: applyStock(cur.origins, cancel.flatMap((o) => o.stockDeductions), 1),
+        stockMovements: [
+          ...cancel.flatMap((o) =>
+            o.stockDeductions.map((d) => ({
+              id: uid(), at, originId: d.originId, deltaKg: d.kg, reason: 'order_cancelled' as const, ref: o.number, note: 'auto',
+            })),
+          ),
+          ...cur.stockMovements,
+        ],
+      };
+    });
+    return expired.size;
+  },
+
+  /** Only the owner records payments, and only in a sensible order (core/orderFlow). */
+  setPaymentStatus(orderId: string, paymentStatus: PaymentStatus, role: AdminRole): boolean {
+    const current = db.get().orders.find((o) => o.id === orderId);
+    if (!current || !canSetPayment(current, paymentStatus, role)) return false;
     patchOrder(orderId, (o) => ({
       paymentStatus,
       status: paymentStatus === 'paid' && o.status === 'new' ? 'confirmed' : o.status,
       history: [...o.history, { at: now(), label: `payment.${paymentStatus}` }],
     }));
+    return true;
   },
 
   saveProduct(product: Product) {
