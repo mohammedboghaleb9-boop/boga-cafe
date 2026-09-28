@@ -275,3 +275,80 @@ do $$ begin
 end $$;
 select 'ok 12 - stock history matches reality' as result;
 
+
+-- 13. Cancelled orders: no late payment report; a refund is possible once, never mid-production
+do $$
+declare v_id uuid;
+begin
+  select id into v_id from public.commit_order(
+    '{"customer": {"fullName": "Annule", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 0.1,
+      "subtotal": 22, "shippingFee": 20, "total": 42, "paymentMethod": "bank_transfer", "stockDeductions": [{"originId": "brazil", "kg": 0.1}]}',
+    '', '', '');
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true); -- owner
+  set local role authenticated;
+  perform public.set_order_status(v_id, 'cancelled');
+  -- the cancel opened the stock gate for itself only: it is closed again right after
+  begin
+    update public.origins set stock_kg = 999 where id = 'brazil';
+    raise exception 'TEST FAILED: stock gate left open after a cancel';
+  exception when others then
+    if sqlerrm <> 'stock_changes_go_through_functions' then raise; end if;
+  end;
+  set local role anon;
+  perform public.report_offline_payment(v_id, 'LATE-REF');
+  set local role authenticated;
+  if (select payment_status from public.orders where id = v_id) <> 'pending' then raise exception 'TEST FAILED: payment reported on a cancelled order'; end if;
+  -- money that arrives after the cancel can still be given back, once
+  perform public.set_payment_status(v_id, 'refunded');
+  begin perform public.set_payment_status(v_id, 'refunded'); raise exception 'TEST FAILED: refunded twice';
+  exception when others then if sqlerrm <> 'invalid_transition' then raise; end if; end;
+  -- a paid order in production is not refunded (it would stay stuck in production)
+  begin
+    perform public.set_payment_status((select id from public.orders where number like 'BC-%-10000'), 'refunded');
+    raise exception 'TEST FAILED: refunded mid-production';
+  exception when others then if sqlerrm <> 'invalid_transition' then raise; end if; end;
+  reset role;
+  if (select payment_status from public.orders where id = v_id) <> 'refunded' then raise exception 'TEST FAILED: refund'; end if;
+end $$;
+select 'ok 13 - cancelled orders: no late report, one refund, none mid-production' as result;
+
+-- 14. Managers change the free-shipping threshold, never the contact details ----
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000003';
+do $$ begin
+  update public.site_config set settings = settings || '{"freeShippingOver": 600}' where id = 1;
+  begin
+    update public.site_config set settings = settings || '{"contact": {"whatsapp": "+212700000000"}}' where id = 1;
+    raise exception 'TEST FAILED: manager changed the contact number';
+  exception when others then
+    if sqlerrm <> 'owner_only' then raise; end if;
+  end;
+end $$;
+reset role;
+do $$ begin
+  if (select settings ->> 'freeShippingOver' from public.site_config) <> '600' then raise exception 'TEST FAILED: manager could not set free shipping'; end if;
+  if (select settings -> 'contact' from public.site_config) is not null then raise exception 'TEST FAILED: contact changed'; end if;
+end $$;
+select 'ok 14 - managers: free shipping yes, contact details no' as result;
+
+-- 15. A new origin created from the admin starts at 0 kg ----------------------
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000003';
+do $$ begin
+  begin
+    insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg)
+    values ('ghost', '{"fr": "Fantôme"}', 'ET', 'arabica', 'light', 50, 1, 200);
+    raise exception 'TEST FAILED: origin created with stock outside the history';
+  exception when others then
+    if sqlerrm <> 'stock_changes_go_through_functions' then raise; end if;
+  end;
+  insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg)
+  values ('ethiopia', '{"fr": "Éthiopie"}', 'ET', 'arabica', 'light', 0, 1, 260);
+  perform public.adjust_stock('ethiopia', 5, 'restock', 'premier lot');
+end $$;
+reset role;
+do $$ begin
+  if (select stock_kg from public.origins where id = 'ethiopia') <> 5 then raise exception 'TEST FAILED: restock'; end if;
+  if not exists (select 1 from public.stock_movements where origin_id = 'ethiopia' and reason = 'restock' and delta_kg = 5) then raise exception 'TEST FAILED: first lot not in history'; end if;
+end $$;
+select 'ok 15 - new origins start at 0 kg; first lot goes through the history' as result;

@@ -3,7 +3,7 @@ import { balanceBlend } from '../blend';
 import { isWellFormedItem, MAX_QTY_PER_LINE, summarizeCart } from '../cart';
 import { buildOrder } from '../order';
 import type { CartItem, CustomerInfo } from '../types';
-import { originIndex, product, rate, settings } from './fixtures';
+import { origin, originIndex, product, rate, settings } from './fixtures';
 
 const catalog = { products: [product], origins: originIndex };
 const customer: CustomerInfo = {
@@ -146,5 +146,55 @@ describe('order status rules', () => {
     expect(canSetPayment(o('paid'), 'refunded', 'owner')).toBe(true);
     expect(canSetPayment(o('paid', 'cancelled'), 'refunded', 'owner')).toBe(true); // cancelled after paying: refund
     expect(canSetPayment(o('pending', 'cancelled'), 'paid', 'owner')).toBe(false);
+  });
+});
+
+describe('refunds never leave an order stuck (review NEW-2, NEW-4)', () => {
+  it('refunds before production, after cancellation or delivery, never mid-production', async () => {
+    const { canSetPayment, statusChangeRefusal } = await import('../orderFlow');
+    const o = (status: string, paymentStatus = 'paid') => ({ status, paymentStatus }) as never;
+    for (const s of ['new', 'confirmed', 'cancelled', 'delivered']) expect(canSetPayment(o(s), 'refunded', 'owner')).toBe(true);
+    for (const s of ['in_production', 'shipped']) expect(canSetPayment(o(s), 'refunded', 'owner')).toBe(false);
+    // refunded before production: the order can still be cancelled
+    expect(statusChangeRefusal(o('confirmed', 'refunded'), 'cancelled')).toBeNull();
+  });
+
+  it('records money that arrives after an automatic cancellation', async () => {
+    const { canSetPayment } = await import('../orderFlow');
+    const expired = (paymentStatus: string) => ({ status: 'cancelled', paymentStatus }) as never;
+    expect(canSetPayment(expired('pending'), 'refunded', 'owner')).toBe(true);
+    expect(canSetPayment(expired('awaiting_verification'), 'refunded', 'owner')).toBe(true);
+    expect(canSetPayment(expired('pending'), 'paid', 'owner')).toBe(false);
+    expect(canSetPayment(expired('refunded'), 'refunded', 'owner')).toBe(false);
+    expect(canSetPayment(expired('pending'), 'refunded', 'manager')).toBe(false);
+  });
+});
+
+describe('settings: managers change free shipping only (review NEW-3)', () => {
+  it('keeps contact, notification recipients, bank and rules for the owner', async () => {
+    const { settingsChangeRefused } = await import('../orderFlow');
+    const edit = (patch: Partial<typeof settings>) => ({ ...settings, ...patch });
+    expect(settingsChangeRefused(settings, edit({ freeShippingOver: settings.freeShippingOver + 100 }), 'manager')).toBe(false);
+    expect(settingsChangeRefused(settings, edit({ contact: { ...settings.contact, whatsapp: '+212700000000' } }), 'manager')).toBe(true);
+    expect(settingsChangeRefused(settings, edit({ notifications: { ...settings.notifications, adminEmail: 'x@evil.example' } }), 'manager')).toBe(true);
+    expect(settingsChangeRefused(settings, edit({ bank: { ...settings.bank, rib: 'ATTACKER' } }), 'staff')).toBe(true);
+    expect(settingsChangeRefused(settings, edit({ b2bThresholdKg: 1 }), 'manager')).toBe(true);
+    expect(settingsChangeRefused(settings, edit({ contact: { ...settings.contact, whatsapp: '+212700000000' } }), 'owner')).toBe(false);
+    // saving the same values again is not a change
+    expect(settingsChangeRefused(settings, structuredClone(settings), 'manager')).toBe(false);
+  });
+});
+
+describe('manual stock changes (review NEW-5)', () => {
+  it('never goes under 0 and reports the change that really happened', async () => {
+    const { adjustOriginStock } = await import('../stock');
+    const origins = [origin('a', { stockKg: 0.3 })];
+    const out = adjustOriginStock(origins, 'a', -5);
+    expect(out.origins[0].stockKg).toBe(0);
+    expect(out.appliedKg).toBe(-0.3);
+    const up = adjustOriginStock(origins, 'a', 2.5);
+    expect(up.origins[0].stockKg).toBe(2.8);
+    expect(up.appliedKg).toBe(2.5);
+    expect(adjustOriginStock(origins, 'missing', 5)).toEqual({ origins, appliedKg: 0 });
   });
 });

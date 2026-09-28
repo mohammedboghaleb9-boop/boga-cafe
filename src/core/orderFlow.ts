@@ -3,7 +3,7 @@
  * The admin panel, the demo data layer and the database (set_order_status /
  * set_payment_status in supabase/migrations) apply these same rules.
  */
-import type { Order, OrderStatus, PaymentStatus } from './types';
+import type { Order, OrderStatus, PaymentStatus, Settings } from './types';
 
 export type AdminRole = 'owner' | 'manager' | 'staff';
 
@@ -41,10 +41,38 @@ const PAYMENT_FROM: Record<PaymentStatus, PaymentStatus[]> = {
   awaiting_verification: ['pending', 'failed'],
 };
 
-/** Money is the owner's decision: only the owner records a payment, a failure or a refund. */
+/** A refund closes the money side: only where the order cannot get stuck afterwards. */
+const REFUNDABLE: OrderStatus[] = ['new', 'confirmed', 'cancelled', 'delivered'];
+
+/**
+ * Money is the owner's decision: only the owner records a payment, a failure or a refund.
+ * - A refund happens before production (the order can then be cancelled), after
+ *   a cancellation, or after delivery — never mid-production, where it would
+ *   leave the order unable to move.
+ * - Money that arrives after the order was cancelled (e.g. a transfer after the
+ *   automatic 48 h cancellation) is recorded as refunded: the stock went back,
+ *   so the customer gets the money back or places a new order.
+ */
 export function canSetPayment(order: Pick<Order, 'paymentStatus' | 'status'>, next: PaymentStatus, role: AdminRole): boolean {
   if (role !== 'owner') return false;
-  // a cancelled order can still be refunded, nothing else
-  if (order.status === 'cancelled' && next !== 'refunded') return false;
+  if (next === 'refunded') {
+    if (!REFUNDABLE.includes(order.status)) return false;
+    return order.paymentStatus === 'paid' || (order.status === 'cancelled' && order.paymentStatus !== 'refunded');
+  }
+  if (order.status === 'cancelled') return false;
   return PAYMENT_FROM[next].includes(order.paymentStatus);
+}
+
+/**
+ * Settings a manager may change. Everything else is the owner's: the contact
+ * details customers send their orders to, who receives the notifications, the
+ * bank details shown for transfers, and the business rules. (Database: the
+ * guard_settings trigger applies the same list.)
+ */
+export const MANAGER_SETTINGS: readonly (keyof Settings)[] = ['freeShippingOver'];
+
+export function settingsChangeRefused(before: Settings, after: Settings, role: AdminRole): boolean {
+  if (role === 'owner') return false;
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)] as (keyof Settings)[]);
+  return [...keys].some((k) => !MANAGER_SETTINGS.includes(k) && JSON.stringify(before[k]) !== JSON.stringify(after[k]));
 }

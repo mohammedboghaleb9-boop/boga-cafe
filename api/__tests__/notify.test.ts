@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Guard, handleNotify, handlePreflight, parsePayload, type Mail, type NotifyDeps, type NotifyEnv } from '../_lib/notify.js';
+import { defangLinks, Guard, handleNotify, handlePreflight, parsePayload, type Mail, type NotifyDeps, type NotifyEnv } from '../_lib/notify.js';
 
 const REF = 'SR-2026-7K4M2Q';
 const payload = {
@@ -79,9 +79,17 @@ describe('POST /api/notify', () => {
   });
 
   it('only counts WhatsApp as sent when CallMeBot confirms it', async () => {
-    const { deps, guard } = setup({ whatsapp: '<html>Something went wrong</html>' });
-    const res = await handleNotify(post(payload), { ...env, GMAIL_USER: '' }, deps, guard);
-    expect(await res.json()).toEqual({ whatsapp: 'failed', email: 'skipped' });
+    for (const [answer, expected] of [
+      ['<html>Something went wrong</html>', 'failed'],
+      ['APIKey is invalid. You need to get the APIKey from the Bot', 'failed'],
+      ['Message not queued', 'failed'],
+      ['<p>Message queued. You will receive it in a few seconds.</p><p>In case of error, contact us.</p>', 'sent'],
+      ['Message Sent!', 'sent'],
+    ]) {
+      const { deps, guard } = setup({ whatsapp: answer });
+      const res = await handleNotify(post(payload), { ...env, GMAIL_USER: '' }, deps, guard);
+      expect(await res.json(), answer).toEqual({ whatsapp: expected, email: 'skipped' });
+    }
   });
 
   it('retries a message whose delivery failed, then ignores the same message once delivered', async () => {
@@ -147,17 +155,34 @@ describe('POST /api/notify', () => {
     expect(deps.sendMail).not.toHaveBeenCalled();
   });
 
-  it('removes links from what it forwards', async () => {
+  it('makes links unclickable, but keeps them readable and leaves email addresses alone', async () => {
     const { deps, mails, urls, guard } = setup();
     const withLink = {
       ...payload,
-      whatsapp: `${payload.whatsapp}\nNote : payez ici https://phish.example/pay et www.evil.ma`,
-      email: `${payload.email}\nNote : payez ici https://phish.example/pay`,
+      whatsapp: `${payload.whatsapp}\nEmail : sara.info@gmail.com\nNote : payez ici https://phish.example/pay et www.evil.ma ou pay-now.shop`,
+      email: `${payload.email}\nEmail : sara.info@gmail.com\nNote : payez ici HTTPS://phish.example/pay`,
     };
     await handleNotify(post(withLink), env, deps, guard);
-    expect(mails[0].text).not.toMatch(/phish|https?:/);
-    expect(urls[0].searchParams.get('text')).not.toMatch(/phish|evil|www\./);
-    expect(mails[0].text).toContain('[lien retiré]');
+    const wa = urls[0].searchParams.get('text')!;
+    expect(wa).toContain('hxxps://phish[.]example/pay');
+    expect(wa).toContain('www[.]evil[.]ma');
+    expect(wa).toContain('pay-now[.]shop');
+    expect(wa).toContain('sara.info@gmail.com');
+    expect(wa).not.toMatch(/https?:|www\.|evil\.ma|now\.shop/i);
+    expect(mails[0].text).toContain('hxxpS://phish[.]example/pay');
+    expect(mails[0].text).toContain('sara.info@gmail.com');
+  });
+
+  it('defangs every way of writing a link', () => {
+    for (const [raw, safe] of [
+      ['http://1.2.3.4/x', 'hxxp://1[.]2[.]3[.]4/x'],
+      ['voir bogacafe.ma.evil.com', 'voir bogacafe[.]ma[.]evil[.]com'],
+      ['WWW.Evil.MA', 'WWW[.]Evil[.]MA'],
+      ['(evil.co)', '(evil[.]co)'],
+      ['Email : a.b@test.co.ma, 0.25 kg, 12.50 DH', 'Email : a.b@test.co.ma, 0.25 kg, 12.50 DH'],
+    ]) {
+      expect(defangLinks(raw)).toBe(safe);
+    }
   });
 
   it('limits bursts from one address and in total', async () => {

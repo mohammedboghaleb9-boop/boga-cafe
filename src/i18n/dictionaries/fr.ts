@@ -223,7 +223,7 @@ export const fr: Dict = {
     ],
     blendsTitle: 'Les 3 blends B2B',
     sampleTitle: 'Demander un échantillon de 500 g',
-    sampleText: 'Votre demande arrive directement à l’administration. Nous vous rappelons pour confirmer.',
+    sampleText: 'Remplissez le formulaire : la demande est rédigée pour notre équipe, et l’étape suivante vous montre comment elle nous parvient. Nous vous rappelons pour confirmer.',
     largeTitle: 'Grosse commande ?',
     largeText: 'Au-delà de 10 kg, contactez directement l’équipe ou remplissez votre panier et envoyez-le en demande.',
     largeCta: 'Contacter sur WhatsApp',
@@ -330,6 +330,8 @@ export const fr: Dict = {
     itemsTitle: 'Articles',
     nextPaid: 'Votre paiement est confirmé. Nous préparons votre café avec notre torréfacteur, puis il part dans l’emballage BOGA CAFÉ.',
     nextPending: 'Nous préparons la commande dès que le paiement est confirmé.',
+    cancelledText: 'Cette commande est annulée et son café est remis en stock. Si vous aviez déjà payé, contactez-nous sur WhatsApp : nous vous remboursons.',
+    deliveredText: 'Commande livrée. Bonne dégustation ! Pour une nouvelle commande ou une question, nous sommes sur WhatsApp.',
     notFound: 'Commande introuvable sur cet appareil.',
   },
 
@@ -373,6 +375,7 @@ export const fr: Dict = {
     pending: 'Transmission à l’équipe BOGA CAFÉ…',
     title: 'Dernière étape : envoyez-nous votre demande',
     text: 'Elle arrive sur notre WhatsApp depuis votre numéro, pour qu’on vous réponde directement. Tout est déjà rédigé : il suffit d’appuyer sur envoyer.',
+    slow: 'L’envoi automatique prend plus de temps que prévu. Pour être sûr, envoyez-la aussi sur WhatsApp : tout est déjà rédigé.',
     titleAuto: 'Votre demande nous est parvenue',
     textAuto: 'L’équipe a été prévenue. Pour aller plus vite, vous pouvez aussi l’envoyer sur WhatsApp.',
     whatsapp: 'Envoyer sur WhatsApp',
@@ -401,6 +404,7 @@ export const fr: Dict = {
   },
 
   admin: {
+    ownerOnly: 'Réservé au propriétaire : ces coordonnées reçoivent les commandes et les paiements des clients.',
     title: 'Panel Admin',
     loginTitle: 'Connexion au Panel Admin',
     loginText: 'Prototype : choisissez un rôle pour voir ses permissions. Mot de passe : {pwd}',

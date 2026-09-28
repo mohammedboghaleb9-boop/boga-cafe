@@ -77,8 +77,19 @@ export const LIMITS = { body: 20_000, subject: 200, whatsapp: 4_000, email: 12_0
 
 const FOOTER = 'Envoyé par le formulaire du site. Un message ne prouve jamais un paiement : vérifiez-le à la banque ou au CMI.';
 
-/** Links have no place in these messages: a forged one could carry phishing. */
-const stripLinks = (text: string) => text.replace(/\b(?:https?:\/\/|www\.)\S+/gi, '[lien retiré]');
+/** Endings WhatsApp and Gmail turn into links on their own, without http:// or www. */
+const LINKED_TLDS = 'com|net|org|info|biz|ma|fr|be|ch|es|it|de|uk|us|eu|io|co|me|app|dev|xyz|top|site|online|shop|store|link|click|live|ly|gl|to|cc|tk|ru|cn';
+
+/**
+ * Links have no place in these messages: a forged one could carry phishing.
+ * They are made unclickable rather than removed (hxxps://evil[.]example/pay),
+ * so the team still sees what was written. Email addresses stay as they are.
+ */
+export function defangLinks(text: string): string {
+  return text
+    .replace(/\b(?:https?:\/\/|www\.)[^\s/?#]+/gi, (link) => link.replace(/^http/i, 'hxxp').replace(/\./g, '[.]'))
+    .replace(new RegExp(`(?<![@\\w.\\-\\]])(?:[a-z0-9-]+\\.)+(?:${LINKED_TLDS})\\b(?![@\\-])`, 'gi'), (host) => host.replace(/\./g, '[.]'));
+}
 
 /** Parses and checks the request body. Returns an error code or the payload. */
 export function parsePayload(raw: unknown): NotifyPayload | { error: string } {
@@ -102,9 +113,9 @@ export function parsePayload(raw: unknown): NotifyPayload | { error: string } {
   return {
     event: event as NotifyEvent,
     ref,
-    subject: stripLinks(subject).replace(/[\r\n]+/g, ' '),
-    whatsapp: stripLinks(whatsapp),
-    email: stripLinks(email),
+    subject: defangLinks(subject).replace(/[\r\n]+/g, ' '),
+    whatsapp: defangLinks(whatsapp),
+    email: defangLinks(email),
   };
 }
 
@@ -173,8 +184,9 @@ async function sendWhatsapp(p: NotifyPayload, env: NotifyEnv, deps: NotifyDeps):
     const res = await deps.fetch(url, { signal: AbortSignal.timeout(6_000) });
     const text = await res.text();
     // CallMeBot answers 200 with an explanation page when the key or number is
-    // wrong: only its confirmation counts as sent
-    if (!res.ok || !/queued|message sent/i.test(text) || /apikey is invalid|error/i.test(text)) {
+    // wrong: only its confirmation counts as sent (its pages can mention the word
+    // "error" in their help text, so that word alone does not mean a failure)
+    if (!res.ok || !/message (?:queued|sent)/i.test(text) || /apikey is invalid|not (?:queued|sent)/i.test(text)) {
       console.error('whatsapp: callmebot did not confirm', res.status);
       return 'failed';
     }

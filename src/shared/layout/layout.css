@@ -27,6 +27,10 @@
   color: var(--accent);
 }
 
+/* a link to a section (/b2b#sample) lands below the sticky header (67 px), not under it */
+.store main [id] {
+  scroll-margin-block-start: 84px;
+}
 .site-header {
   position: sticky;
   top: env(safe-area-inset-top, 0px);

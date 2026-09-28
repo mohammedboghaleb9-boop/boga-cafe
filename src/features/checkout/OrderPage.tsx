@@ -67,7 +67,13 @@ export function OrderPage() {
               </ol>
             )}
             <p className="small muted">
-              {order.paymentStatus === 'paid' ? t.order.nextPaid : t.order.nextPending}
+              {order.status === 'cancelled'
+                ? t.order.cancelledText
+                : order.status === 'delivered'
+                  ? t.order.deliveredText
+                  : order.paymentStatus === 'paid'
+                    ? t.order.nextPaid
+                    : t.order.nextPending}
             </p>
           </section>
 

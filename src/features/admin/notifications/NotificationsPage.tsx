@@ -6,12 +6,15 @@ import { useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
 import { SavedFlash, Switch, Tabs, useSavedFlash } from '../ui';
+import { useAdminRole } from '../session';
 
 export function NotificationsPage() {
   const { t, date } = useI18n();
   const { notifications, settings } = useDb();
   const [n, setN] = useState(settings.notifications);
   const [saved, flash] = useSavedFlash();
+  const role = useAdminRole()!;
+  const owner = role === 'owner';
   const [channel, setChannel] = useState<'all' | NotificationChannel>('all');
   const list = notifications.filter((x) => channel === 'all' || x.channel === channel);
 
@@ -23,35 +26,40 @@ export function NotificationsPage() {
       <p className="muted">{t.admin.notif.intro}</p>
 
       <section className="panel stack">
-        <div className="form-grid">
-          <label className="field">
-            <span className="label">{t.admin.notif.adminWhatsapp}</span>
-            <input className="input num" dir="ltr" value={n.adminWhatsapp} onChange={(e) => setN({ ...n, adminWhatsapp: e.target.value })} />
-          </label>
-          <label className="field">
-            <span className="label">{t.admin.notif.adminEmail}</span>
-            <input className="input" type="email" value={n.adminEmail} onChange={(e) => setN({ ...n, adminEmail: e.target.value })} />
-          </label>
-        </div>
-        <div className="spread">
-          <div className="row">
-            <Switch checked={n.whatsappEnabled} onChange={(v) => setN({ ...n, whatsappEnabled: v })} label={t.admin.notif.whatsappOn} />
-            <Switch checked={n.emailEnabled} onChange={(v) => setN({ ...n, emailEnabled: v })} label={t.admin.notif.emailOn} />
+        {!owner && <p className="small muted">{t.admin.ownerOnly}</p>}
+        <fieldset className="plain-fieldset stack" disabled={!owner}>
+          <div className="form-grid">
+            <label className="field">
+              <span className="label">{t.admin.notif.adminWhatsapp}</span>
+              <input className="input num" dir="ltr" value={n.adminWhatsapp} onChange={(e) => setN({ ...n, adminWhatsapp: e.target.value })} />
+            </label>
+            <label className="field">
+              <span className="label">{t.admin.notif.adminEmail}</span>
+              <input className="input" type="email" value={n.adminEmail} onChange={(e) => setN({ ...n, adminEmail: e.target.value })} />
+            </label>
           </div>
-          <div className="row">
-            <SavedFlash show={saved} />
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => {
-                api.saveSettings({ ...settings, notifications: n });
-                flash();
-              }}
-            >
-              {t.common.save}
-            </button>
+          <div className="spread">
+            <div className="row">
+              <Switch checked={n.whatsappEnabled} onChange={(v) => setN({ ...n, whatsappEnabled: v })} label={t.admin.notif.whatsappOn} />
+              <Switch checked={n.emailEnabled} onChange={(v) => setN({ ...n, emailEnabled: v })} label={t.admin.notif.emailOn} />
+            </div>
+            {owner && (
+              <div className="row">
+                <SavedFlash show={saved} />
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    api.saveSettings({ ...settings, notifications: n }, role);
+                    flash();
+                  }}
+                >
+                  {t.common.save}
+                </button>
+              </div>
+            )}
           </div>
-        </div>
+        </fieldset>
       </section>
 
       <section className="stack">

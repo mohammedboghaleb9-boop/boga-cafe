@@ -6,8 +6,10 @@ import { useDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { ConfirmButton, Switch } from '../ui';
+import { useAdminRole } from '../session';
 
 export function ShippingPage() {
+  const role = useAdminRole()!;
   const { t, l, money } = useI18n();
   const { shippingRates, settings } = useDb();
   const [simCity, setSimCity] = useState(shippingRates[0]?.id ?? '');
@@ -77,7 +79,7 @@ export function ShippingPage() {
               type="number"
               min={0}
               value={settings.freeShippingOver}
-              onChange={(e) => api.saveSettings({ ...settings, freeShippingOver: num(e.target.value) })}
+              onChange={(e) => api.saveSettings({ ...settings, freeShippingOver: num(e.target.value) }, role)}
             />
           </label>
         </section>

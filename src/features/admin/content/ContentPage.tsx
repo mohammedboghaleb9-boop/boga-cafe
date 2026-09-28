@@ -5,6 +5,7 @@ import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { LocalizedInput, SavedFlash, useSavedFlash } from '../ui';
 import { cleanProfileUrl } from '@/shared/contact';
+import { useAdminRole } from '../session';
 
 export function ContentPage() {
   const { t } = useI18n();
@@ -12,12 +13,14 @@ export function ContentPage() {
   const [content, setContent] = useState<SiteContent>(db.content);
   const [contact, setContact] = useState<Settings['contact']>(db.settings.contact);
   const [saved, flash] = useSavedFlash();
+  const role = useAdminRole()!;
+  const ownsContact = role === 'owner';
   const setC = <K extends keyof SiteContent>(k: K, v: SiteContent[K]) => setContent((c) => ({ ...c, [k]: v }));
   const setK = <K extends keyof Settings['contact']>(k: K, v: Settings['contact'][K]) => setContact((c) => ({ ...c, [k]: v }));
 
   function save() {
     api.saveContent(content);
-    api.saveSettings({ ...db.settings, contact });
+    if (ownsContact) api.saveSettings({ ...db.settings, contact }, role);
     flash();
   }
 
@@ -43,50 +46,53 @@ export function ContentPage() {
         </section>
         <section className="panel stack">
           <h2 className="admin-card-title">{t.admin.content.contactTitle}</h2>
-          <div className="form-grid">
-            <label className="field">
-              <span className="label">{t.admin.content.whatsapp}</span>
-              <input className="input num" dir="ltr" value={contact.whatsapp} onChange={(e) => setK('whatsapp', e.target.value)} />
-            </label>
-            <label className="field">
-              <span className="label">{t.admin.content.email}</span>
-              <input className="input" type="email" value={contact.email} onChange={(e) => setK('email', e.target.value)} />
-            </label>
-            <label className="field span-all">
-              <span className="label">{t.admin.content.instagram}</span>
-              <input
-                className="input"
-                dir="ltr"
-                placeholder="https://www.instagram.com/…"
-                value={contact.instagram}
-                onChange={(e) => setK('instagram', e.target.value)}
-                onBlur={(e) => setK('instagram', cleanProfileUrl(e.target.value))}
-              />
-            </label>
-            <label className="field span-all">
-              <span className="label">{t.admin.content.tiktok}</span>
-              <input
-                className="input"
-                dir="ltr"
-                placeholder="https://www.tiktok.com/@…"
-                value={contact.tiktok}
-                onChange={(e) => setK('tiktok', e.target.value)}
-                onBlur={(e) => setK('tiktok', cleanProfileUrl(e.target.value))}
-              />
-            </label>
-            <label className="field span-all">
-              <span className="label">{t.admin.content.facebook}</span>
-              <input
-                className="input"
-                dir="ltr"
-                placeholder="https://www.facebook.com/…"
-                value={contact.facebook}
-                onChange={(e) => setK('facebook', e.target.value)}
-                onBlur={(e) => setK('facebook', cleanProfileUrl(e.target.value))}
-              />
-            </label>
-          </div>
-          <LocalizedInput id="c-addr" label={t.admin.content.address} value={contact.address} onChange={(v) => setK('address', v)} />
+          {!ownsContact && <p className="small muted">{t.admin.ownerOnly}</p>}
+          <fieldset className="plain-fieldset stack" disabled={!ownsContact}>
+            <div className="form-grid">
+              <label className="field">
+                <span className="label">{t.admin.content.whatsapp}</span>
+                <input className="input num" dir="ltr" value={contact.whatsapp} onChange={(e) => setK('whatsapp', e.target.value)} />
+              </label>
+              <label className="field">
+                <span className="label">{t.admin.content.email}</span>
+                <input className="input" type="email" value={contact.email} onChange={(e) => setK('email', e.target.value)} />
+              </label>
+              <label className="field span-all">
+                <span className="label">{t.admin.content.instagram}</span>
+                <input
+                  className="input"
+                  dir="ltr"
+                  placeholder="https://www.instagram.com/…"
+                  value={contact.instagram}
+                  onChange={(e) => setK('instagram', e.target.value)}
+                  onBlur={(e) => setK('instagram', cleanProfileUrl(e.target.value))}
+                />
+              </label>
+              <label className="field span-all">
+                <span className="label">{t.admin.content.tiktok}</span>
+                <input
+                  className="input"
+                  dir="ltr"
+                  placeholder="https://www.tiktok.com/@…"
+                  value={contact.tiktok}
+                  onChange={(e) => setK('tiktok', e.target.value)}
+                  onBlur={(e) => setK('tiktok', cleanProfileUrl(e.target.value))}
+                />
+              </label>
+              <label className="field span-all">
+                <span className="label">{t.admin.content.facebook}</span>
+                <input
+                  className="input"
+                  dir="ltr"
+                  placeholder="https://www.facebook.com/…"
+                  value={contact.facebook}
+                  onChange={(e) => setK('facebook', e.target.value)}
+                  onBlur={(e) => setK('facebook', cleanProfileUrl(e.target.value))}
+                />
+              </label>
+            </div>
+            <LocalizedInput id="c-addr" label={t.admin.content.address} value={contact.address} onChange={(v) => setK('address', v)} />
+          </fieldset>
         </section>
       </div>
     </>

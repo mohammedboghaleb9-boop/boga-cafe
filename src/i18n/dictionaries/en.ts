@@ -225,7 +225,7 @@ export const en = {
     ],
     blendsTitle: 'The 3 B2B blends',
     sampleTitle: 'Request a 500 g sample',
-    sampleText: 'Your request goes straight to the administration. We call you back to confirm.',
+    sampleText: 'Fill in the form: the request is written out for our team, and the next step shows you how it reaches us. We call you back to confirm.',
     largeTitle: 'Large order?',
     largeText: 'Above 10 kg, contact the team directly or fill your cart and send it as a request.',
     largeCta: 'Contact on WhatsApp',
@@ -332,6 +332,8 @@ export const en = {
     itemsTitle: 'Items',
     nextPaid: 'Your payment is confirmed. We prepare your coffee with our roaster, then it leaves in BOGA CAFÉ packaging.',
     nextPending: 'We prepare the order as soon as the payment is confirmed.',
+    cancelledText: 'This order is cancelled and its coffee is back in stock. If you had already paid, contact us on WhatsApp: we refund you.',
+    deliveredText: 'Delivered. Enjoy your coffee! For a new order or a question, we are on WhatsApp.',
     notFound: 'Order not found on this device.',
   },
 
@@ -375,6 +377,7 @@ export const en = {
     pending: 'Passing it on to the BOGA CAFÉ team…',
     title: 'Last step: send us your request',
     text: 'It reaches our WhatsApp from your number, so we answer you directly. Everything is already written: just press send.',
+    slow: 'Automatic sending is taking longer than usual. To be sure, send it on WhatsApp as well: everything is already written.',
     titleAuto: 'Your request has reached us',
     textAuto: 'The team has been notified. To speed things up, you can also send it on WhatsApp.',
     whatsapp: 'Send on WhatsApp',
@@ -403,6 +406,7 @@ export const en = {
   },
 
   admin: {
+    ownerOnly: 'Owner only: these details receive customers’ orders and payments.',
     title: 'Admin Panel',
     loginTitle: 'Sign in to the Admin Panel',
     loginText: 'Prototype: choose a role to see its permissions. Password: {pwd}',

@@ -19,8 +19,26 @@ export function StoreLayout() {
   // new page: back to the top, or to the section named in the link (/b2b#sample)
   useEffect(() => {
     const target = hash ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
-    if (target) target.scrollIntoView({ block: 'start' });
-    else window.scrollTo({ top: 0 });
+    if (!target) {
+      window.scrollTo({ top: 0 });
+      return;
+    }
+    const land = () => target.scrollIntoView({ block: 'start' });
+    land();
+    if (typeof ResizeObserver === 'undefined') return;
+    // web fonts and images arriving just after change the height of what is above:
+    // keep the section in place while the page settles, until the visitor moves
+    const settle = new ResizeObserver(land);
+    settle.observe(document.body);
+    const stop = () => settle.disconnect();
+    const timer = window.setTimeout(stop, 1500);
+    const moves = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
+    moves.forEach((e) => window.addEventListener(e, stop, { passive: true, once: true }));
+    return () => {
+      stop();
+      window.clearTimeout(timer);
+      moves.forEach((e) => window.removeEventListener(e, stop));
+    };
   }, [pathname, hash]);
 
   // unpaid orders past the time limit give their stock back

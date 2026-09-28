@@ -374,6 +374,24 @@ textarea {
 .form-grid .span-all {
   grid-column: 1 / -1;
 }
+/* groups fields without the browser's frame; disabled = read-only for this role */
+.plain-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.switch:has(input:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .check {
   display: inline-flex;

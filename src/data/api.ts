@@ -4,7 +4,7 @@
  */
 import { summarizeCart } from '@/core/cart';
 import { buildOrder, expiredUnpaidOrders, type CheckoutError, type CheckoutInput } from '@/core/order';
-import { applyStock, isLowStock } from '@/core/stock';
+import { adjustOriginStock, applyStock, isLowStock } from '@/core/stock';
 import { normalizePhone, isEmail } from '@/core/validation';
 import type {
   BusinessType,
@@ -29,7 +29,7 @@ import { checkoutContext, templateContext } from './context';
 import { newReference, uid } from './ids';
 import type { DbState } from './state';
 import { db } from './store';
-import { canSetPayment, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
+import { canSetPayment, settingsChangeRefused, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
 const now = () => new Date().toISOString();
@@ -298,13 +298,11 @@ export const api = {
   adjustStock(originId: string, deltaKg: number, reason: StockReason, note: string) {
     const at = now();
     db.update((s) => {
-      const origins = applyStock(s.origins, [{ originId, kg: deltaKg }], 1).map((o) =>
-        o.id === originId && o.stockKg < 0 ? { ...o, stockKg: 0 } : o,
-      );
+      const { origins, appliedKg } = adjustOriginStock(s.origins, originId, deltaKg);
       return {
         ...s,
         origins,
-        stockMovements: [{ id: uid(), at, originId, deltaKg, reason, ref: '', note }, ...s.stockMovements],
+        stockMovements: [{ id: uid(), at, originId, deltaKg: appliedKg, reason, ref: '', note }, ...s.stockMovements],
         notifications: [...withLowStockAlerts(s.origins, origins, s, at), ...s.notifications],
       };
     });
@@ -327,8 +325,11 @@ export const api = {
     db.update((s) => ({ ...s, paymentMethods: s.paymentMethods.map((m) => (m.id === method.id ? method : m)) }));
   },
 
-  saveSettings(settings: Settings) {
+  /** Returns false when the role may not change these settings (core/orderFlow MANAGER_SETTINGS). */
+  saveSettings(settings: Settings, role: AdminRole): boolean {
+    if (settingsChangeRefused(db.get().settings, settings, role)) return false;
     db.update((s) => ({ ...s, settings }));
+    return true;
   },
 
   saveContent(content: SiteContent) {

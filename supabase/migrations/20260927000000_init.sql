@@ -326,6 +326,22 @@ end $$;
 create trigger origins_guard_stock before update of stock_kg on public.origins
   for each row execute function public.guard_stock();
 
+-- A new origin created from the admin starts at 0 kg: its first stock comes in
+-- through adjust_stock('restock'), so it appears in the history. (Imports run
+-- by the server itself, without a signed-in user, may set a starting stock.)
+create or replace function public.guard_new_origin_stock()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.stock_kg <> 0 and auth.uid() is not null then
+    raise exception 'stock_changes_go_through_functions';
+  end if;
+  return new;
+end $$;
+
+create trigger origins_guard_new_stock before insert on public.origins
+  for each row execute function public.guard_new_origin_stock();
+
 -- ───────────── Order commit (server only) ─────────────
 -- p_order is the object produced by src/core/order.ts buildOrder(), already
 -- validated by the Edge Function. This function makes it durable atomically:
@@ -440,6 +456,7 @@ begin
       values (d ->> 'originId', (d ->> 'kg')::numeric, 'order_cancelled', v_order.number, auth.uid());
     end loop;
     update public.orders set stock_returned = true where id = p_order_id;
+    perform set_config('boga.stock_write', '', true);
   end if;
 
   update public.orders set status = p_status where id = p_order_id;
@@ -466,7 +483,10 @@ begin
   if not coalesce(case p_status
         when 'paid' then v_order.payment_status in ('pending', 'awaiting_verification', 'failed')
         when 'failed' then v_order.payment_status in ('pending', 'awaiting_verification')
-        when 'refunded' then v_order.payment_status = 'paid'
+        -- same as src/core/orderFlow.ts: never mid-production; late money on a cancelled order can be refunded
+        when 'refunded' then v_order.status in ('new', 'confirmed', 'cancelled', 'delivered')
+                             and (v_order.payment_status = 'paid'
+                                  or (v_order.status = 'cancelled' and v_order.payment_status <> 'refunded'))
         when 'pending' then v_order.payment_status in ('awaiting_verification', 'failed')
         when 'awaiting_verification' then v_order.payment_status in ('pending', 'failed')
       end, false) then
@@ -555,7 +575,9 @@ create or replace function public.guard_settings()
 returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if new.settings is distinct from old.settings
+  -- managers may change the free-shipping threshold (Livraison page) and
+  -- nothing else: same rule as MANAGER_SETTINGS in src/core/orderFlow.ts
+  if (new.settings - 'freeShippingOver') is distinct from (old.settings - 'freeShippingOver')
      and auth.uid() is not null
      and not public.is_admin(array['owner']) then
     raise exception 'owner_only';
@@ -587,7 +609,7 @@ language plpgsql security definer set search_path = public as $$
 begin
   update public.orders
      set payment_status = 'awaiting_verification', payment_ref = left(p_ref, 80)
-   where id = p_order_id and payment_status = 'pending' and payment_method <> 'card';
+   where id = p_order_id and payment_status = 'pending' and payment_method <> 'card' and status <> 'cancelled';
   if found then
     insert into public.order_events (order_id, label) values (p_order_id, 'payment.reported');
   end if;

@@ -49,7 +49,7 @@ export function SendToBoga({
   const whatsappText = `${GREETING}\n\n${draft.whatsapp}`;
   const emailText = `${GREETING}\n\n${draft.email}`;
   const title = status === 'sent' ? t.handoff.titleAuto : status === 'pending' ? t.handoff.pending : t.handoff.title;
-  const text = status === 'sent' ? t.handoff.textAuto : t.handoff.text;
+  const text = status === 'sent' ? t.handoff.textAuto : status === 'slow' ? t.handoff.slow : t.handoff.text;
 
   return (
     <section className={`handoff handoff-${status}`} aria-label={t.handoff.title}>

@@ -18,7 +18,7 @@ import type {
   StockMovement,
 } from '@/core/types';
 import { checkoutContext } from '../context';
-import { reference, uid } from '../ids';
+import { reference, uid, type RefPrefix } from '../ids';
 import type { DbState } from '../state';
 
 /**
@@ -28,6 +28,12 @@ import type { DbState } from '../state';
  */
 const LATEST = Date.parse('2026-09-27T08:40:00Z');
 const ago = (iso: string) => new Date(Date.now() - 3_600_000 - (LATEST - Date.parse(iso))).toISOString();
+
+/** A demo request moved to today's dates keeps a reference of its own year. */
+const dated = (prefix: RefPrefix, n: number, iso: string) => {
+  const createdAt = ago(iso);
+  return { number: reference(prefix, n, new Date(createdAt).getFullYear()), createdAt };
+};
 
 const customer = (fullName: string, phone: string, cityId: string, address: string): CustomerInfo => ({
   fullName,
@@ -148,7 +154,7 @@ export function buildDemoActivity(base: DbState): DbState {
   const movements: StockMovement[] = [];
 
   demoOrders.forEach((d, i) => {
-    const number = reference('BC', i + 1, 2026);
+    const number = reference('BC', i + 1, new Date(d.at).getFullYear());
     const r = buildOrder(
       { items: d.items, customer: d.customer, paymentMethod: d.payment, locale: 'fr' },
       ctx,
@@ -183,8 +189,7 @@ export function buildDemoActivity(base: DbState): DbState {
   const samples: SampleRequest[] = [
     {
       id: uid(),
-      number: reference('SR', 1, 2026),
-      createdAt: ago('2026-09-22T13:30:00Z'),
+      ...dated('SR', 1, '2026-09-22T13:30:00Z'),
       businessType: 'hotel',
       company: 'Hôtel Les Orangers',
       contactName: 'Nadia Berrada',
@@ -201,8 +206,7 @@ export function buildDemoActivity(base: DbState): DbState {
     },
     {
       id: uid(),
-      number: reference('SR', 2, 2026),
-      createdAt: ago('2026-09-25T10:10:00Z'),
+      ...dated('SR', 2, '2026-09-25T10:10:00Z'),
       businessType: 'restaurant',
       company: 'Restaurant Al Bahr',
       contactName: 'Omar Haddou',
@@ -219,8 +223,7 @@ export function buildDemoActivity(base: DbState): DbState {
     },
     {
       id: uid(),
-      number: reference('SR', 3, 2026),
-      createdAt: ago('2026-09-27T07:55:00Z'),
+      ...dated('SR', 3, '2026-09-27T07:55:00Z'),
       businessType: 'cafe',
       company: 'Café Zellige',
       contactName: 'Rachid Benali',
@@ -241,8 +244,7 @@ export function buildDemoActivity(base: DbState): DbState {
   const quotes: QuoteRequest[] = [
     {
       id: uid(),
-      number: reference('QR', 1, 2026),
-      createdAt: ago('2026-09-26T16:20:00Z'),
+      ...dated('QR', 1, '2026-09-26T16:20:00Z'),
       businessType: 'company',
       company: 'Bureau Nord SARL',
       contactName: 'Anas Mansouri',

@@ -85,4 +85,19 @@ export function applyStock(origins: Origin[], deductions: StockDeduction[], sign
   );
 }
 
+/**
+ * Manual stock change from the admin (restock, correction). Stock never goes
+ * under 0, so the change that really happened can be smaller than the one
+ * asked: that one goes to the history (database: adjust_stock does the same).
+ */
+export function adjustOriginStock(origins: Origin[], originId: string, deltaKg: number): { origins: Origin[]; appliedKg: number } {
+  const before = origins.find((o) => o.id === originId);
+  if (!before) return { origins, appliedKg: 0 };
+  const stockKg = Math.max(0, roundKg(before.stockKg + deltaKg));
+  return {
+    origins: origins.map((o) => (o.id === originId ? { ...o, stockKg } : o)),
+    appliedKg: roundKg(stockKg - before.stockKg),
+  };
+}
+
 export const isLowStock = (origin: Origin) => origin.active && origin.stockKg <= origin.lowStockKg;
