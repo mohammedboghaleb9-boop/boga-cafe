@@ -33,5 +33,7 @@ export function draftsToLogs(
 /** wa.me link with a pre-filled message (customer → BOGA or admin → customer). */
 export function whatsappLink(phone: string, text: string): string {
   const digits = phone.replace(/\D/g, '');
-  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+  // no invisible direction marks in the message (they show as boxes on some phones)
+  const clean = text.replace(/[\u2066-\u2069\u200e\u200f]/g, '');
+  return `https://wa.me/${digits}?text=${encodeURIComponent(clean)}`;
 }

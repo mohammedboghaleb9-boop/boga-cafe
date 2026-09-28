@@ -4,7 +4,7 @@
  */
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, HashRouter, MemoryRouter, Route, Routes } from 'react-router';
-import { CartProvider } from '@/features/cart/CartProvider';
+import { CartProvider } from '@/shared/cart/CartProvider';
 import { I18nProvider } from '@/i18n';
 import { StoreLayout } from '@/shared/layout/StoreLayout';
 import { B2BPage } from '@/features/b2b/B2BPage';

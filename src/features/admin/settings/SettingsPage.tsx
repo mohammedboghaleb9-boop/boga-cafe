@@ -7,8 +7,10 @@ import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { PERMISSIONS, ROLES, SECTIONS } from '../permissions';
 import { ConfirmButton, SavedFlash, Switch, useSavedFlash } from '../ui';
+import { useAdminRole } from '../session';
 
 export function SettingsPage() {
+  const role = useAdminRole()!;
   const { t } = useI18n();
   const db = useDb();
   const [s, setS] = useState<Settings>(db.settings);
@@ -26,7 +28,7 @@ export function SettingsPage() {
             type="button"
             className="btn btn-primary btn-sm"
             onClick={() => {
-              api.saveSettings({ ...db.settings, ...s, bank: db.settings.bank, contact: db.settings.contact, notifications: db.settings.notifications });
+              api.saveSettings({ ...db.settings, ...s, bank: db.settings.bank, contact: db.settings.contact, notifications: db.settings.notifications }, role);
               flash();
             }}
           >

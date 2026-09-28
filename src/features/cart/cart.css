@@ -51,21 +51,6 @@
 .cart-line-problem {
   grid-column: 1 / -1;
 }
-.line-details {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.line-recipe {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  color: var(--ink-2);
-}
-.line-recipe .flag {
-  vertical-align: -2px;
-}
 .cart-subtotal {
   font-size: 1.25rem;
 }

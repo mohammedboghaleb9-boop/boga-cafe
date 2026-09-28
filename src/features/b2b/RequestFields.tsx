@@ -1,4 +1,5 @@
 /** Contact fields shared by the sample request and the +10 kg request. */
+import { TEXT_MAX } from '@/core/limits';
 import type { BusinessType } from '@/core/types';
 import type { ContactRequestInput, RequestError } from '@/data/api';
 import { useDb } from '@/data/hooks';
@@ -50,12 +51,13 @@ export function RequestFields({
         </select>
       </Field>
       <Field label={t.b2b.company} htmlFor={`${idPrefix}-company`} optional>
-        <input id={`${idPrefix}-company`} className="input" value={value.company} onChange={(e) => set('company', e.target.value)} />
+        <input id={`${idPrefix}-company`} className="input" maxLength={TEXT_MAX.company} value={value.company} onChange={(e) => set('company', e.target.value)} />
       </Field>
       <Field label={t.b2b.contactName} htmlFor={`${idPrefix}-name`} error={err('name')}>
         <input
           id={`${idPrefix}-name`}
           className="input"
+          maxLength={TEXT_MAX.name}
           autoComplete="name"
           value={value.contactName}
           aria-invalid={errors.includes('name')}
@@ -66,6 +68,7 @@ export function RequestFields({
         <input
           id={`${idPrefix}-phone`}
           className="input"
+          maxLength={TEXT_MAX.phone}
           type="tel"
           inputMode="tel"
           autoComplete="tel"
@@ -79,6 +82,7 @@ export function RequestFields({
         <input
           id={`${idPrefix}-email`}
           className="input"
+          maxLength={TEXT_MAX.email}
           type="email"
           autoComplete="email"
           value={value.email}
@@ -105,4 +109,14 @@ export function RequestFields({
       </Field>
     </>
   );
+}
+
+const ERROR_ORDER: RequestError[] = ['name', 'phone', 'email', 'city', 'product'];
+
+/** Moves keyboard focus (and the screen) to the first field the customer must fix. */
+export function focusFirstError(idPrefix: string, errors: RequestError[], productFieldId?: string) {
+  const first = ERROR_ORDER.find((e) => errors.includes(e));
+  if (!first) return;
+  const id = first === 'product' ? productFieldId : `${idPrefix}-${first}`;
+  requestAnimationFrame(() => document.getElementById(id ?? '')?.focus());
 }

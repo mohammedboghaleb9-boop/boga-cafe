@@ -102,3 +102,21 @@ export function buildOrder(
     },
   };
 }
+
+/**
+ * Orders to cancel because nobody paid in time (Admin → Settings "cancel
+ * unpaid after … hours"): still "new", payment not received nor reported, and
+ * older than the limit. Cancelling gives their coffee back to stock, so an
+ * abandoned bank transfer cannot hold the stock forever. 0 hours = off.
+ * The same rule runs on the server in phase 2 (scheduled job).
+ */
+export function expiredUnpaidOrders(orders: Order[], timeoutHours: number, now: Date): Order[] {
+  if (!(timeoutHours > 0)) return [];
+  const limit = now.getTime() - timeoutHours * 3_600_000;
+  return orders.filter(
+    (o) =>
+      o.status === 'new' &&
+      (o.paymentStatus === 'pending' || o.paymentStatus === 'failed') &&
+      new Date(o.createdAt).getTime() < limit,
+  );
+}

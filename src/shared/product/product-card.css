@@ -1,0 +1,55 @@
+/* Product card and the grid that holds the cards (shop, home, product, B2B, single origin). */
+.pgrid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+}
+
+.pcard {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.2s;
+}
+.pcard:hover {
+  border-color: var(--line-strong);
+}
+.pcard-media {
+  display: block;
+  border-block-end: 1px solid var(--line);
+}
+.pcard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 16px;
+  flex: 1;
+}
+/* same size whether the card title is an h2 (shop pages) or an h3 */
+.pcard-title {
+  font-size: 1.15rem;
+}
+.pcard-title a {
+  text-decoration: none;
+}
+.pcard-title a:hover {
+  color: var(--accent);
+}
+.pcard-notes {
+  color: var(--ink-2);
+}
+.pcard-foot {
+  margin-block-start: auto;
+  padding-block-start: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pcard-price strong {
+  font-size: 1.1rem;
+}

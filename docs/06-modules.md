@@ -7,22 +7,47 @@
 | القسم | الرابط | المجلد | ملفات مهمة |
 |---|---|---|---|
 | الرئيسية | `/` | `src/features/home` | `HomePage.tsx` (ترتيب الأقسام) + `sections/*.tsx` (كل قسم ملف) |
-| المتجر | `/shop` | `src/features/shop` | `ShopPage.tsx`، `ProductCard.tsx` (بطاقة المنتج المستعملة في كل مكان) |
+| المتجر | `/shop` | `src/features/shop` | `ShopPage.tsx` |
+| بطاقة المنتج | المتجر، الرئيسية، المنتج، B2B، أحادي المصدر | `src/shared/product` | `ProductCard.tsx` + `product-card.css` (البطاقة وشبكتها) |
 | صفحة المنتج | `/product/:slug` | `src/features/product` | `ProductPage.tsx` |
 | أحادي المصدر | `/single-origin` | `src/features/single-origin` | |
 | الخلطة الخاصة | `/custom-blend` | `src/features/custom-blend` | `CustomBlendPage.tsx`، `blend-helpers.ts` |
-| المهنيون B2B | `/b2b` | `src/features/b2b` | `SampleRequestForm.tsx`، `QuoteRequestForm.tsx` |
-| السلة | `/cart` | `src/features/cart` | `CartPage.tsx`، `CartProvider.tsx` (حالة السلة) |
+| المهنيون B2B | `/b2b` | `src/features/b2b` | `SampleRequestForm.tsx`، `QuoteRequestForm.tsx`؛ `index.ts` = ما يُسمح للأقسام الأخرى باستعماله |
+| السلة | `/cart` | `src/features/cart` | `CartPage.tsx` |
+| حالة السلة وسطر الطلب | كل المتجر | `src/shared/cart` | `CartProvider.tsx` (حالة السلة، تنظيف ما يُقرأ من المتصفح)، `CartLineView.tsx` (سطر السلة/الطلب) |
 | الدفع وصفحة الطلب | `/checkout`، `/order/:id` | `src/features/checkout` | `CheckoutPage.tsx`، `PaymentPanel.tsx`، `OrderPage.tsx` |
 | اتصل بنا | `/contact` | `src/features/contact` | |
 | الإدارة | `/admin/...` | `src/features/admin` | مجلد لكل قسم + `permissions.ts` |
 | الرأس والتذييل | كل الصفحات | `src/shared/layout` | `Header.tsx`، `Footer.tsx`، `SocialLinks.tsx` |
-| الكيس والملصق | كل الصفحات | `src/shared/ui/BagMockup.tsx` + `bag.css` | |
+| قنوات التواصل | صفحة الاتصال، الرئيسية، التذييل | `src/shared/layout`، `src/shared/contact.ts` | `ChannelCards.tsx` (الإطارات)، `channels.ts` (القائمة من الإعدادات)، `BrandIcon.tsx` (الشعارات الأصلية) |
+| إرسال الطلبات للإدارة | بعد كل طلب/عيّنة/طلب B2B | `src/shared/layout/SendToBoga.tsx`، `src/services/notifications/deliver.ts`، `api/notify.ts` | بطاقة واتساب/Gmail للزبون + الإرسال الآلي. التفاصيل: `docs/09-notifications.md` |
+| قواعد حالة الطلب والدفع | الإدارة وقاعدة البيانات | `src/core/orderFlow.ts` | خطوة بخطوة، لا إنتاج قبل الدفع، المالك وحده يسجّل الدفع (نفس القواعد في SQL) |
+| الشعار | كل الصفحات | `brand/` | `brand/source/build_logo.py` ثم تُنسخ النسخ تلقائياً إلى `src/assets/brand` |
+| صورة المنتج | المتجر، المنتج، الخلطة الخاصة | `src/shared/ui/ProductVisual.tsx` + `src/shared/sticker.ts` | الكيس الحقيقي + ملصق المنتج المولَّد من البيانات |
+| الصور والشعار | كل الصفحات | `src/shared/media.ts` + `src/assets/` | القائمة المعتمدة في `docs/08-visual-assets.md` |
+| الحركة مع السكرول | كل المتجر | `src/styles/motion.css` | تُطفأ تلقائياً عند من يطلب تقليل الحركة |
+
+### قواعد التقسيم (مختبرة آلياً)
+
+`tests/architecture.test.ts` يفشل إذا خُرقت إحدى هذه القواعد، فلا يمكن كسر التقسيم دون أن يُلاحظ:
+
+1. `src/core` منطق أعمال خالص: لا React، ولا بيانات، ولا واجهة.
+2. `src/shared` و `src/data` و `src/services` و `src/i18n` لا تعتمد على أي قسم من `src/features`.
+3. قسم يستعمل قسماً آخر فقط عبر ملفه العام `index.ts` (مثلاً السلة ← `@/features/b2b` لنموذج طلب +10 كلغ).
+4. لا شيء خارج الإدارة يستورد كود الإدارة.
+
+ترتيب ملفات التنسيق: الأساس (`fonts` ← `tokens` ← `base`) ثم تنسيق كل قسم (يستورده مكوّنه) ثم طبقة الحركة (`motion.css`). لذلك يستطيع تنسيق القسم تعديل الأساس دون حيل.
 
 ## 2. تعديلات شائعة
 
 ### تغيير الألوان أو الخطوط
-`src/styles/tokens.css` فقط. الوضع الفاتح (ملصق فضي) في أعلى الملف، والوضع الداكن (الكيس الأسود) تحته.
+`src/styles/tokens.css` فقط. المتجر يستعمل دائماً ألوان «الكيس الأسود» (آخر كتلة في الملف)، ولوحة الإدارة تستعمل الوضع الفاتح أو الداكن حسب جهاز المستخدم.
+
+### تبديل صورة
+ضع الملف الجديد في `src/assets/photos/` بنفس الاسم وحدّث مقاسه في `src/shared/media.ts`. القواعد في `docs/08-visual-assets.md`.
+
+### تعديل الحركة مع السكرول
+`src/styles/motion.css`: كل حركة في كتلة واحدة (الصورة الافتتاحية، الظهور التدريجي، التأثير العمقي، ختم الخلطة الخاصة، الرأس).
 
 ### تغيير نص ثابت في الواجهة (زر، عنوان…)
 `src/i18n/dictionaries/ar.ts` و `fr.ts` و `en.ts` — نفس المفتاح في الملفات الثلاثة. إن نسيت لغة، يرفض المشروع البناء ويخبرك بالمكان.

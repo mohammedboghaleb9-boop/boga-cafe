@@ -70,7 +70,7 @@ export function ProductEditor() {
       <div className="admin-head">
         <div className="stack" style={{ ['--gap' as string]: '4px' }}>
           <Link to="/admin/products" className="small">
-            ← {t.admin.nav.products}
+            <span className="dir-arrow" aria-hidden="true">←</span> {t.admin.nav.products}
           </Link>
           <h1>{isNew ? t.admin.products.add : l(p.name)}</h1>
         </div>

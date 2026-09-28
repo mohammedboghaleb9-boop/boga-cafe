@@ -5,7 +5,6 @@ export const fr: Dict = {
   meta: { dir: 'ltr', label: 'Français', short: 'FR', intl: 'fr-MA' },
 
   nav: {
-    home: 'Accueil',
     shop: 'Boutique',
     singleOrigin: 'Single Origin',
     customBlend: 'Custom Blend',
@@ -96,9 +95,22 @@ export const fr: Dict = {
   },
 
   demo: {
-    banner: 'Prototype : données d’exemple, aucun paiement ni message réel.',
-    reset: 'Réinitialiser',
+    banner: 'Prototype : produits, prix et stock sont des exemples, aucun paiement n’est réel. Les messages WhatsApp et Gmail que vous envoyez arrivent vraiment chez BOGA CAFÉ.',
     openAdmin: 'Ouvrir le Panel Admin',
+  },
+
+  media: {
+    hero: 'Trois sachets BOGA CAFÉ, 250 g, 500 g et 1 kg, sur une table en bois avec des grains torréfiés',
+    pouch: 'Sachet BOGA CAFÉ : {name}, {size}',
+    openBag: 'Sachet BOGA CAFÉ ouvert, grains torréfiés répandus sur le bois',
+    seal: 'Le sceau rond Custom Blend de BOGA CAFÉ',
+    label: 'L’étiquette hexagonale BOGA CAFÉ',
+    roaster: 'Grains fraîchement torréfiés tombant dans le bac de refroidissement',
+    roastery: 'Le torréfacteur et des sacs de jute de café vert',
+    greenBeans: 'Sacs de jute remplis de café vert avec une pelle en bois',
+    barista: 'Un barista prépare un double espresso à côté d’un sachet BOGA CAFÉ',
+    tray: 'Tasse de café sur un plateau marocain en laiton, à côté d’un sachet BOGA CAFÉ',
+    flatlay: 'Trois tas de café torréfié, du plus clair au plus foncé, à côté d’une balance en laiton et d’une pelle en cuivre',
   },
 
   home: {
@@ -131,6 +143,7 @@ export const fr: Dict = {
       'Trois blends pensés pour les professionnels, un échantillon de 500 g sur demande, et les commandes de plus de 10 kg traitées directement par notre équipe.',
     b2bCta: 'Découvrir B2B / HORECA',
     followTitle: 'Suivre BOGA CAFÉ',
+    followText: 'Les coulisses de la torréfaction, les recettes et les nouvelles origines.',
   },
 
   shop: {
@@ -175,7 +188,6 @@ export const fr: Dict = {
     pickFirst: 'Sélectionnez au moins un café ci-dessus.',
     summary: 'Votre blend',
     gramsTitle: 'Dans chaque sachet',
-    priceTitle: 'Détail du prix',
     bagFee: 'Sachet, assemblage & conditionnement',
     unitPrice: 'Prix par sachet',
     roastTitle: 'Degré de torréfaction',
@@ -197,6 +209,7 @@ export const fr: Dict = {
   },
 
   b2b: {
+    blendError: 'Choisissez un blend disponible.',
     eyebrow: 'B2B / HORECA',
     title: 'Du café pour les cafés, hôtels et restaurants',
     intro:
@@ -210,7 +223,7 @@ export const fr: Dict = {
     ],
     blendsTitle: 'Les 3 blends B2B',
     sampleTitle: 'Demander un échantillon de 500 g',
-    sampleText: 'Votre demande arrive directement à l’administration. Nous vous rappelons pour confirmer.',
+    sampleText: 'Remplissez le formulaire : la demande est rédigée pour notre équipe, et l’étape suivante vous montre comment elle nous parvient. Nous vous rappelons pour confirmer.',
     largeTitle: 'Grosse commande ?',
     largeText: 'Au-delà de 10 kg, contactez directement l’équipe ou remplissez votre panier et envoyez-le en demande.',
     largeCta: 'Contacter sur WhatsApp',
@@ -231,7 +244,6 @@ export const fr: Dict = {
     monthly: 'Consommation estimée (kg / mois)',
     notes: 'Message',
     submitSample: 'Envoyer la demande d’échantillon',
-    sampleSent: 'Demande {ref} reçue. Notre équipe vous contacte rapidement.',
     deliveryFee: 'Livraison vers {city} : {fee}',
   },
 
@@ -245,6 +257,7 @@ export const fr: Dict = {
     checkout: 'Valider la commande',
     continue: 'Continuer mes achats',
     problems: {
+      invalid_quantity: 'Quantité invalide : réglez-la à nouveau.',
       missing_product: 'Ce produit n’est plus disponible.',
       size_not_offered: 'Ce format n’est plus proposé.',
       invalid_blend: 'Ce blend n’est plus valide (une origine a été désactivée).',
@@ -254,7 +267,6 @@ export const fr: Dict = {
     b2bText:
       'Votre panier pèse {w} kg. Au-delà de {max} kg, notre équipe fixe le prix final (quantité, distance, ville, conditions). Envoyez le panier en demande ou contactez-nous sur WhatsApp.',
     b2bSend: 'Envoyer ma demande B2B',
-    b2bSent: 'Demande {ref} reçue. L’équipe vous recontacte avec le prix final.',
     b2bWhatsapp: 'Bonjour BOGA CAFÉ, je souhaite commander {w} kg :',
   },
 
@@ -298,7 +310,6 @@ export const fr: Dict = {
     cvc: 'CVC',
     pay: 'Payer {amount}',
     simulateFail: 'Simuler un refus',
-    retry: 'Réessayer',
     failed: 'Le paiement a été refusé. Réessayez ou choisissez un autre moyen via WhatsApp.',
     beneficiary: 'Bénéficiaire',
     bank: 'Banque',
@@ -314,15 +325,14 @@ export const fr: Dict = {
 
   order: {
     thanks: 'Merci {name} !',
-    received: 'Commande {ref} reçue.',
+    received: 'Commande {ref} enregistrée.',
     statusTitle: 'Suivi de la commande',
-    paymentStatus: 'Paiement',
     itemsTitle: 'Articles',
-    nextTitle: 'La suite',
     nextPaid: 'Votre paiement est confirmé. Nous préparons votre café avec notre torréfacteur, puis il part dans l’emballage BOGA CAFÉ.',
     nextPending: 'Nous préparons la commande dès que le paiement est confirmé.',
-    adminNotified: 'L’administration a reçu un WhatsApp et un email pour cette commande.',
-    seeInAdmin: 'La voir dans le Panel Admin',
+    cancelledText: 'Cette commande est annulée et son café est remis en stock. Si vous aviez déjà payé, contactez-nous sur WhatsApp : nous vous remboursons.',
+    refundedText: 'Votre paiement a été remboursé. Pour toute question, nous sommes sur WhatsApp.',
+    deliveredText: 'Commande livrée. Bonne dégustation ! Pour une nouvelle commande ou une question, nous sommes sur WhatsApp.',
     notFound: 'Commande introuvable sur cet appareil.',
   },
 
@@ -347,8 +357,40 @@ export const fr: Dict = {
     title: 'Contact',
     intro: 'Pour une commande, une torréfaction particulière ou une demande B2B, l’équipe répond sur WhatsApp et par email.',
     address: 'Adresse',
-    social: 'Réseaux sociaux',
     whatsappText: 'Bonjour BOGA CAFÉ,',
+    channels: 'Nos canaux',
+    channelsText: 'Choisissez celui qui vous convient : commandes et reçus de paiement passent plus vite sur WhatsApp.',
+    whatsappDesc: 'Commandes, reçus de paiement et questions B2B. Le moyen le plus rapide de nous joindre.',
+    whatsappCta: 'Écrire sur WhatsApp',
+    instagramDesc: 'Nouveaux blends, retours en stock et la vie de la torréfaction.',
+    tiktokDesc: 'Conseils de préparation et coulisses, en vidéo.',
+    facebookDesc: 'Actualités et événements.',
+    followCta: 'Suivre',
+    gmailDesc: 'Factures, devis B2B et partenariats.',
+    gmailCta: 'Écrire via Gmail',
+    emailSubject: 'BOGA CAFÉ — demande',
+  },
+
+  handoff: {
+    saved: 'Demande {ref} enregistrée.',
+    pending: 'Transmission à l’équipe BOGA CAFÉ…',
+    title: 'Dernière étape : envoyez-nous votre demande',
+    text: 'Elle arrive sur notre WhatsApp depuis votre numéro, pour qu’on vous réponde directement. Tout est déjà rédigé : il suffit d’appuyer sur envoyer.',
+    slow: 'L’envoi automatique prend plus de temps que prévu. Pour être sûr, envoyez-la aussi sur WhatsApp : tout est déjà rédigé.',
+    titleAuto: 'Votre demande nous est parvenue',
+    textAuto: 'L’équipe a été prévenue. Pour aller plus vite, vous pouvez aussi l’envoyer sur WhatsApp.',
+    whatsapp: 'Envoyer sur WhatsApp',
+    gmail: 'Envoyer par Gmail',
+    otherMail: 'Utiliser une autre application mail',
+    preview: 'Voir le message (en français, pour notre équipe)',
+  },
+
+  a11y: {
+    mainNav: 'Menu principal',
+    mobileNav: 'Menu',
+    breadcrumb: 'Vous êtes ici',
+    decrease: 'Un de moins',
+    increase: 'Un de plus',
   },
 
   footer: {
@@ -363,6 +405,7 @@ export const fr: Dict = {
   },
 
   admin: {
+    ownerOnly: 'Réservé au propriétaire : ces coordonnées reçoivent les commandes et les paiements des clients.',
     title: 'Panel Admin',
     loginTitle: 'Connexion au Panel Admin',
     loginText: 'Prototype : choisissez un rôle pour voir ses permissions. Mot de passe : {pwd}',
@@ -412,9 +455,13 @@ export const fr: Dict = {
       markPaid: 'Marquer payé',
       markFailed: 'Marquer échoué',
       markRefunded: 'Marquer remboursé',
+      refundConfirm: 'Confirmer le remboursement',
+      refundCancelConfirm: 'Confirmer : rembourser et annuler (le stock est rendu)',
       next: 'Passer à : {status}',
       cancel: 'Annuler la commande',
       cancelConfirm: 'Confirmer l’annulation (le stock est rendu)',
+      needsPayment: 'Paiement requis avant la production (pas de paiement à la livraison).',
+      ownerPayments: 'Seul le propriétaire enregistre les paiements.',
       history: 'Historique',
       stockUsed: 'Stock réservé',
       contactCustomer: 'WhatsApp au client',
@@ -433,6 +480,7 @@ export const fr: Dict = {
         'status.shipped': 'Statut : expédiée',
         'status.delivered': 'Statut : livrée',
         'status.cancelled': 'Statut : annulée',
+        'status.expired': 'Annulée automatiquement : non payée dans le délai',
       },
     },
     b2b: {
@@ -507,7 +555,6 @@ export const fr: Dict = {
       country: 'Code pays (ISO)',
       blendRule:
         'Une origine est proposée dans le Custom Blend quand l’interrupteur est activé et que le stock couvre le sachet. Un stock vide la masque automatiquement, le réapprovisionnement la fait revenir.',
-      low: 'Bas',
       empty: 'Vide',
     },
     shipping: {

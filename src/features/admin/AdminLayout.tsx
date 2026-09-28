@@ -34,6 +34,11 @@ export function AdminLayout() {
     window.scrollTo({ top: 0 });
   }, [pathname]);
 
+  // unpaid orders past the time limit give their stock back
+  useEffect(() => {
+    api.expireUnpaidOrders();
+  }, []);
+
   const badges: Partial<Record<Section, number>> = {
     orders: db.orders.filter((o) => o.status === 'new').length,
     b2b: db.samples.filter((s) => s.status === 'new').length + db.quotes.filter((q) => q.status === 'new').length,

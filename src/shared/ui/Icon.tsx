@@ -1,3 +1,5 @@
+import { glyph, type Brand } from './BrandIcon';
+
 /** Small inline icons (no icon font, no external request). */
 const paths: Record<string, string> = {
   cart: 'M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 7H6.2M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z',
@@ -16,10 +18,6 @@ const paths: Record<string, string> = {
   box: 'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',
   scale: 'M12 4v16M5 20h14M6 8h12M6 8l-3 6a3 3 0 0 0 6 0Zm12 0-3 6a3 3 0 0 0 6 0Z',
   bean: 'M15.5 3.5c3 2 3.6 7 .9 11.1-2.7 4.2-7.4 6-10.4 4s-3.6-7-.9-11.1C7.8 3.3 12.5 1.5 15.5 3.5ZM9 19c-.5-3.5 1.7-5.7 3.4-7.4C14 10 15.8 7.7 15.5 3.6',
-  instagram: 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4Zm5 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm5.5-9.5h.01',
-  facebook: 'M14 8h3V4h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V8Z',
-  tiktok: 'M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5M14 3c.4 2.6 2.2 4.4 5 4.6',
-  whatsapp: 'M4 20l1.3-4A8 8 0 1 1 8.4 19ZM9 8.5c0 3.5 3 6.5 6.5 6.5l1-1.6-2-1-1 .9a4.6 4.6 0 0 1-2.3-2.3l.9-1-1-2Z',
   chart: 'M4 20h16M7 16v-5M12 16V6M17 16v-8',
   briefcase: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16',
   tag: 'M3 12V4h8l10 10-8 8L3 12Zm5-4h.01',
@@ -33,7 +31,12 @@ const paths: Record<string, string> = {
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
 };
 
-export type IconName = keyof typeof paths;
+/** Platform marks are the official filled glyphs, in the current text colour. */
+const brands = ['whatsapp', 'instagram', 'tiktok', 'facebook', 'gmail'] as const satisfies readonly Brand[];
+
+export type IconName = keyof typeof paths | (typeof brands)[number];
+
+const isBrand = (name: IconName): name is Brand => (brands as readonly string[]).includes(name);
 
 export function Icon({ name, size = 20, className }: { name: IconName; size?: number; className?: string }) {
   return (
@@ -50,7 +53,7 @@ export function Icon({ name, size = 20, className }: { name: IconName; size?: nu
       aria-hidden="true"
       focusable="false"
     >
-      <path d={paths[name]} />
+      {isBrand(name) ? <path d={glyph[name]} fill="currentColor" stroke="none" /> : <path d={paths[name]} />}
     </svg>
   );
 }

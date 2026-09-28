@@ -2,7 +2,8 @@ import { useSearchParams } from 'react-router';
 import type { ProductKind } from '@/core/types';
 import { useCatalog } from '@/data/hooks';
 import { useI18n } from '@/i18n';
-import { ProductCard } from './ProductCard';
+import { ProductCard } from '@/shared/product/ProductCard';
+import './shop.css';
 
 type Filter = 'all' | ProductKind;
 
@@ -43,7 +44,7 @@ export function ShopPage() {
       ) : (
         <div className="pgrid">
           {visible.map((p) => (
-            <ProductCard key={p.id} product={p} />
+            <ProductCard key={p.id} product={p} headingLevel={2} />
           ))}
         </div>
       )}

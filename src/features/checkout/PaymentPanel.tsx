@@ -4,6 +4,7 @@
  * Cash Plus / transfer: instructions, reference, and "I have paid".
  */
 import { useState, type FormEvent } from 'react';
+import { awaitsPayment } from '@/core/orderFlow';
 import type { Order } from '@/core/types';
 import { api } from '@/data/api';
 import { useDb } from '@/data/hooks';
@@ -29,6 +30,8 @@ export function PaymentPanel({ order }: { order: Order }) {
   if (order.paymentStatus === 'awaiting_verification') {
     return <p className="notice">{t.payment.reported}</p>;
   }
+  // refunded (after delivery): nothing left to pay, never the payment steps again
+  if (!awaitsPayment(order)) return <p className="notice">{t.paymentStatus[order.paymentStatus]}</p>;
 
   const step = paymentAdapter(order.paymentMethod).start(order);
 

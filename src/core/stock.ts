@@ -77,12 +77,31 @@ export function blockingRestockDate(shortages: Shortage[]): string | undefined {
   return dates.sort().at(-1);
 }
 
-/** sign = -1 removes stock (new order), +1 gives it back (cancelled order). */
+/**
+ * sign = -1 removes stock (new order), +1 gives it back (cancelled orders).
+ * Several orders can use the same coffee: their quantities add up.
+ */
 export function applyStock(origins: Origin[], deductions: StockDeduction[], sign: 1 | -1): Origin[] {
-  const byId = new Map(deductions.map((d) => [d.originId, d.kg]));
+  const byId = new Map<string, number>();
+  for (const d of deductions) byId.set(d.originId, (byId.get(d.originId) ?? 0) + d.kg);
   return origins.map((o) =>
     byId.has(o.id) ? { ...o, stockKg: roundKg(o.stockKg + sign * byId.get(o.id)!) } : o,
   );
+}
+
+/**
+ * Manual stock change from the admin (restock, correction). Stock never goes
+ * under 0, so the change that really happened can be smaller than the one
+ * asked: that one goes to the history (database: adjust_stock does the same).
+ */
+export function adjustOriginStock(origins: Origin[], originId: string, deltaKg: number): { origins: Origin[]; appliedKg: number } {
+  const before = origins.find((o) => o.id === originId);
+  if (!before) return { origins, appliedKg: 0 };
+  const stockKg = Math.max(0, roundKg(before.stockKg + deltaKg));
+  return {
+    origins: origins.map((o) => (o.id === originId ? { ...o, stockKg } : o)),
+    appliedKg: roundKg(stockKg - before.stockKg),
+  };
 }
 
 export const isLowStock = (origin: Origin) => origin.active && origin.stockKg <= origin.lowStockKg;

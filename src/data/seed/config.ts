@@ -1,7 +1,8 @@
 /**
  * Business configuration for the prototype: delivery fees, payment methods,
  * settings and site texts. All of it is editable from the Admin Panel.
- * Contact details, bank details and fees are placeholders until confirmed.
+ * Contact details are the real BOGA CAFÉ accounts; bank details and fees are
+ * placeholders until confirmed.
  */
 import type { PaymentMethodConfig, Settings, ShippingRate, SiteContent } from '@/core/types';
 
@@ -93,16 +94,16 @@ export const seedSettings: Settings = {
   sampleSizeGrams: 500,
   unpaidOrderTimeoutHours: 48,
   contact: {
-    whatsapp: '+212600000000',
-    email: 'bogacafe@gmail.com',
-    instagram: 'https://www.instagram.com/',
-    tiktok: 'https://www.tiktok.com/',
-    facebook: 'https://www.facebook.com/',
+    whatsapp: '+212609036378',
+    email: 'bogacafe1@gmail.com',
+    instagram: 'https://www.instagram.com/boga.cafe1',
+    tiktok: 'https://www.tiktok.com/@bogacafe795',
+    facebook: 'https://www.facebook.com/profile.php?id=61594620729419',
     address: { ar: 'وجدة، المغرب', fr: 'Oujda, Maroc', en: 'Oujda, Morocco' },
   },
   notifications: {
-    adminWhatsapp: '+212600000000',
-    adminEmail: 'bogacafe@gmail.com',
+    adminWhatsapp: '+212609036378',
+    adminEmail: 'bogacafe1@gmail.com',
     whatsappEnabled: true,
     emailEnabled: true,
   },

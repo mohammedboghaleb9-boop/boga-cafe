@@ -21,13 +21,21 @@ export function addLine(lines: RecipeLine[], originId: string, minPercent: numbe
 }
 
 /** Removing a coffee spreads its share over the others. */
-export function removeLine(lines: RecipeLine[], originId: string): RecipeLine[] {
+export function removeLine(lines: RecipeLine[], originId: string, minPercent = 0): RecipeLine[] {
   const rest = lines.filter((l) => l.originId !== originId);
-  return rest.length ? balanceBlend(rest) : [];
+  return rest.length ? balanceBlend(rest, minPercent) : [];
 }
 
-export function issueText(issue: BlendIssue, t: Dict, origins: OriginIndex, l: (v: Localized) => string): string {
+export function issueText(
+  issue: BlendIssue,
+  t: Dict,
+  origins: OriginIndex,
+  l: (v: Localized) => string,
+  formatDate: (iso: string) => string = (iso) => iso,
+): string {
   const name = 'originId' in issue ? (origins[issue.originId] ? l(origins[issue.originId].name) : issue.originId) : '';
+  // an origin short of stock always says when it is expected back (concept §6)
+  const back = 'restockDate' in issue && issue.restockDate ? ` · ${fmt(t.common.backAround, { date: formatDate(issue.restockDate) })}` : '';
   switch (issue.code) {
     case 'empty':
       return t.blend.issues.empty;
@@ -40,8 +48,8 @@ export function issueText(issue: BlendIssue, t: Dict, origins: OriginIndex, l: (
     case 'duplicate':
       return fmt(t.blend.issues.duplicate, { origin: name });
     case 'unavailable':
-      return fmt(t.blend.issues.unavailable, { origin: name });
+      return fmt(t.blend.issues.unavailable, { origin: name }) + back;
     case 'stock':
-      return fmt(t.blend.issues.stock, { origin: name });
+      return fmt(t.blend.issues.stock, { origin: name }) + back;
   }
 }

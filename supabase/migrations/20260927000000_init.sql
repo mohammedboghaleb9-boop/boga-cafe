@@ -148,18 +148,18 @@ create table public.orders (
   number           text not null unique,
   created_at       timestamptz not null default now(),
   locale           text not null default 'fr' check (locale in ('ar', 'fr', 'en')),
-  customer_name    text not null,
-  phone            text not null,
-  email            text not null default '',
+  customer_name    text not null check (char_length(customer_name) between 1 and 80),
+  phone            text not null check (char_length(phone) <= 24),
+  email            text not null default '' check (char_length(email) <= 120),
   city_id          text not null references public.shipping_rates (id),
-  address          text not null,
-  company          text not null default '',
-  notes            text not null default '',
+  address          text not null check (char_length(address) <= 200),
+  company          text not null default '' check (char_length(company) <= 80),
+  notes            text not null default '' check (char_length(notes) <= 500),
   lines            jsonb not null,             -- frozen copy: name, size, qty, prices, grams per origin
   weight_kg        numeric(10, 3) not null check (weight_kg > 0),
-  subtotal         numeric(10, 2) not null,
-  shipping_fee     numeric(10, 2) not null,
-  total            numeric(10, 2) not null,
+  subtotal         numeric(10, 2) not null check (subtotal > 0),
+  shipping_fee     numeric(10, 2) not null check (shipping_fee >= 0),
+  total            numeric(10, 2) not null check (total > 0),
   payment_method   text not null references public.payment_methods (id),
   payment_status   text not null default 'pending'
                    check (payment_status in ('pending', 'awaiting_verification', 'paid', 'failed', 'refunded')),
@@ -167,7 +167,8 @@ create table public.orders (
   status           text not null default 'new'
                    check (status in ('new', 'confirmed', 'in_production', 'shipped', 'delivered', 'cancelled')),
   stock_deductions jsonb not null,             -- [{"originId": "brazil", "kg": 0.4}, ...]
-  stock_returned   boolean not null default false
+  stock_returned   boolean not null default false,
+  constraint orders_total_adds_up check (total = subtotal + shipping_fee)
 );
 
 create index orders_created_idx on public.orders (created_at desc);
@@ -308,6 +309,39 @@ end $$;
 create trigger origins_low_stock after update of stock_kg on public.origins
   for each row execute function public.alert_low_stock();
 
+-- Stock changes only through commit_order, set_order_status, adjust_stock and
+-- expire_unpaid_orders (which log a stock movement). A direct UPDATE of
+-- stock_kg — even by an admin through the API — is refused.
+create or replace function public.guard_stock()
+returns trigger
+language plpgsql as $$
+begin
+  if new.stock_kg is distinct from old.stock_kg
+     and coalesce(current_setting('boga.stock_write', true), '') <> 'on' then
+    raise exception 'stock_changes_go_through_functions';
+  end if;
+  return new;
+end $$;
+
+create trigger origins_guard_stock before update of stock_kg on public.origins
+  for each row execute function public.guard_stock();
+
+-- A new origin created from the admin starts at 0 kg: its first stock comes in
+-- through adjust_stock('restock'), so it appears in the history. (Imports run
+-- by the server itself, without a signed-in user, may set a starting stock.)
+create or replace function public.guard_new_origin_stock()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.stock_kg <> 0 and auth.uid() is not null then
+    raise exception 'stock_changes_go_through_functions';
+  end if;
+  return new;
+end $$;
+
+create trigger origins_guard_new_stock before insert on public.origins
+  for each row execute function public.guard_new_origin_stock();
+
 -- ───────────── Order commit (server only) ─────────────
 -- p_order is the object produced by src/core/order.ts buildOrder(), already
 -- validated by the Edge Function. This function makes it durable atomically:
@@ -320,8 +354,18 @@ declare
   d          jsonb;
   v_origin   public.origins;
   v_id       uuid := gen_random_uuid();
-  v_number   text := 'BC-' || to_char(now(), 'YYYY') || '-' || lpad(nextval('public.order_number_seq')::text, 4, '0');
+  v_seq      bigint := nextval('public.order_number_seq');
+  -- lpad would cut 10000 to '1000': pad to 4 digits, never shorten
+  v_number   text := 'BC-' || to_char(now(), 'YYYY') || '-' || lpad(v_seq::text, greatest(4, length(v_seq::text)), '0');
 begin
+  -- the Edge Function already ran buildOrder(); refuse anything that could add stock or be free
+  if jsonb_typeof(p_order -> 'stockDeductions') is distinct from 'array'
+     or jsonb_array_length(p_order -> 'stockDeductions') = 0
+     or exists (select 1 from jsonb_array_elements(p_order -> 'stockDeductions') x
+                where coalesce((x ->> 'kg')::numeric, 0) <= 0) then
+    raise exception 'invalid_order';
+  end if;
+  perform set_config('boga.stock_write', 'on', true);
   -- Lock every origin used, in a fixed order to avoid deadlocks.
   for d in
     select value from jsonb_array_elements(p_order -> 'stockDeductions') order by value ->> 'originId'
@@ -363,6 +407,7 @@ begin
   insert into public.order_events (order_id, label) values (v_id, 'order.created');
   perform public.queue_notification('order.created', replace(p_subject, '{number}', v_number),
                                     replace(p_whatsapp, '{number}', v_number), replace(p_email, '{number}', v_number));
+  perform set_config('boga.stock_write', '', true);
   return query select v_id, v_number;
 end $$;
 
@@ -382,18 +427,36 @@ begin
   if not found then
     raise exception 'not_found';
   end if;
-  if v_order.status = 'cancelled' then
-    raise exception 'order_cancelled';
+  if v_order.status in ('cancelled', 'delivered') then
+    raise exception 'closed';
+  end if;
+  -- Same rules as src/core/orderFlow.ts: one step at a time, nothing produced
+  -- or shipped before payment (no cash on delivery), no cancelling after production started.
+  if p_status = 'cancelled' then
+    if v_order.status not in ('new', 'confirmed') then
+      raise exception 'too_late_to_cancel';
+    end if;
+  else
+    if p_status is distinct from (case v_order.status
+          when 'new' then 'confirmed' when 'confirmed' then 'in_production'
+          when 'in_production' then 'shipped' when 'shipped' then 'delivered' end) then
+      raise exception 'not_next';
+    end if;
+    if p_status in ('in_production', 'shipped', 'delivered') and v_order.payment_status <> 'paid' then
+      raise exception 'needs_payment';
+    end if;
   end if;
 
   -- Cancelling gives the reserved coffee back, exactly once.
   if p_status = 'cancelled' and not v_order.stock_returned then
+    perform set_config('boga.stock_write', 'on', true);
     for d in select value from jsonb_array_elements(v_order.stock_deductions) order by value ->> 'originId' loop
       update public.origins set stock_kg = stock_kg + (d ->> 'kg')::numeric where id = d ->> 'originId';
       insert into public.stock_movements (origin_id, delta_kg, reason, ref, actor)
       values (d ->> 'originId', (d ->> 'kg')::numeric, 'order_cancelled', v_order.number, auth.uid());
     end loop;
     update public.orders set stock_returned = true where id = p_order_id;
+    perform set_config('boga.stock_write', '', true);
   end if;
 
   update public.orders set status = p_status where id = p_order_id;
@@ -403,22 +466,50 @@ end $$;
 create or replace function public.set_payment_status(p_order_id uuid, p_status text)
 returns void
 language plpgsql security definer set search_path = public as $$
+declare
+  v_order public.orders;
 begin
-  if not public.is_admin() then
+  -- money is the owner's decision (src/core/orderFlow.ts canSetPayment)
+  if not public.is_admin(array['owner']) then
     raise exception 'forbidden';
+  end if;
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found then
+    raise exception 'not_found';
+  end if;
+  if v_order.status = 'cancelled' and p_status <> 'refunded' then
+    raise exception 'closed';
+  end if;
+  if not coalesce(case p_status
+        when 'paid' then v_order.payment_status in ('pending', 'awaiting_verification', 'failed')
+        when 'failed' then v_order.payment_status in ('pending', 'awaiting_verification')
+        -- same as src/core/orderFlow.ts: never mid-production; late money on a cancelled order can be refunded
+        when 'refunded' then v_order.status in ('new', 'confirmed', 'cancelled', 'delivered')
+                             and (v_order.payment_status = 'paid'
+                                  or (v_order.status = 'cancelled' and v_order.payment_status <> 'refunded'))
+        when 'pending' then v_order.payment_status in ('awaiting_verification', 'failed')
+        when 'awaiting_verification' then v_order.payment_status in ('pending', 'failed')
+      end, false) then
+    raise exception 'invalid_transition';
   end if;
   update public.orders
      set payment_status = p_status,
          status = case when p_status = 'paid' and status = 'new' then 'confirmed' else status end
    where id = p_order_id;
   insert into public.order_events (order_id, label, actor) values (p_order_id, 'payment.' || p_status, auth.uid());
+  -- a refund before production ends the order: cancelled, coffee back to stock
+  -- (src/core/orderFlow.ts refundCancelsOrder)
+  if p_status = 'refunded' and v_order.status in ('new', 'confirmed') then
+    perform public.set_order_status(p_order_id, 'cancelled');
+  end if;
 end $$;
 
 create or replace function public.adjust_stock(p_origin_id text, p_delta_kg numeric, p_reason text, p_note text default '')
 returns numeric
 language plpgsql security definer set search_path = public as $$
 declare
-  v_stock numeric;
+  v_before numeric;
+  v_stock  numeric;
 begin
   if not public.is_admin() then
     raise exception 'forbidden';
@@ -426,16 +517,88 @@ begin
   if p_reason not in ('restock', 'correction') then
     raise exception 'invalid_reason';
   end if;
-  update public.origins set stock_kg = greatest(0, stock_kg + p_delta_kg)
-   where id = p_origin_id
-   returning stock_kg into v_stock;
+  select stock_kg into v_before from public.origins where id = p_origin_id for update;
   if not found then
     raise exception 'not_found';
   end if;
+  perform set_config('boga.stock_write', 'on', true);
+  update public.origins set stock_kg = greatest(0, stock_kg + p_delta_kg)
+   where id = p_origin_id
+   returning stock_kg into v_stock;
+  perform set_config('boga.stock_write', '', true);
+  -- the history records the change that really happened (stock cannot go under 0)
   insert into public.stock_movements (origin_id, delta_kg, reason, note, actor)
-  values (p_origin_id, p_delta_kg, p_reason, p_note, auth.uid());
+  values (p_origin_id, v_stock - v_before, p_reason, p_note, auth.uid());
   return v_stock;
 end $$;
+
+-- Unpaid orders past the limit set in Admin → Settings (unpaidOrderTimeoutHours)
+-- are cancelled and give their coffee back, so an abandoned transfer cannot
+-- hold the stock. Same rule as src/core/order.ts expiredUnpaidOrders().
+-- Schedule it every 15 minutes (Supabase → Database → Cron, pg_cron):
+--   select cron.schedule('expire-unpaid-orders', '*/15 * * * *', 'select public.expire_unpaid_orders()');
+create or replace function public.expire_unpaid_orders()
+returns integer
+language plpgsql security definer set search_path = public as $$
+declare
+  v_hours numeric;
+  v_order public.orders;
+  d       jsonb;
+  n       integer := 0;
+begin
+  select coalesce((settings ->> 'unpaidOrderTimeoutHours')::numeric, 0) into v_hours
+    from public.site_config where id = 1;
+  if coalesce(v_hours, 0) <= 0 then
+    return 0;
+  end if;
+  perform set_config('boga.stock_write', 'on', true);
+  for v_order in
+    select * from public.orders
+     where status = 'new' and payment_status in ('pending', 'failed')
+       and created_at < now() - make_interval(secs => v_hours * 3600)
+     order by created_at
+     for update skip locked
+  loop
+    if not v_order.stock_returned then
+      for d in select value from jsonb_array_elements(v_order.stock_deductions) order by value ->> 'originId' loop
+        update public.origins set stock_kg = stock_kg + (d ->> 'kg')::numeric where id = d ->> 'originId';
+        insert into public.stock_movements (origin_id, delta_kg, reason, ref, note)
+        values (d ->> 'originId', (d ->> 'kg')::numeric, 'order_cancelled', v_order.number, 'auto');
+      end loop;
+    end if;
+    update public.orders set status = 'cancelled', stock_returned = true where id = v_order.id;
+    insert into public.order_events (order_id, label) values (v_order.id, 'status.expired');
+    n := n + 1;
+  end loop;
+  perform set_config('boga.stock_write', '', true);
+  return n;
+end $$;
+
+-- Settings hold the bank details shown to customers and the business rules:
+-- only the owner changes them. Managers keep editing the site texts (content).
+create or replace function public.guard_settings()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  -- managers may change the free-shipping threshold (Livraison page) and
+  -- nothing else: same rule as MANAGER_SETTINGS in src/core/orderFlow.ts
+  if (new.settings - 'freeShippingOver') is distinct from (old.settings - 'freeShippingOver')
+     and auth.uid() is not null
+     and not public.is_admin(array['owner']) then
+    raise exception 'owner_only';
+  end if;
+  -- the storefront computes every delivery fee with it: a number, 0 or more
+  if new.settings -> 'freeShippingOver' is distinct from old.settings -> 'freeShippingOver'
+     and not (case when jsonb_typeof(new.settings -> 'freeShippingOver') = 'number'
+                   then (new.settings ->> 'freeShippingOver')::numeric >= 0
+                   else false end) then
+    raise exception 'invalid_settings';
+  end if;
+  return new;
+end $$;
+
+create trigger site_config_guard_settings before update on public.site_config
+  for each row execute function public.guard_settings();
 
 -- Customer order page: the order id is an unguessable UUID shared only with the buyer.
 create or replace function public.get_order_public(p_order_id uuid)
@@ -458,7 +621,7 @@ language plpgsql security definer set search_path = public as $$
 begin
   update public.orders
      set payment_status = 'awaiting_verification', payment_ref = left(p_ref, 80)
-   where id = p_order_id and payment_status = 'pending' and payment_method <> 'card';
+   where id = p_order_id and payment_status = 'pending' and payment_method <> 'card' and status <> 'cancelled';
   if found then
     insert into public.order_events (order_id, label) values (p_order_id, 'payment.reported');
   end if;
@@ -521,6 +684,8 @@ create policy "admins manage" on public.quote_requests for all using (public.is_
 -- Functions: who may call what.
 revoke all on function public.commit_order(jsonb, text, text, text) from public, anon, authenticated;
 grant execute on function public.commit_order(jsonb, text, text, text) to service_role;
+revoke all on function public.expire_unpaid_orders() from public, anon, authenticated;
+grant execute on function public.expire_unpaid_orders() to service_role;
 revoke all on function public.queue_notification(text, text, text, text) from public, anon, authenticated;
 grant execute on function public.queue_notification(text, text, text, text) to service_role;
 revoke all on function public.set_order_status(uuid, text) from public, anon;

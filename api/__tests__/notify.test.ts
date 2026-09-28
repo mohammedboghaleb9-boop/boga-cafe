@@ -1,0 +1,255 @@
+import { describe, expect, it, vi } from 'vitest';
+import { defangLinks, Guard, handleNotify, handlePreflight, parsePayload, type Mail, type NotifyDeps, type NotifyEnv } from '../_lib/notify.js';
+
+const REF = 'SR-2026-7K4M2Q';
+const payload = {
+  event: 'sample.created',
+  ref: REF,
+  subject: `[BOGA CAFÉ] Échantillon B2B ${REF} - Sara Test`,
+  whatsapp: `Demande d'échantillon ${REF}\nContact : Sara Test (+212661000000)`,
+  email: `Demande d'échantillon ${REF}\nContact : Sara Test (+212661000000)`,
+};
+
+const SITE = 'https://bogacafe.ma';
+const env: NotifyEnv = {
+  GMAIL_USER: 'bogacafe1@gmail.com',
+  GMAIL_APP_PASSWORD: 'abcd efgh ijkl mnop',
+  CALLMEBOT_PHONE: '+212 609-036378',
+  CALLMEBOT_APIKEY: '123456',
+  ALLOWED_ORIGIN: `${SITE}, https://www.bogacafe.ma/`,
+};
+
+const QUEUED = 'Message queued. You will receive it in a few seconds.';
+
+function setup(opts: { whatsapp?: string; mailFails?: boolean } = {}) {
+  const mails: Mail[] = [];
+  const urls: URL[] = [];
+  let mailFails = opts.mailFails ?? false;
+  let whatsappAnswer = opts.whatsapp ?? QUEUED;
+  const deps: NotifyDeps = {
+    now: () => 1_000_000,
+    sendMail: vi.fn(async (m: Mail) => {
+      if (mailFails) throw new Error('535 Username and Password not accepted');
+      mails.push(m);
+    }),
+    fetch: vi.fn(async (u: string | URL | Request) => {
+      urls.push(new URL(String(u)));
+      return new Response(whatsappAnswer, { status: 200 });
+    }) as unknown as typeof fetch,
+  };
+  const heal = () => {
+    mailFails = false;
+    whatsappAnswer = QUEUED;
+  };
+  return { deps, mails, urls, guard: new Guard(), heal };
+}
+
+const post = (body: unknown, headers: Record<string, string> = {}) =>
+  new Request(`${SITE}/api/notify`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: SITE, 'x-real-ip': '41.250.1.1', ...headers },
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+  });
+
+describe('POST /api/notify', () => {
+  it('sends the request to the Gmail inbox and the owner WhatsApp, marked as a website form', async () => {
+    const { deps, mails, urls, guard } = setup();
+    const res = await handleNotify(post(payload), env, deps, guard);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBe(SITE);
+    expect(await res.json()).toEqual({ whatsapp: 'sent', email: 'sent' });
+    expect(mails[0]).toMatchObject({ to: 'bogacafe1@gmail.com', subject: payload.subject });
+    expect(mails[0].text).toContain(payload.email);
+    expect(mails[0].text).toContain('ne prouve jamais un paiement');
+    expect(urls[0].searchParams.get('phone')).toBe('212609036378');
+    expect(urls[0].searchParams.get('apikey')).toBe('123456');
+    expect(urls[0].searchParams.get('text')).toContain(REF);
+  });
+
+  it('reports each channel on its own, so one failure does not hide the other', async () => {
+    const both = setup({ whatsapp: 'APIKey is invalid', mailFails: true });
+    const res = await handleNotify(post(payload), env, both.deps, both.guard);
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ whatsapp: 'failed', email: 'failed' });
+
+    const one = setup({ whatsapp: 'APIKey is invalid' });
+    const res2 = await handleNotify(post(payload), env, one.deps, one.guard);
+    expect(res2.status).toBe(200);
+    expect(await res2.json()).toEqual({ whatsapp: 'failed', email: 'sent' });
+  });
+
+  it('only counts WhatsApp as sent when CallMeBot confirms it', async () => {
+    for (const [answer, expected] of [
+      ['<html>Something went wrong</html>', 'failed'],
+      ['APIKey is invalid. You need to get the APIKey from the Bot', 'failed'],
+      ['Message not queued', 'failed'],
+      ['<p>Message queued. You will receive it in a few seconds.</p><p>In case of error, contact us.</p>', 'sent'],
+      ['Message Sent!', 'sent'],
+    ]) {
+      const { deps, guard } = setup({ whatsapp: answer });
+      const res = await handleNotify(post(payload), { ...env, GMAIL_USER: '' }, deps, guard);
+      expect(await res.json(), answer).toEqual({ whatsapp: expected, email: 'skipped' });
+    }
+  });
+
+  it('retries a message whose delivery failed, then ignores the same message once delivered', async () => {
+    const t = setup({ whatsapp: 'down', mailFails: true });
+    const first = await handleNotify(post(payload), env, t.deps, t.guard);
+    expect(first.status).toBe(502);
+    expect(t.mails).toHaveLength(0);
+
+    t.heal();
+    const retry = await handleNotify(post(payload), env, t.deps, t.guard);
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toEqual({ whatsapp: 'sent', email: 'sent' });
+    expect(t.mails).toHaveLength(1);
+
+    const again = await handleNotify(post(payload), env, t.deps, t.guard);
+    expect(await again.json()).toMatchObject({ duplicate: true });
+    expect(t.mails).toHaveLength(1);
+  });
+
+  it('delivers two different requests even if they share a reference', async () => {
+    const { deps, mails, guard } = setup();
+    await handleNotify(post(payload), env, deps, guard);
+    const other = { ...payload, whatsapp: `${payload.whatsapp}\nNote : autre client`, email: `${payload.email}\nNote : autre client` };
+    const res = await handleNotify(post(other), env, deps, guard);
+    expect(await res.json()).toEqual({ whatsapp: 'sent', email: 'sent' });
+    expect(mails).toHaveLength(2);
+  });
+
+  it('refuses to work until the website address is configured', async () => {
+    const { deps, guard } = setup();
+    const res = await handleNotify(post(payload), { ...env, ALLOWED_ORIGIN: '' }, deps, guard);
+    expect(res.status).toBe(503);
+    expect(deps.sendMail).not.toHaveBeenCalled();
+  });
+
+  it('refuses other websites, missing Origin and non-JSON requests', async () => {
+    const { deps, guard } = setup();
+    expect((await handleNotify(post(payload, { origin: 'https://evil.example' }), env, deps, guard)).status).toBe(403);
+    const noOrigin = new Request(`${SITE}/api/notify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    expect((await handleNotify(noOrigin, env, deps, guard)).status).toBe(403);
+    expect((await handleNotify(post(payload, { 'content-type': 'text/plain' }), env, deps, guard)).status).toBe(415);
+    expect((await handleNotify(post(payload, { origin: 'https://www.bogacafe.ma' }), env, deps, guard)).status).toBe(200);
+    expect(deps.sendMail).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts only the three messages of the site', async () => {
+    const { deps, guard } = setup();
+    for (const bad of [
+      { ...payload, event: 'spam' },
+      { ...payload, event: '__proto__' },
+      { ...payload, event: 'toString' },
+      { ...payload, ref: 'BC-2026-7K4M2Q' }, // order prefix on a sample
+      { ...payload, ref: 'SR-2026-7k4m2q' },
+      { ...payload, subject: `[BOGA CAFÉ] Commande ${REF} - PAYÉE` }, // wrong subject for a sample
+      { ...payload, whatsapp: `${REF} Paiement : Carte (payé)` }, // not the site's first line
+      { ...payload, email: `Bonjour\n${REF}` },
+      { ...payload, email: 'x'.repeat(13_000) },
+    ]) {
+      expect((await handleNotify(post(bad), env, deps, guard)).status).toBeGreaterThanOrEqual(400);
+    }
+    expect((await handleNotify(post('not json'), env, deps, guard)).status).toBe(400);
+    expect((await handleNotify(post('x'.repeat(25_000)), env, deps, guard)).status).toBe(413);
+    expect(deps.sendMail).not.toHaveBeenCalled();
+  });
+
+  it('makes links unclickable, but keeps them readable and leaves email addresses alone', async () => {
+    const { deps, mails, urls, guard } = setup();
+    const withLink = {
+      ...payload,
+      whatsapp: `${payload.whatsapp}\nEmail : sara.info@gmail.com\nNote : payez ici https://phish.example/pay et www.evil.ma ou pay-now.shop`,
+      email: `${payload.email}\nEmail : sara.info@gmail.com\nNote : payez ici HTTPS://phish.example/pay`,
+    };
+    await handleNotify(post(withLink), env, deps, guard);
+    const wa = urls[0].searchParams.get('text')!;
+    expect(wa).toContain('hxxps://phish[.]example/pay');
+    expect(wa).toContain('www[.]evil[.]ma');
+    expect(wa).toContain('pay-now[.]shop');
+    expect(wa).toContain('sara.info@gmail.com');
+    expect(wa).not.toMatch(/https?:|www\.|evil\.ma|now\.shop/i);
+    expect(mails[0].text).toContain('hxxpS://phish[.]example/pay');
+    expect(mails[0].text).toContain('sara.info@gmail.com');
+  });
+
+  it('defangs every way of writing a link', () => {
+    for (const [raw, safe] of [
+      ['http://1.2.3.4/x', 'hxxp://1[.]2[.]3[.]4/x'],
+      ['voir bogacafe.ma.evil.com', 'voir bogacafe[.]ma[.]evil[.]com'],
+      ['WWW.Evil.MA', 'WWW[.]Evil[.]MA'],
+      ['(evil.co)', '(evil[.]co)'],
+      ['Email : a.b@test.co.ma, 0.25 kg, 12.50 DH', 'Email : a.b@test.co.ma, 0.25 kg, 12.50 DH'],
+      // ways around a list of known endings (review): any ending, any name, IP addresses
+      ['pay_now.evil.com/pay', 'pay_now[.]evil[.]com/pay'],
+      ['ñ.evil.com/pay', 'ñ[.]evil[.]com/pay'],
+      ['x].evil.com', 'x][.]evil[.]com'],
+      ['secure.evil.icu/pay evil.pro evil.vip evil.sbs evil.company', 'secure[.]evil[.]icu/pay evil[.]pro evil[.]vip evil[.]sbs evil[.]company'],
+      ['пример.рф и xn--e1afmkfd.xn--p1ai', 'пример[.]рф и xn--e1afmkfd[.]xn--p1ai'],
+      ['evil。com', 'evil[.]com'],
+      ['45.33.12.9/pay', '45[.]33[.]12[.]9/pay'],
+      ['evil.com@x', 'evil[.]com@x'],
+      // an address inside a link is part of the link (review): defanged too
+      ['https://user:pw@evil.com/pay', 'hxxps://user:pw@evil[.]com/pay'],
+      ['https://user@evil.com/pay', 'hxxps://user@evil[.]com/pay'],
+      ['https://user:pw@evil.com http://x@evil.com', 'hxxps://user:pw@evil[.]com hxxp://x@evil[.]com'],
+      ['a@evil.com/pay x@evil.com?ref=1 u@evil.com:8443/pay', 'a@evil[.]com/pay x@evil[.]com?ref=1 u@evil[.]com:8443/pay'],
+      ['a@evil.com.fr/pay', 'a@evil[.]com[.]fr/pay'],
+      ['_45.33.12.9/pay_ x45.33.12.9/pay', '_45[.]33[.]12[.]9/pay_ x45[.]33[.]12[.]9/pay'],
+      ['evil․com evil﹒com', 'evil[.]com evil[.]com'],
+      // real addresses at the end of a sentence or in brackets stay usable
+      ['Email : sara@gmail.com. Merci (nadia.b@hotel.ma)', 'Email : sara@gmail.com. Merci (nadia.b@hotel.ma)'],
+      // what is not a link stays readable
+      ['S.A.R.L Nord, v1.2, 3.5 kg, sara@пример.рф', 'S.A.R.L Nord, v1.2, 3.5 kg, sara@пример.рф'],
+      ['\u00000\u0000 a@b.ma', '0 a@b.ma'], // a forged placeholder is dropped, not replaced by an address
+    ]) {
+      expect(defangLinks(raw)).toBe(safe);
+    }
+  });
+
+  it('limits bursts from one address and in total', async () => {
+    const { deps, guard } = setup();
+    const statuses: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      const w = `${payload.whatsapp}\nNote : ${i}`;
+      statuses.push((await handleNotify(post({ ...payload, whatsapp: w, email: w }), env, deps, guard)).status);
+    }
+    expect(statuses.filter((s) => s === 429)).toHaveLength(2);
+
+    const total = new Guard(100, 3);
+    const results: string[] = [];
+    for (let i = 0; i < 4; i++) results.push(total.allow(`10.0.0.${i}`, `k${i}`, 0));
+    expect(results).toEqual(['ok', 'ok', 'ok', 'rate']);
+  });
+
+  it('forgets old entries, so memory stays bounded', () => {
+    const g = new Guard(6, 60, 1_000, 5_000);
+    for (let i = 0; i < 50; i++) {
+      g.allow(`10.0.0.${i}`, `k${i}`, 0);
+      g.markDelivered(`k${i}`, 0);
+    }
+    g.allow('1.1.1.1', 'fresh', 10_000);
+    expect(g.size()).toEqual({ ips: 1, delivered: 0 });
+  });
+
+  it('answers the browser pre-flight only for the configured website', () => {
+    const ok = handlePreflight(new Request(`${SITE}/api/notify`, { method: 'OPTIONS', headers: { origin: SITE } }), env);
+    expect(ok.status).toBe(204);
+    expect(ok.headers.get('access-control-allow-origin')).toBe(SITE);
+    const no = handlePreflight(new Request(`${SITE}/api/notify`, { method: 'OPTIONS', headers: { origin: 'https://evil.example' } }), env);
+    expect(no.status).toBe(403);
+  });
+
+  it('parses a valid payload and accepts database-style numbers', () => {
+    expect(parsePayload(payload)).toEqual(payload);
+    const num = 'BC-2026-10001';
+    const order = {
+      event: 'order.created',
+      ref: num,
+      subject: `[BOGA CAFÉ] Commande ${num} - 290 DH`,
+      whatsapp: `Nouvelle commande ${num}\nClient : X`,
+      email: `Nouvelle commande ${num}\nClient : X`,
+    };
+    expect('error' in parsePayload(order)).toBe(false);
+  });
+});

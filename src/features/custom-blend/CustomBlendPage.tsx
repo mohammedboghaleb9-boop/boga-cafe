@@ -7,16 +7,19 @@ import { composition, recipeTotal } from '@/core/recipe';
 import { kgNeeded } from '@/core/stock';
 import { PACK_SIZES, type Origin, type PackSize, type RecipeLine } from '@/core/types';
 import { useCatalog, useSettings } from '@/data/hooks';
-import { useCart } from '@/features/cart/CartProvider';
+import { useCart } from '@/shared/cart/CartProvider';
 import { fmt, useI18n } from '@/i18n';
 import { recipeView } from '@/shared/recipe-view';
-import { BagMockup } from '@/shared/ui/BagMockup';
+import { customBlendSticker } from '@/shared/sticker';
+import { Photo } from '@/shared/ui/Photo';
+import { ProductVisual } from '@/shared/ui/ProductVisual';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { QtyStepper, SpeciesBar } from '@/shared/ui/bits';
 import { whatsappLink } from '@/services/notifications';
 import { addLine, issueText, removeLine } from './blend-helpers';
 import './custom-blend.css';
+import { RoastChip } from '@/shared/ui/Roast';
 
 /** Starts from the concept's example so the builder opens in a working state. */
 const EXAMPLE: RecipeLine[] = [
@@ -77,6 +80,10 @@ export function CustomBlendPage() {
         <p className="lead">{t.blend.intro}</p>
       </div>
 
+      <figure className="page-banner blend-banner">
+        <Photo name="blendFlatlay" alt={t.media.flatlay} priority sizes="(min-width: 1180px) 1180px, 100vw" />
+      </figure>
+
       <div className="builder">
         <div className="builder-steps">
           {/* Step 1 — coffees */}
@@ -99,7 +106,7 @@ export function CustomBlendPage() {
                       aria-pressed={isOn}
                       disabled={!isOn && reason !== null}
                       onClick={() =>
-                        setLines((cur) => (isOn ? removeLine(cur, o.id) : addLine(cur, o.id, minPercent)))
+                        setLines((cur) => (isOn ? removeLine(cur, o.id, minPercent) : addLine(cur, o.id, minPercent)))
                       }
                     >
                       <span className="origin-tile-head">
@@ -113,6 +120,10 @@ export function CustomBlendPage() {
                         <span className="origin-tile-check" aria-hidden="true">
                           {isOn && <Icon name="check" size={16} />}
                         </span>
+                      </span>
+                      <span className="origin-tile-roast small">
+                        <RoastChip level={o.roastLevel} size={30} />
+                        {t.roast[o.roastLevel]}
                       </span>
                       <span className="small origin-tile-notes">{l(o.tastingNotes)}</span>
                       <span className="origin-tile-foot small">
@@ -195,7 +206,7 @@ export function CustomBlendPage() {
                         : fmt(t.blend.over, { n: total - 100 })}
                   </strong>
                   {total !== 100 && (
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => setLines((cur) => balanceBlend(cur))}>
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => setLines((cur) => balanceBlend(cur, minPercent))}>
                       {t.blend.balance}
                     </button>
                   )}
@@ -237,16 +248,51 @@ export function CustomBlendPage() {
 
         {/* Summary */}
         <aside className="builder-summary panel" aria-live="polite">
-          <h2 className="summary-title">{t.blend.summary}</h2>
-          <BagMockup
-            size="sm"
-            name={l(CUSTOM_BLEND_NAME)}
-            subtitle={lines.map((x) => `${x.percent}%`).join(' · ')}
-            flags={view.flags}
-            weightGrams={size}
+          <div className="summary-head">
+            <Photo name="seal" alt={t.media.seal} className="summary-seal" />
+            <h2 className="summary-title">{t.blend.summary}</h2>
+          </div>
+          <ProductVisual
+            className="summary-visual"
+            sticker={customBlendSticker(lines, size, originIndex)}
+            alt={fmt(t.media.pouch, { name: l(CUSTOM_BLEND_NAME), size: formatSize(size) })}
           />
           {lines.length > 0 && <SpeciesBar {...view.split} />}
 
+          <div className="summary-price">
+            <span className="spread">
+              <span>{t.blend.unitPrice}</span>
+              <strong className="num">{money(price.total)}</strong>
+            </span>
+            <span className="spread big">
+              <span>
+                {t.common.total} ×{qty}
+              </span>
+              <strong className="num">{money(price.total * qty)}</strong>
+            </span>
+          </div>
+
+          {issues.length > 0 && lines.length > 0 && (
+            <ul className="issues">
+              {issues.map((issue, i) => (
+                <li key={i}>{issueText(issue, t, originIndex, l, date)}</li>
+              ))}
+            </ul>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            disabled={issues.length > 0}
+            onClick={() => cart.addCustom({ lines, size }, qty, `${t.blend.added} · ${formatSize(size)} ×${qty}`)}
+          >
+            <Icon name="cart" size={18} /> {t.common.addToCart}
+          </button>
+          <p className="small muted icon-line">
+            <Icon name="bean" size={16} /> {t.common.wholeBeansOnly}
+          </p>
+
+          {/* details after the button: the price and the action stay on screen on laptops */}
           {lines.length > 0 && (
             <div className="stack summary-block">
               <span className="label">
@@ -275,39 +321,6 @@ export function CustomBlendPage() {
               </table>
             </div>
           )}
-
-          <div className="summary-price">
-            <span className="spread">
-              <span>{t.blend.unitPrice}</span>
-              <strong className="num">{money(price.total)}</strong>
-            </span>
-            <span className="spread big">
-              <span>
-                {t.common.total} ×{qty}
-              </span>
-              <strong className="num">{money(price.total * qty)}</strong>
-            </span>
-          </div>
-
-          {issues.length > 0 && lines.length > 0 && (
-            <ul className="issues">
-              {issues.map((issue, i) => (
-                <li key={i}>{issueText(issue, t, originIndex, l)}</li>
-              ))}
-            </ul>
-          )}
-
-          <button
-            type="button"
-            className="btn btn-primary btn-block"
-            disabled={issues.length > 0}
-            onClick={() => cart.addCustom({ lines, size }, qty, `${t.blend.added} · ${formatSize(size)} ×${qty}`)}
-          >
-            <Icon name="cart" size={18} /> {t.common.addToCart}
-          </button>
-          <p className="small muted icon-line">
-            <Icon name="bean" size={16} /> {t.common.wholeBeansOnly}
-          </p>
         </aside>
       </div>
     </div>

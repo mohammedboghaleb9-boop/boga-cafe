@@ -54,26 +54,36 @@ export function validateBlend(
 }
 
 /**
- * Spreads the remaining percentage so the recipe reaches exactly 100 %.
- * The last line absorbs rounding so the result is always a whole number.
+ * Spreads the percentages so the recipe reaches exactly 100 %, keeping every
+ * line at `minPercent` or more (when that is possible at all).
+ * Whole numbers only: the rounding difference goes to the biggest line.
  */
-export function balanceBlend<T extends { percent: number }>(lines: T[]): T[] {
-  if (lines.length === 0) return lines;
-  const total = lines.reduce((sum, l) => sum + l.percent, 0);
-  if (total === 0) {
-    const even = Math.floor(100 / lines.length);
-    return lines.map((l, i) => ({
-      ...l,
-      percent: i === lines.length - 1 ? 100 - even * (lines.length - 1) : even,
-    }));
+export function balanceBlend<T extends { percent: number }>(lines: T[], minPercent = 0): T[] {
+  const n = lines.length;
+  if (n === 0) return lines;
+  const min = n * minPercent <= 100 ? Math.max(0, minPercent) : 0;
+  const raw = lines.map((l) => Math.max(0, l.percent));
+  const weights = raw.some((w) => w > 0) ? raw : raw.map(() => 1); // all at 0: split evenly
+
+  // a line that would fall under the minimum is pinned to it, the others share the rest
+  const pinned = new Set<number>();
+  let shares: number[];
+  for (;;) {
+    const free = weights.map((_, i) => i).filter((i) => !pinned.has(i));
+    const left = 100 - pinned.size * min;
+    const freeWeight = free.reduce((sum, i) => sum + weights[i], 0);
+    shares = weights.map((w, i) => (pinned.has(i) ? min : freeWeight > 0 ? (left * w) / freeWeight : left / free.length));
+    const under = free.filter((i) => shares[i] < min);
+    if (under.length === 0) break;
+    under.forEach((i) => pinned.add(i));
   }
-  const scaled = lines.map((l) => ({ ...l, percent: Math.round((l.percent / total) * 100) }));
-  const diff = 100 - scaled.reduce((s, l) => s + l.percent, 0);
-  // give the rounding difference to the biggest line
+
+  // whole numbers; a share at or above the (whole) minimum never rounds below it
+  const result = shares.map((x) => Math.round(x));
   let biggest = 0;
-  scaled.forEach((l, i) => {
-    if (l.percent > scaled[biggest].percent) biggest = i;
+  result.forEach((p, i) => {
+    if (p >= result[biggest]) biggest = i;
   });
-  scaled[biggest] = { ...scaled[biggest], percent: scaled[biggest].percent + diff };
-  return scaled;
+  result[biggest] += 100 - result.reduce((sum, p) => sum + p, 0);
+  return lines.map((l, i) => ({ ...l, percent: result[i] }));
 }

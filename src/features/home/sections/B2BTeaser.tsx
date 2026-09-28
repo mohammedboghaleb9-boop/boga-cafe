@@ -1,28 +1,35 @@
 import { Link } from 'react-router';
 import { useCatalog } from '@/data/hooks';
 import { useI18n } from '@/i18n';
+import { Icon } from '@/shared/ui/Icon';
+import { Photo } from '@/shared/ui/Photo';
 
 export function B2BTeaser() {
   const { t, l } = useI18n();
   const { products } = useCatalog();
   const b2b = products.filter((p) => p.active && p.kind === 'b2b');
   return (
-    <section className="section container">
-      <div className="b2b-teaser">
-        <div className="stack">
+    <section className="b2b-band">
+      <Photo name="barista" alt={t.media.barista} className="b2b-band-img parallax" sizes="100vw" />
+      <div className="b2b-band-shade" />
+      <div className="container b2b-band-content">
+        <div className="stack b2b-band-text reveal">
           <span className="eyebrow">B2B / HORECA</span>
           <h2>{t.home.b2bTitle}</h2>
-          <p className="muted">{t.home.b2bText}</p>
+          <p>{t.home.b2bText}</p>
           <Link to="/b2b" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
             {t.home.b2bCta}
           </Link>
         </div>
-        <ul className="b2b-teaser-list">
+        <ul className="b2b-band-list reveal">
           {b2b.map((p) => (
             <li key={p.id}>
               <Link to={`/product/${p.slug}`}>
-                <strong>{l(p.name)}</strong>
-                <span className="small muted">{l(p.tagline)}</span>
+                <span className="stack" style={{ ['--gap' as string]: '2px' }}>
+                  <strong>{l(p.name)}</strong>
+                  <span className="small">{l(p.tagline)}</span>
+                </span>
+                <Icon name="arrow" size={18} className="flip-rtl" />
               </Link>
             </li>
           ))}

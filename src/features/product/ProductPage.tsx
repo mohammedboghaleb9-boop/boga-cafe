@@ -6,18 +6,25 @@ import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type PackSize } from '@/core/types';
 import { NotFound } from '@/app/NotFound';
 import { useCatalog, useSettings } from '@/data/hooks';
-import { useCart } from '@/features/cart/CartProvider';
-import { ProductCard } from '@/features/shop/ProductCard';
+import { useCart } from '@/shared/cart/CartProvider';
+import { ProductCard } from '@/shared/product/ProductCard';
 import { fmt, useI18n } from '@/i18n';
 import { recipeView } from '@/shared/recipe-view';
-import { BagMockup } from '@/shared/ui/BagMockup';
+import { productSticker } from '@/shared/sticker';
+import { ProductVisual } from '@/shared/ui/ProductVisual';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { Availability, QtyStepper, SpeciesBar } from '@/shared/ui/bits';
 import './product.css';
+import { RoastScale } from '@/shared/ui/Roast';
 
+/** Keyed by slug: moving to another product starts from its own size and quantity. */
 export function ProductPage() {
   const { slug } = useParams();
+  return <ProductDetails key={slug} slug={slug} />;
+}
+
+function ProductDetails({ slug }: { slug?: string }) {
   const { t, l, money } = useI18n();
   const { products, originIndex } = useCatalog();
   const settings = useSettings();
@@ -40,19 +47,17 @@ export function ProductPage() {
 
   return (
     <div className="container page">
-      <nav className="crumbs small muted" aria-label="Breadcrumb">
+      <nav className="crumbs small muted" aria-label={t.a11y.breadcrumb}>
         <Link to="/shop">{t.nav.shop}</Link> / <Link to={`/shop?kind=${product.kind}`}>{t.kind[product.kind]}</Link>
       </nav>
 
       <div className="product">
         <div className="product-media">
-          <BagMockup
-            size="lg"
-            name={l(product.name)}
-            subtitle={fmt(t.product.splitLabel, { a: view.split.arabica, r: view.split.robusta })}
-            flags={view.flags}
-            weightGrams={size}
+          <ProductVisual
+            sticker={productSticker(product.name.fr, product.recipe, product.roastLevel, size, originIndex)}
+            alt={fmt(t.media.pouch, { name: l(product.name), size: formatSize(size) })}
             image={product.image}
+            priority
           />
         </div>
 
@@ -65,7 +70,9 @@ export function ProductPage() {
           <dl className="facts">
             <div>
               <dt>{t.common.roast}</dt>
-              <dd>{t.roast[product.roastLevel]}</dd>
+              <dd>
+                <RoastScale level={product.roastLevel} />
+              </dd>
             </div>
             <div>
               <dt>{t.common.tastingNotes}</dt>
@@ -147,7 +154,9 @@ export function ProductPage() {
 
           {product.kind === 'b2b' && (
             <div className="notice">
-              {t.product.b2bNote} <Link to="/b2b#sample">{t.product.b2bSample} →</Link>
+              {t.product.b2bNote} <Link to="/b2b#sample">
+                {t.product.b2bSample} <span className="dir-arrow" aria-hidden="true">→</span>
+              </Link>
             </div>
           )}
         </div>

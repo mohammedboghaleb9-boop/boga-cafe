@@ -2,7 +2,14 @@ node_modules
 dist
 dist-demo
 *.local
-.env.local
-.env.*.local
+# Local settings and secrets (Gmail App Password, CallMeBot key…) never go to git.
+# Defaults live in the code; examples in .env.example; the demo build uses .env.demo.
+.env
+.env.*
+!.env.example
+!.env.demo
 .DS_Store
 coverage
+
+# Python (brand/source)
+__pycache__/

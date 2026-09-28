@@ -1,24 +1,40 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { summarizeCart } from '@/core/cart';
 import { formatKg, formatNumber, formatSize } from '@/core/format';
 import { useCatalog, useSettings } from '@/data/hooks';
-import { QuoteRequestForm } from '@/features/b2b/QuoteRequestForm';
+import { QuoteRequestForm } from '@/features/b2b';
 import { fmt, useI18n } from '@/i18n';
-import { whatsappLink } from '@/services/notifications';
+import { whatsappLink, type MessageDraft } from '@/services/notifications';
+import { SendToBoga } from '@/shared/layout/SendToBoga';
 import { Icon } from '@/shared/ui/Icon';
 import { QtyStepper } from '@/shared/ui/bits';
-import { useCart } from './CartProvider';
-import { LineDetails } from './CartLineView';
+import { useCart } from '@/shared/cart/CartProvider';
+import { LineDetails } from '@/shared/cart/CartLineView';
 import './cart.css';
 
 export function CartPage() {
-  const { t, l, money } = useI18n();
+  const { t, l, money, date } = useI18n();
   const cart = useCart();
   const { products, originIndex } = useCatalog();
   const settings = useSettings();
   const summary = summarizeCart(cart.items, { products, origins: originIndex }, settings);
   const max = settings.b2bThresholdKg;
   const ratio = summary.weightKg / max;
+  // kept here: sending the quote empties the cart, and the confirmation must stay on screen
+  const [quote, setQuote] = useState<{ ref: string; message: MessageDraft } | null>(null);
+
+  if (quote) {
+    return (
+      <div className="container page stack quote-done">
+        <h1>{t.cart.title}</h1>
+        <SendToBoga draft={quote.message} refNumber={quote.ref} reveal />
+        <Link to="/shop" className="btn btn-ghost" style={{ alignSelf: 'flex-start' }}>
+          {t.cart.emptyCta}
+        </Link>
+      </div>
+    );
+  }
 
   if (cart.items.length === 0) {
     return (
@@ -95,6 +111,7 @@ export function CartPage() {
                 need: formatNumber(s.neededKg, 2),
                 left: formatNumber(s.availableKg, 2),
               })}
+              {s.restockDate && ` · ${fmt(t.common.backAround, { date: date(s.restockDate) })}`}
             </p>
           ))}
 
@@ -129,7 +146,13 @@ export function CartPage() {
           >
             <Icon name="whatsapp" size={18} /> {t.b2b.largeCta}
           </a>
-          <QuoteRequestForm items={cart.items} onSent={cart.clear} />
+          <QuoteRequestForm
+            items={cart.items}
+            onSent={(ref, message) => {
+              setQuote({ ref, message });
+              cart.clear();
+            }}
+          />
         </section>
       )}
     </div>

@@ -1,0 +1,335 @@
+/* ───── Contact frames, in each platform's own colours ───── */
+.channel--whatsapp {
+  --brand: #25d366;
+  --brand-bar: #25d366;
+  --cta-bg: #25d366;
+  --cta-ink: #06301a;
+}
+.channel--instagram {
+  --brand: #ff0069;
+  --brand-bar: linear-gradient(90deg, #ffd600, #ff7a00, #ff0069, #d300c5, #7638fa);
+  --cta-bg: linear-gradient(90deg, #c13584, #833ab4, #5851db);
+  --cta-ink: #fff;
+}
+.channel--tiktok {
+  --brand: #fe2c55;
+  --brand-bar: linear-gradient(90deg, #25f4ee 0 50%, #fe2c55 50% 100%);
+  --cta-bg: #fff;
+  --cta-ink: #010101;
+}
+.channel--gmail {
+  --brand: #ea4335;
+  --brand-bar: linear-gradient(90deg, #4285f4 0 25%, #ea4335 25% 50%, #fbbc04 50% 75%, #34a853 75% 100%);
+  --cta-bg: #1a73e8;
+  --cta-ink: #fff;
+}
+.channel--facebook {
+  --brand: #0866ff;
+  --brand-bar: #0866ff;
+  --cta-bg: #0866ff;
+  --cta-ink: #fff;
+}
+
+.brand-icon {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 25%;
+}
+
+.channels {
+  display: grid;
+  gap: 14px;
+}
+@media (min-width: 680px) {
+  .channels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* an odd card out takes the full row */
+  .channel:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+/* wide screens: messaging (2 per row), then social media (3 per row) */
+@media (min-width: 1000px) {
+  .channels {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .channel {
+    grid-column: span 2;
+  }
+  .channel--whatsapp,
+  .channel--gmail {
+    grid-column: span 3;
+  }
+  .channel:last-child:nth-child(odd) {
+    grid-column: span 2;
+  }
+}
+.channel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 20px 20px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition:
+    border-color 0.25s,
+    transform 0.25s,
+    box-shadow 0.25s;
+}
+.channel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  block-size: 3px;
+  background: var(--brand-bar);
+}
+.channel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(90% 70% at 50% -10%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 70%);
+  opacity: 0.7;
+  transition: opacity 0.25s;
+}
+.channel:hover {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--line));
+  transform: translateY(-2px);
+  box-shadow: 0 22px 44px -30px var(--brand);
+}
+.channel:hover::after {
+  opacity: 1;
+}
+.channel-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.channel-top .brand-icon {
+  box-shadow: 0 8px 20px -10px var(--brand);
+}
+.channel-id {
+  min-inline-size: 0;
+}
+.channel-id h3 {
+  font-family: var(--font-body);
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.channel-handle {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+.channel-desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  flex: 1;
+}
+.channel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.channel .channel-cta {
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  font-weight: 700;
+}
+.channel .channel-cta:hover {
+  filter: brightness(1.08);
+}
+.channel--tiktok .channel-cta {
+  box-shadow:
+    -2px -2px 0 #25f4ee,
+    2px 2px 0 #fe2c55;
+}
+
+/* compact: one line per channel */
+.channel-pills {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  inline-size: 100%;
+}
+.channel-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  padding-inline-end: 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+.channel-pill:hover {
+  border-color: color-mix(in srgb, var(--brand) 50%, var(--line));
+  transform: translateY(-2px);
+}
+.channel-pill-text {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  flex: 1;
+  text-align: start;
+  line-height: 1.3;
+}
+.channel-pill-text span {
+  color: var(--ink-2);
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+.channel-pill-go {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+:root[dir='rtl'] .channel-pill-go {
+  transform: scaleX(-1);
+}
+
+/* footer / small places: just the marks */
+.social-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.social-tiles a {
+  display: inline-flex;
+  border-radius: 25%;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+.social-tiles a:hover {
+  transform: translateY(-2px);
+}
+.social-tiles a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ───── After a request: send it to BOGA on WhatsApp / Gmail ───── */
+.handoff {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, #25d366 45%, var(--line));
+  background:
+    radial-gradient(90% 120% at 0% 0%, rgb(37 211 102 / 0.1), transparent 70%),
+    var(--surface);
+}
+.handoff-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  outline: none;
+}
+.handoff-text:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+.handoff-saved {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+.handoff-text strong {
+  font-size: 1.05rem;
+}
+.handoff-text > span:last-child:not(.handoff-saved) {
+  color: var(--ink-2);
+  font-size: 0.92rem;
+}
+.handoff-pending strong::after {
+  content: '';
+  display: inline-block;
+  inline-size: 0.9em;
+  block-size: 0.9em;
+  margin-inline-start: 10px;
+  vertical-align: -0.1em;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: handoff-spin 0.9s linear infinite;
+}
+@keyframes handoff-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .handoff-pending strong::after {
+    animation: none;
+  }
+}
+.handoff-sent {
+  border-color: color-mix(in srgb, #25d366 30%, var(--line));
+}
+.handoff-other {
+  justify-self: start;
+  color: var(--muted);
+}
+.handoff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.handoff .handoff-btn {
+  gap: 10px;
+  padding-inline: 14px 18px;
+  font-weight: 700;
+}
+.handoff .handoff-btn .brand-icon {
+  border-radius: 6px;
+}
+.handoff .handoff-wa {
+  background: #25d366;
+  color: #06301a;
+}
+.handoff .handoff-wa .brand-icon rect {
+  fill: #06301a;
+}
+.handoff .handoff-gmail {
+  background: #fff;
+  color: #1f1f1f;
+}
+.handoff .handoff-btn:hover {
+  filter: brightness(1.07);
+}
+.handoff-preview summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.handoff-preview pre {
+  margin: 8px 0 0;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: start;
+  color: var(--ink-2);
+}

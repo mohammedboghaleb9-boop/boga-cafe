@@ -6,10 +6,13 @@ import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { LocalizedInput, PaymentPill, SavedFlash, Switch, useSavedFlash } from '../ui';
+import type { Role } from '../permissions';
+import { useAdminRole } from '../session';
 
 const icons: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
 
 export function PaymentsPage() {
+  const role = useAdminRole()!;
   const { t, money, l } = useI18n();
   const { paymentMethods, orders, settings } = useDb();
   const toVerify = orders.filter(
@@ -48,7 +51,7 @@ export function PaymentsPage() {
                       <PaymentPill status={o.paymentStatus} />
                     </td>
                     <td className="end">
-                      <button type="button" className="btn btn-primary btn-sm" onClick={() => api.setPaymentStatus(o.id, 'paid')}>
+                      <button type="button" className="btn btn-primary btn-sm" onClick={() => api.setPaymentStatus(o.id, 'paid', role)}>
                         {t.admin.orders.markPaid}
                       </button>
                     </td>
@@ -69,7 +72,7 @@ export function PaymentsPage() {
         </div>
       </section>
 
-      <BankEditor settings={settings} />
+      <BankEditor settings={settings} role={role} />
     </>
   );
 }
@@ -113,7 +116,7 @@ function MethodEditor({ method }: { method: PaymentMethodConfig }) {
   );
 }
 
-function BankEditor({ settings }: { settings: Settings }) {
+function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
   const { t } = useI18n();
   const [bank, setBank] = useState(settings.bank);
   const [saved, flash] = useSavedFlash();
@@ -127,7 +130,7 @@ function BankEditor({ settings }: { settings: Settings }) {
             type="button"
             className="btn btn-primary btn-sm"
             onClick={() => {
-              api.saveSettings({ ...settings, bank });
+              api.saveSettings({ ...settings, bank }, role);
               flash();
             }}
           >

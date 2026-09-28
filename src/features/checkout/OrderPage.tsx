@@ -1,9 +1,13 @@
 import { Link, useParams } from 'react-router';
 import { formatKg } from '@/core/format';
+import { orderPhase } from '@/core/orderFlow';
 import type { OrderStatus } from '@/core/types';
+import { templateContext } from '@/data/context';
 import { useDb } from '@/data/hooks';
-import { LineDetails } from '@/features/cart/CartLineView';
+import { LineDetails } from '@/shared/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
+import { orderMessage } from '@/services/notifications';
+import { SendToBoga } from '@/shared/layout/SendToBoga';
 import { CopyButton } from '@/shared/ui/bits';
 import { PaymentPanel } from './PaymentPanel';
 import './checkout.css';
@@ -13,7 +17,8 @@ const FLOW: OrderStatus[] = ['new', 'confirmed', 'in_production', 'shipped', 'de
 export function OrderPage() {
   const { id } = useParams();
   const { t, l, money, date } = useI18n();
-  const { orders, shippingRates } = useDb();
+  const db = useDb();
+  const { orders, shippingRates } = db;
   const order = orders.find((o) => o.id === id);
 
   if (!order) {
@@ -43,6 +48,9 @@ export function OrderPage() {
 
       <div className="order-grid">
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>
+          {order.status !== 'cancelled' && order.status !== 'delivered' && (
+            <SendToBoga draft={orderMessage(order, templateContext(db))} refNumber={order.number} showSaved={false} />
+          )}
           <PaymentPanel order={order} />
 
           <section className="panel stack">
@@ -60,13 +68,18 @@ export function OrderPage() {
               </ol>
             )}
             <p className="small muted">
-              {order.paymentStatus === 'paid' ? t.order.nextPaid : t.order.nextPending}
+              {
+                {
+                  refunded: t.order.refundedText,
+                  cancelled: t.order.cancelledText,
+                  delivered: t.order.deliveredText,
+                  paid: t.order.nextPaid,
+                  awaiting_payment: t.order.nextPending,
+                }[orderPhase(order)]
+              }
             </p>
           </section>
 
-          <p className="notice small">
-            {t.order.adminNotified} <Link to="/admin/notifications">{t.order.seeInAdmin} →</Link>
-          </p>
         </div>
 
         <aside className="panel stack">

@@ -9,12 +9,18 @@ import type { Role } from './permissions';
 const KEY = 'boga-admin-role';
 export const DEMO_PASSWORD = 'boga2026';
 
+// declared before read() runs below: reading it earlier throws, and the
+// try/catch would turn every page reload into a sign-out
+const ROLES: readonly Role[] = ['owner', 'manager', 'staff'];
+
 const listeners = new Set<() => void>();
 let role: Role | null = read();
 
+/** Anything but a known role (edited by hand, older version) means signed out. */
 function read(): Role | null {
   try {
-    return (sessionStorage.getItem(KEY) as Role | null) ?? null;
+    const stored = sessionStorage.getItem(KEY);
+    return ROLES.includes(stored as Role) ? (stored as Role) : null;
   } catch {
     return null;
   }
@@ -51,3 +57,6 @@ export function useAdminRole(): Role | null {
     () => role,
   );
 }
+
+/** The role right now, outside React (tests, guards). */
+export const currentAdminRole = (): Role | null => role;

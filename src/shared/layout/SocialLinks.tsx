@@ -1,26 +1,29 @@
 import { useDb } from '@/data/hooks';
-import { whatsappLink } from '@/services/notifications';
 import { useI18n } from '@/i18n';
-import { Icon, type IconName } from '../ui/Icon';
+import { BrandIcon, brandName } from '../ui/BrandIcon';
+import { contactChannels } from './channels';
+import './channels.css';
 
-/** Instagram, TikTok, Facebook, WhatsApp and Gmail, from the Admin settings. */
-export function SocialLinks({ withLabels = false }: { withLabels?: boolean }) {
+/** Official marks of every channel set in Admin → Settings → Contact. */
+export function SocialLinks({ size = 38 }: { size?: number }) {
   const { settings } = useDb();
   const { t } = useI18n();
-  const c = settings.contact;
-  const items: { icon: IconName; label: string; href: string }[] = [
-    { icon: 'instagram', label: 'Instagram', href: c.instagram },
-    { icon: 'tiktok', label: 'TikTok', href: c.tiktok },
-    { icon: 'facebook', label: 'Facebook', href: c.facebook },
-    { icon: 'whatsapp', label: 'WhatsApp', href: whatsappLink(c.whatsapp, t.contact.whatsappText) },
-    { icon: 'mail', label: c.email, href: `mailto:${c.email}` },
-  ];
+  const channels = contactChannels(settings.contact, {
+    whatsapp: t.contact.whatsappText,
+    emailSubject: t.contact.emailSubject,
+  });
   return (
-    <div className={withLabels ? 'social social-labels' : 'social'}>
-      {items.map((i) => (
-        <a key={i.icon} href={i.href} target="_blank" rel="noreferrer" aria-label={i.label} title={i.label}>
-          <Icon name={i.icon} />
-          {withLabels && <span>{i.label}</span>}
+    <div className="social-tiles">
+      {channels.map((c) => (
+        <a
+          key={c.brand}
+          href={c.href}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`${brandName[c.brand]} ${c.handle}`}
+          title={`${brandName[c.brand]} · ${c.handle}`}
+        >
+          <BrandIcon brand={c.brand} size={size} />
         </a>
       ))}
     </div>

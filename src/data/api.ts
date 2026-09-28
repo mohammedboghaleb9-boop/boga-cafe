@@ -3,8 +3,8 @@
  * production (Supabase RPC / Edge Function) — same inputs, same results.
  */
 import { summarizeCart } from '@/core/cart';
-import { buildOrder, type CheckoutError, type CheckoutInput } from '@/core/order';
-import { applyStock, isLowStock } from '@/core/stock';
+import { buildOrder, expiredUnpaidOrders, type CheckoutError, type CheckoutInput } from '@/core/order';
+import { adjustOriginStock, applyStock, isLowStock } from '@/core/stock';
 import { normalizePhone, isEmail } from '@/core/validation';
 import type {
   BusinessType,
@@ -24,10 +24,12 @@ import type {
   StockReason,
 } from '@/core/types';
 import { draftsToLogs, lowStockMessage, orderMessage, quoteMessage, sampleMessage } from '@/services/notifications';
+import { deliver } from '@/services/notifications/deliver';
 import { checkoutContext, templateContext } from './context';
-import { reference, uid } from './ids';
+import { newReference, uid } from './ids';
 import type { DbState } from './state';
 import { db } from './store';
+import { awaitsPayment, canSetPayment, refundCancelsOrder, settingsChangeRefused, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
 const now = () => new Date().toISOString();
@@ -36,6 +38,19 @@ function withLowStockAlerts(before: Origin[], after: Origin[], s: DbState, at: s
   return after
     .filter((o) => isLowStock(o) && !isLowStock(before.find((b) => b.id === o.id) ?? o))
     .flatMap((o) => draftsToLogs('stock.low', lowStockMessage(o), s.settings, at, uid));
+}
+
+/** Gives a cancelled order's coffee back to stock, with its lines in the history. */
+function giveStockBack(s: DbState, o: Order, at: string, note = ''): Partial<DbState> {
+  return {
+    origins: applyStock(s.origins, o.stockDeductions, 1),
+    stockMovements: [
+      ...o.stockDeductions.map((d) => ({
+        id: uid(), at, originId: d.originId, deltaKg: d.kg, reason: 'order_cancelled' as const, ref: o.number, note,
+      })),
+      ...s.stockMovements,
+    ],
+  };
 }
 
 function patchOrder(id: string, patch: (o: Order, s: DbState) => Partial<Order>, extra?: (s: DbState, o: Order) => Partial<DbState>) {
@@ -71,14 +86,17 @@ function validateContact(input: ContactRequestInput, s: DbState): RequestError[]
 export const api = {
   /* ───────── Storefront ───────── */
 
-  async placeOrder(input: CheckoutInput): Promise<{ ok: true; order: Order } | { ok: false; errors: CheckoutError[] }> {
+  async placeOrder(
+    input: CheckoutInput,
+  ): Promise<{ ok: true; order: Order } | { ok: false; errors: CheckoutError[] }> {
     await latency();
     const s = db.get();
     const at = now();
-    const number = reference('BC', s.counters.order + 1);
+    const number = newReference('BC', (r) => s.orders.some((o) => o.number === r));
     const result = buildOrder(input, checkoutContext(s), { id: uid(), number, now: at });
     if (!result.ok) return result;
     const order = result.order;
+    const message = orderMessage(order, templateContext(s));
 
     db.update((cur) => {
       const origins = applyStock(cur.origins, order.stockDeductions, -1);
@@ -86,7 +104,7 @@ export const api = {
         id: uid(), at, originId: d.originId, deltaKg: -d.kg, reason: 'order', ref: order.number, note: '',
       }));
       const logs = [
-        ...draftsToLogs('order.created', orderMessage(order, templateContext(cur)), cur.settings, at, uid),
+        ...draftsToLogs('order.created', message, cur.settings, at, uid),
         ...withLowStockAlerts(cur.origins, origins, cur, at),
       ];
       return {
@@ -98,12 +116,16 @@ export const api = {
         counters: { ...cur.counters, order: cur.counters.order + 1 },
       };
     });
+    deliver('order.created', order.number, message);
     return { ok: true, order };
   },
 
   /** Card gateway answer (CMI callback in production). */
   async completeCardPayment(orderId: string, success: boolean) {
     await latency();
+    const o = db.get().orders.find((x) => x.id === orderId);
+    // only an open card order waiting for the gateway can be paid this way
+    if (!o || o.paymentMethod !== 'card' || !awaitsPayment(o)) return;
     patchOrder(orderId, (o) => ({
       paymentStatus: success ? 'paid' : 'failed',
       status: success && o.status === 'new' ? 'confirmed' : o.status,
@@ -114,9 +136,12 @@ export const api = {
   /** Customer says "I have paid" for Cash Plus / transfer and gives the receipt reference. */
   async reportOfflinePayment(orderId: string, paymentRef: string) {
     await latency();
+    const o = db.get().orders.find((x) => x.id === orderId);
+    // Cash Plus / transfer only, and never over a payment already confirmed
+    if (!o || o.paymentMethod === 'card' || o.status === 'cancelled' || o.paymentStatus !== 'pending') return;
     patchOrder(orderId, (o) => ({
       paymentStatus: 'awaiting_verification',
-      paymentRef,
+      paymentRef: paymentRef.trim().slice(0, 80),
       history: [...o.history, { at: now(), label: 'payment.reported' }],
     }));
   },
@@ -132,7 +157,7 @@ export const api = {
     const sample: SampleRequest = {
       ...input,
       id: uid(),
-      number: reference('SR', s.counters.sample + 1),
+      number: newReference('SR', (r) => s.samples.some((x) => x.number === r)),
       createdAt: at,
       phone: normalizePhone(input.phone)!,
       status: 'new',
@@ -140,13 +165,15 @@ export const api = {
       deliveryFee: rate?.baseFee ?? 0,
       adminNotes: '',
     };
+    const message = sampleMessage(sample, templateContext(s));
     db.update((cur) => ({
       ...cur,
       samples: [sample, ...cur.samples],
-      notifications: [...draftsToLogs('sample.created', sampleMessage(sample, templateContext(cur)), cur.settings, at, uid), ...cur.notifications],
+      notifications: [...draftsToLogs('sample.created', message, cur.settings, at, uid), ...cur.notifications],
       counters: { ...cur.counters, sample: cur.counters.sample + 1 },
     }));
-    return { ok: true as const, sample };
+    deliver('sample.created', sample.number, message);
+    return { ok: true as const, sample, message };
   },
 
   /** Cart above the B2B threshold → request handled by the administration. */
@@ -159,7 +186,7 @@ export const api = {
     const at = now();
     const quote: QuoteRequest = {
       id: uid(),
-      number: reference('QR', s.counters.quote + 1),
+      number: newReference('QR', (r) => s.quotes.some((q) => q.number === r)),
       createdAt: at,
       businessType: input.businessType,
       company: input.company,
@@ -175,44 +202,82 @@ export const api = {
       finalPrice: null,
       adminNotes: '',
     };
+    const message = quoteMessage(quote, templateContext(s));
     db.update((cur) => ({
       ...cur,
       quotes: [quote, ...cur.quotes],
-      notifications: [...draftsToLogs('quote.created', quoteMessage(quote, templateContext(cur)), cur.settings, at, uid), ...cur.notifications],
+      notifications: [...draftsToLogs('quote.created', message, cur.settings, at, uid), ...cur.notifications],
       counters: { ...cur.counters, quote: cur.counters.quote + 1 },
     }));
-    return { ok: true as const, quote };
+    deliver('quote.created', quote.number, message);
+    return { ok: true as const, quote, message };
   },
 
   /* ───────── Admin ───────── */
 
-  setOrderStatus(orderId: string, status: OrderStatus) {
+  /** Returns why the change is refused (core/orderFlow), or null once done. */
+  setOrderStatus(orderId: string, status: OrderStatus): StatusRefusal | null {
+    const current = db.get().orders.find((o) => o.id === orderId);
+    if (!current) return 'closed';
+    const refusal = statusChangeRefusal(current, status);
+    if (refusal) return refusal;
     const at = now();
     patchOrder(
       orderId,
       (o) => ({ status, history: [...o.history, { at, label: `status.${status}` }] }),
-      (s, o) => {
-        // Cancelling gives the reserved coffee back to stock (only once).
-        if (status !== 'cancelled' || o.status === 'cancelled') return {};
-        return {
-          origins: applyStock(s.origins, o.stockDeductions, 1),
-          stockMovements: [
-            ...o.stockDeductions.map((d) => ({
-              id: uid(), at, originId: d.originId, deltaKg: d.kg, reason: 'order_cancelled' as const, ref: o.number, note: '',
-            })),
-            ...s.stockMovements,
-          ],
-        };
-      },
+      // Cancelling gives the reserved coffee back to stock (only once).
+      (s, o) => (status === 'cancelled' && o.status !== 'cancelled' ? giveStockBack(s, o, at) : {}),
     );
+    return null;
   },
 
-  setPaymentStatus(orderId: string, paymentStatus: PaymentStatus) {
-    patchOrder(orderId, (o) => ({
-      paymentStatus,
-      status: paymentStatus === 'paid' && o.status === 'new' ? 'confirmed' : o.status,
-      history: [...o.history, { at: now(), label: `payment.${paymentStatus}` }],
-    }));
+  /**
+   * Cancels the orders nobody paid in time and gives their coffee back to
+   * stock (rule in core: expiredUnpaidOrders). Runs when the shop or the admin
+   * opens; a scheduled job does it on the server in phase 2.
+   */
+  expireUnpaidOrders(): number {
+    const s = db.get();
+    const expired = new Set(expiredUnpaidOrders(s.orders, s.settings.unpaidOrderTimeoutHours, new Date()).map((o) => o.id));
+    if (!expired.size) return 0;
+    const at = now();
+    db.update((cur) => {
+      const cancel = cur.orders.filter((o) => expired.has(o.id) && o.status !== 'cancelled');
+      return {
+        ...cur,
+        orders: cur.orders.map((o) =>
+          cancel.includes(o) ? { ...o, status: 'cancelled' as const, history: [...o.history, { at, label: 'status.expired' }] } : o,
+        ),
+        origins: applyStock(cur.origins, cancel.flatMap((o) => o.stockDeductions), 1),
+        stockMovements: [
+          ...cancel.flatMap((o) =>
+            o.stockDeductions.map((d) => ({
+              id: uid(), at, originId: d.originId, deltaKg: d.kg, reason: 'order_cancelled' as const, ref: o.number, note: 'auto',
+            })),
+          ),
+          ...cur.stockMovements,
+        ],
+      };
+    });
+    return expired.size;
+  },
+
+  /** Only the owner records payments, and only in a sensible order (core/orderFlow). */
+  setPaymentStatus(orderId: string, paymentStatus: PaymentStatus, role: AdminRole): boolean {
+    const current = db.get().orders.find((o) => o.id === orderId);
+    if (!current || !canSetPayment(current, paymentStatus, role)) return false;
+    const at = now();
+    const cancels = paymentStatus === 'refunded' && refundCancelsOrder(current);
+    patchOrder(
+      orderId,
+      (o) => ({
+        paymentStatus,
+        status: cancels ? 'cancelled' : paymentStatus === 'paid' && o.status === 'new' ? 'confirmed' : o.status,
+        history: [...o.history, { at, label: `payment.${paymentStatus}` }, ...(cancels ? [{ at, label: 'status.cancelled' }] : [])],
+      }),
+      (s, o) => (cancels ? giveStockBack(s, o, at) : {}),
+    );
+    return true;
   },
 
   saveProduct(product: Product) {
@@ -241,13 +306,11 @@ export const api = {
   adjustStock(originId: string, deltaKg: number, reason: StockReason, note: string) {
     const at = now();
     db.update((s) => {
-      const origins = applyStock(s.origins, [{ originId, kg: deltaKg }], 1).map((o) =>
-        o.id === originId && o.stockKg < 0 ? { ...o, stockKg: 0 } : o,
-      );
+      const { origins, appliedKg } = adjustOriginStock(s.origins, originId, deltaKg);
       return {
         ...s,
         origins,
-        stockMovements: [{ id: uid(), at, originId, deltaKg, reason, ref: '', note }, ...s.stockMovements],
+        stockMovements: [{ id: uid(), at, originId, deltaKg: appliedKg, reason, ref: '', note }, ...s.stockMovements],
         notifications: [...withLowStockAlerts(s.origins, origins, s, at), ...s.notifications],
       };
     });
@@ -270,8 +333,11 @@ export const api = {
     db.update((s) => ({ ...s, paymentMethods: s.paymentMethods.map((m) => (m.id === method.id ? method : m)) }));
   },
 
-  saveSettings(settings: Settings) {
+  /** Returns false when the role may not change these settings (core/orderFlow MANAGER_SETTINGS). */
+  saveSettings(settings: Settings, role: AdminRole): boolean {
+    if (settingsChangeRefused(db.get().settings, settings, role)) return false;
     db.update((s) => ({ ...s, settings }));
+    return true;
   },
 
   saveContent(content: SiteContent) {

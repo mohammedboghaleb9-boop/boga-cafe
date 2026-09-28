@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from 'react';
+import { TEXT_MAX } from '@/core/limits';
 import { api, type RequestError } from '@/data/api';
 import { useCatalog, useDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
+import type { MessageDraft } from '@/services/notifications';
+import { SendToBoga } from '@/shared/layout/SendToBoga';
 import { Field } from '@/shared/ui/bits';
-import { RequestFields, emptyRequest } from './RequestFields';
+import { RequestFields, emptyRequest, focusFirstError } from './RequestFields';
 
 export function SampleRequestForm({ initialProductId }: { initialProductId?: string }) {
   const { t, l, money } = useI18n();
@@ -15,7 +18,7 @@ export function SampleRequestForm({ initialProductId }: { initialProductId?: str
   const [monthly, setMonthly] = useState(20);
   const [errors, setErrors] = useState<RequestError[]>([]);
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState<string | null>(null);
+  const [sent, setSent] = useState<{ ref: string; message: MessageDraft } | null>(null);
   const rate = shippingRates.find((r) => r.id === contact.cityId);
 
   async function submit(e: FormEvent) {
@@ -23,16 +26,20 @@ export function SampleRequestForm({ initialProductId }: { initialProductId?: str
     setBusy(true);
     const r = await api.requestSample({ ...contact, productId, estMonthlyKg: monthly });
     setBusy(false);
-    if (!r.ok) return setErrors(r.errors);
+    if (!r.ok) {
+      setErrors(r.errors);
+      focusFirstError('sample', r.errors, 'sample-blend');
+      return;
+    }
     setErrors([]);
-    setSent(r.sample.number);
+    setSent({ ref: r.sample.number, message: r.message });
     setContact(emptyRequest);
   }
 
   if (sent) {
     return (
-      <div className="notice notice-ok stack">
-        <strong>{fmt(t.b2b.sampleSent, { ref: sent })}</strong>
+      <div className="stack">
+        <SendToBoga draft={sent.message} refNumber={sent.ref} reveal />
         <button type="button" className="btn-link small" onClick={() => setSent(null)} style={{ alignSelf: 'flex-start' }}>
           {t.common.back}
         </button>
@@ -43,7 +50,7 @@ export function SampleRequestForm({ initialProductId }: { initialProductId?: str
   return (
     <form className="form-grid" onSubmit={submit} noValidate>
       <RequestFields idPrefix="sample" value={contact} onChange={setContact} errors={errors} />
-      <Field label={t.b2b.blend} htmlFor="sample-blend">
+      <Field label={t.b2b.blend} htmlFor="sample-blend" error={errors.includes('product') ? t.b2b.blendError : undefined}>
         <select id="sample-blend" className="select" value={productId} onChange={(e) => setProductId(e.target.value)}>
           {b2bBlends.map((p) => (
             <option key={p.id} value={p.id}>
@@ -66,6 +73,7 @@ export function SampleRequestForm({ initialProductId }: { initialProductId?: str
         <textarea
           id="sample-notes"
           className="textarea"
+          maxLength={TEXT_MAX.notes}
           value={contact.notes}
           onChange={(e) => setContact({ ...contact, notes: e.target.value })}
         />

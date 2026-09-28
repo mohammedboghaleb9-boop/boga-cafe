@@ -18,8 +18,22 @@ import type {
   StockMovement,
 } from '@/core/types';
 import { checkoutContext } from '../context';
-import { reference, uid } from '../ids';
+import { reference, uid, type RefPrefix } from '../ids';
 import type { DbState } from '../state';
+
+/**
+ * The demo history is written on fixed dates and replayed relative to today:
+ * its latest event is shown one hour ago, so the demo never looks stale and
+ * time-based rules (unpaid orders cancelled after 48 h) behave as in real use.
+ */
+const LATEST = Date.parse('2026-09-27T08:40:00Z');
+const ago = (iso: string) => new Date(Date.now() - 3_600_000 - (LATEST - Date.parse(iso))).toISOString();
+
+/** A demo request moved to today's dates keeps a reference of its own year. */
+const dated = (prefix: RefPrefix, n: number, iso: string) => {
+  const createdAt = ago(iso);
+  return { number: reference(prefix, n, new Date(createdAt).getFullYear()), createdAt };
+};
 
 const customer = (fullName: string, phone: string, cityId: string, address: string): CustomerInfo => ({
   fullName,
@@ -51,7 +65,7 @@ interface DemoOrder {
 
 const demoOrders: DemoOrder[] = [
   {
-    at: '2026-09-20T10:12:00Z',
+    at: ago('2026-09-20T10:12:00Z'),
     customer: customer('Salma Bennani', '0661234501', 'casablanca', 'Rue Ibnou Mounir, Maârif, Casablanca'),
     items: [p('boga-signature', 1000, 1), p('douceur-arabica', 250, 2)],
     payment: 'card',
@@ -60,7 +74,7 @@ const demoOrders: DemoOrder[] = [
     history: ['payment.paid', 'status.in_production', 'status.shipped', 'status.delivered'],
   },
   {
-    at: '2026-09-23T15:40:00Z',
+    at: ago('2026-09-23T15:40:00Z'),
     customer: customer('Youssef El Idrissi', '0677889902', 'oujda', 'Hay Al Qods, rue 12, Oujda'),
     items: [
       {
@@ -83,7 +97,7 @@ const demoOrders: DemoOrder[] = [
     history: ['payment.paid', 'status.in_production'],
   },
   {
-    at: '2026-09-24T09:05:00Z',
+    at: ago('2026-09-24T09:05:00Z'),
     customer: customer('Mehdi Tazi', '0612457803', 'rabat', 'Avenue Fal Ould Oumeir, Agdal, Rabat'),
     items: [p('so-colombia', 250, 1), p('boga-signature', 500, 1)],
     payment: 'card',
@@ -92,7 +106,7 @@ const demoOrders: DemoOrder[] = [
     history: ['payment.paid', 'status.in_production', 'status.shipped'],
   },
   {
-    at: '2026-09-25T18:22:00Z',
+    at: ago('2026-09-25T18:22:00Z'),
     customer: customer('Hajar Amrani', '0708112204', 'fes', 'Route d’Imouzzer, résidence Nour, Fès'),
     items: [p('oriental-intense', 1000, 2)],
     payment: 'cashplus',
@@ -101,7 +115,7 @@ const demoOrders: DemoOrder[] = [
     history: ['payment.reported'],
   },
   {
-    at: '2026-09-26T11:48:00Z',
+    at: ago('2026-09-26T11:48:00Z'),
     customer: customer('Karim Ouazzani', '0655001205', 'nador', 'Boulevard Al Massira, Nador'),
     items: [p('horeca-espresso-bar', 1000, 5)],
     payment: 'bank_transfer',
@@ -110,7 +124,7 @@ const demoOrders: DemoOrder[] = [
     history: [],
   },
   {
-    at: '2026-09-27T08:40:00Z',
+    at: ago('2026-09-27T08:40:00Z'),
     customer: customer('Imane Chraibi', '0661908806', 'marrakech', 'Quartier Guéliz, rue de la Liberté, Marrakech'),
     items: [
       {
@@ -140,7 +154,7 @@ export function buildDemoActivity(base: DbState): DbState {
   const movements: StockMovement[] = [];
 
   demoOrders.forEach((d, i) => {
-    const number = reference('BC', i + 1, 2026);
+    const number = reference('BC', i + 1, new Date(d.at).getFullYear());
     const r = buildOrder(
       { items: d.items, customer: d.customer, paymentMethod: d.payment, locale: 'fr' },
       ctx,
@@ -155,7 +169,11 @@ export function buildDemoActivity(base: DbState): DbState {
       paymentRef: d.paymentStatus === 'awaiting_verification' ? 'CP-88412093' : undefined,
       history: [
         ...r.order.history,
-        ...d.history.map((label, k) => ({ at: new Date(at + (k + 1) * 5 * 3600_000).toISOString(), label })),
+        ...d.history.map((label, k) => ({
+          // a few hours after the order, never in the future
+          at: new Date(Math.min(at + (k + 1) * 5 * 3600_000, Date.now() - (d.history.length - k) * 600_000)).toISOString(),
+          label,
+        })),
       ],
     });
     for (const s of r.order.stockDeductions) {
@@ -164,15 +182,14 @@ export function buildDemoActivity(base: DbState): DbState {
   });
 
   movements.unshift(
-    { id: uid(), at: '2026-09-26T08:00:00Z', originId: 'vietnam', deltaKg: 20, reason: 'restock', ref: '', note: 'Livraison torréfacteur' },
-    { id: uid(), at: '2026-09-26T08:05:00Z', originId: 'colombia', deltaKg: -0.4, reason: 'correction', ref: '', note: 'Inventaire physique' },
+    { id: uid(), at: ago('2026-09-26T08:00:00Z'), originId: 'vietnam', deltaKg: 20, reason: 'restock', ref: '', note: 'Livraison torréfacteur' },
+    { id: uid(), at: ago('2026-09-26T08:05:00Z'), originId: 'colombia', deltaKg: -0.4, reason: 'correction', ref: '', note: 'Inventaire physique' },
   );
 
   const samples: SampleRequest[] = [
     {
       id: uid(),
-      number: reference('SR', 1, 2026),
-      createdAt: '2026-09-22T13:30:00Z',
+      ...dated('SR', 1, '2026-09-22T13:30:00Z'),
       businessType: 'hotel',
       company: 'Hôtel Les Orangers',
       contactName: 'Nadia Berrada',
@@ -189,8 +206,7 @@ export function buildDemoActivity(base: DbState): DbState {
     },
     {
       id: uid(),
-      number: reference('SR', 2, 2026),
-      createdAt: '2026-09-25T10:10:00Z',
+      ...dated('SR', 2, '2026-09-25T10:10:00Z'),
       businessType: 'restaurant',
       company: 'Restaurant Al Bahr',
       contactName: 'Omar Haddou',
@@ -207,8 +223,7 @@ export function buildDemoActivity(base: DbState): DbState {
     },
     {
       id: uid(),
-      number: reference('SR', 3, 2026),
-      createdAt: '2026-09-27T07:55:00Z',
+      ...dated('SR', 3, '2026-09-27T07:55:00Z'),
       businessType: 'cafe',
       company: 'Café Zellige',
       contactName: 'Rachid Benali',
@@ -229,8 +244,7 @@ export function buildDemoActivity(base: DbState): DbState {
   const quotes: QuoteRequest[] = [
     {
       id: uid(),
-      number: reference('QR', 1, 2026),
-      createdAt: '2026-09-26T16:20:00Z',
+      ...dated('QR', 1, '2026-09-26T16:20:00Z'),
       businessType: 'company',
       company: 'Bureau Nord SARL',
       contactName: 'Anas Mansouri',
