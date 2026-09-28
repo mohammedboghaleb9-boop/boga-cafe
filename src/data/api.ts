@@ -29,7 +29,7 @@ import { checkoutContext, templateContext } from './context';
 import { newReference, uid } from './ids';
 import type { DbState } from './state';
 import { db } from './store';
-import { canSetPayment, settingsChangeRefused, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
+import { canSetPayment, refundCancelsOrder, settingsChangeRefused, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
 const now = () => new Date().toISOString();
@@ -38,6 +38,19 @@ function withLowStockAlerts(before: Origin[], after: Origin[], s: DbState, at: s
   return after
     .filter((o) => isLowStock(o) && !isLowStock(before.find((b) => b.id === o.id) ?? o))
     .flatMap((o) => draftsToLogs('stock.low', lowStockMessage(o), s.settings, at, uid));
+}
+
+/** Gives a cancelled order's coffee back to stock, with its lines in the history. */
+function giveStockBack(s: DbState, o: Order, at: string, note = ''): Partial<DbState> {
+  return {
+    origins: applyStock(s.origins, o.stockDeductions, 1),
+    stockMovements: [
+      ...o.stockDeductions.map((d) => ({
+        id: uid(), at, originId: d.originId, deltaKg: d.kg, reason: 'order_cancelled' as const, ref: o.number, note,
+      })),
+      ...s.stockMovements,
+    ],
+  };
 }
 
 function patchOrder(id: string, patch: (o: Order, s: DbState) => Partial<Order>, extra?: (s: DbState, o: Order) => Partial<DbState>) {
@@ -212,19 +225,8 @@ export const api = {
     patchOrder(
       orderId,
       (o) => ({ status, history: [...o.history, { at, label: `status.${status}` }] }),
-      (s, o) => {
-        // Cancelling gives the reserved coffee back to stock (only once).
-        if (status !== 'cancelled' || o.status === 'cancelled') return {};
-        return {
-          origins: applyStock(s.origins, o.stockDeductions, 1),
-          stockMovements: [
-            ...o.stockDeductions.map((d) => ({
-              id: uid(), at, originId: d.originId, deltaKg: d.kg, reason: 'order_cancelled' as const, ref: o.number, note: '',
-            })),
-            ...s.stockMovements,
-          ],
-        };
-      },
+      // Cancelling gives the reserved coffee back to stock (only once).
+      (s, o) => (status === 'cancelled' && o.status !== 'cancelled' ? giveStockBack(s, o, at) : {}),
     );
     return null;
   },
@@ -264,11 +266,17 @@ export const api = {
   setPaymentStatus(orderId: string, paymentStatus: PaymentStatus, role: AdminRole): boolean {
     const current = db.get().orders.find((o) => o.id === orderId);
     if (!current || !canSetPayment(current, paymentStatus, role)) return false;
-    patchOrder(orderId, (o) => ({
-      paymentStatus,
-      status: paymentStatus === 'paid' && o.status === 'new' ? 'confirmed' : o.status,
-      history: [...o.history, { at: now(), label: `payment.${paymentStatus}` }],
-    }));
+    const at = now();
+    const cancels = paymentStatus === 'refunded' && refundCancelsOrder(current);
+    patchOrder(
+      orderId,
+      (o) => ({
+        paymentStatus,
+        status: cancels ? 'cancelled' : paymentStatus === 'paid' && o.status === 'new' ? 'confirmed' : o.status,
+        history: [...o.history, { at, label: `payment.${paymentStatus}` }, ...(cancels ? [{ at, label: 'status.cancelled' }] : [])],
+      }),
+      (s, o) => (cancels ? giveStockBack(s, o, at) : {}),
+    );
     return true;
   },
 

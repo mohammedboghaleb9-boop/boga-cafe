@@ -10,6 +10,15 @@ import { Header } from './Header';
 import './layout.css';
 import { api } from '@/data/api';
 
+/** The section named after # in the link; a badly encoded one (#%E0%A4) is ignored, not a crash. */
+function sectionId(hash: string): string {
+  try {
+    return decodeURIComponent(hash.slice(1));
+  } catch {
+    return '';
+  }
+}
+
 export function StoreLayout() {
   const { pathname, hash } = useLocation();
   const { toast, dismissToast } = useCart();
@@ -18,7 +27,7 @@ export function StoreLayout() {
 
   // new page: back to the top, or to the section named in the link (/b2b#sample)
   useEffect(() => {
-    const target = hash ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+    const target = hash ? document.getElementById(sectionId(hash)) : null;
     if (!target) {
       window.scrollTo({ top: 0 });
       return;

@@ -180,6 +180,19 @@ describe('POST /api/notify', () => {
       ['WWW.Evil.MA', 'WWW[.]Evil[.]MA'],
       ['(evil.co)', '(evil[.]co)'],
       ['Email : a.b@test.co.ma, 0.25 kg, 12.50 DH', 'Email : a.b@test.co.ma, 0.25 kg, 12.50 DH'],
+      // ways around a list of known endings (review): any ending, any name, IP addresses
+      ['pay_now.evil.com/pay', 'pay_now[.]evil[.]com/pay'],
+      ['ñ.evil.com/pay', 'ñ[.]evil[.]com/pay'],
+      ['x].evil.com', 'x][.]evil[.]com'],
+      ['secure.evil.icu/pay evil.pro evil.vip evil.sbs evil.company', 'secure[.]evil[.]icu/pay evil[.]pro evil[.]vip evil[.]sbs evil[.]company'],
+      ['пример.рф и xn--e1afmkfd.xn--p1ai', 'пример[.]рф и xn--e1afmkfd[.]xn--p1ai'],
+      ['evil。com', 'evil[.]com'],
+      ['45.33.12.9/pay', '45[.]33[.]12[.]9/pay'],
+      ['evil.com@x', 'evil[.]com@x'],
+      ['https://user@evil.com/pay', 'hxxps://user@evil.com/pay'], // only a mail address is left, no web link
+      // what is not a link stays readable
+      ['S.A.R.L Nord, v1.2, 3.5 kg, sara@пример.рф', 'S.A.R.L Nord, v1.2, 3.5 kg, sara@пример.рф'],
+      ['\u00000\u0000 a@b.ma', '0 a@b.ma'], // a forged placeholder is dropped, not replaced by an address
     ]) {
       expect(defangLinks(raw)).toBe(safe);
     }

@@ -46,9 +46,9 @@ const REFUNDABLE: OrderStatus[] = ['new', 'confirmed', 'cancelled', 'delivered']
 
 /**
  * Money is the owner's decision: only the owner records a payment, a failure or a refund.
- * - A refund happens before production (the order can then be cancelled), after
- *   a cancellation, or after delivery — never mid-production, where it would
- *   leave the order unable to move.
+ * - A refund happens before production (it also cancels the order, see
+ *   refundCancelsOrder), after a cancellation, or after delivery — never
+ *   mid-production, where it would leave the order unable to move.
  * - Money that arrives after the order was cancelled (e.g. a transfer after the
  *   automatic 48 h cancellation) is recorded as refunded: the stock went back,
  *   so the customer gets the money back or places a new order.
@@ -64,6 +64,13 @@ export function canSetPayment(order: Pick<Order, 'paymentStatus' | 'status'>, ne
 }
 
 /**
+ * A refund before production ends the order: it is cancelled and its coffee
+ * goes back to stock, so the customer is not asked to pay again and nothing
+ * stays reserved. (Database: set_payment_status does the same.)
+ */
+export const refundCancelsOrder = (order: Pick<Order, 'status'>): boolean => order.status === 'new' || order.status === 'confirmed';
+
+/**
  * Settings a manager may change. Everything else is the owner's: the contact
  * details customers send their orders to, who receives the notifications, the
  * bank details shown for transfers, and the business rules. (Database: the
@@ -71,8 +78,20 @@ export function canSetPayment(order: Pick<Order, 'paymentStatus' | 'status'>, ne
  */
 export const MANAGER_SETTINGS: readonly (keyof Settings)[] = ['freeShippingOver'];
 
+/** Staff change no setting at all; managers only MANAGER_SETTINGS; the owner everything. */
 export function settingsChangeRefused(before: Settings, after: Settings, role: AdminRole): boolean {
   if (role === 'owner') return false;
+  const allowed: readonly (keyof Settings)[] = role === 'manager' ? MANAGER_SETTINGS : [];
   const keys = new Set([...Object.keys(before), ...Object.keys(after)] as (keyof Settings)[]);
-  return [...keys].some((k) => !MANAGER_SETTINGS.includes(k) && JSON.stringify(before[k]) !== JSON.stringify(after[k]));
+  return [...keys].some((k) => !allowed.includes(k) && !sameValue(before[k], after[k]));
+}
+
+/** Same data, whatever the order of the keys. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  return ka.length === kb.length && ka.every((k) => Object.hasOwn(b, k) && sameValue((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
 }

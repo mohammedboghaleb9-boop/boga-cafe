@@ -68,7 +68,9 @@ export function OrderPage() {
             )}
             <p className="small muted">
               {order.status === 'cancelled'
-                ? t.order.cancelledText
+                ? order.paymentStatus === 'refunded'
+                  ? t.order.refundedText
+                  : t.order.cancelledText
                 : order.status === 'delivered'
                   ? t.order.deliveredText
                   : order.paymentStatus === 'paid'

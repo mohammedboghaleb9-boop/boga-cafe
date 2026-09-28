@@ -54,6 +54,13 @@ function setStatus(ref: string, status: DeliveryStatus) {
 
 export const deliveryStatus = (ref: string): DeliveryStatus => statuses.get(ref) ?? 'off';
 
+// While the page is being left (reload, card payment page), the browser cuts the
+// requests of this page: that is not an answer from the server, so it is not
+// recorded, and the reloaded page shows 'slow' (unknown) instead of 'failed'.
+let leaving = false;
+globalThis.addEventListener?.('pagehide', () => (leaving = true));
+globalThis.addEventListener?.('pageshow', () => (leaving = false));
+
 export function onDeliveryChange(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -88,6 +95,7 @@ export function deliver(event: DeliverableEvent, ref: string, draft: MessageDraf
   void post(event, ref, draft).then((ok) => {
     settled = true;
     clearTimeout(timer);
+    if (!ok && leaving) return;
     setStatus(ref, ok ? 'sent' : 'failed');
   });
 }

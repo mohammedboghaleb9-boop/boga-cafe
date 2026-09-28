@@ -77,9 +77,13 @@ export function blockingRestockDate(shortages: Shortage[]): string | undefined {
   return dates.sort().at(-1);
 }
 
-/** sign = -1 removes stock (new order), +1 gives it back (cancelled order). */
+/**
+ * sign = -1 removes stock (new order), +1 gives it back (cancelled orders).
+ * Several orders can use the same coffee: their quantities add up.
+ */
 export function applyStock(origins: Origin[], deductions: StockDeduction[], sign: 1 | -1): Origin[] {
-  const byId = new Map(deductions.map((d) => [d.originId, d.kg]));
+  const byId = new Map<string, number>();
+  for (const d of deductions) byId.set(d.originId, (byId.get(d.originId) ?? 0) + d.kg);
   return origins.map((o) =>
     byId.has(o.id) ? { ...o, stockKg: roundKg(o.stockKg + sign * byId.get(o.id)!) } : o,
   );

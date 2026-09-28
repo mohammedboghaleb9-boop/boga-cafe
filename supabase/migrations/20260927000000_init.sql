@@ -497,6 +497,11 @@ begin
          status = case when p_status = 'paid' and status = 'new' then 'confirmed' else status end
    where id = p_order_id;
   insert into public.order_events (order_id, label, actor) values (p_order_id, 'payment.' || p_status, auth.uid());
+  -- a refund before production ends the order: cancelled, coffee back to stock
+  -- (src/core/orderFlow.ts refundCancelsOrder)
+  if p_status = 'refunded' and v_order.status in ('new', 'confirmed') then
+    perform public.set_order_status(p_order_id, 'cancelled');
+  end if;
 end $$;
 
 create or replace function public.adjust_stock(p_origin_id text, p_delta_kg numeric, p_reason text, p_note text default '')
@@ -581,6 +586,13 @@ begin
      and auth.uid() is not null
      and not public.is_admin(array['owner']) then
     raise exception 'owner_only';
+  end if;
+  -- the storefront computes every delivery fee with it: a number, 0 or more
+  if new.settings -> 'freeShippingOver' is distinct from old.settings -> 'freeShippingOver'
+     and not (case when jsonb_typeof(new.settings -> 'freeShippingOver') = 'number'
+                   then (new.settings ->> 'freeShippingOver')::numeric >= 0
+                   else false end) then
+    raise exception 'invalid_settings';
   end if;
   return new;
 end $$;

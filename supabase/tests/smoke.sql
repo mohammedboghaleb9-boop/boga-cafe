@@ -352,3 +352,50 @@ do $$ begin
   if not exists (select 1 from public.stock_movements where origin_id = 'ethiopia' and reason = 'restock' and delta_kg = 5) then raise exception 'TEST FAILED: first lot not in history'; end if;
 end $$;
 select 'ok 15 - new origins start at 0 kg; first lot goes through the history' as result;
+
+-- 16. A refund before production cancels the order and gives its coffee back --
+do $$
+declare v_id uuid; v_before numeric;
+begin
+  select id into v_id from public.commit_order(
+    '{"customer": {"fullName": "Rembourse", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 0.2,
+      "subtotal": 44, "shippingFee": 20, "total": 64, "paymentMethod": "card", "stockDeductions": [{"originId": "brazil", "kg": 0.2}]}',
+    '', '', '');
+  v_before := (select stock_kg from public.origins where id = 'brazil');
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true); -- owner
+  set local role authenticated;
+  perform public.set_payment_status(v_id, 'paid');      -- new → confirmed
+  perform public.set_payment_status(v_id, 'refunded');  -- customer changed their mind
+  reset role;
+  if (select status from public.orders where id = v_id) <> 'cancelled' then raise exception 'TEST FAILED: refunded order left open'; end if;
+  if (select stock_kg from public.origins where id = 'brazil') <> v_before + 0.2 then raise exception 'TEST FAILED: stock not returned on refund'; end if;
+  if (select count(*) from public.order_events where order_id = v_id and label in ('payment.refunded', 'status.cancelled')) <> 2 then raise exception 'TEST FAILED: history'; end if;
+end $$;
+select 'ok 16 - a refund before production cancels the order and returns the stock' as result;
+
+-- 17. The free-shipping threshold stays a number ------------------------------
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000003'; -- manager
+do $$
+declare bad text;
+begin
+  foreach bad in array array['{"freeShippingOver": "600"}', '{"freeShippingOver": -5}', '{"freeShippingOver": {"x": 1}}', '{"freeShippingOver": null}'] loop
+    begin
+      update public.site_config set settings = settings || bad::jsonb where id = 1;
+      raise exception 'TEST FAILED: accepted %', bad;
+    exception when others then
+      if sqlerrm <> 'invalid_settings' then raise; end if;
+    end;
+  end loop;
+  begin
+    update public.site_config set settings = settings - 'freeShippingOver' where id = 1;
+    raise exception 'TEST FAILED: threshold removed';
+  exception when others then
+    if sqlerrm <> 'invalid_settings' then raise; end if;
+  end;
+end $$;
+reset role;
+do $$ begin
+  if (select settings -> 'freeShippingOver' from public.site_config) <> '600'::jsonb then raise exception 'TEST FAILED: threshold changed'; end if;
+end $$;
+select 'ok 17 - the free-shipping threshold stays a number, 0 or more' as result;

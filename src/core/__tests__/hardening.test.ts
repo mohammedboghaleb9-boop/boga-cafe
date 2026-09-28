@@ -180,8 +180,14 @@ describe('settings: managers change free shipping only (review NEW-3)', () => {
     expect(settingsChangeRefused(settings, edit({ bank: { ...settings.bank, rib: 'ATTACKER' } }), 'staff')).toBe(true);
     expect(settingsChangeRefused(settings, edit({ b2bThresholdKg: 1 }), 'manager')).toBe(true);
     expect(settingsChangeRefused(settings, edit({ contact: { ...settings.contact, whatsapp: '+212700000000' } }), 'owner')).toBe(false);
-    // saving the same values again is not a change
+    // saving the same values again is not a change, whatever the order of the keys
     expect(settingsChangeRefused(settings, structuredClone(settings), 'manager')).toBe(false);
+    const { rib, ...rest } = settings.bank;
+    expect(settingsChangeRefused(settings, edit({ bank: { ...rest, rib } }), 'manager')).toBe(false);
+    expect(settingsChangeRefused(settings, edit({ bank: { ...rest } as typeof settings.bank }), 'manager')).toBe(true);
+    // staff change nothing, not even the free-shipping threshold
+    expect(settingsChangeRefused(settings, edit({ freeShippingOver: settings.freeShippingOver + 100 }), 'staff')).toBe(true);
+    expect(settingsChangeRefused(settings, structuredClone(settings), 'staff')).toBe(false);
   });
 });
 
@@ -196,5 +202,14 @@ describe('manual stock changes (review NEW-5)', () => {
     expect(up.origins[0].stockKg).toBe(2.8);
     expect(up.appliedKg).toBe(2.5);
     expect(adjustOriginStock(origins, 'missing', 5)).toEqual({ origins, appliedKg: 0 });
+  });
+});
+
+describe('stock returns add up across orders', () => {
+  it('gives back every order, even when several used the same coffee', async () => {
+    const { applyStock } = await import('../stock');
+    const origins = [origin('a', { stockKg: 1 }), origin('b', { stockKg: 1 })];
+    const back = applyStock(origins, [{ originId: 'a', kg: 0.5 }, { originId: 'b', kg: 0.2 }, { originId: 'a', kg: 0.25 }], 1);
+    expect(back.map((o) => o.stockKg)).toEqual([1.75, 1.2]);
   });
 });

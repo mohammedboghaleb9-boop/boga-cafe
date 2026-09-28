@@ -77,18 +77,29 @@ export const LIMITS = { body: 20_000, subject: 200, whatsapp: 4_000, email: 12_0
 
 const FOOTER = 'Envoyé par le formulaire du site. Un message ne prouve jamais un paiement : vérifiez-le à la banque ou au CMI.';
 
-/** Endings WhatsApp and Gmail turn into links on their own, without http:// or www. */
-const LINKED_TLDS = 'com|net|org|info|biz|ma|fr|be|ch|es|it|de|uk|us|eu|io|co|me|app|dev|xyz|top|site|online|shop|store|link|click|live|ly|gl|to|cc|tk|ru|cn';
+// Email addresses stay as they are: the team answers to them.
+const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.\p{L}{2,}/gu;
+// A dot (or a full-width one) between a name and what could be a domain ending
+// (2+ characters starting with a letter: com, ma, icu, рф, xn--p1ai…). Numbers
+// such as 0.25 kg or 12.50 DH are followed by a digit and stay untouched.
+const DOMAIN_DOT = /(?<=[^\s[])[.。．｡](?=\p{L}[\p{L}\p{N}-])/gu;
+const IP = /\b\d{1,3}(?:\.\d{1,3}){3}\b/g;
 
 /**
  * Links have no place in these messages: a forged one could carry phishing.
- * They are made unclickable rather than removed (hxxps://evil[.]example/pay),
- * so the team still sees what was written. Email addresses stay as they are.
+ * Whatever could be read as a link is made unclickable rather than removed
+ * (hxxps://evil[.]com/pay, pay_now[.]evil[.]icu, 45[.]33[.]12[.]9), so the
+ * team still sees what was written. No list of domain endings: new ones
+ * appear all the time.
  */
 export function defangLinks(text: string): string {
-  return text
-    .replace(/\b(?:https?:\/\/|www\.)[^\s/?#]+/gi, (link) => link.replace(/^http/i, 'hxxp').replace(/\./g, '[.]'))
-    .replace(new RegExp(`(?<![@\\w.\\-\\]])(?:[a-z0-9-]+\\.)+(?:${LINKED_TLDS})\\b(?![@\\-])`, 'gi'), (host) => host.replace(/\./g, '[.]'));
+  const emails: string[] = [];
+  const held = text.replace(/\u0000/g, '').replace(EMAIL, (email) => `\u0000${emails.push(email) - 1}\u0000`);
+  const safe = held
+    .replace(/\bhttp(s?):\/\//gi, 'hxxp$1://')
+    .replace(IP, (ip) => ip.replace(/\./g, '[.]'))
+    .replace(DOMAIN_DOT, '[.]');
+  return safe.replace(/\u0000(\d+)\u0000/g, (_, i: string) => emails[Number(i)]);
 }
 
 /** Parses and checks the request body. Returns an error code or the payload. */

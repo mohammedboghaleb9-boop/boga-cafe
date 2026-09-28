@@ -98,6 +98,29 @@ describe('automatic delivery status', () => {
     expect(reloaded.deliveryStatus('SR-2026-HHHHHH')).toBe('off');
   });
 
+  it('does not record a request cut by a page reload as failed (review)', async () => {
+    const tab = tabStorage();
+    const page = new EventTarget();
+    vi.stubGlobal('addEventListener', page.addEventListener.bind(page));
+    let cut!: (e: Error) => void;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((_, reject) => (cut = reject))));
+    const d = await load('/api/notify');
+    d.deliver('sample.created', 'SR-2026-KKKKKK', draft);
+    page.dispatchEvent(new Event('pagehide')); // the customer reloads: the browser cuts the request
+    cut(new TypeError('Failed to fetch'));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(d.deliveryStatus('SR-2026-KKKKKK')).toBe('pending');
+    expect(tab.get('boga.delivery')).toContain('"SR-2026-KKKKKK":"pending"');
+    const reloaded = await load('/api/notify');
+    expect(reloaded.deliveryStatus('SR-2026-KKKKKK')).toBe('slow');
+
+    // the page comes back from the back/forward cache: real failures count again
+    page.dispatchEvent(new Event('pageshow'));
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('network'))));
+    d.deliver('sample.created', 'SR-2026-LLLLLL', draft);
+    await vi.waitFor(() => expect(d.deliveryStatus('SR-2026-LLLLLL')).toBe('failed'));
+  });
+
   it('works when the browser refuses storage (private mode)', async () => {
     vi.stubGlobal('sessionStorage', {
       getItem: () => {

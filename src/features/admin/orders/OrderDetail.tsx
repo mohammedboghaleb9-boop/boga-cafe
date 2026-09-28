@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router';
 import { formatKg, formatNumber, formatSize } from '@/core/format';
-import { canSetPayment, NEXT_STATUS, statusChangeRefusal } from '@/core/orderFlow';
+import { canSetPayment, NEXT_STATUS, refundCancelsOrder, statusChangeRefusal } from '@/core/orderFlow';
 import type { PaymentStatus } from '@/core/types';
 import { api } from '@/data/api';
 import { useDb } from '@/data/hooks';
@@ -223,9 +223,12 @@ export function OrderDetail() {
                 </button>
               )}
               {pay('refunded') && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => api.setPaymentStatus(order.id, 'refunded', role)}>
-                  {t.admin.orders.markRefunded}
-                </button>
+                <ConfirmButton
+                  className="btn btn-ghost btn-sm"
+                  label={t.admin.orders.markRefunded}
+                  confirmLabel={refundCancelsOrder(order) ? t.admin.orders.refundCancelConfirm : t.admin.orders.refundConfirm}
+                  onConfirm={() => api.setPaymentStatus(order.id, 'refunded', role)}
+                />
               )}
               {role !== 'owner' && <span className="small muted">{t.admin.orders.ownerPayments}</span>}
             </div>
