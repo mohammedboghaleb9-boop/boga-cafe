@@ -1,5 +1,3 @@
-import { useEffect } from 'react';
-import { useLocation } from 'react-router';
 import { useCatalog, useDb } from '@/data/hooks';
 import { ProductCard } from '@/features/shop/ProductCard';
 import { useI18n } from '@/i18n';
@@ -14,12 +12,8 @@ export function B2BPage() {
   const { t } = useI18n();
   const { products } = useCatalog();
   const { settings } = useDb();
-  const { hash } = useLocation();
   const blends = products.filter((p) => p.active && p.kind === 'b2b');
 
-  useEffect(() => {
-    if (hash === '#sample') document.getElementById('sample')?.scrollIntoView({ behavior: 'smooth' });
-  }, [hash]);
 
   return (
     <>

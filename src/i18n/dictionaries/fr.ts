@@ -390,6 +390,14 @@ export const fr: Dict = {
     preview: 'Voir le message (en français, pour notre équipe)',
   },
 
+  a11y: {
+    mainNav: 'Menu principal',
+    mobileNav: 'Menu',
+    breadcrumb: 'Vous êtes ici',
+    decrease: 'Un de moins',
+    increase: 'Un de plus',
+  },
+
   footer: {
     tagline: 'Café en grains, torréfié selon nos recettes et livré partout au Maroc.',
     shop: 'Boutique',

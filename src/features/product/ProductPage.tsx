@@ -18,8 +18,13 @@ import { Availability, QtyStepper, SpeciesBar } from '@/shared/ui/bits';
 import './product.css';
 import { RoastScale } from '@/shared/ui/Roast';
 
+/** Keyed by slug: moving to another product starts from its own size and quantity. */
 export function ProductPage() {
   const { slug } = useParams();
+  return <ProductDetails key={slug} slug={slug} />;
+}
+
+function ProductDetails({ slug }: { slug?: string }) {
   const { t, l, money } = useI18n();
   const { products, originIndex } = useCatalog();
   const settings = useSettings();
@@ -42,7 +47,7 @@ export function ProductPage() {
 
   return (
     <div className="container page">
-      <nav className="crumbs small muted" aria-label="Breadcrumb">
+      <nav className="crumbs small muted" aria-label={t.a11y.breadcrumb}>
         <Link to="/shop">{t.nav.shop}</Link> / <Link to={`/shop?kind=${product.kind}`}>{t.kind[product.kind]}</Link>
       </nav>
 
@@ -149,7 +154,9 @@ export function ProductPage() {
 
           {product.kind === 'b2b' && (
             <div className="notice">
-              {t.product.b2bNote} <Link to="/b2b#sample">{t.product.b2bSample} →</Link>
+              {t.product.b2bNote} <Link to="/b2b#sample">
+                {t.product.b2bSample} <span className="dir-arrow" aria-hidden="true">→</span>
+              </Link>
             </div>
           )}
         </div>

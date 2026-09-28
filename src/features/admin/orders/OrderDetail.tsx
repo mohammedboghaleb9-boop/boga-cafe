@@ -33,7 +33,7 @@ export function OrderDetail() {
       <div className="admin-head">
         <div className="stack" style={{ ['--gap' as string]: '4px' }}>
           <Link to="/admin/orders" className="small">
-            ← {t.admin.nav.orders}
+            <span className="dir-arrow" aria-hidden="true">←</span> {t.admin.nav.orders}
           </Link>
           <h1 className="num">{order.number}</h1>
           <span className="row small muted">

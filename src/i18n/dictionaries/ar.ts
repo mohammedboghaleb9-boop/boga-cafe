@@ -386,6 +386,14 @@ export const ar: Dict = {
     preview: 'عرض الرسالة (بالفرنسية، لفريقنا)',
   },
 
+  a11y: {
+    mainNav: 'القائمة الرئيسية',
+    mobileNav: 'القائمة',
+    breadcrumb: 'أنت هنا',
+    decrease: 'نقص واحد',
+    increase: 'زيادة واحد',
+  },
+
   footer: {
     tagline: 'قهوة حبوب، محمّصة حسب وصفاتنا وتوصَل لكل مدن المغرب.',
     shop: 'المتجر',

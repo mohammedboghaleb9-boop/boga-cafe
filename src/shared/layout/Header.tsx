@@ -55,14 +55,16 @@ export function Header() {
         <div className="demo-bar">
           <div className="container spread">
             <span>{t.demo.banner}</span>
-            <Link to="/admin">{t.demo.openAdmin} →</Link>
+            <Link to="/admin">
+              {t.demo.openAdmin} <span className="dir-arrow" aria-hidden="true">→</span>
+            </Link>
           </div>
         </div>
       )}
       <header className="site-header">
         <div className="container site-header-row">
           <Logo />
-          <nav className="main-nav" aria-label="Main">
+          <nav className="main-nav" aria-label={t.a11y.mainNav}>
             {links.map((link) => (
               <NavLink key={link.to} to={link.to}>
                 {link.label}
@@ -87,7 +89,7 @@ export function Header() {
             </button>
           </div>
         </div>
-        <nav id="mobile-nav" className="mobile-nav" hidden={!open} aria-label="Mobile">
+        <nav id="mobile-nav" className="mobile-nav" hidden={!open} aria-label={t.a11y.mobileNav}>
           <div className="container stack">
             {links.map((link) => (
               <NavLink key={link.to} to={link.to}>

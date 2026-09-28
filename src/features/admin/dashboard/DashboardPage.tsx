@@ -51,7 +51,7 @@ export function DashboardPage() {
           <div className="spread">
             <h2 className="admin-card-title">{t.admin.dash.recentOrders}</h2>
             <Link to="/admin/orders" className="small">
-              {t.common.all} →
+              {t.common.all} <span className="dir-arrow" aria-hidden="true">→</span>
             </Link>
           </div>
           <div className="table-wrap">
@@ -96,7 +96,7 @@ export function DashboardPage() {
               ))
             )}
             <Link to="/admin/stock" className="small">
-              {t.admin.nav.stock} →
+              {t.admin.nav.stock} <span className="dir-arrow" aria-hidden="true">→</span>
             </Link>
           </section>
 

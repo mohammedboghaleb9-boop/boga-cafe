@@ -87,12 +87,6 @@
   flex-shrink: 0;
 }
 
-.flip-rtl {
-  transition: transform 0.2s;
-}
-:root[dir='rtl'] .flip-rtl {
-  transform: scaleX(-1);
-}
 
 /* ───── Custom Blend band: the round seal + the concept's 50/30/20 example ───── */
 .blend-band {

@@ -714,3 +714,13 @@ textarea {
   background: var(--surface-2);
   color: var(--ink-2);
 }
+
+/* Direction arrows in links point the reading way (mirrored in Arabic) */
+.dir-arrow,
+.flip-rtl {
+  display: inline-block;
+}
+:root[dir='rtl'] .dir-arrow,
+:root[dir='rtl'] .flip-rtl {
+  transform: scaleX(-1);
+}

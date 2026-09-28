@@ -392,6 +392,14 @@ export const en = {
     preview: 'See the message (in French, for our team)',
   },
 
+  a11y: {
+    mainNav: 'Main menu',
+    mobileNav: 'Menu',
+    breadcrumb: 'You are here',
+    decrease: 'One less',
+    increase: 'One more',
+  },
+
   footer: {
     tagline: 'Whole-bean coffee, roasted to our recipes and delivered across Morocco.',
     shop: 'Shop',

@@ -66,13 +66,14 @@ export function QtyStepper({
   max?: number;
   label?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className="qty" role="group" aria-label={label}>
-      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label="−">
+      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label={t.a11y.decrease}>
         <Icon name="minus" size={16} />
       </button>
       <output aria-live="polite">{value}</output>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label="+">
+      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label={t.a11y.increase}>
         <Icon name="plus" size={16} />
       </button>
     </div>

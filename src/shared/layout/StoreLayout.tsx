@@ -11,14 +11,17 @@ import './layout.css';
 import { api } from '@/data/api';
 
 export function StoreLayout() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   const { toast, dismissToast } = useCart();
   const { settings } = useDb();
   const { t } = useI18n();
 
+  // new page: back to the top, or to the section named in the link (/b2b#sample)
   useEffect(() => {
-    window.scrollTo({ top: 0 });
-  }, [pathname]);
+    const target = hash ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+    if (target) target.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }, [pathname, hash]);
 
   // unpaid orders past the time limit give their stock back
   useEffect(() => {

@@ -111,7 +111,9 @@ export function CheckoutPage() {
       {(summary.isB2B || summary.hasProblems) && (
         <p className="notice notice-warn" style={{ marginBlockEnd: 16 }}>
           {summary.isB2B ? t.checkout.errors.b2b_required : t.checkout.errors.cart_problem}{' '}
-          <Link to="/cart">{t.nav.cart} →</Link>
+          <Link to="/cart">
+            {t.nav.cart} <span className="dir-arrow" aria-hidden="true">→</span>
+          </Link>
         </p>
       )}
 

@@ -259,6 +259,40 @@ export function CustomBlendPage() {
           />
           {lines.length > 0 && <SpeciesBar {...view.split} />}
 
+          <div className="summary-price">
+            <span className="spread">
+              <span>{t.blend.unitPrice}</span>
+              <strong className="num">{money(price.total)}</strong>
+            </span>
+            <span className="spread big">
+              <span>
+                {t.common.total} ×{qty}
+              </span>
+              <strong className="num">{money(price.total * qty)}</strong>
+            </span>
+          </div>
+
+          {issues.length > 0 && lines.length > 0 && (
+            <ul className="issues">
+              {issues.map((issue, i) => (
+                <li key={i}>{issueText(issue, t, originIndex, l, date)}</li>
+              ))}
+            </ul>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            disabled={issues.length > 0}
+            onClick={() => cart.addCustom({ lines, size }, qty, `${t.blend.added} · ${formatSize(size)} ×${qty}`)}
+          >
+            <Icon name="cart" size={18} /> {t.common.addToCart}
+          </button>
+          <p className="small muted icon-line">
+            <Icon name="bean" size={16} /> {t.common.wholeBeansOnly}
+          </p>
+
+          {/* details after the button: the price and the action stay on screen on laptops */}
           {lines.length > 0 && (
             <div className="stack summary-block">
               <span className="label">
@@ -287,39 +321,6 @@ export function CustomBlendPage() {
               </table>
             </div>
           )}
-
-          <div className="summary-price">
-            <span className="spread">
-              <span>{t.blend.unitPrice}</span>
-              <strong className="num">{money(price.total)}</strong>
-            </span>
-            <span className="spread big">
-              <span>
-                {t.common.total} ×{qty}
-              </span>
-              <strong className="num">{money(price.total * qty)}</strong>
-            </span>
-          </div>
-
-          {issues.length > 0 && lines.length > 0 && (
-            <ul className="issues">
-              {issues.map((issue, i) => (
-                <li key={i}>{issueText(issue, t, originIndex, l)}</li>
-              ))}
-            </ul>
-          )}
-
-          <button
-            type="button"
-            className="btn btn-primary btn-block"
-            disabled={issues.length > 0}
-            onClick={() => cart.addCustom({ lines, size }, qty, `${t.blend.added} · ${formatSize(size)} ×${qty}`)}
-          >
-            <Icon name="cart" size={18} /> {t.common.addToCart}
-          </button>
-          <p className="small muted icon-line">
-            <Icon name="bean" size={16} /> {t.common.wholeBeansOnly}
-          </p>
         </aside>
       </div>
     </div>

@@ -11,6 +11,13 @@
   .builder-summary {
     position: sticky;
     top: calc(84px + env(safe-area-inset-top, 0px));
+    /* never taller than the screen: the add-to-cart button stays reachable */
+    max-block-size: calc(100vh - 100px - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .builder-summary .summary-visual {
+    max-inline-size: 170px;
   }
 }
 

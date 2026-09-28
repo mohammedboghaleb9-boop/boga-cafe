@@ -14,7 +14,7 @@ import { LineDetails } from './CartLineView';
 import './cart.css';
 
 export function CartPage() {
-  const { t, l, money } = useI18n();
+  const { t, l, money, date } = useI18n();
   const cart = useCart();
   const { products, originIndex } = useCatalog();
   const settings = useSettings();
@@ -111,6 +111,7 @@ export function CartPage() {
                 need: formatNumber(s.neededKg, 2),
                 left: formatNumber(s.availableKg, 2),
               })}
+              {s.restockDate && ` · ${fmt(t.common.backAround, { date: date(s.restockDate) })}`}
             </p>
           ))}
 

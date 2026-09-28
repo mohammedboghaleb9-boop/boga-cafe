@@ -44,7 +44,7 @@ export function SingleOriginPage() {
 
       <div className="pgrid">
         {singles.map((p) => (
-          <ProductCard key={p.id} product={p} />
+          <ProductCard key={p.id} product={p} headingLevel={2} />
         ))}
       </div>
     </div>

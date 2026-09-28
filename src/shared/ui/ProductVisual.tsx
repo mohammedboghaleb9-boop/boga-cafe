@@ -46,7 +46,10 @@ export function ProductVisual({
           decoding="async"
         />
         <div className="pv-sticker" aria-hidden="true">
-          <span className="pv-title">{sticker.title}</span>
+          {/* about 14 Cinzel capitals fit the sticker: longer names get a smaller size, never cut */}
+          <span className="pv-title" style={{ ['--title-fit' as string]: Math.min(1, 14 / Math.max(1, sticker.title.length)) }}>
+            {sticker.title}
+          </span>
           <span className="pv-blend">{sticker.blend}</span>
           {sticker.flags.length > 0 && (
             <span className="pv-flags">

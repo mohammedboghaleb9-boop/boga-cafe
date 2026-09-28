@@ -54,7 +54,7 @@ export function AdminLogin() {
           {t.admin.signIn}
         </button>
         <Link to="/" className="small muted">
-          ← {t.admin.viewSite}
+          <span className="dir-arrow" aria-hidden="true">←</span> {t.admin.viewSite}
         </Link>
       </form>
     </div>

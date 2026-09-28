@@ -43,7 +43,7 @@ export function ShopPage() {
       ) : (
         <div className="pgrid">
           {visible.map((p) => (
-            <ProductCard key={p.id} product={p} />
+            <ProductCard key={p.id} product={p} headingLevel={2} />
           ))}
         </div>
       )}

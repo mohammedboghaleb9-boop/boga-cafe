@@ -10,7 +10,9 @@ import { Availability, SpeciesBar } from '@/shared/ui/bits';
 import './shop.css';
 
 /** Product tile used by the shop, the home page, Single Origin and B2B. */
-export function ProductCard({ product }: { product: Product }) {
+/** `headingLevel`: 2 on pages where the cards come right after the page title (no h2 between). */
+export function ProductCard({ product, headingLevel = 3 }: { product: Product; headingLevel?: 2 | 3 }) {
+  const Title = headingLevel === 2 ? 'h2' : 'h3';
   const { t, l, money } = useI18n();
   const { originIndex } = useCatalog();
   const settings = useSettings();
@@ -31,9 +33,9 @@ export function ProductCard({ product }: { product: Product }) {
       </Link>
       <div className="pcard-body">
         <span className="eyebrow">{t.kind[product.kind]}</span>
-        <h3>
+        <Title className="pcard-title">
           <Link to={url}>{l(product.name)}</Link>
-        </h3>
+        </Title>
         <p className="muted small">{l(product.tagline)}</p>
         <SpeciesBar {...view.split} />
         <p className="small pcard-notes">

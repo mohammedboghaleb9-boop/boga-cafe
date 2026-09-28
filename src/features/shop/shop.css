@@ -27,10 +27,14 @@
   padding: 14px 16px 16px;
   flex: 1;
 }
-.pcard-body h3 a {
+/* same size whether the card title is an h2 (shop pages) or an h3 */
+.pcard-title {
+  font-size: 1.15rem;
+}
+.pcard-title a {
   text-decoration: none;
 }
-.pcard-body h3 a:hover {
+.pcard-title a:hover {
   color: var(--accent);
 }
 .pcard-notes {
