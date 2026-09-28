@@ -4,6 +4,7 @@ import type { OrderLine } from '@/core/types';
 import { useCatalog } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
+import './cart-line.css';
 
 export function LineDetails({ line }: { line: OrderLine }) {
   const { l, t } = useI18n();

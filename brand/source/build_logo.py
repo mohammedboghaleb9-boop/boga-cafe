@@ -264,7 +264,6 @@ files['boga-cafe-logo-currentcolor.svg'] = svg([em, wm], total_w, ph, 'BOGA CAFÃ
 
 # website copies (take the text colour of their container)
 web = {
-    'monogram.svg': files['boga-cafe-monogram-currentcolor.svg'],
     'monogram-small.svg': files['boga-cafe-monogram-small.svg'],
     'logo.svg': files['boga-cafe-logo-currentcolor.svg'],
 }

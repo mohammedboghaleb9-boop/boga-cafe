@@ -5,7 +5,6 @@ export const ar: Dict = {
   meta: { dir: 'rtl', label: 'العربية', short: 'ع', intl: 'ar-MA' },
 
   nav: {
-    home: 'الرئيسية',
     shop: 'المتجر',
     singleOrigin: 'أحادي المصدر',
     customBlend: 'خلطتك الخاصة',
@@ -97,7 +96,6 @@ export const ar: Dict = {
 
   demo: {
     banner: 'نموذج تجريبي: المنتجات والأسعار والمخزون أمثلة، ولا يوجد دفع حقيقي. رسائل واتساب و Gmail التي ترسلها تصل فعلاً إلى BOGA CAFÉ.',
-    reset: 'إعادة التعيين',
     openAdmin: 'فتح لوحة الإدارة',
   },
 
@@ -188,7 +186,6 @@ export const ar: Dict = {
     pickFirst: 'اختر نوعاً واحداً على الأقل في الأعلى.',
     summary: 'خلطتك',
     gramsTitle: 'في كل كيس',
-    priceTitle: 'تفاصيل السعر',
     bagFee: 'الكيس، الخلط والتعبئة',
     unitPrice: 'سعر الكيس',
     roastTitle: 'درجة التحميص',
@@ -244,7 +241,6 @@ export const ar: Dict = {
     monthly: 'الاستهلاك التقديري (كلغ / شهر)',
     notes: 'رسالة',
     submitSample: 'إرسال طلب العيّنة',
-    sampleSent: 'تم استلام الطلب {ref}. سيتصل بك فريقنا قريباً.',
     deliveryFee: 'التوصيل إلى {city}: {fee}',
   },
 
@@ -268,7 +264,6 @@ export const ar: Dict = {
     b2bText:
       'وزن سلتك {w} كلغ. فوق {max} كلغ يحدد فريقنا السعر النهائي (الكمية، المسافة، المدينة، الشروط). أرسل السلة كطلب أو تواصل معنا عبر واتساب.',
     b2bSend: 'إرسال طلب B2B',
-    b2bSent: 'تم استلام الطلب {ref}. سيتصل بك الفريق بالسعر النهائي.',
     b2bWhatsapp: 'مرحباً BOGA CAFÉ، أريد طلب {w} كلغ:',
   },
 
@@ -311,7 +306,6 @@ export const ar: Dict = {
     cvc: 'CVC',
     pay: 'ادفع {amount}',
     simulateFail: 'محاكاة رفض البطاقة',
-    retry: 'حاول مجدداً',
     failed: 'تم رفض الدفع. حاول مجدداً أو اختر طريقة أخرى عبر واتساب.',
     beneficiary: 'المستفيد',
     bank: 'البنك',
@@ -329,9 +323,7 @@ export const ar: Dict = {
     thanks: 'شكراً {name}!',
     received: 'تم تسجيل الطلب {ref}.',
     statusTitle: 'تتبع الطلب',
-    paymentStatus: 'الدفع',
     itemsTitle: 'المنتجات',
-    nextTitle: 'الخطوات التالية',
     nextPaid: 'تم تأكيد الدفع. نحضّر قهوتك مع المحمّص الشريك، ثم تُشحن في تغليف BOGA CAFÉ.',
     nextPending: 'نبدأ تحضير الطلب فور تأكيد الدفع.',
     notFound: 'الطلب غير موجود على هذا الجهاز.',
@@ -358,7 +350,6 @@ export const ar: Dict = {
     title: 'اتصل بنا',
     intro: 'لطلب، أو تحميص خاص، أو طلب للمهنيين، يجيبك الفريق عبر واتساب والبريد الإلكتروني.',
     address: 'العنوان',
-    social: 'مواقع التواصل',
     whatsappText: 'مرحباً BOGA CAFÉ،',
     channels: 'قنواتنا',
     channelsText: 'اختر ما يناسبك: الطلبات ووصولات الدفع أسرع عبر واتساب.',
@@ -552,7 +543,6 @@ export const ar: Dict = {
       country: 'رمز البلد (ISO)',
       blendRule:
         'يظهر المصدر في الخلطة الخاصة عندما يكون الزر مفعّلاً والمخزون يكفي للكيس. نفاد المخزون يخفيه تلقائياً، وإعادة التوريد تعيده.',
-      low: 'منخفض',
       empty: 'فارغ',
     },
     shipping: {

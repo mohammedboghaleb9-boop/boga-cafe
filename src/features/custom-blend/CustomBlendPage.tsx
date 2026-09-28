@@ -7,7 +7,7 @@ import { composition, recipeTotal } from '@/core/recipe';
 import { kgNeeded } from '@/core/stock';
 import { PACK_SIZES, type Origin, type PackSize, type RecipeLine } from '@/core/types';
 import { useCatalog, useSettings } from '@/data/hooks';
-import { useCart } from '@/features/cart/CartProvider';
+import { useCart } from '@/shared/cart/CartProvider';
 import { fmt, useI18n } from '@/i18n';
 import { recipeView } from '@/shared/recipe-view';
 import { customBlendSticker } from '@/shared/sticker';

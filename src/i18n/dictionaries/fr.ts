@@ -5,7 +5,6 @@ export const fr: Dict = {
   meta: { dir: 'ltr', label: 'Français', short: 'FR', intl: 'fr-MA' },
 
   nav: {
-    home: 'Accueil',
     shop: 'Boutique',
     singleOrigin: 'Single Origin',
     customBlend: 'Custom Blend',
@@ -97,7 +96,6 @@ export const fr: Dict = {
 
   demo: {
     banner: 'Prototype : produits, prix et stock sont des exemples, aucun paiement n’est réel. Les messages WhatsApp et Gmail que vous envoyez arrivent vraiment chez BOGA CAFÉ.',
-    reset: 'Réinitialiser',
     openAdmin: 'Ouvrir le Panel Admin',
   },
 
@@ -190,7 +188,6 @@ export const fr: Dict = {
     pickFirst: 'Sélectionnez au moins un café ci-dessus.',
     summary: 'Votre blend',
     gramsTitle: 'Dans chaque sachet',
-    priceTitle: 'Détail du prix',
     bagFee: 'Sachet, assemblage & conditionnement',
     unitPrice: 'Prix par sachet',
     roastTitle: 'Degré de torréfaction',
@@ -247,7 +244,6 @@ export const fr: Dict = {
     monthly: 'Consommation estimée (kg / mois)',
     notes: 'Message',
     submitSample: 'Envoyer la demande d’échantillon',
-    sampleSent: 'Demande {ref} reçue. Notre équipe vous contacte rapidement.',
     deliveryFee: 'Livraison vers {city} : {fee}',
   },
 
@@ -271,7 +267,6 @@ export const fr: Dict = {
     b2bText:
       'Votre panier pèse {w} kg. Au-delà de {max} kg, notre équipe fixe le prix final (quantité, distance, ville, conditions). Envoyez le panier en demande ou contactez-nous sur WhatsApp.',
     b2bSend: 'Envoyer ma demande B2B',
-    b2bSent: 'Demande {ref} reçue. L’équipe vous recontacte avec le prix final.',
     b2bWhatsapp: 'Bonjour BOGA CAFÉ, je souhaite commander {w} kg :',
   },
 
@@ -315,7 +310,6 @@ export const fr: Dict = {
     cvc: 'CVC',
     pay: 'Payer {amount}',
     simulateFail: 'Simuler un refus',
-    retry: 'Réessayer',
     failed: 'Le paiement a été refusé. Réessayez ou choisissez un autre moyen via WhatsApp.',
     beneficiary: 'Bénéficiaire',
     bank: 'Banque',
@@ -333,9 +327,7 @@ export const fr: Dict = {
     thanks: 'Merci {name} !',
     received: 'Commande {ref} enregistrée.',
     statusTitle: 'Suivi de la commande',
-    paymentStatus: 'Paiement',
     itemsTitle: 'Articles',
-    nextTitle: 'La suite',
     nextPaid: 'Votre paiement est confirmé. Nous préparons votre café avec notre torréfacteur, puis il part dans l’emballage BOGA CAFÉ.',
     nextPending: 'Nous préparons la commande dès que le paiement est confirmé.',
     notFound: 'Commande introuvable sur cet appareil.',
@@ -362,7 +354,6 @@ export const fr: Dict = {
     title: 'Contact',
     intro: 'Pour une commande, une torréfaction particulière ou une demande B2B, l’équipe répond sur WhatsApp et par email.',
     address: 'Adresse',
-    social: 'Réseaux sociaux',
     whatsappText: 'Bonjour BOGA CAFÉ,',
     channels: 'Nos canaux',
     channelsText: 'Choisissez celui qui vous convient : commandes et reçus de paiement passent plus vite sur WhatsApp.',
@@ -557,7 +548,6 @@ export const fr: Dict = {
       country: 'Code pays (ISO)',
       blendRule:
         'Une origine est proposée dans le Custom Blend quand l’interrupteur est activé et que le stock couvre le sachet. Un stock vide la masque automatiquement, le réapprovisionnement la fait revenir.',
-      low: 'Bas',
       empty: 'Vide',
     },
     shipping: {

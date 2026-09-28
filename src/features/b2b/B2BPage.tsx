@@ -1,5 +1,5 @@
 import { useCatalog, useDb } from '@/data/hooks';
-import { ProductCard } from '@/features/shop/ProductCard';
+import { ProductCard } from '@/shared/product/ProductCard';
 import { useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';

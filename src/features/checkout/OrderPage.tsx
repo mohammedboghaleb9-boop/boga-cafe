@@ -3,7 +3,7 @@ import { formatKg } from '@/core/format';
 import type { OrderStatus } from '@/core/types';
 import { templateContext } from '@/data/context';
 import { useDb } from '@/data/hooks';
-import { LineDetails } from '@/features/cart/CartLineView';
+import { LineDetails } from '@/shared/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
 import { orderMessage } from '@/services/notifications';
 import { SendToBoga } from '@/shared/layout/SendToBoga';

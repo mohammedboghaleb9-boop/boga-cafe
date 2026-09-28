@@ -38,7 +38,7 @@
 | الملف | الاستعمال |
 |---|---|
 | `profile-1080.png` | **صورة الحساب** على Instagram و TikTok و WhatsApp Business (آمنة للقص الدائري) |
-| `og-image-1200x630.png` | الصورة التي تظهر عند مشاركة رابط الموقع على WhatsApp و Facebook |
+| `og-image-1200x630.png` | الصورة التي تظهر عند مشاركة رابط الموقع على WhatsApp و Facebook (تُربط بالموقع عند معرفة النطاق) |
 | `app-icon.svg` | مصدر أيقونة الهاتف `public/apple-touch-icon.png` |
 
 ## 3. الألوان

@@ -7,7 +7,6 @@ export const en = {
   meta: { dir: 'ltr' as 'ltr' | 'rtl', label: 'English', short: 'EN', intl: 'en-GB' },
 
   nav: {
-    home: 'Home',
     shop: 'Shop',
     singleOrigin: 'Single Origin',
     customBlend: 'Custom Blend',
@@ -99,7 +98,6 @@ export const en = {
 
   demo: {
     banner: 'Prototype: products, prices and stock are examples, and no payment is real. WhatsApp and Gmail messages you send really reach BOGA CAFÉ.',
-    reset: 'Reset demo',
     openAdmin: 'Open the Admin Panel',
   },
 
@@ -192,7 +190,6 @@ export const en = {
     pickFirst: 'Select at least one coffee above.',
     summary: 'Your blend',
     gramsTitle: 'In each bag',
-    priceTitle: 'Price detail',
     bagFee: 'Bag, blending & packing',
     unitPrice: 'Price per bag',
     roastTitle: 'Roast level',
@@ -249,7 +246,6 @@ export const en = {
     monthly: 'Estimated consumption (kg / month)',
     notes: 'Message',
     submitSample: 'Send the sample request',
-    sampleSent: 'Request {ref} received. Our team will contact you soon.',
     deliveryFee: 'Delivery to {city}: {fee}',
   },
 
@@ -273,7 +269,6 @@ export const en = {
     b2bText:
       'Your cart weighs {w} kg. Above {max} kg, our team sets the final price (quantity, distance, city, conditions). Send the cart as a request or contact us on WhatsApp.',
     b2bSend: 'Send my B2B request',
-    b2bSent: 'Request {ref} received. The team will contact you with the final price.',
     b2bWhatsapp: 'Hello BOGA CAFÉ, I would like to order {w} kg:',
   },
 
@@ -317,7 +312,6 @@ export const en = {
     cvc: 'CVC',
     pay: 'Pay {amount}',
     simulateFail: 'Simulate a refused card',
-    retry: 'Try again',
     failed: 'The payment was refused. You can try again or choose another method on WhatsApp.',
     beneficiary: 'Beneficiary',
     bank: 'Bank',
@@ -335,9 +329,7 @@ export const en = {
     thanks: 'Thank you {name}!',
     received: 'Order {ref} saved.',
     statusTitle: 'Order status',
-    paymentStatus: 'Payment',
     itemsTitle: 'Items',
-    nextTitle: 'What happens next',
     nextPaid: 'Your payment is confirmed. We prepare your coffee with our roaster, then it leaves in BOGA CAFÉ packaging.',
     nextPending: 'We prepare the order as soon as the payment is confirmed.',
     notFound: 'Order not found on this device.',
@@ -364,7 +356,6 @@ export const en = {
     title: 'Contact',
     intro: 'For an order, a custom roast or a B2B request, the team answers on WhatsApp and by email.',
     address: 'Address',
-    social: 'Social media',
     whatsappText: 'Hello BOGA CAFÉ,',
     channels: 'Our channels',
     channelsText: 'Choose the one that suits you: orders and payment receipts go fastest on WhatsApp.',
@@ -559,7 +550,6 @@ export const en = {
       country: 'Country code (ISO)',
       blendRule:
         'An origin is offered in the Custom Blend when the switch is on and the stock covers the bag. Empty stock hides it automatically, restocking brings it back.',
-      low: 'Low',
       empty: 'Empty',
     },
     shipping: {

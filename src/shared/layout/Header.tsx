@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import type { Locale } from '@/core/types';
 import { useDb } from '@/data/hooks';
-import { useCart } from '@/features/cart/CartProvider';
+import { useCart } from '@/shared/cart/CartProvider';
 import { LOCALES, useI18n } from '@/i18n';
 import { ar } from '@/i18n/dictionaries/ar';
 import { en } from '@/i18n/dictionaries/en';

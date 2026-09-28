@@ -3,14 +3,14 @@ import { Link } from 'react-router';
 import { summarizeCart } from '@/core/cart';
 import { formatKg, formatNumber, formatSize } from '@/core/format';
 import { useCatalog, useSettings } from '@/data/hooks';
-import { QuoteRequestForm } from '@/features/b2b/QuoteRequestForm';
+import { QuoteRequestForm } from '@/features/b2b';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink, type MessageDraft } from '@/services/notifications';
 import { SendToBoga } from '@/shared/layout/SendToBoga';
 import { Icon } from '@/shared/ui/Icon';
 import { QtyStepper } from '@/shared/ui/bits';
-import { useCart } from './CartProvider';
-import { LineDetails } from './CartLineView';
+import { useCart } from '@/shared/cart/CartProvider';
+import { LineDetails } from '@/shared/cart/CartLineView';
 import './cart.css';
 
 export function CartPage() {

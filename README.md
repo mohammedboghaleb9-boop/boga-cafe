@@ -194,7 +194,7 @@ flowchart TD
 | منطق الأعمال | `src/core` بـ TypeScript خالص: نفس الكود في المتصفح وفي الخادم |
 | الإنتاج | Supabase: PostgreSQL + أمان على مستوى الصفوف (RLS) + Auth + Storage + Edge Functions |
 | الاستضافة | Cloudflare Pages (أو Vercel Pro) |
-| الاختبارات | Vitest (19 اختباراً) · اختبار قاعدة البيانات على PostgreSQL (6 اختبارات) · CI على GitHub Actions |
+| الاختبارات | Vitest (74 اختباراً: منطق الأعمال، الإرسال، حدود الأقسام) · قاعدة البيانات على PostgreSQL (12 فحصاً) · CI على GitHub Actions |
 
 **الأمان:** الأسعار والمخزون يُعاد حسابها في الخادم دائماً، والمخزون يُخصم بعملية ذرّية تمنع بيع نفس الكيلو مرتين، وكل دور لا يرى إلا ما يخصه. التفاصيل: [`docs/03-architecture.md`](docs/03-architecture.md).
 
@@ -208,11 +208,13 @@ src/
   data/          البيانات: التجريبية الآن (seed + store)، Supabase في المرحلة 2
   services/      الدفع والإشعارات كمحوّلات قابلة للاستبدال
   i18n/          العربية / الفرنسية / الإنجليزية
-  shared/        مكونات مشتركة: صورة المنتج وملصقه، سجل الصور، الأعلام، الرأس، التذييل
+  shared/        مكونات مشتركة: الرأس والتذييل، حالة السلة، بطاقة المنتج، صورة المنتج وملصقه، قنوات التواصل
   features/      الأقسام، كل قسم في مجلده
     home/ shop/ product/ single-origin/ custom-blend/ b2b/ cart/ checkout/ contact/
     admin/       dashboard/ orders/ b2b/ products/ stock/ shipping/ payments/ notifications/ content/ settings/
   styles/        الألوان والخطوط
+api/             دالة الخادم التي ترسل الطلبات إلى واتساب و Gmail (Vercel Function) + اختباراتها
+tests/           اختبار حدود الأقسام (يفشل إذا اعتمد قسم على داخل قسم آخر)
 supabase/        مخطط قاعدة البيانات للإنتاج + اختباره
 brand/           الشعار المتجهي بكل نسخه، PNG، صور مواقع التواصل، ودليل الاستعمال
 docs/            التحليل والدراسة والخطة
@@ -225,8 +227,8 @@ docs/            التحليل والدراسة والخطة
 ```bash
 npm install
 npm run dev          # تشغيل محلي على http://localhost:5173
-npm test             # اختبارات منطق الأعمال
-npm run typecheck    # فحص الأنواع
+npm test             # كل الاختبارات: منطق الأعمال، الإرسال، حدود الأقسام
+npm run typecheck    # فحص الأنواع (الموقع + دالة الخادم)
 npm run build        # نسخة الإنتاج ← dist/
 npm run build:demo   # النموذج في ملف HTML واحد يفتح مباشرة في المتصفح ← dist-demo/index.html
 ./supabase/tests/run-local.sh   # اختبار قاعدة البيانات (يتطلب PostgreSQL)

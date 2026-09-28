@@ -7,7 +7,7 @@ import { recipeView } from '@/shared/recipe-view';
 import { productSticker } from '@/shared/sticker';
 import { ProductVisual } from '@/shared/ui/ProductVisual';
 import { Availability, SpeciesBar } from '@/shared/ui/bits';
-import './shop.css';
+import './product-card.css';
 
 /** Product tile used by the shop, the home page, Single Origin and B2B. */
 /** `headingLevel`: 2 on pages where the cards come right after the page title (no h2 between). */

@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { useCatalog } from '@/data/hooks';
-import { ProductCard } from '@/features/shop/ProductCard';
+import { ProductCard } from '@/shared/product/ProductCard';
 import { useI18n } from '@/i18n';
 
 export function Featured() {

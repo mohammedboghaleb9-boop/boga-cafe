@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
-import { useCart } from '@/features/cart/CartProvider';
+import { useCart } from '@/shared/cart/CartProvider';
 import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';

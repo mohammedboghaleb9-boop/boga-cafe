@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
       assetsInlineLimit: demo ? 100_000_000 : 4096,
     },
     test: {
-      include: ['src/**/*.test.ts', 'api/**/*.test.ts'],
+      include: ['src/**/*.test.ts', 'api/**/*.test.ts', 'tests/**/*.test.ts'],
     },
   };
 });

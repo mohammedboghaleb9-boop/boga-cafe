@@ -1,8 +1,9 @@
 import { useCatalog } from '@/data/hooks';
-import { ProductCard } from '@/features/shop/ProductCard';
+import { ProductCard } from '@/shared/product/ProductCard';
 import { fmt, useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
 import { Photo } from '@/shared/ui/Photo';
+import './single-origin.css';
 
 export function SingleOriginPage() {
   const { t, l, date } = useI18n();
