@@ -28,10 +28,12 @@ export function importsOf(source: string, fileInSrc: string): string[] {
   // comments are skipped only where they sit inside the import itself: removing
   // every /* … */ first would let a string such as 'img/*' hide the code after it
   const gap = String.raw`\s*(?:(?:\/\*[\s\S]*?\*\/|\/\/[^\n]*)\s*)*`;
-  const pattern = new RegExp(String.raw`(?:\bfrom${gap}|\bimport${gap}\(?${gap}|\bimport\.meta\.glob${gap}\(${gap}\[?${gap})(['"\`])([^'"\`]+)\1`, 'g');
+  // a typed glob, import.meta.glob<string>(…) or glob<{ default: Page }>(…)
+  const typeArg = String.raw`(?:<(?:[^<>]|<[^<>]*>)*>${gap})?`;
+  const pattern = new RegExp(String.raw`(?:\bfrom${gap}|\bimport${gap}\(?${gap}|\bimport\.meta\.glob${gap}${typeArg}\(${gap}\[?${gap})(['"\`])([^'"\`]+)\1`, 'g');
   const specs = [...source.matchAll(pattern)].map((m) => m[2]);
   // every pattern of a glob list, not only the first: import.meta.glob(['./a/*', '../admin/*'])
-  for (const open of source.matchAll(new RegExp(String.raw`\bimport\.meta\.glob${gap}\(${gap}\[`, 'g'))) {
+  for (const open of source.matchAll(new RegExp(String.raw`\bimport\.meta\.glob${gap}${typeArg}\(${gap}\[`, 'g'))) {
     specs.push(...globList(source, open.index + open[0].length).slice(1));
   }
   return specs.map((spec) => {
@@ -133,6 +135,8 @@ describe('the boundary checks cannot be sidestepped', () => {
       `import.meta.glob(\n  // pages\n  ['./*.css', '../admin/*.tsx'])`,
       `import.meta.glob(['./*.[jt]sx', '../admin/*.tsx'])`,
       `import.meta.glob([\n  './*.css',\n  // don't forget admin\n  '../admin/*.tsx',\n])`,
+      `import.meta.glob<{ default: string }>(['./*.css', '../admin/*.tsx'])`,
+      `import.meta.glob<Record<string, string>>('../admin/*.tsx', { eager: true })`,
     ];
     for (const list of lists) expect(importsOf(list, 'features/b2b/B2BPage.tsx'), list).toContain('@/features/admin/*.tsx');
     expect(importsOf(lists[3], 'features/b2b/B2BPage.tsx')).toEqual(['@/features/b2b/*.css', '@/features/admin/*.tsx']);
