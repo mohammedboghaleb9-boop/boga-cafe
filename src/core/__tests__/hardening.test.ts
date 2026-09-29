@@ -199,7 +199,7 @@ describe('manual stock changes (review NEW-5)', () => {
     expect(up.appliedKg).toBe(2.5);
     expect(adjustOriginStock(origins, 'missing', 5)).toEqual({ origins, appliedKg: 0 });
     // "Infinity" typed in the form, or NaN, never reaches the stock (audit H1)
-    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, 1e306, -1e306]) {
       expect(adjustOriginStock(origins, 'a', bad), String(bad)).toEqual({ origins, appliedKg: 0 });
     }
   });

@@ -203,7 +203,7 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
         <span className="label">{t.admin.stock.note}</span>
         <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
-      <button type="submit" className="btn btn-primary btn-sm" disabled={!value}>
+      <button type="submit" className="btn btn-primary btn-sm" disabled={!Number.isFinite(value) || value === 0}>
         {t.admin.stock.apply}
       </button>
     </form>

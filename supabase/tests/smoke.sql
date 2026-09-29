@@ -492,7 +492,7 @@ set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000002'; -- staff
 do $$
 declare v text; before numeric := (select stock_kg from public.origins where id = 'vietnam');
 begin
-  foreach v in array array['NaN', 'Infinity', '-Infinity'] loop
+  foreach v in array array['NaN', 'Infinity', '-Infinity', null] loop
     begin
       perform public.adjust_stock('vietnam', v::numeric, 'correction', 'test');
       raise exception 'TEST FAILED: adjust_stock accepted %', v;
@@ -531,6 +531,28 @@ begin
     exception when others then
       if sqlerrm <> 'invalid_order' then raise; end if;
     end;
+  end loop;
+end $$;
+do $$
+declare r record;
+begin
+  -- every numeric column of every table has a check that refuses NaN
+  for r in
+    select c.table_name, c.column_name
+      from information_schema.columns c
+      join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name
+     where c.table_schema = 'public' and c.data_type = 'numeric' and t.table_type = 'BASE TABLE'
+  loop
+    if not exists (
+      select 1 from pg_constraint k
+        join pg_class cl on cl.oid = k.conrelid
+        join pg_namespace n on n.oid = cl.relnamespace
+       where n.nspname = 'public' and cl.relname = r.table_name and k.contype = 'c'
+         and pg_get_constraintdef(k.oid) ~ ('\m' || r.column_name || '\M')
+         and pg_get_constraintdef(k.oid) like '%NaN%'
+    ) then
+      raise exception 'TEST FAILED: %.% has no NaN check', r.table_name, r.column_name;
+    end if;
   end loop;
 end $$;
 select 'ok 21 - stock and amounts are real numbers (no NaN, no Infinity)' as result;
