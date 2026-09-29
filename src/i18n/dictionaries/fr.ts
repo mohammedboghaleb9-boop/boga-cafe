@@ -260,9 +260,10 @@ export const fr: Dict = {
     continue: 'Continuer mes achats',
     problems: {
       invalid_quantity: 'Quantité invalide : réglez-la à nouveau.',
+      blend_paused: 'Le Custom Blend est en pause pour le moment : retirez cette ligne pour commander le reste.',
       missing_product: 'Ce produit n’est plus disponible.',
       size_not_offered: 'Ce format n’est plus proposé.',
-      invalid_blend: 'Ce blend n’est plus valide (une origine a été désactivée).',
+      invalid_blend: 'Ce blend ne respecte plus les règles actuelles (origine indisponible, part sous le minimum ou trop d’origines). Recomposez-le dans Custom Blend.',
     },
     shortage: 'Pas assez de {origin} : {need} kg nécessaires, {left} kg restants.',
     b2bTitle: 'Commande de plus de {max} kg : procédure B2B',
@@ -427,6 +428,7 @@ export const fr: Dict = {
     resetDemo: 'Réinitialiser la démo',
     resetConfirm: 'Cliquez encore pour effacer les changements',
     noAccess: 'Votre rôle ne donne pas accès à cette section.',
+    scrollTable: 'Tableau, défilement horizontal',
     nav: {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',

@@ -10,7 +10,7 @@ import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { canEditCatalog } from '../permissions';
 import { useAdminRole } from '../session';
-import { LocalizedInput, Switch } from '../ui';
+import { LocalizedInput, Switch, TableWrap } from '../ui';
 
 export function StockPage() {
   const { t, l, date } = useI18n();
@@ -41,7 +41,7 @@ export function StockPage() {
       {/* key: a fresh form for each origin (and for a new one), never the previous one's fields */}
       {editing && <OriginEditor key={editing === 'new' ? 'new' : editing.id} origin={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
 
-      <div className="table-wrap">
+      <TableWrap label={t.admin.nav.stock}>
         <table className="table">
           <thead>
             <tr>
@@ -70,11 +70,11 @@ export function StockPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
 
       <section className="stack">
         <h2 className="admin-card-title">{t.admin.stock.movements}</h2>
-        <div className="table-wrap">
+        <TableWrap label={t.admin.stock.movements}>
           <table className="table">
             <thead>
               <tr>
@@ -102,7 +102,7 @@ export function StockPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       </section>
     </>
   );

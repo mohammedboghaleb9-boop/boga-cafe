@@ -33,7 +33,6 @@ function initialState(): DbState {
     quotes: [],
     stockMovements: [],
     notifications: [],
-    counters: { order: 0, sample: 0, quote: 0 },
   };
   const s = buildDemoActivity(base);
   const ctx = templateContext(s);

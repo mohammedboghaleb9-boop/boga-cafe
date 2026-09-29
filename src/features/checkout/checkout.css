@@ -95,6 +95,8 @@
 
 .order-grid {
   display: grid;
+  /* minmax(0, …): long texts (RIB, WhatsApp button) wrap instead of widening the column */
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 @media (min-width: 960px) {
@@ -109,7 +111,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
 }
 .timeline li {
@@ -192,4 +194,10 @@
   border-radius: 4px;
   background: var(--info-soft);
   color: var(--info);
+}
+
+/* a 24-digit RIB has no space to break at: on a narrow phone it breaks between digits (the copy button copies it whole) */
+.rib {
+  overflow-wrap: anywhere;
+  min-inline-size: 0;
 }

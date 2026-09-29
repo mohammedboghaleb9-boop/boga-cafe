@@ -262,9 +262,10 @@ export const en = {
     continue: 'Continue shopping',
     problems: {
       invalid_quantity: 'Invalid quantity: set it again.',
+      blend_paused: 'Custom Blend is paused for now: remove this line to order the rest.',
       missing_product: 'This product is no longer available.',
       size_not_offered: 'This size is no longer offered.',
-      invalid_blend: 'This blend is no longer valid (an origin was disabled).',
+      invalid_blend: 'This blend no longer meets the current rules (an origin is unavailable, a share is below the minimum, or there are too many origins). Rebuild it in Custom Blend.',
     },
     shortage: 'Not enough {origin}: {need} kg needed, {left} kg left.',
     b2bTitle: 'Order above {max} kg: B2B process',
@@ -429,6 +430,7 @@ export const en = {
     resetDemo: 'Reset demo data',
     resetConfirm: 'Click again to erase all demo changes',
     noAccess: 'Your role does not give access to this section.',
+    scrollTable: 'Table, scrolls sideways',
     nav: {
       dashboard: 'Dashboard',
       orders: 'Orders',

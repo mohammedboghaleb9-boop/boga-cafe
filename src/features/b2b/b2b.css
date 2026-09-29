@@ -66,11 +66,12 @@
 }
 .b2b-forms {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 @media (min-width: 980px) {
   .b2b-forms {
-    grid-template-columns: 1.6fr 1fr;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
     align-items: start;
   }
 }

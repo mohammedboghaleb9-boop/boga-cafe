@@ -74,7 +74,7 @@ export function PaymentPanel({ order }: { order: Order }) {
             <div>
               <dt>{t.payment.rib}</dt>
               <dd className="row">
-                <span className="num" dir="ltr">
+                <span className="num rib" dir="ltr">
                   {settings.bank.rib}
                 </span>
                 <CopyButton text={settings.bank.rib} />

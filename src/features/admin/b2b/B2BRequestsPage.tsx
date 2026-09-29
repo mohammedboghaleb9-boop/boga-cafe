@@ -6,7 +6,7 @@ import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
-import { Tabs } from '../ui';
+import { TableWrap, Tabs } from '../ui';
 
 const SAMPLE_STATUSES: SampleStatus[] = ['new', 'contacted', 'approved', 'shipped', 'closed', 'rejected'];
 const QUOTE_STATUSES: QuoteStatus[] = ['new', 'negotiating', 'confirmed', 'closed'];
@@ -128,7 +128,7 @@ function QuoteCard({ q }: { q: QuoteRequest }) {
   return (
     <article className="panel stack">
       <Head {...q} />
-      <div className="table-wrap">
+      <TableWrap label={t.admin.nav.b2b}>
         <table className="table">
           <tbody>
             {q.lines.map((line, i) => (
@@ -142,7 +142,7 @@ function QuoteCard({ q }: { q: QuoteRequest }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
       <dl className="kv">
         <div>
           <dt>{t.common.weight}</dt>

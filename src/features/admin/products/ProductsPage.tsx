@@ -9,7 +9,7 @@ import { useCatalog, useSettings } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
-import { Tabs } from '../ui';
+import { RowLink, TableWrap, Tabs, rowClick } from '../ui';
 
 export function ProductsPage() {
   const { t, l, money } = useI18n();
@@ -36,7 +36,7 @@ export function ProductsPage() {
           count: products.filter((p) => p.kind === k).length,
         }))}
       />
-      <div className="table-wrap">
+      <TableWrap label={t.admin.nav.products}>
         <table className="table">
           <thead>
             <tr>
@@ -57,9 +57,11 @@ export function ProductsPage() {
             {list.map((p) => {
               const split = speciesSplit(p.recipe, originIndex);
               return (
-                <tr key={p.id} className="clickable" onClick={() => navigate(`/admin/products/${p.id}`)}>
+                <tr key={p.id} className="clickable" onClick={rowClick(navigate, `/admin/products/${p.id}`)}>
                   <td>
-                    <strong>{l(p.name)}</strong>
+                    <RowLink to={`/admin/products/${p.id}`}>
+                      <strong>{l(p.name)}</strong>
+                    </RowLink>
                     {p.featured && <div className="small muted">★ {t.admin.products.featured}</div>}
                   </td>
                   <td>
@@ -91,7 +93,7 @@ export function ProductsPage() {
             })}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
     </>
   );
 }

@@ -10,7 +10,7 @@
   --surface-2: #e2e3e3;
   --ink: #161514;
   --ink-2: #4f4a46;
-  --muted: #736d68;
+  --muted: #615b56; /* ≥ 4.5:1 on --surface-2 (#e2e3e3), WCAG AA */
   --line: #d0d0ce;
   --line-strong: #a9a8a5;
 

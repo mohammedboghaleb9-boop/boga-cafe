@@ -116,7 +116,6 @@ export const api = {
         orders: [order, ...cur.orders],
         stockMovements: [...movements, ...cur.stockMovements],
         notifications: [...logs, ...cur.notifications],
-        counters: { ...cur.counters, order: cur.counters.order + 1 },
       };
     });
     deliver('order.created', order.number, message);
@@ -183,7 +182,6 @@ export const api = {
       ...cur,
       samples: [sample, ...cur.samples],
       notifications: [...draftsToLogs('sample.created', message, cur.settings, at, uid), ...cur.notifications],
-      counters: { ...cur.counters, sample: cur.counters.sample + 1 },
     }));
     deliver('sample.created', sample.number, message);
     return { ok: true as const, sample, message };
@@ -220,7 +218,6 @@ export const api = {
       ...cur,
       quotes: [quote, ...cur.quotes],
       notifications: [...draftsToLogs('quote.created', message, cur.settings, at, uid), ...cur.notifications],
-      counters: { ...cur.counters, quote: cur.counters.quote + 1 },
     }));
     deliver('quote.created', quote.number, message);
     return { ok: true as const, quote, message };

@@ -5,7 +5,7 @@ import { api } from '@/data/api';
 import { useDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
-import { ConfirmButton, Switch } from '../ui';
+import { ConfirmButton, Switch, TableWrap } from '../ui';
 import { useAdminRole } from '../session';
 
 export function ShippingPage() {
@@ -87,7 +87,7 @@ export function ShippingPage() {
         </section>
       </div>
 
-      <div className="table-wrap">
+      <TableWrap label={t.admin.nav.shipping}>
         <table className="table">
           <thead>
             <tr>
@@ -149,7 +149,7 @@ export function ShippingPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
     </>
   );
 }

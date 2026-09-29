@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { validateBlend } from '../blend';
+import { resolveItem } from '../cart';
 import { buildOrder } from '../order';
 import { lowestPrice, offeredSizes, productPrice } from '../pricing';
 import type { CartItem, CustomBlendSpec, CustomerInfo, Product } from '../types';
@@ -92,5 +93,18 @@ describe('custom blend price', () => {
     const item: CartItem = { id: 'b', type: 'custom', qty: 1, blend: spec };
     const r = buildOrder({ items: [item], customer, paymentMethod: 'bank_transfer', locale: 'fr' }, { ...ctx(), settings: noFee, catalog: { products: [product], origins } }, ids);
     expect(r).toEqual({ ok: false, errors: ['cart_problem'] });
+  });
+});
+
+describe('custom blend paused by the owner', () => {
+  it('says so, instead of asking to rebuild a blend the customer cannot open', () => {
+    const blend: CartItem = { id: 'b', type: 'custom', qty: 1, blend: { size: 250, lines: [{ originId: 'brazil', percent: 60 }, { originId: 'colombia', percent: 40 }] } };
+    const catalog = { products: [product], origins: originIndex };
+    expect(resolveItem(blend, catalog, settings)).toHaveProperty('line');
+    const paused = { ...settings, customBlend: { ...settings.customBlend, enabled: false } };
+    expect(resolveItem(blend, catalog, paused)).toEqual({ problem: 'blend_paused' });
+    // a blend that breaks the rules while the builder is open keeps the other message
+    const low: CartItem = { ...blend, blend: { size: 250, lines: [{ originId: 'brazil', percent: 97 }, { originId: 'colombia', percent: 3 }] } };
+    expect(resolveItem(low, catalog, settings)).toEqual({ problem: 'invalid_blend' });
   });
 });

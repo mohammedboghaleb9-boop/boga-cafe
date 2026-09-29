@@ -5,7 +5,7 @@ import { api } from '@/data/api';
 import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
-import { LocalizedInput, PaymentPill, SavedFlash, Switch, useSavedFlash } from '../ui';
+import { LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, useSavedFlash } from '../ui';
 import type { Role } from '../permissions';
 import { methodAvailable } from '@/services/payments';
 import { useAdminRole } from '../session';
@@ -32,7 +32,7 @@ export function PaymentsPage() {
         {toVerify.length === 0 ? (
           <p className="small muted">{t.admin.payments.noneToVerify}</p>
         ) : (
-          <div className="table-wrap">
+          <TableWrap label={t.admin.payments.toVerify}>
             <table className="table">
               <tbody>
                 {toVerify.map((o) => (
@@ -60,7 +60,7 @@ export function PaymentsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
         )}
       </section>
 

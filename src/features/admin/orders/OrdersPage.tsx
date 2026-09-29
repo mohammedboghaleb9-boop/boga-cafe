@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { formatKg } from '@/core/format';
 import type { Order } from '@/core/types';
 import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
-import { OrderStatusPill, PaymentPill, Tabs } from '../ui';
+import { OrderStatusPill, PaymentPill, RowLink, TableWrap, Tabs, rowClick } from '../ui';
 
-type View = 'all' | 'new' | 'progress' | 'delivered' | 'cancelled';
+type View = 'all' | 'new' | 'verify' | 'progress' | 'delivered' | 'cancelled';
 
 const inView: Record<View, (o: Order) => boolean> = {
   all: () => true,
   new: (o) => o.status === 'new',
+  // the customer said "I have paid": the owner checks the payment
+  verify: (o) => o.paymentStatus === 'awaiting_verification',
   progress: (o) => ['confirmed', 'in_production', 'shipped'].includes(o.status),
   delivered: (o) => o.status === 'delivered',
   cancelled: (o) => o.status === 'cancelled',
@@ -20,7 +22,11 @@ export function OrdersPage() {
   const { t, l, money, date } = useI18n();
   const { orders, shippingRates, paymentMethods } = useDb();
   const navigate = useNavigate();
-  const [view, setView] = useState<View>('all');
+  // the tab is part of the address (?view=verify, linked from the dashboard); unknown values show All
+  const [params, setParams] = useSearchParams();
+  const asked = params.get('view') ?? '';
+  const view: View = Object.hasOwn(inView, asked) ? (asked as View) : 'all';
+  const setView = (v: View) => setParams(v === 'all' ? {} : { view: v }, { replace: true });
   const [q, setQ] = useState('');
   const needle = q.trim().toLowerCase();
   const list = orders.filter(
@@ -57,6 +63,7 @@ export function OrdersPage() {
         items={[
           { id: 'all', label: t.common.all, count: orders.length },
           { id: 'new', label: t.orderStatus.new, count: orders.filter(inView.new).length },
+          { id: 'verify', label: t.admin.dash.toVerify, count: orders.filter(inView.verify).length },
           { id: 'progress', label: t.admin.dash.inProgress, count: orders.filter(inView.progress).length },
           { id: 'delivered', label: t.orderStatus.delivered, count: orders.filter(inView.delivered).length },
           { id: 'cancelled', label: t.orderStatus.cancelled, count: orders.filter(inView.cancelled).length },
@@ -65,7 +72,7 @@ export function OrdersPage() {
       {list.length === 0 ? (
         <p className="muted">{t.admin.orders.empty}</p>
       ) : (
-        <div className="table-wrap">
+        <TableWrap label={t.admin.nav.orders}>
           <table className="table">
             <thead>
               <tr>
@@ -81,9 +88,11 @@ export function OrdersPage() {
             </thead>
             <tbody>
               {list.map((o) => (
-                <tr key={o.id} className="clickable" onClick={() => navigate(`/admin/orders/${o.id}`)}>
+                <tr key={o.id} className="clickable" onClick={rowClick(navigate, `/admin/orders/${o.id}`)}>
                   <td>
-                    <strong className="num">{o.number}</strong>
+                    <RowLink to={`/admin/orders/${o.id}`}>
+                      <strong className="num">{o.number}</strong>
+                    </RowLink>
                     <div className="small muted">{date(o.createdAt, true)}</div>
                   </td>
                   <td>
@@ -108,7 +117,7 @@ export function OrdersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       )}
     </>
   );

@@ -6,7 +6,7 @@ import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { PERMISSIONS, ROLES, SECTIONS } from '../permissions';
-import { ConfirmButton, SavedFlash, Switch, useSavedFlash } from '../ui';
+import { ConfirmButton, SavedFlash, Switch, TableWrap, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 
 export function SettingsPage() {
@@ -120,7 +120,7 @@ export function SettingsPage() {
 
       <section className="stack">
         <h2 className="admin-card-title">{t.admin.settings.permissions}</h2>
-        <div className="table-wrap">
+        <TableWrap label={t.admin.settings.permissions}>
           <table className="table perm-table">
             <thead>
               <tr>
@@ -141,7 +141,7 @@ export function SettingsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       </section>
 
       <div>

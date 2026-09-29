@@ -25,7 +25,13 @@ import './admin.css';
 function Guard({ section, children }: { section: Section; children: React.ReactNode }) {
   const role = useAdminRole();
   const { t } = useI18n();
-  if (!role || !can(role, section)) return <p className="notice notice-warn">{t.admin.noAccess}</p>;
+  if (!role || !can(role, section))
+    return (
+      <div className="stack">
+        <h1>{t.admin.nav[section]}</h1>
+        <p className="notice notice-warn">{t.admin.noAccess}</p>
+      </div>
+    );
   return <>{children}</>;
 }
 

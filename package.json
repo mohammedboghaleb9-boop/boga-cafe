@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.api.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "test:e2e": "playwright test"
   },
   "engines": {
     "node": "24.x"
@@ -28,6 +29,8 @@
     "react-router": "^8.4.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.19.0",
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.3.0",

@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["api", "tests"]
+  "include": ["api", "tests", "e2e", "playwright.config.ts"]
 }
