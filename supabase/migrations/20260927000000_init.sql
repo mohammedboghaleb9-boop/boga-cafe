@@ -47,7 +47,7 @@ create table public.origins (
   tasting_notes        jsonb not null default '{}'::jsonb,
   stock_kg             numeric(10, 3) not null default 0 check (stock_kg >= 0),
   low_stock_kg         numeric(10, 3) not null default 5 check (low_stock_kg >= 0),
-  price_per_kg         numeric(10, 2) not null check (price_per_kg >= 0),
+  price_per_kg         numeric(10, 2) not null check (price_per_kg >= 1), -- a blend is never free (src/core/pricing.ts isPrice)
   custom_blend_enabled boolean not null default true,
   restock_date         date,
   active               boolean not null default true,

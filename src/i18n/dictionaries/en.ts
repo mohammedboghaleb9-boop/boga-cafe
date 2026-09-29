@@ -413,6 +413,7 @@ export const en = {
   },
 
   admin: {
+    saveRefused: 'Not saved: this item no longer exists or its price is not valid. Reload the page and try again.',
     ownerOnly: 'Owner only: these details receive customers’ orders and payments.',
     title: 'Admin Panel',
     loginTitle: 'Sign in to the Admin Panel',
@@ -529,7 +530,7 @@ export const en = {
       recipeHint: 'Origins and percentages (total 100%)',
       addLine: 'Add an origin',
       pricesHint: 'Price per bag (MAD). Leave empty to not offer the size.',
-      needsPrice: 'An active product needs at least one size with a price above 0.',
+      needsPrice: 'An active product needs at least one size with a price of at least 1 DH.',
       featured: 'Show on home page',
       active: 'Visible on the site',
       sortOrder: 'Order',
@@ -539,6 +540,7 @@ export const en = {
       hidden: 'Hidden',
     },
     stock: {
+      needsPrice: 'Price per kg: at least 1 DH.',
       intro:
         'Stock is counted in kilograms per origin. Orders deduct it automatically, cancellations give it back.',
       species: 'Species',

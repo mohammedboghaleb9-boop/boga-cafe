@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { formatNumber } from '@/core/format';
+import { isPrice } from '@/core/pricing';
 import { isLowStock } from '@/core/stock';
 import type { Origin, RoastLevel, Species, StockReason } from '@/core/types';
 import { api } from '@/data/api';
@@ -37,7 +38,8 @@ export function StockPage() {
       <p className="muted">{t.admin.stock.intro}</p>
       <p className="notice small">{t.admin.stock.blendRule}</p>
 
-      {editing && <OriginEditor origin={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {/* key: a fresh form for each origin (and for a new one), never the previous one's fields */}
+      {editing && <OriginEditor key={editing === 'new' ? 'new' : editing.id} origin={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
 
       <div className="table-wrap">
         <table className="table">
@@ -225,13 +227,15 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
     },
   );
   const set = <K extends keyof Origin>(k: K, v: Origin[K]) => setO((cur) => ({ ...cur, [k]: v }));
-  const valid = o.name.fr.trim() && o.countryCode.trim().length === 2;
+  const [refused, setRefused] = useState(false);
+  const priced = isPrice(o.pricePerKg);
+  const valid = o.name.fr.trim() && o.countryCode.trim().length === 2 && priced;
   function save() {
     if (!valid) return;
     const next = { ...o, countryCode: o.countryCode.toUpperCase() };
-    if (origin) api.saveOrigin(next);
-    else api.createOrigin(next);
-    onClose();
+    const done = origin ? api.saveOrigin(next) : api.createOrigin(next) !== null;
+    if (done) onClose();
+    else setRefused(true); // never close as if it had worked
   }
   return (
     <section className="panel stack">
@@ -246,6 +250,7 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
           </button>
         </div>
       </div>
+      {refused && <p className="field-error">{t.admin.saveRefused}</p>}
       <div className="detail-grid">
         <div className="stack">
           <LocalizedInput id="o-name" label={t.admin.products.name} value={o.name} onChange={(v) => set('name', v)} />
@@ -279,7 +284,8 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
           </label>
           <label className="field">
             <span className="label">{t.admin.stock.pricePerKg}</span>
-            <input className="input num" type="number" min={0} value={o.pricePerKg} onChange={(e) => set('pricePerKg', Number(e.target.value))} />
+            <input className="input num" type="number" min={1} step={1} value={o.pricePerKg} onChange={(e) => set('pricePerKg', Number(e.target.value))} />
+            {!priced && <span className="field-error">{t.admin.stock.needsPrice}</span>}
           </label>
           <label className="field">
             <span className="label">{t.admin.stock.lowAt}</span>

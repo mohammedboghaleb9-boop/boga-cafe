@@ -15,8 +15,13 @@ import { ConfirmButton, LocalizedInput, Switch } from '../ui';
 const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
 const empty = { ar: '', fr: '', en: '' };
 
+/** A fresh form for each product: moving from one product to another never keeps the previous one's fields. */
 export function ProductEditor() {
   const { id } = useParams();
+  return <ProductForm key={id} id={id} />;
+}
+
+function ProductForm({ id }: { id: string | undefined }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { t, l } = useI18n();
@@ -53,10 +58,11 @@ export function ProductEditor() {
   const priced = offeredSizes(p).length > 0;
   const valid = total === 100 && p.name.fr.trim() !== '' && p.recipe.every((r) => originIndex[r.originId]) && (priced || !p.active);
 
+  const [refused, setRefused] = useState(false);
   function save() {
     if (!valid) return;
     if (isNew) api.createProduct(p);
-    else api.saveProduct(p);
+    else if (!api.saveProduct(p)) return setRefused(true); // never leave as if it had worked
     navigate('/admin/products');
   }
 
@@ -86,6 +92,7 @@ export function ProductEditor() {
         </div>
       </div>
 
+      {refused && <p className="field-error">{t.admin.saveRefused}</p>}
       <div className="detail-grid">
         <section className="panel stack">
           <div className="form-grid">
@@ -200,7 +207,8 @@ export function ProductEditor() {
                   <input
                     className="input num"
                     type="number"
-                    min={0}
+                    min={1}
+                    step={1}
                     value={p.prices[s] ?? ''}
                     onChange={(e) =>
                       set('prices', { ...p.prices, [s]: e.target.value === '' ? undefined : Number(e.target.value) })

@@ -2,8 +2,12 @@ import { roundMoney } from './money';
 import type { OriginIndex } from './recipe';
 import type { CustomBlendSpec, PackSize, Product, Settings } from './types';
 
-/** A size is sold only at a real price: 0, empty or a typing mistake means "not offered" (never a free bag). */
-const isPrice = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
+/**
+ * A real price: at least 1 DH. Totals are rounded to the whole dirham
+ * (roundMoney), so anything below would sell a bag for 0 DH; 0, empty or a
+ * typing mistake means "not offered". Also used for an origin's price per kg.
+ */
+export const isPrice = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 1;
 
 export const productPrice = (product: Product, size: PackSize): number | undefined => {
   const price = product.prices[size];

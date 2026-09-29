@@ -1,6 +1,6 @@
 import { validateBlend } from './blend';
 import { roundKg, roundMoney } from './money';
-import { customBlendPrice, productPrice } from './pricing';
+import { customBlendPrice, isPrice, productPrice } from './pricing';
 import { composition, type OriginIndex } from './recipe';
 import { findShortages, stockRequirements, type Shortage } from './stock';
 import { PACK_SIZES, type CartItem, type Localized, type OrderLine, type Product, type Settings, type StockDeduction } from './types';
@@ -77,6 +77,7 @@ export function resolveItem(
   const rules = validateBlend(item.blend, catalog.origins, settings, 0).filter((i) => i.code !== 'stock');
   if (rules.length > 0 || !settings.customBlend.enabled) return { problem: 'invalid_blend' };
   const unitPrice = customBlendPrice(item.blend, catalog.origins, settings).total;
+  if (!isPrice(unitPrice)) return { problem: 'invalid_blend' }; // never a free or negative bag
   return {
     line: {
       kind: 'custom',

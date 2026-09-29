@@ -4,6 +4,7 @@
  */
 import { summarizeCart } from '@/core/cart';
 import { buildOrder, expiredUnpaidOrders, type CheckoutError, type CheckoutInput } from '@/core/order';
+import { isPrice } from '@/core/pricing';
 import { adjustOriginStock, applyStock, isLowStock } from '@/core/stock';
 import { normalizePhone, isEmail } from '@/core/validation';
 import type {
@@ -32,6 +33,7 @@ import { db } from './store';
 import { awaitsPayment, canSetPayment, refundCancelsOrder, settingsChangeRefused, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
+const RESERVED_PRODUCT_IDS = ['new'];
 const now = () => new Date().toISOString();
 
 function withLowStockAlerts(before: Origin[], after: Origin[], s: DbState, at: string) {
@@ -293,7 +295,8 @@ export const api = {
 
   /** New product: its id and address come from the name and never replace an existing product. */
   createProduct(draft: Product): Product {
-    const taken = (id: string) => db.get().products.some((p) => p.id === id || p.slug === id);
+    // "new" is the admin's address for the add-product form (/admin/products/new)
+    const taken = (id: string) => RESERVED_PRODUCT_IDS.includes(id) || db.get().products.some((p) => p.id === id || p.slug === id);
     const slug = uniqueSlug(draft.name.fr, taken, 'produit');
     const product = { ...draft, id: slug, slug };
     db.update((s) => ({ ...s, products: [...s.products, product] }));
@@ -311,8 +314,9 @@ export const api = {
     db.update((s) => ({ ...s, products: s.products.filter((p) => p.id !== id) }));
   },
 
-  /** New origin at 0 kg (its first lot goes through adjustStock); never replaces an existing one. */
-  createOrigin(draft: Origin): Origin {
+  /** New origin at 0 kg (its first lot goes through adjustStock); never replaces an existing one. Null without a real price per kg. */
+  createOrigin(draft: Origin): Origin | null {
+    if (!isPrice(draft.pricePerKg)) return null;
     const taken = (id: string) => db.get().origins.some((o) => o.id === id);
     const origin = { ...draft, id: uniqueSlug(draft.name.fr, taken, 'origine'), stockKg: 0 };
     db.update((s) => ({ ...s, origins: [...s.origins, origin] }));
@@ -321,7 +325,7 @@ export const api = {
 
   /** Saves origin details. Stock is changed only through `adjustStock` so every change is logged. */
   saveOrigin(origin: Origin): boolean {
-    if (!db.get().origins.some((o) => o.id === origin.id)) return false;
+    if (!isPrice(origin.pricePerKg) || !db.get().origins.some((o) => o.id === origin.id)) return false;
     db.update((s) => ({ ...s, origins: s.origins.map((o) => (o.id === origin.id ? { ...origin, stockKg: o.stockKg } : o)) }));
     return true;
   },

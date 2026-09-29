@@ -443,21 +443,40 @@ do $$ begin
 end $$;
 select 'ok 19 - staff cannot change origin prices or add origins' as result;
 
--- 20. Sample and B2B requests keep the same text limits as orders ---------------
-do $$ begin
-  begin
-    insert into public.sample_requests (number, business_type, contact_name, phone, city_id, product_id, notes)
-    values ('SR-2026-LONG01', 'cafe', 'X', '1', 'oujda', 'signature', repeat('x', 501));
-    raise exception 'TEST FAILED: 501-character note accepted';
-  exception when check_violation then null;
-  end;
-  begin
-    insert into public.quote_requests (number, business_type, contact_name, phone, city_id, lines, weight_kg, indicative_total)
-    values ('QR-2026-LONG01', 'cafe', repeat('x', 81), '1', 'oujda', '[]', 11, 100);
-    raise exception 'TEST FAILED: 81-character name accepted';
-  exception when check_violation then null;
-  end;
+-- 20. Sample and B2B requests keep the same text limits as orders; origins a real price
+do $$
+declare
+  t text; col text; c text; v text; num text;
+  val text[];
+begin
+  -- each text column of both tables, one character over its limit
+  foreach t in array array['sample_requests', 'quote_requests'] loop
+    foreach col in array array['company:81', 'contact_name:81', 'phone:25', 'email:121', 'notes:501'] loop
+      c := split_part(col, ':', 1);
+      v := repeat('x', split_part(col, ':', 2)::int);
+      num := case t when 'sample_requests' then 'SR' else 'QR' end || '-2026-L' || upper(left(md5(col), 5));
+      -- company, contact_name, phone, email, notes: valid values except the one under test
+      val := array[case c when 'company' then v else '' end, case c when 'contact_name' then v else 'Sara' end,
+                   case c when 'phone' then v else '1' end, case c when 'email' then v else '' end, case c when 'notes' then v else '' end];
+      begin
+        if t = 'sample_requests' then
+          insert into public.sample_requests (number, business_type, company, contact_name, phone, email, notes, city_id, product_id)
+          values (num, 'cafe', val[1], val[2], val[3], val[4], val[5], 'oujda', 'signature');
+        else
+          insert into public.quote_requests (number, business_type, company, contact_name, phone, email, notes, city_id, lines, weight_kg, indicative_total)
+          values (num, 'cafe', val[1], val[2], val[3], val[4], val[5], 'oujda', '[]', 11, 100);
+        end if;
+        raise exception 'TEST FAILED: %.% accepted % characters', t, c, length(v);
+      exception when check_violation then null;
+      end;
+    end loop;
+  end loop;
   insert into public.sample_requests (number, business_type, contact_name, phone, city_id, product_id, notes)
   values ('SR-2026-OK0001', 'cafe', 'Sara', '+212661000000', 'oujda', 'signature', repeat('x', 500));
+  begin
+    update public.origins set price_per_kg = 0 where id = 'brazil';
+    raise exception 'TEST FAILED: origin at 0 DH per kg';
+  exception when check_violation then null;
+  end;
 end $$;
-select 'ok 20 - sample and B2B requests have the same length limits as orders' as result;
+select 'ok 20 - sample and B2B requests have the same length limits as orders; origins have a real price' as result;

@@ -139,12 +139,12 @@ describe('admin protection (phase 2)', () => {
   it('adding an origin with an existing name never replaces it, and starts at 0 kg', () => {
     const { api, db } = t;
     const original = db.get().origins[0];
-    const created = api.createOrigin({ ...original, id: '', pricePerKg: 999, stockKg: 50 });
+    const created = api.createOrigin({ ...original, id: '', pricePerKg: 999, stockKg: 50 })!;
     expect(created.id).not.toBe(original.id);
     expect(created.stockKg).toBe(0);
     expect(db.get().origins.find((o) => o.id === original.id)).toEqual(original);
     // a name whose id is already taken gets the next free one
-    const twice = api.createOrigin({ ...original, id: '', name: { ...original.name, fr: created.name.fr } });
+    const twice = api.createOrigin({ ...original, id: '', name: { ...original.name, fr: created.name.fr } })!;
     expect(twice.id).toBe(`${created.id}-2`);
     expect(db.get().origins.find((o) => o.id === created.id)).toEqual(created);
   });
@@ -187,5 +187,27 @@ describe('admin protection (phase 2)', () => {
     const after = db.get().orders.find((x) => x.id === placed.order.id)!;
     expect(after.paymentStatus).toBe('pending');
     expect(after.paymentRef).toBeUndefined();
+  });
+});
+
+describe('phase 2 review', () => {
+  it('a product id or address already in use, either one, is never reused', () => {
+    const { api, db } = t;
+    const base = db.get().products[0];
+    db.update((s) => ({ ...s, products: [...s.products, { ...base, id: 'only-id', slug: 'only-slug' }] }));
+    expect(api.createProduct({ ...base, name: { ...base.name, fr: 'Only id' } }).id).toBe('only-id-2');
+    expect(api.createProduct({ ...base, name: { ...base.name, fr: 'Only slug' } }).id).toBe('only-slug-2');
+    // "new" is the address of the add-product form
+    expect(api.createProduct({ ...base, name: { ...base.name, fr: 'New' } }).id).toBe('new-2');
+  });
+
+  it('refuses an origin without a real price per kg', () => {
+    const { api, db } = t;
+    const o = db.get().origins[0];
+    for (const bad of [0, 0.4, -50, Number.NaN]) {
+      expect(api.saveOrigin({ ...o, pricePerKg: bad }), String(bad)).toBe(false);
+      expect(api.createOrigin({ ...o, id: '', name: { ...o.name, fr: `Test ${bad}` }, pricePerKg: bad }), String(bad)).toBeNull();
+    }
+    expect(db.get().origins.find((x) => x.id === o.id)!.pricePerKg).toBe(o.pricePerKg);
   });
 });

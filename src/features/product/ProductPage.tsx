@@ -31,7 +31,9 @@ function ProductDetails({ slug }: { slug?: string }) {
   const cart = useCart();
   const product = products.find((p) => p.slug === slug && p.active);
   const sizes = product ? offeredSizes(product) : [];
-  const [size, setSize] = useState<PackSize | undefined>(sizes.includes(1000) ? 1000 : sizes[0]);
+  const [chosen, setSize] = useState<PackSize | undefined>(sizes.includes(1000) ? 1000 : sizes[0]);
+  // a size that stops being offered while the page is open (price removed in the admin) is never kept
+  const size = chosen && sizes.includes(chosen) ? chosen : sizes.includes(1000) ? 1000 : sizes[0];
   const [qty, setQty] = useState(1);
 
   if (!product || !size) return <NotFound />;
@@ -141,7 +143,7 @@ function ProductDetails({ slug }: { slug?: string }) {
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={available < qty}
+                disabled={available < qty || price < 1}
                 onClick={() => cart.addProduct(product.id, size, qty, `${l(product.name)} · ${formatSize(size)} ×${qty}`)}
               >
                 <Icon name="cart" size={18} /> {t.common.addToCart}
