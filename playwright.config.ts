@@ -22,7 +22,8 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], locale: 'fr-FR', launchOptions: { executablePath } } }],
   webServer: {
-    command: 'npx vite preview --port 4173 --strictPort',
+    // bind the address the tests use: on CI "localhost" can resolve to IPv6 (::1) only
+    command: 'npx vite preview --host 127.0.0.1 --port 4173 --strictPort',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
   },
