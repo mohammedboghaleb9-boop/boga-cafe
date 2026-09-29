@@ -40,6 +40,7 @@ export function StoreLayout() {
       window.clearTimeout(timer);
       moves.forEach((e) => window.removeEventListener(e, stop));
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs again on each new page, on purpose
   }, [pathname, hash]);
 
   // unpaid orders past the time limit give their stock back

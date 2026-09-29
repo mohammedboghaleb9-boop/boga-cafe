@@ -92,7 +92,7 @@ export function CheckoutPage() {
     setBusy(false);
     if (!r.ok) {
       setErrors(r.errors);
-      focusField(r.errors.find((e) => e in FIELD_OF) ?? r.errors[0]);
+      focusField(r.errors.find((code) => code in FIELD_OF) ?? r.errors[0]);
       return;
     }
     cart.clear();

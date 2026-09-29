@@ -51,6 +51,7 @@ export const ar: Dict = {
     saved: 'تم الحفظ',
     cancel: 'إلغاء',
     edit: 'تعديل',
+    actions: 'إجراءات',
     delete: 'حذف',
     confirmDelete: 'تأكيد الحذف',
     add: 'إضافة',

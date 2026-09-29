@@ -51,6 +51,7 @@ export const fr: Dict = {
     saved: 'Enregistré',
     cancel: 'Annuler',
     edit: 'Modifier',
+    actions: 'Actions',
     delete: 'Supprimer',
     confirmDelete: 'Confirmer la suppression',
     add: 'Ajouter',

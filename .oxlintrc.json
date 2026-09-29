@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "jsx-a11y", "import", "vitest"],
+  "categories": { "correctness": "error", "suspicious": "error" },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "error",
+    // CSS and font files are imported for their side effect
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css", "@fontsource/**"] }],
+    // Vitest's expect(value, message) prints the message when it fails
+    "vitest/valid-expect": ["error", { "maxArgs": 2 }],
+    // mocks built from an implementation already have its type
+    "vitest/require-mock-type-parameters": "off",
+    // role="img" on an <svg>, role="group" around buttons and role="status" on a live
+    // message are the recommended ARIA patterns; the suggested tags mean something else
+    "jsx-a11y/prefer-tag-over-role": "off"
+  },
+  "ignorePatterns": ["dist", "dist-demo", "node_modules", "brand"]
+}

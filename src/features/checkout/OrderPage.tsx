@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { formatKg } from '@/core/format';
 import { orderPhase } from '@/core/orderFlow';
@@ -22,7 +22,7 @@ export function OrderPage() {
   const { orders, shippingRates } = db;
   const order = orders.find((o) => o.id === id);
   // the payment was reported during this visit: bring the new message into view
-  const statusOnArrival = useRef(order?.paymentStatus);
+  const [statusOnArrival] = useState(order?.paymentStatus);
 
   if (!order) {
     return (
@@ -37,7 +37,7 @@ export function OrderPage() {
 
   const city = shippingRates.find((r) => r.id === order.customer.cityId);
   const handoff = orderHandoff(order, templateContext(db));
-  const justReported = handoff?.event === 'payment.reported' && statusOnArrival.current !== 'awaiting_verification';
+  const justReported = handoff?.event === 'payment.reported' && statusOnArrival !== 'awaiting_verification';
   const reached = FLOW.indexOf(order.status);
   const firstName = order.customer.fullName.split(' ')[0];
 

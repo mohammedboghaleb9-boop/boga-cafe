@@ -49,6 +49,8 @@ function ProductForm({ id }: { id: string | undefined }) {
       },
   );
 
+  const [refused, setRefused] = useState(false);
+
   if (!isNew && !existing) return <p className="muted">404</p>;
 
   const total = recipeTotal(p.recipe);
@@ -58,7 +60,6 @@ function ProductForm({ id }: { id: string | undefined }) {
   const priced = offeredSizes(p).length > 0;
   const valid = total === 100 && p.name.fr.trim() !== '' && p.recipe.every((r) => originIndex[r.originId]) && (priced || !p.active);
 
-  const [refused, setRefused] = useState(false);
   function save() {
     if (!valid) return;
     if (isNew) api.createProduct(p);
