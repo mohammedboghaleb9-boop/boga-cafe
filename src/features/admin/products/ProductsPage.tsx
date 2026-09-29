@@ -1,6 +1,7 @@
 import { formatSize } from '@/core/format';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { productPrice } from '@/core/pricing';
 import { speciesSplit } from '@/core/recipe';
 import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type ProductKind } from '@/core/types';
@@ -78,7 +79,7 @@ export function ProductsPage() {
                   <td className="small">{t.roast[p.roastLevel]}</td>
                   {PACK_SIZES.map((s) => (
                     <td key={s} className="num end">
-                      {p.prices[s] !== undefined ? money(p.prices[s]!) : '—'}
+                      {productPrice(p, s) !== undefined ? money(productPrice(p, s)!) : '—'}
                     </td>
                   ))}
                   <td className="num end">{maxBags(p.recipe, 1000, originIndex, settings.roastLossPercent)}</td>

@@ -2,14 +2,23 @@ import { roundMoney } from './money';
 import type { OriginIndex } from './recipe';
 import type { CustomBlendSpec, PackSize, Product, Settings } from './types';
 
-export const productPrice = (product: Product, size: PackSize): number | undefined =>
-  product.prices[size];
+/**
+ * A real price: at least 1 DH. Totals are rounded to the whole dirham
+ * (roundMoney), so anything below would sell a bag for 0 DH; 0, empty or a
+ * typing mistake means "not offered". Also used for an origin's price per kg.
+ */
+export const isPrice = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 1;
+
+export const productPrice = (product: Product, size: PackSize): number | undefined => {
+  const price = product.prices[size];
+  return isPrice(price) ? price : undefined;
+};
 
 export const offeredSizes = (product: Product): PackSize[] =>
-  ([250, 500, 1000] as PackSize[]).filter((s) => product.prices[s] !== undefined);
+  ([250, 500, 1000] as PackSize[]).filter((s) => productPrice(product, s) !== undefined);
 
 export const lowestPrice = (product: Product): number | undefined => {
-  const values = Object.values(product.prices).filter((v): v is number => typeof v === 'number');
+  const values = offeredSizes(product).map((s) => productPrice(product, s)!);
   return values.length ? Math.min(...values) : undefined;
 };
 

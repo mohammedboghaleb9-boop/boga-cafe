@@ -1,3 +1,4 @@
+import { isPrice } from './pricing';
 import { recipeTotal, type OriginIndex } from './recipe';
 import { findShortages, stockRequirements } from './stock';
 import type { CustomBlendSpec, Settings } from './types';
@@ -30,7 +31,8 @@ export function validateBlend(
     seen.add(line.originId);
 
     const origin = origins[line.originId];
-    if (!origin || !origin.active || !origin.customBlendEnabled) {
+    // an origin without a real price per kg would make the blend (nearly) free
+    if (!origin || !origin.active || !origin.customBlendEnabled || !isPrice(origin.pricePerKg)) {
       issues.push({ code: 'unavailable', originId: line.originId, restockDate: origin?.restockDate });
     }
     if (line.percent < minPercent) {

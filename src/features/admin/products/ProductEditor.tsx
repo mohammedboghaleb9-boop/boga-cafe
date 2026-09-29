@@ -1,6 +1,7 @@
 import { formatSize } from '@/core/format';
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { offeredSizes } from '@/core/pricing';
 import { recipeTotal, speciesSplit } from '@/core/recipe';
 import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type Product, type ProductKind, type RoastLevel } from '@/core/types';
@@ -14,16 +15,13 @@ import { ConfirmButton, LocalizedInput, Switch } from '../ui';
 const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
 const empty = { ar: '', fr: '', en: '' };
 
-const slugify = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-
+/** A fresh form for each product: moving from one product to another never keeps the previous one's fields. */
 export function ProductEditor() {
   const { id } = useParams();
+  return <ProductForm key={id} id={id} />;
+}
+
+function ProductForm({ id }: { id: string | undefined }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { t, l } = useI18n();
@@ -56,12 +54,15 @@ export function ProductEditor() {
   const total = recipeTotal(p.recipe);
   const split = speciesSplit(p.recipe, originIndex);
   const set = <K extends keyof Product>(k: K, v: Product[K]) => setP((cur) => ({ ...cur, [k]: v }));
-  const valid = total === 100 && p.name.fr.trim() !== '' && p.recipe.every((r) => originIndex[r.originId]);
+  // an active product needs at least one size at a real price (0 or empty = not offered)
+  const priced = offeredSizes(p).length > 0;
+  const valid = total === 100 && p.name.fr.trim() !== '' && p.recipe.every((r) => originIndex[r.originId]) && (priced || !p.active);
 
+  const [refused, setRefused] = useState(false);
   function save() {
     if (!valid) return;
-    const slug = p.slug || slugify(p.name.fr) || `product-${Date.now()}`;
-    api.saveProduct({ ...p, id: p.id || slug, slug });
+    if (isNew) api.createProduct(p);
+    else if (!api.saveProduct(p)) return setRefused(true); // never leave as if it had worked
     navigate('/admin/products');
   }
 
@@ -91,6 +92,7 @@ export function ProductEditor() {
         </div>
       </div>
 
+      {refused && <p className="field-error">{t.admin.saveRefused}</p>}
       <div className="detail-grid">
         <section className="panel stack">
           <div className="form-grid">
@@ -192,6 +194,7 @@ export function ProductEditor() {
 
           <section className="panel stack">
             <span className="label">{t.admin.products.pricesHint}</span>
+            {p.active && !priced && <p className="field-error">{t.admin.products.needsPrice}</p>}
             <div className="form-grid">
               {PACK_SIZES.map((s) => (
                 <label key={s} className="field">
@@ -204,7 +207,8 @@ export function ProductEditor() {
                   <input
                     className="input num"
                     type="number"
-                    min={0}
+                    min={1}
+                    step={1}
                     value={p.prices[s] ?? ''}
                     onChange={(e) =>
                       set('prices', { ...p.prices, [s]: e.target.value === '' ? undefined : Number(e.target.value) })

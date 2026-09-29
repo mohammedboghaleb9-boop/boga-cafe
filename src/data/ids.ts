@@ -37,3 +37,23 @@ export function newReference(prefix: RefPrefix, taken: (ref: string) => boolean 
     if (!taken(ref)) return ref;
   }
 }
+
+/** Readable id from a name: "Éthiopie Yirgacheffe" → "ethiopie-yirgacheffe". */
+export const slugify = (name: string): string =>
+  name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+/**
+ * Id for a new product or origin: never one already used, so creating
+ * "BOGA Signature" a second time gives "boga-signature-2" instead of
+ * replacing the existing product (post-merge review).
+ */
+export function uniqueSlug(name: string, taken: (id: string) => boolean, fallback: string): string {
+  const base = slugify(name) || fallback;
+  if (!taken(base)) return base;
+  for (let n = 2; ; n++) if (!taken(`${base}-${n}`)) return `${base}-${n}`;
+}

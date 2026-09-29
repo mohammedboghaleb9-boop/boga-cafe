@@ -38,3 +38,15 @@ describe('references', () => {
     expect(r).not.toBe(first);
   });
 });
+
+describe('ids for new products and origins', () => {
+  it('come from the name and never reuse one already taken', async () => {
+    const { slugify, uniqueSlug } = await import('../ids');
+    expect(slugify('Éthiopie Yirgacheffe')).toBe('ethiopie-yirgacheffe');
+    expect(slugify('  Café · Brésil 100% ')).toBe('cafe-bresil-100');
+    const taken = new Set(['boga-signature', 'boga-signature-2']);
+    expect(uniqueSlug('BOGA Signature', (id) => taken.has(id), 'produit')).toBe('boga-signature-3');
+    expect(uniqueSlug('Nouveau', (id) => taken.has(id), 'produit')).toBe('nouveau');
+    expect(uniqueSlug('قهوة', (id) => taken.has(id), 'produit')).toBe('produit');
+  });
+});

@@ -4,6 +4,7 @@
  */
 import { summarizeCart } from '@/core/cart';
 import { buildOrder, expiredUnpaidOrders, type CheckoutError, type CheckoutInput } from '@/core/order';
+import { isPrice } from '@/core/pricing';
 import { adjustOriginStock, applyStock, isLowStock } from '@/core/stock';
 import { normalizePhone, isEmail } from '@/core/validation';
 import type {
@@ -26,12 +27,13 @@ import type {
 import { draftsToLogs, lowStockMessage, orderMessage, paymentReportMessage, quoteMessage, sampleMessage } from '@/services/notifications';
 import { deliver } from '@/services/notifications/deliver';
 import { checkoutContext, storefrontCheckoutContext, templateContext } from './context';
-import { newReference, uid } from './ids';
+import { newReference, uid, uniqueSlug } from './ids';
 import type { DbState } from './state';
 import { db } from './store';
 import { awaitsPayment, canSetPayment, refundCancelsOrder, settingsChangeRefused, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
+const RESERVED_PRODUCT_IDS = ['new'];
 const now = () => new Date().toISOString();
 
 function withLowStockAlerts(before: Origin[], after: Origin[], s: DbState, at: string) {
@@ -291,27 +293,41 @@ export const api = {
     return true;
   },
 
-  saveProduct(product: Product) {
-    db.update((s) => ({
-      ...s,
-      products: s.products.some((p) => p.id === product.id)
-        ? s.products.map((p) => (p.id === product.id ? product : p))
-        : [...s.products, product],
-    }));
+  /** New product: its id and address come from the name and never replace an existing product. */
+  createProduct(draft: Product): Product {
+    // "new" is the admin's address for the add-product form (/admin/products/new)
+    const taken = (id: string) => RESERVED_PRODUCT_IDS.includes(id) || db.get().products.some((p) => p.id === id || p.slug === id);
+    const slug = uniqueSlug(draft.name.fr, taken, 'produit');
+    const product = { ...draft, id: slug, slug };
+    db.update((s) => ({ ...s, products: [...s.products, product] }));
+    return product;
+  },
+
+  /** Changes an existing product (false if there is none with this id: use createProduct). */
+  saveProduct(product: Product): boolean {
+    if (!db.get().products.some((p) => p.id === product.id)) return false;
+    db.update((s) => ({ ...s, products: s.products.map((p) => (p.id === product.id ? product : p)) }));
+    return true;
   },
 
   deleteProduct(id: string) {
     db.update((s) => ({ ...s, products: s.products.filter((p) => p.id !== id) }));
   },
 
+  /** New origin at 0 kg (its first lot goes through adjustStock); never replaces an existing one. Null without a real price per kg. */
+  createOrigin(draft: Origin): Origin | null {
+    if (!isPrice(draft.pricePerKg)) return null;
+    const taken = (id: string) => db.get().origins.some((o) => o.id === id);
+    const origin = { ...draft, id: uniqueSlug(draft.name.fr, taken, 'origine'), stockKg: 0 };
+    db.update((s) => ({ ...s, origins: [...s.origins, origin] }));
+    return origin;
+  },
+
   /** Saves origin details. Stock is changed only through `adjustStock` so every change is logged. */
-  saveOrigin(origin: Origin) {
-    db.update((s) => {
-      const existing = s.origins.find((o) => o.id === origin.id);
-      return existing
-        ? { ...s, origins: s.origins.map((o) => (o.id === origin.id ? { ...origin, stockKg: o.stockKg } : o)) }
-        : { ...s, origins: [...s.origins, { ...origin, stockKg: 0 }] };
-    });
+  saveOrigin(origin: Origin): boolean {
+    if (!isPrice(origin.pricePerKg) || !db.get().origins.some((o) => o.id === origin.id)) return false;
+    db.update((s) => ({ ...s, origins: s.origins.map((o) => (o.id === origin.id ? { ...origin, stockKg: o.stockKg } : o)) }));
+    return true;
   },
 
   adjustStock(originId: string, deltaKg: number, reason: StockReason, note: string) {

@@ -411,6 +411,7 @@ export const fr: Dict = {
   },
 
   admin: {
+    saveRefused: 'Non enregistré : cet élément n’existe plus ou son prix n’est pas valide. Rechargez la page et réessayez.',
     ownerOnly: 'Réservé au propriétaire : ces coordonnées reçoivent les commandes et les paiements des clients.',
     title: 'Panel Admin',
     loginTitle: 'Connexion au Panel Admin',
@@ -527,6 +528,7 @@ export const fr: Dict = {
       recipeHint: 'Origines et pourcentages (total 100 %)',
       addLine: 'Ajouter une origine',
       pricesHint: 'Prix par sachet (MAD). Laisser vide pour ne pas proposer le format.',
+      needsPrice: 'Un produit actif doit avoir au moins un format avec un prix d’au moins 1 DH.',
       featured: 'Afficher sur l’accueil',
       active: 'Visible sur le site',
       sortOrder: 'Ordre',
@@ -536,6 +538,7 @@ export const fr: Dict = {
       hidden: 'Masqué',
     },
     stock: {
+      needsPrice: 'Prix au kilo : au moins 1 DH.',
       intro:
         'Le stock est compté en kilogrammes par origine. Les commandes le déduisent automatiquement, les annulations le rendent.',
       species: 'Espèce',

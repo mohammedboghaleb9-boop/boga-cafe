@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { formatSize } from '@/core/format';
-import { offeredSizes } from '@/core/pricing';
+import { offeredSizes, productPrice } from '@/core/pricing';
 import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type PackSize } from '@/core/types';
 import { NotFound } from '@/app/NotFound';
@@ -31,13 +31,15 @@ function ProductDetails({ slug }: { slug?: string }) {
   const cart = useCart();
   const product = products.find((p) => p.slug === slug && p.active);
   const sizes = product ? offeredSizes(product) : [];
-  const [size, setSize] = useState<PackSize | undefined>(sizes.includes(1000) ? 1000 : sizes[0]);
+  const [chosen, setSize] = useState<PackSize | undefined>(sizes.includes(1000) ? 1000 : sizes[0]);
+  // a size that stops being offered while the page is open (price removed in the admin) is never kept
+  const size = chosen && sizes.includes(chosen) ? chosen : sizes.includes(1000) ? 1000 : sizes[0];
   const [qty, setQty] = useState(1);
 
   if (!product || !size) return <NotFound />;
 
   const view = recipeView(product.recipe, originIndex, l);
-  const price = product.prices[size] ?? 0;
+  const price = productPrice(product, size) ?? 0;
   const inCart = cart.items.reduce(
     (s, i) => (i.type === 'product' && i.productId === product.id && i.size === size ? s + i.qty : s),
     0,
@@ -123,7 +125,7 @@ function ProductDetails({ slug }: { slug?: string }) {
                   }}
                 >
                   {formatSize(s)}
-                  {product.prices[s] !== undefined && <span className="seg-price num"> · {money(product.prices[s]!)}</span>}
+                  {sizes.includes(s) && <span className="seg-price num"> · {money(productPrice(product, s)!)}</span>}
                 </button>
               ))}
             </div>
@@ -141,7 +143,7 @@ function ProductDetails({ slug }: { slug?: string }) {
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={available < qty}
+                disabled={available < qty || price < 1}
                 onClick={() => cart.addProduct(product.id, size, qty, `${l(product.name)} · ${formatSize(size)} ×${qty}`)}
               >
                 <Icon name="cart" size={18} /> {t.common.addToCart}

@@ -10,4 +10,6 @@
 ```
 
 When the Supabase project exists: `supabase link` then `supabase db push`.
+
+Until that first push, schema changes are made in the init migration itself (nothing has applied it yet). After it, every change is a new migration file: never edit one a database has already applied.
 Edge Functions to write in Phase 2 are listed in `docs/05-roadmap.md` (create-order, cmi-callback, send-notifications, sample-request, quote-request).
