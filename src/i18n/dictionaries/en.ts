@@ -383,6 +383,8 @@ export const en = {
     title: 'Last step: send us your request',
     text: 'It reaches our WhatsApp from your number, so we answer you directly. Everything is already written: just press send.',
     slow: 'Automatic sending is taking longer than usual. To be sure, send it on WhatsApp as well: everything is already written.',
+    titlePayment: 'Last step: send us your payment reference',
+    textPayment: 'It reaches our WhatsApp from your number, with your order. We check the payment, then prepare your coffee. Everything is already written: just press send.',
     titleAuto: 'Your request has reached us',
     textAuto: 'The team has been notified. To speed things up, you can also send it on WhatsApp.',
     whatsapp: 'Send on WhatsApp',
@@ -595,7 +597,7 @@ export const en = {
     },
     notif: {
       intro:
-        'For every new order, sample request or B2B request, the administration receives a WhatsApp message and an email. In the prototype, messages are simulated and listed here.',
+        'For every new order, reported payment, sample request or B2B request, the administration receives a WhatsApp message and an email. In the prototype, messages are simulated and listed here.',
       adminWhatsapp: 'Admin WhatsApp number',
       adminEmail: 'Admin email (Gmail)',
       whatsappOn: 'WhatsApp notifications',

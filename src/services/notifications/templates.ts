@@ -135,6 +135,21 @@ export function paymentReportMessage(order: Order, ctx: TemplateContext): Messag
   });
 }
 
+/**
+ * What the order page asks the customer to send to BOGA: the order itself,
+ * or, once they reported a Cash Plus / transfer payment, that report (it
+ * carries the whole order). Nothing once the order is closed.
+ */
+export function orderHandoff(
+  order: Order,
+  ctx: TemplateContext,
+): { event: 'order.created' | 'payment.reported'; draft: MessageDraft } | null {
+  if (order.status === 'cancelled' || order.status === 'delivered') return null;
+  return order.paymentStatus === 'awaiting_verification'
+    ? { event: 'payment.reported', draft: paymentReportMessage(order, ctx) }
+    : { event: 'order.created', draft: orderMessage(order, ctx) };
+}
+
 export function sampleMessage(s: SampleRequest, ctx: TemplateContext): MessageDraft {
   const product = ctx.products.find((p) => p.id === s.productId)?.name.fr ?? s.productId;
   const body = [

@@ -251,7 +251,14 @@ describe('POST /api/notify', () => {
     };
     expect(parsePayload(report)).not.toHaveProperty('error');
     for (const bad of [
-      { ...report, ref: 'SR-2026-7K4M2Q' }, // a payment belongs to an order
+      // a payment belongs to an order: only the prefix is wrong here
+      {
+        ...report,
+        ref: 'SR-2026-7K4M2Q',
+        subject: '[BOGA CAFÉ] Paiement signalé SR-2026-7K4M2Q - 290 DH',
+        whatsapp: 'Paiement signalé SR-2026-7K4M2Q',
+        email: 'Paiement signalé SR-2026-7K4M2Q',
+      },
       { ...report, whatsapp: `Nouvelle commande ${ref}` },
       { ...report, subject: `[BOGA CAFÉ] Commande ${ref} - 290 DH` },
     ]) {

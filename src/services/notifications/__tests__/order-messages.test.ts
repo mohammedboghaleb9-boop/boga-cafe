@@ -58,3 +58,16 @@ describe('payment report message', () => {
     expect(parsePayload({ event: 'payment.reported', ref: order.number, ...m })).not.toHaveProperty('error');
   });
 });
+
+describe('what the order page asks the customer to send', () => {
+  it('the order, then the payment report once "I have paid" is pressed, nothing once closed', async () => {
+    const { order, ctx, orderHandoff } = await demo();
+    expect(orderHandoff({ ...order, status: 'new', paymentStatus: 'pending' }, ctx)?.event).toBe('order.created');
+    const reported = orderHandoff({ ...order, status: 'new', paymentStatus: 'awaiting_verification', paymentRef: 'CP-1' }, ctx);
+    expect(reported?.event).toBe('payment.reported');
+    expect(reported?.draft.whatsapp.split('\n')[0]).toBe(`Paiement signalé ${order.number}`);
+    expect(orderHandoff({ ...order, status: 'confirmed', paymentStatus: 'paid' }, ctx)?.event).toBe('order.created');
+    expect(orderHandoff({ ...order, status: 'cancelled' }, ctx)).toBeNull();
+    expect(orderHandoff({ ...order, status: 'delivered' }, ctx)).toBeNull();
+  });
+});
