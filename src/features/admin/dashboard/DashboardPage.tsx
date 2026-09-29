@@ -4,12 +4,15 @@ import { isLowStock } from '@/core/stock';
 import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
-import { Kpi, OrderStatusPill, PaymentPill } from '../ui';
+import { can } from '../permissions';
+import { useAdminRole } from '../session';
+import { Kpi, OrderStatusPill, PaymentPill, RowLink, TableWrap, rowClick } from '../ui';
 
 export function DashboardPage() {
   const { t, l, money, date } = useI18n();
   const db = useDb();
   const navigate = useNavigate();
+  const role = useAdminRole()!;
   const orders = db.orders;
   const count = (f: (o: (typeof orders)[number]) => boolean) => orders.filter(f).length;
   const low = db.origins.filter(isLowStock);
@@ -41,7 +44,7 @@ export function DashboardPage() {
           value={db.samples.filter((s) => ['new', 'contacted'].includes(s.status)).length}
           to="/admin/b2b"
         />
-        <Kpi label={t.admin.dash.toVerify} value={count((o) => o.paymentStatus === 'awaiting_verification')} to="/admin/payments" />
+        <Kpi label={t.admin.dash.toVerify} value={count((o) => o.paymentStatus === 'awaiting_verification')} to={can(role, 'payments') ? '/admin/payments' : '/admin/orders?view=verify'} />
         <Kpi label={t.admin.dash.stock} value={formatKg(totalStock)} to="/admin/stock" tone={low.length ? 'bad' : 'ok'} />
         <Kpi label={t.admin.dash.revenue} value={money(revenue)} />
       </div>
@@ -54,13 +57,15 @@ export function DashboardPage() {
               {t.common.all} <span className="dir-arrow" aria-hidden="true">→</span>
             </Link>
           </div>
-          <div className="table-wrap">
+          <TableWrap>
             <table className="table">
               <tbody>
                 {orders.slice(0, 6).map((o) => (
-                  <tr key={o.id} className="clickable" onClick={() => navigate(`/admin/orders/${o.id}`)}>
+                  <tr key={o.id} className="clickable" onClick={rowClick(navigate, `/admin/orders/${o.id}`)}>
                     <td>
-                      <strong className="num">{o.number}</strong>
+                      <RowLink to={`/admin/orders/${o.id}`}>
+                        <strong className="num">{o.number}</strong>
+                      </RowLink>
                       <div className="small muted">{date(o.createdAt, true)}</div>
                     </td>
                     <td>{o.customer.fullName}</td>
@@ -75,7 +80,7 @@ export function DashboardPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
         </section>
 
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>

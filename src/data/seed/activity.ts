@@ -267,6 +267,5 @@ export function buildDemoActivity(base: DbState): DbState {
     samples: samples.reverse(),
     quotes,
     stockMovements: movements,
-    counters: { order: orders.length, sample: samples.length, quote: quotes.length },
   };
 }

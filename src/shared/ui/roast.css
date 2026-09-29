@@ -32,11 +32,10 @@
   font-size: 0.72rem;
   line-height: 1.2;
   text-align: center;
+  /* muted text at full opacity: 0.7 fell under the WCAG AA contrast of 4.5:1 */
   color: var(--muted);
-  opacity: 0.7;
 }
 .roast-scale li.is-current {
-  opacity: 1;
   color: var(--ink);
   font-weight: 700;
 }

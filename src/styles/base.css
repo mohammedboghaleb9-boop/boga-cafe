@@ -532,6 +532,20 @@ textarea {
   background: var(--surface-2);
   color: var(--ink-2);
   white-space: nowrap;
+  max-inline-size: 100%;
+}
+/* on a narrow phone, a long label ("Rupture de stock · Retour vers le …",
+   "Envoyer la demande d'échantillon") wraps instead of being cut */
+@media (max-width: 420px) {
+  .pill {
+    white-space: normal;
+    border-radius: 12px;
+  }
+  .btn {
+    white-space: normal;
+    text-align: center;
+    max-inline-size: 100%;
+  }
 }
 .pill::before {
   content: '';
@@ -590,7 +604,13 @@ textarea {
 }
 
 /* Tables */
+.table-wrap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .table-wrap {
+  /* keeps absolutely placed children (e.g. .sr-only header text) inside the scroll box */
+  position: relative;
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -623,8 +643,17 @@ textarea {
 .table tr.clickable {
   cursor: pointer;
 }
-.table tr.clickable:hover td {
+.table tr.clickable:hover td,
+.table tr.clickable:focus-within td {
   background: var(--surface-2);
+}
+/* the row's main text is a real link (keyboard, screen readers); it looks like the text it replaces */
+.row-link {
+  color: inherit;
+  text-decoration: none;
+}
+.row-link:hover {
+  text-decoration: underline;
 }
 .table .end {
   text-align: end;

@@ -156,7 +156,7 @@
   background: #7a4c2c;
 }
 .blend-example-bar span:nth-child(2) {
-  background: #a8764c;
+  background: #8f6038; /* white text at 5.4:1 (was #a8764c, 3.9:1) */
 }
 .blend-example-bar span:nth-child(3) {
   background: #3a322c;

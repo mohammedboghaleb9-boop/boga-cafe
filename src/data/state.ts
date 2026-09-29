@@ -26,7 +26,6 @@ export interface DbState {
   quotes: QuoteRequest[];
   stockMovements: StockMovement[];
   notifications: NotificationLog[];
-  counters: { order: number; sample: number; quote: number };
 }
 
 /** Bump when the seed changes, so saved demo data in browsers is replaced. */

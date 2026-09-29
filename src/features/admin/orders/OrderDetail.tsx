@@ -9,7 +9,7 @@ import { whatsappLink } from '@/services/notifications';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { useAdminRole } from '../session';
-import { ConfirmButton, OrderStatusPill, PaymentPill } from '../ui';
+import { ConfirmButton, OrderStatusPill, PaymentPill, TableWrap } from '../ui';
 
 export function OrderDetail() {
   const { id } = useParams();
@@ -71,7 +71,7 @@ export function OrderDetail() {
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>
           <section className="panel stack">
             <h2 className="admin-card-title">{t.admin.orders.items}</h2>
-            <div className="table-wrap">
+            <TableWrap>
               <table className="table">
                 <thead>
                   <tr>
@@ -107,7 +107,7 @@ export function OrderDetail() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableWrap>
             <dl className="kv">
               <div>
                 <dt>{t.common.weight}</dt>

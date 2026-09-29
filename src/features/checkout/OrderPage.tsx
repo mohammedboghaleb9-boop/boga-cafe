@@ -27,7 +27,7 @@ export function OrderPage() {
   if (!order) {
     return (
       <div className="container page stack" style={{ alignItems: 'flex-start' }}>
-        <p className="lead">{t.order.notFound}</p>
+        <h1>{t.order.notFound}</h1>
         <Link to="/" className="btn btn-primary">
           {t.common.backHome}
         </Link>

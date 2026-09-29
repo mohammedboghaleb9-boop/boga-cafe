@@ -1,5 +1,5 @@
 /** Small admin building blocks: status pills, KPI tiles, tabs, 3-language inputs. */
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { Localized, OrderStatus, PaymentStatus } from '@/core/types';
 import { useI18n } from '@/i18n';
@@ -28,6 +28,52 @@ export function OrderStatusPill({ status }: { status: OrderStatus }) {
 export function PaymentPill({ status }: { status: PaymentStatus }) {
   const { t } = useI18n();
   return <span className={`pill ${payTone[status]}`}>{t.paymentStatus[status]}</span>;
+}
+
+/**
+ * Mouse click anywhere on a table row opens `to`. Keyboard and screen-reader users
+ * get a real link in the row (see `RowLink`); clicks on that link or on any other
+ * control in the row are left to it.
+ */
+export const rowClick = (navigate: (to: string) => void, to: string) => (e: MouseEvent<HTMLElement>) => {
+  if ((e.target as Element).closest('a, button, input, select, textarea, label')) return;
+  navigate(to);
+};
+
+/** The row's main text as a real link, so the row can be reached and opened with the keyboard. */
+export function RowLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="row-link">
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * A table's scroll box. When the table is wider than the screen, the box can be
+ * focused and scrolled with the arrow keys, and has a name for screen readers
+ * (WCAG 2.1.1); otherwise it is a plain box that adds no tab stop.
+ */
+export function TableWrap({ label, children }: { label?: string; children: ReactNode }) {
+  const { t } = useI18n();
+  const box = useRef<HTMLDivElement>(null);
+  const [scrolls, setScrolls] = useState(false);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const check = () => setScrolls(el.scrollWidth > el.clientWidth + 1);
+    check();
+    const watch = new ResizeObserver(check);
+    watch.observe(el);
+    if (el.firstElementChild) watch.observe(el.firstElementChild);
+    return () => watch.disconnect();
+  }, []);
+  const focusable = scrolls ? { tabIndex: 0, role: 'region', 'aria-label': label ?? t.admin.scrollTable } : {};
+  return (
+    <div ref={box} className="table-wrap" {...focusable}>
+      {children}
+    </div>
+  );
 }
 
 export function Kpi({ label, value, to, tone }: { label: string; value: ReactNode; to?: string; tone?: 'warn' | 'bad' | 'ok' }) {

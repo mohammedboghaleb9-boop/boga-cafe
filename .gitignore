@@ -13,3 +13,7 @@ coverage
 
 # Python (brand/source)
 __pycache__/
+
+# Playwright
+test-results/
+playwright-report/

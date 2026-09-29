@@ -3,9 +3,10 @@
  *
  * Prototype: messages are written to the notification log (status "simulated")
  *            and the admin can open them in WhatsApp with one click.
- * Production: the server writes the same messages to an outbox table and an
- *            Edge Function delivers them (WhatsApp Cloud API + Gmail SMTP),
- *            retrying on failure. See docs/03-architecture.md.
+ * Live site: `deliver()` posts the message to api/notify.ts (Vercel function),
+ *            which sends it by Gmail (SMTP) and WhatsApp (CallMeBot).
+ * Planned:   the server writes the messages itself from the order (Supabase
+ *            outbox), and WhatsApp moves to the Cloud API. See docs/09 and docs/10.
  */
 import type { NotificationEvent, NotificationLog, Settings } from '@/core/types';
 import type { MessageDraft } from './templates';
