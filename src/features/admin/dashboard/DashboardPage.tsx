@@ -57,7 +57,7 @@ export function DashboardPage() {
               {t.common.all} <span className="dir-arrow" aria-hidden="true">→</span>
             </Link>
           </div>
-          <TableWrap>
+          <TableWrap label={t.admin.dash.recentOrders}>
             <table className="table">
               <tbody>
                 {orders.slice(0, 6).map((o) => (

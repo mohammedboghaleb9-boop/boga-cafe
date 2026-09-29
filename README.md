@@ -194,7 +194,7 @@ flowchart TD
 | منطق الأعمال | `src/core` بـ TypeScript خالص: نفس الكود في المتصفح وفي الخادم |
 | الإنتاج | Supabase: PostgreSQL + أمان على مستوى الصفوف (RLS) + Auth + Storage + Edge Functions |
 | الاستضافة | Vercel (مُجهّز: `vercel.json` ودالة `api/notify.ts`، Node 24). Cloudflare Pages بديل ممكن بنقل ملف واحد |
-| الاختبارات | Vitest (123 اختباراً: منطق الأعمال، طبقة البيانات، الإرسال، حدود الأقسام) · قاعدة البيانات على PostgreSQL (20 فحصاً) · 21 اختبار متصفح (Playwright) مع فحص سهولة الاستعمال WCAG 2.2 AA (axe) · فحص الكود بـ Oxlint · CI على GitHub Actions |
+| الاختبارات | Vitest (124 اختباراً: منطق الأعمال، طبقة البيانات، الإرسال، حدود الأقسام) · قاعدة البيانات على PostgreSQL (20 فحصاً) · 27 اختبار متصفح (Playwright) مع فحص سهولة الاستعمال WCAG 2.2 AA (axe) · فحص الكود بـ Oxlint · CI على GitHub Actions |
 
 **الأمان:** الأسعار والمخزون يُعاد حسابها في الخادم دائماً، والمخزون يُخصم بعملية ذرّية تمنع بيع نفس الكيلو مرتين، وكل دور لا يرى إلا ما يخصه. التفاصيل: [`docs/03-architecture.md`](docs/03-architecture.md).
 

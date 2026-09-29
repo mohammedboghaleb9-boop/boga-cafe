@@ -11,7 +11,19 @@ test.describe('admin', () => {
     await expect(tile).toHaveCount(1);
     await tile.click();
     await expect(page).toHaveURL(/\/admin\/orders\?view=verify/);
-    await expect(page.locator('[aria-selected="true"], .is-active').first()).toBeVisible();
+    await expect(page.getByRole('tab', { selected: true })).toContainText('à vérifier');
+    // the menu link goes back to all orders
+    await page.locator('.admin-nav a[href="/admin/orders"]').click();
+    await expect(page.getByRole('tab', { selected: true })).toContainText('Tout');
+  });
+
+  test('an odd ?view= value shows all orders', async ({ page }) => {
+    await signIn(page, 'owner');
+    for (const view of ['__proto__', 'toString', 'hasOwnProperty', 'bogus']) {
+      await open(page, `/admin/orders?view=${view}`);
+      await expect(page.getByRole('tab', { selected: true }), view).toContainText('Tout');
+      await expect(page.locator('tbody tr').first(), view).toBeVisible();
+    }
   });
 
   test('the owner\'s "to verify" tile opens payments', async ({ page }) => {
@@ -29,6 +41,7 @@ test.describe('admin', () => {
     await expect(link).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/admin\/orders\/[^/?]+$/);
+    await expect(page.locator('h1.num')).toBeVisible();
     // one history entry: Back returns to the list
     await page.goBack();
     await expect(page).toHaveURL(/\/admin\/orders$/);

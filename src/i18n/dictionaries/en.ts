@@ -262,6 +262,7 @@ export const en = {
     continue: 'Continue shopping',
     problems: {
       invalid_quantity: 'Invalid quantity: set it again.',
+      blend_paused: 'Custom Blend is paused for now: remove this line to order the rest.',
       missing_product: 'This product is no longer available.',
       size_not_offered: 'This size is no longer offered.',
       invalid_blend: 'This blend no longer meets the current rules (an origin is unavailable, a share is below the minimum, or there are too many origins). Rebuild it in Custom Blend.',

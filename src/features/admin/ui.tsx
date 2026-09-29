@@ -54,7 +54,7 @@ export function RowLink({ to, children }: { to: string; children: ReactNode }) {
  * focused and scrolled with the arrow keys, and has a name for screen readers
  * (WCAG 2.1.1); otherwise it is a plain box that adds no tab stop.
  */
-export function TableWrap({ label, children }: { label?: string; children: ReactNode }) {
+export function TableWrap({ label, children }: { label: string; children: ReactNode }) {
   const { t } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const [scrolls, setScrolls] = useState(false);
@@ -68,7 +68,7 @@ export function TableWrap({ label, children }: { label?: string; children: React
     if (el.firstElementChild) watch.observe(el.firstElementChild);
     return () => watch.disconnect();
   }, []);
-  const focusable = scrolls ? { tabIndex: 0, role: 'region', 'aria-label': label ?? t.admin.scrollTable } : {};
+  const focusable = scrolls ? { tabIndex: 0, role: 'region', 'aria-label': `${label} · ${t.admin.scrollTable}` } : {};
   return (
     <div ref={box} className="table-wrap" {...focusable}>
       {children}

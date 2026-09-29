@@ -30,7 +30,7 @@ export async function open(page: Page, path: string) {
 
 export async function addSignatureBag(page: Page) {
   await page.goto('/product/boga-signature');
-  await page.getByRole('button', { name: /Ajouter au panier/ }).click();
+  await page.getByRole('button', { name: /Ajouter au panier|أضف إلى السلة|Add to cart/ }).click();
 }
 
 export async function fillCheckout(page: Page, method: 'cashplus' | 'bank_transfer') {
@@ -58,8 +58,9 @@ export async function expectNoSideScroll(page: Page) {
 }
 
 /**
- * Visible content cut off at the window's edge: boxes, and text that runs out of
- * its box (a nowrap label inside a narrower pill). Decorative images are excluded.
+ * Text or form controls in <main> that are cut off: past the window's edge, or
+ * past the edge of a box that hides its overflow (a card with overflow: hidden).
+ * Scroll boxes (tables) and decorative images are excluded.
  */
 export async function clippedContent(page: Page) {
   return page.evaluate(() => {
@@ -74,7 +75,15 @@ export async function clippedContent(page: Page) {
       if (!n.textContent?.trim() || skip(n.parentElement)) continue;
       const range = document.createRange();
       range.selectNodeContents(n);
-      for (const r of range.getClientRects()) if (r.width > 0 && (r.right > vw + 0.5 || r.left < -0.5)) out.add(name(n.parentElement!));
+      for (const r of range.getClientRects()) {
+        if (r.width === 0) continue;
+        if (r.right > vw + 0.5 || r.left < -0.5) out.add(name(n.parentElement!));
+        for (let a = n.parentElement; a && a !== main; a = a.parentElement) {
+          if (!/hidden|clip/.test(getComputedStyle(a).overflowX)) continue;
+          const box = a.getBoundingClientRect();
+          if (r.right > box.right + 0.5 || r.left < box.left - 0.5) out.add(name(n.parentElement!));
+        }
+      }
     }
     for (const e of main.querySelectorAll('input, select, textarea, button')) {
       const r = e.getBoundingClientRect();

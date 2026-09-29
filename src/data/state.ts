@@ -29,4 +29,4 @@ export interface DbState {
 }
 
 /** Bump when the seed changes, so saved demo data in browsers is replaced. */
-export const STATE_VERSION = 3;
+export const STATE_VERSION = 4; // 4: `counters` removed

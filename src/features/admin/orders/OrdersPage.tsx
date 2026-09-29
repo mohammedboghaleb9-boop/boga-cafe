@@ -22,10 +22,11 @@ export function OrdersPage() {
   const { t, l, money, date } = useI18n();
   const { orders, shippingRates, paymentMethods } = useDb();
   const navigate = useNavigate();
-  // ?view=verify opens a tab directly (link from the dashboard)
-  const [params] = useSearchParams();
-  const asked = params.get('view');
-  const [view, setView] = useState<View>(asked && asked in inView ? (asked as View) : 'all');
+  // the tab is part of the address (?view=verify, linked from the dashboard); unknown values show All
+  const [params, setParams] = useSearchParams();
+  const asked = params.get('view') ?? '';
+  const view: View = Object.hasOwn(inView, asked) ? (asked as View) : 'all';
+  const setView = (v: View) => setParams(v === 'all' ? {} : { view: v }, { replace: true });
   const [q, setQ] = useState('');
   const needle = q.trim().toLowerCase();
   const list = orders.filter(
@@ -71,7 +72,7 @@ export function OrdersPage() {
       {list.length === 0 ? (
         <p className="muted">{t.admin.orders.empty}</p>
       ) : (
-        <TableWrap>
+        <TableWrap label={t.admin.nav.orders}>
           <table className="table">
             <thead>
               <tr>

@@ -71,7 +71,7 @@ export function OrderDetail() {
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>
           <section className="panel stack">
             <h2 className="admin-card-title">{t.admin.orders.items}</h2>
-            <TableWrap>
+            <TableWrap label={t.admin.orders.items}>
               <table className="table">
                 <thead>
                   <tr>

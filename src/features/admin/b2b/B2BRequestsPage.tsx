@@ -128,7 +128,7 @@ function QuoteCard({ q }: { q: QuoteRequest }) {
   return (
     <article className="panel stack">
       <Head {...q} />
-      <TableWrap>
+      <TableWrap label={t.admin.nav.b2b}>
         <table className="table">
           <tbody>
             {q.lines.map((line, i) => (

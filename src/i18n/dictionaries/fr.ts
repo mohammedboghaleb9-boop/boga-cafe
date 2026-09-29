@@ -260,6 +260,7 @@ export const fr: Dict = {
     continue: 'Continuer mes achats',
     problems: {
       invalid_quantity: 'Quantité invalide : réglez-la à nouveau.',
+      blend_paused: 'Le Custom Blend est en pause pour le moment : retirez cette ligne pour commander le reste.',
       missing_product: 'Ce produit n’est plus disponible.',
       size_not_offered: 'Ce format n’est plus proposé.',
       invalid_blend: 'Ce blend ne respecte plus les règles actuelles (origine indisponible, part sous le minimum ou trop d’origines). Recomposez-le dans Custom Blend.',

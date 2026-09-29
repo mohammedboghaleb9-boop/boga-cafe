@@ -41,7 +41,7 @@ export function StockPage() {
       {/* key: a fresh form for each origin (and for a new one), never the previous one's fields */}
       {editing && <OriginEditor key={editing === 'new' ? 'new' : editing.id} origin={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
 
-      <TableWrap>
+      <TableWrap label={t.admin.nav.stock}>
         <table className="table">
           <thead>
             <tr>
@@ -74,7 +74,7 @@ export function StockPage() {
 
       <section className="stack">
         <h2 className="admin-card-title">{t.admin.stock.movements}</h2>
-        <TableWrap>
+        <TableWrap label={t.admin.stock.movements}>
           <table className="table">
             <thead>
               <tr>

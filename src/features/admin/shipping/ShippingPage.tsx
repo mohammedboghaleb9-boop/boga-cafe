@@ -87,7 +87,7 @@ export function ShippingPage() {
         </section>
       </div>
 
-      <TableWrap>
+      <TableWrap label={t.admin.nav.shipping}>
         <table className="table">
           <thead>
             <tr>

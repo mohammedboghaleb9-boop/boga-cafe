@@ -25,6 +25,7 @@ for (const locale of ['fr-FR', 'ar-MA']) {
     });
 
     test('admin pages', async ({ page }) => {
+      test.slow(); // 12 pages scanned one after the other
       await open(page, '/admin');
       await scan(page, '/admin (sign in)');
       await signIn(page, 'owner');
@@ -34,6 +35,7 @@ for (const locale of ['fr-FR', 'ar-MA']) {
       }
       await open(page, '/admin/orders');
       await page.locator('tbody .row-link').first().click();
+      await expect(page.locator('h1.num')).toBeVisible();
       await scan(page, 'order detail');
     });
   });

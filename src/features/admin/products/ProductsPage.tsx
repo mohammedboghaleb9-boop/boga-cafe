@@ -36,7 +36,7 @@ export function ProductsPage() {
           count: products.filter((p) => p.kind === k).length,
         }))}
       />
-      <TableWrap>
+      <TableWrap label={t.admin.nav.products}>
         <table className="table">
           <thead>
             <tr>

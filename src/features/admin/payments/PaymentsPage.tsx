@@ -32,7 +32,7 @@ export function PaymentsPage() {
         {toVerify.length === 0 ? (
           <p className="small muted">{t.admin.payments.noneToVerify}</p>
         ) : (
-          <TableWrap>
+          <TableWrap label={t.admin.payments.toVerify}>
             <table className="table">
               <tbody>
                 {toVerify.map((o) => (

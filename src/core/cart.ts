@@ -16,7 +16,7 @@ export const CUSTOM_BLEND_NAME: Localized = {
   en: 'My Custom Blend',
 };
 
-export type LineProblem = 'missing_product' | 'size_not_offered' | 'invalid_blend' | 'invalid_quantity';
+export type LineProblem = 'missing_product' | 'size_not_offered' | 'invalid_blend' | 'blend_paused' | 'invalid_quantity';
 
 /** Bags of one kind per line. Beyond this the order is a B2B quote anyway. */
 export const MAX_QTY_PER_LINE = 100;
@@ -72,10 +72,12 @@ export function resolveItem(
   }
 
   // Stock is checked for the whole cart together, not per line.
+  // the owner paused Custom Blend: the customer cannot rebuild it, so say so
+  if (!settings.customBlend.enabled) return { problem: 'blend_paused' };
   if (!PACK_SIZES.includes(item.blend.size)) return { problem: 'size_not_offered' };
   if (!item.blend.lines.every((l) => Number.isInteger(l.percent))) return { problem: 'invalid_blend' };
   const rules = validateBlend(item.blend, catalog.origins, settings, 0).filter((i) => i.code !== 'stock');
-  if (rules.length > 0 || !settings.customBlend.enabled) return { problem: 'invalid_blend' };
+  if (rules.length > 0) return { problem: 'invalid_blend' };
   const unitPrice = customBlendPrice(item.blend, catalog.origins, settings).total;
   if (!isPrice(unitPrice)) return { problem: 'invalid_blend' }; // never a free or negative bag
   return {

@@ -120,7 +120,7 @@ export function SettingsPage() {
 
       <section className="stack">
         <h2 className="admin-card-title">{t.admin.settings.permissions}</h2>
-        <TableWrap>
+        <TableWrap label={t.admin.settings.permissions}>
           <table className="table perm-table">
             <thead>
               <tr>
