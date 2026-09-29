@@ -541,7 +541,7 @@ begin
     select c.table_name, c.column_name
       from information_schema.columns c
       join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name
-     where c.table_schema = 'public' and c.data_type = 'numeric' and t.table_type = 'BASE TABLE'
+     where c.table_schema = 'public' and c.data_type in ('numeric', 'double precision', 'real') and t.table_type = 'BASE TABLE'
   loop
     if not exists (
       select 1 from pg_constraint k
