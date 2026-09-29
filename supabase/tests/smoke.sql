@@ -484,3 +484,53 @@ begin
   update public.origins set price_per_kg = 230 where id = 'brazil';
 end $$;
 select 'ok 20 - sample and B2B requests have the same length limits as orders; origins have a real price' as result;
+
+-- 21. Stock and amounts are real numbers: 'NaN' is a valid numeric that sorts above
+--     every number, so "stock_kg >= 0" alone accepted it (audit H1) ---------------
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000002'; -- staff
+do $$
+declare v text; before numeric := (select stock_kg from public.origins where id = 'vietnam');
+begin
+  foreach v in array array['NaN', 'Infinity', '-Infinity'] loop
+    begin
+      perform public.adjust_stock('vietnam', v::numeric, 'correction', 'test');
+      raise exception 'TEST FAILED: adjust_stock accepted %', v;
+    exception when others then
+      if sqlerrm <> 'invalid_delta' then raise; end if;
+    end;
+  end loop;
+  if (select stock_kg from public.origins where id = 'vietnam') <> before then raise exception 'TEST FAILED: stock changed'; end if;
+  -- a real change still works
+  perform public.adjust_stock('vietnam', 1, 'correction', 'test');
+  perform public.adjust_stock('vietnam', -1, 'correction', 'test');
+  if (select stock_kg from public.origins where id = 'vietnam') <> before then raise exception 'TEST FAILED: real change'; end if;
+end $$;
+reset role;
+do $$
+declare col text;
+begin
+  -- no NaN in a numeric column, even written directly on the server
+  perform set_config('boga.stock_write', 'on', true);
+  foreach col in array array['stock_kg', 'low_stock_kg', 'price_per_kg'] loop
+    begin
+      execute format('update public.origins set %I = ''NaN'' where id = ''brazil''', col);
+      raise exception 'TEST FAILED: origins.% accepted NaN', col;
+    exception when check_violation then null;
+    end;
+  end loop;
+  -- an order cannot deduct NaN or Infinity kg
+  foreach col in array array['NaN', 'Infinity'] loop
+    begin
+      perform public.commit_order(
+        format('{"locale": "fr", "customer": {"fullName": "Test", "phone": "+212612345678", "cityId": "oujda", "address": "Rue 1"},
+          "lines": [], "weightKg": 1, "subtotal": 225, "shippingFee": 20, "total": 245, "paymentMethod": "cashplus",
+          "stockDeductions": [{"originId": "brazil", "kg": "%s"}]}', col)::jsonb,
+        'Nouvelle commande {number}', 'Nouvelle commande {number}', '[BOGA CAFÉ] Commande {number}');
+      raise exception 'TEST FAILED: commit_order accepted % kg', col;
+    exception when others then
+      if sqlerrm <> 'invalid_order' then raise; end if;
+    end;
+  end loop;
+end $$;
+select 'ok 21 - stock and amounts are real numbers (no NaN, no Infinity)' as result;

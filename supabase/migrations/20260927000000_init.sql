@@ -45,9 +45,10 @@ create table public.origins (
   region               text not null default '',
   roast_level          text not null check (roast_level in ('light', 'medium', 'medium-dark', 'dark')),
   tasting_notes        jsonb not null default '{}'::jsonb,
-  stock_kg             numeric(10, 3) not null default 0 check (stock_kg >= 0),
-  low_stock_kg         numeric(10, 3) not null default 5 check (low_stock_kg >= 0),
-  price_per_kg         numeric(10, 2) not null check (price_per_kg >= 1), -- a blend is never free (src/core/pricing.ts isPrice)
+  -- numeric accepts 'NaN', which sorts above every number (so >= 0 lets it through): refused in every numeric column
+  stock_kg             numeric(10, 3) not null default 0 check (stock_kg >= 0 and stock_kg <> 'NaN'),
+  low_stock_kg         numeric(10, 3) not null default 5 check (low_stock_kg >= 0 and low_stock_kg <> 'NaN'),
+  price_per_kg         numeric(10, 2) not null check (price_per_kg >= 1 and price_per_kg <> 'NaN'), -- a blend is never free (src/core/pricing.ts isPrice)
   custom_blend_enabled boolean not null default true,
   restock_date         date,
   active               boolean not null default true,
@@ -107,9 +108,9 @@ create table public.shipping_rates (
   id            text primary key,
   city          jsonb not null,
   distance_km   integer not null default 0,
-  base_fee      numeric(10, 2) not null check (base_fee >= 0),
-  included_kg   numeric(10, 3) not null default 3,
-  extra_per_kg  numeric(10, 2) not null default 0,
+  base_fee      numeric(10, 2) not null check (base_fee >= 0 and base_fee <> 'NaN'),
+  included_kg   numeric(10, 3) not null default 3 check (included_kg <> 'NaN'),
+  extra_per_kg  numeric(10, 2) not null default 0 check (extra_per_kg <> 'NaN'),
   delivery_days text not null default '',
   active        boolean not null default true
 );
@@ -156,10 +157,10 @@ create table public.orders (
   company          text not null default '' check (char_length(company) <= 80),
   notes            text not null default '' check (char_length(notes) <= 500),
   lines            jsonb not null,             -- frozen copy: name, size, qty, prices, grams per origin
-  weight_kg        numeric(10, 3) not null check (weight_kg > 0),
-  subtotal         numeric(10, 2) not null check (subtotal > 0),
-  shipping_fee     numeric(10, 2) not null check (shipping_fee >= 0),
-  total            numeric(10, 2) not null check (total > 0),
+  weight_kg        numeric(10, 3) not null check (weight_kg > 0 and weight_kg <> 'NaN'),
+  subtotal         numeric(10, 2) not null check (subtotal > 0 and subtotal <> 'NaN'),
+  shipping_fee     numeric(10, 2) not null check (shipping_fee >= 0 and shipping_fee <> 'NaN'),
+  total            numeric(10, 2) not null check (total > 0 and total <> 'NaN'),
   payment_method   text not null references public.payment_methods (id),
   payment_status   text not null default 'pending'
                    check (payment_status in ('pending', 'awaiting_verification', 'paid', 'failed', 'refunded')),
@@ -186,7 +187,7 @@ create table public.stock_movements (
   id        bigint generated always as identity primary key,
   at        timestamptz not null default now(),
   origin_id text not null references public.origins (id),
-  delta_kg  numeric(10, 3) not null,
+  delta_kg  numeric(10, 3) not null check (delta_kg <> 'NaN'),
   reason    text not null check (reason in ('order', 'order_cancelled', 'restock', 'correction')),
   ref       text not null default '',
   note      text not null default '',
@@ -208,12 +209,12 @@ create table public.sample_requests (
   email           text not null default '' check (char_length(email) <= 120),
   city_id         text not null references public.shipping_rates (id),
   product_id      text not null references public.products (id),
-  est_monthly_kg  numeric(10, 2) not null default 0,
+  est_monthly_kg  numeric(10, 2) not null default 0 check (est_monthly_kg <> 'NaN'),
   notes           text not null default '' check (char_length(notes) <= 500),
   status          text not null default 'new'
                   check (status in ('new', 'contacted', 'approved', 'shipped', 'closed', 'rejected')),
   free            boolean,                    -- null = not decided
-  delivery_fee    numeric(10, 2) not null default 0,
+  delivery_fee    numeric(10, 2) not null default 0 check (delivery_fee <> 'NaN'),
   admin_notes     text not null default ''
 );
 
@@ -228,11 +229,11 @@ create table public.quote_requests (
   email            text not null default '' check (char_length(email) <= 120),
   city_id          text not null references public.shipping_rates (id),
   lines            jsonb not null,
-  weight_kg        numeric(10, 3) not null,
-  indicative_total numeric(10, 2) not null,
+  weight_kg        numeric(10, 3) not null check (weight_kg <> 'NaN'),
+  indicative_total numeric(10, 2) not null check (indicative_total <> 'NaN'),
   notes            text not null default '' check (char_length(notes) <= 500),
   status           text not null default 'new' check (status in ('new', 'negotiating', 'confirmed', 'closed')),
-  final_price      numeric(10, 2),
+  final_price      numeric(10, 2) check (final_price <> 'NaN'),
   admin_notes      text not null default ''
 );
 
@@ -362,7 +363,8 @@ begin
   if jsonb_typeof(p_order -> 'stockDeductions') is distinct from 'array'
      or jsonb_array_length(p_order -> 'stockDeductions') = 0
      or exists (select 1 from jsonb_array_elements(p_order -> 'stockDeductions') x
-                where coalesce((x ->> 'kg')::numeric, 0) <= 0) then
+                where coalesce((x ->> 'kg')::numeric, 0) <= 0
+                   or (x ->> 'kg')::numeric in ('NaN', 'Infinity')) then
     raise exception 'invalid_order';
   end if;
   perform set_config('boga.stock_write', 'on', true);
@@ -516,6 +518,10 @@ begin
   end if;
   if p_reason not in ('restock', 'correction') then
     raise exception 'invalid_reason';
+  end if;
+  -- a real, finite number of kg ('NaN' and 'Infinity' are valid numeric values)
+  if p_delta_kg is null or p_delta_kg in ('NaN', 'Infinity', '-Infinity') then
+    raise exception 'invalid_delta';
   end if;
   select stock_kg into v_before from public.origins where id = p_origin_id for update;
   if not found then

@@ -181,7 +181,7 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
   const value = Number(delta.replace(',', '.'));
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (!value) return;
+    if (!Number.isFinite(value) || value === 0) return;
     api.adjustStock(origin.id, value, reason, note);
     onDone();
   }
