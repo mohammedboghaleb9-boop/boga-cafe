@@ -27,9 +27,13 @@ function files(dir: string): string[] {
 export function importsOf(source: string, fileInSrc: string): string[] {
   // comments are skipped only where they sit inside the import itself: removing
   // every /* … */ first would let a string such as 'img/*' hide the code after it
-  const gap = String.raw`\s*(?:\/\*[\s\S]*?\*\/\s*)*`;
+  const gap = String.raw`\s*(?:(?:\/\*[\s\S]*?\*\/|\/\/[^\n]*)\s*)*`;
   const pattern = new RegExp(String.raw`(?:\bfrom${gap}|\bimport${gap}\(?${gap}|\bimport\.meta\.glob${gap}\(${gap}\[?${gap})(['"\`])([^'"\`]+)\1`, 'g');
   const specs = [...source.matchAll(pattern)].map((m) => m[2]);
+  // every pattern of a glob list, not only the first: import.meta.glob(['./a/*', '../admin/*'])
+  for (const list of source.matchAll(/\bimport\.meta\.glob\s*\(\s*\[([^\]]*)\]/g)) {
+    specs.push(...[...list[1].matchAll(/(['"`])([^'"`]+)\1/g)].slice(1).map((m) => m[2]));
+  }
   return specs.map((spec) => {
     if (!spec.startsWith('.')) return spec;
     const inSrc = relative(SRC, resolve(SRC, dirname(fileInSrc), spec)).split(sep).join('/');
@@ -123,6 +127,8 @@ describe('the boundary checks cannot be sidestepped', () => {
       planted('features/shop/ShopPage.tsx', [`const pages = import.meta.glob('../admin/*.tsx');`]),
       // a string holding '/*' and a later '*/' must not hide what sits between them
       planted('shared/ui/Icon.tsx', [`const glob = 'icons/*';`, `import { Shop } from '../../features/shop/ShopPage';`, `const end = '*/';`]),
+      // a line comment inside import(), and the second pattern of a glob list
+      planted('features/b2b/B2BPage.tsx', [`const a = () => import(\n  // note\n  '../admin/AdminApp'\n);`, `const b = import.meta.glob(['./*.css', '../admin/*.tsx']);`]),
       planted('app/App.tsx', [`import { AdminApp } from '../features/admin/AdminApp';`]),
     ]);
     expect(found).toEqual({
@@ -132,8 +138,15 @@ describe('the boundary checks cannot be sidestepped', () => {
         'features/cart/CartPage.tsx → @/features/b2b/SampleRequestForm',
         'features/cart/CartPage.tsx → @/features/admin/AdminApp',
         'features/shop/ShopPage.tsx → @/features/admin/*.tsx',
+        'features/b2b/B2BPage.tsx → @/features/admin/AdminApp',
+        'features/b2b/B2BPage.tsx → @/features/admin/*.tsx',
       ],
-      adminOnly: ['features/cart/CartPage.tsx → @/features/admin/AdminApp', 'features/shop/ShopPage.tsx → @/features/admin/*.tsx'],
+      adminOnly: [
+        'features/cart/CartPage.tsx → @/features/admin/AdminApp',
+        'features/shop/ShopPage.tsx → @/features/admin/*.tsx',
+        'features/b2b/B2BPage.tsx → @/features/admin/AdminApp',
+        'features/b2b/B2BPage.tsx → @/features/admin/*.tsx',
+      ],
     });
   });
 });

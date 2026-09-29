@@ -473,10 +473,14 @@ begin
   end loop;
   insert into public.sample_requests (number, business_type, contact_name, phone, city_id, product_id, notes)
   values ('SR-2026-OK0001', 'cafe', 'Sara', '+212661000000', 'oujda', 'signature', repeat('x', 500));
-  begin
-    update public.origins set price_per_kg = 0 where id = 'brazil';
-    raise exception 'TEST FAILED: origin at 0 DH per kg';
-  exception when check_violation then null;
-  end;
+  foreach v in array array['0', '0.5', '0.99'] loop
+    begin
+      update public.origins set price_per_kg = v::numeric where id = 'brazil';
+      raise exception 'TEST FAILED: origin at % DH per kg', v;
+    exception when check_violation then null;
+    end;
+  end loop;
+  update public.origins set price_per_kg = 1 where id = 'brazil';  -- 1 DH is a real price
+  update public.origins set price_per_kg = 230 where id = 'brazil';
 end $$;
 select 'ok 20 - sample and B2B requests have the same length limits as orders; origins have a real price' as result;
