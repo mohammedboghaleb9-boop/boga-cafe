@@ -102,11 +102,14 @@ const IP = /(?<!\d)\d{1,3}(?:\.\d{1,3}){3}(?!\d)/g;
  */
 export function defangLinks(text: string): string {
   const emails: string[] = [];
+  // NUL marks where an email was set aside; any NUL the customer typed is dropped first
+  // oxlint-disable-next-line no-control-regex -- the NUL placeholder is on purpose
   const held = text.replace(/\u0000/g, '').replace(EMAIL, (email) => `\u0000${emails.push(email) - 1}\u0000`);
   const safe = held
     .replace(/\bhttp(s?):\/\//gi, 'hxxp$1://')
     .replace(IP, (ip) => ip.replace(/\./g, '[.]'))
     .replace(DOMAIN_DOT, '[.]');
+  // oxlint-disable-next-line no-control-regex -- the NUL placeholder is on purpose
   return safe.replace(/\u0000(\d+)\u0000/g, (_, i: string) => emails[Number(i)]);
 }
 

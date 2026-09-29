@@ -210,8 +210,7 @@ describe('order', () => {
       big,
       ids,
     );
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.errors).toContain('b2b_required');
+    expect(r).toMatchObject({ ok: false, errors: expect.arrayContaining(['b2b_required']) });
   });
 });
 

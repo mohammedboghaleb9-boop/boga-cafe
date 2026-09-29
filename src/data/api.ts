@@ -129,10 +129,10 @@ export const api = {
     const o = db.get().orders.find((x) => x.id === orderId);
     // only an open card order waiting for the gateway can be paid this way
     if (!o || o.paymentMethod !== 'card' || !awaitsPayment(o)) return;
-    patchOrder(orderId, (o) => ({
+    patchOrder(orderId, (cur) => ({
       paymentStatus: success ? 'paid' : 'failed',
-      status: success && o.status === 'new' ? 'confirmed' : o.status,
-      history: [...o.history, { at: now(), label: success ? 'payment.paid' : 'payment.failed' }],
+      status: success && cur.status === 'new' ? 'confirmed' : cur.status,
+      history: [...cur.history, { at: now(), label: success ? 'payment.paid' : 'payment.failed' }],
     }));
   },
 

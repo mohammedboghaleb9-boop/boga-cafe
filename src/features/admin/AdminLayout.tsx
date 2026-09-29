@@ -32,6 +32,7 @@ export function AdminLayout() {
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- back to the top on each new page, on purpose
   }, [pathname]);
 
   // unpaid orders past the time limit give their stock back

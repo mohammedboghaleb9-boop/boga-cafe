@@ -53,6 +53,7 @@ export const en = {
     saved: 'Saved',
     cancel: 'Cancel',
     edit: 'Edit',
+    actions: 'Actions',
     delete: 'Delete',
     confirmDelete: 'Confirm delete',
     add: 'Add',

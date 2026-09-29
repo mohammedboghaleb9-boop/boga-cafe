@@ -44,18 +44,14 @@ describe('tampered carts never become cheap or negative orders', () => {
     ['a custom blend with a negative quantity', [p(2), blend(-1, 1000)]],
     ['a custom blend with fractional percentages', [blend(1, 1000, [{ originId: 'brazil', percent: 33.5 }, { originId: 'colombia', percent: 66.5 }])]],
   ])('refuses %s', (_label, items) => {
-    const r = order(items);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.errors).toContain('cart_problem');
+    expect(order(items)).toMatchObject({ ok: false, errors: expect.arrayContaining(['cart_problem']) });
   });
 
   it('still accepts a normal cart', () => {
     const r = order([p(2, 250), blend(1, 500)]);
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.order.total).toBeGreaterThan(0);
-      expect(r.order.stockDeductions.every((d) => d.kg > 0)).toBe(true);
-    }
+    if (!r.ok) throw new Error(r.errors.join());
+    expect(r.order.total).toBeGreaterThan(0);
+    expect(r.order.stockDeductions.every((d) => d.kg > 0)).toBe(true);
   });
 
   it('marks the bad line in the cart summary', () => {

@@ -52,7 +52,9 @@ export function StockPage() {
               <th className="end">{t.admin.stock.pricePerKg}</th>
               <th>{t.admin.stock.inBlend}</th>
               <th>{t.admin.stock.restock}</th>
-              <th />
+              <th>
+                <span className="sr-only">{t.common.actions}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -143,6 +145,7 @@ function OriginRow({
             checked={o.customBlendEnabled}
             onChange={(v) => editable && api.saveOrigin({ ...o, customBlendEnabled: v })}
             label={o.customBlendEnabled && o.stockKg === 0 ? t.admin.stock.empty : ''}
+            name={`${t.admin.stock.inBlend} · ${l(o.name)}`}
           />
         </td>
         <td className="small">{o.restockDate ? date(o.restockDate) : '—'}</td>
@@ -186,6 +189,7 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
     <form className="row" onSubmit={submit} style={{ alignItems: 'flex-end' }}>
       <label className="field">
         <span className="label">{t.admin.stock.delta}</span>
+        {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- opened by the "adjust" button: this is the field the user asked for */}
         <input className="input num" inputMode="decimal" value={delta} onChange={(e) => setDelta(e.target.value)} placeholder="+20 / -1.5" autoFocus />
       </label>
       <label className="field">

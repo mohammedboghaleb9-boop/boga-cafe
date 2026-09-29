@@ -7,6 +7,9 @@ import { Icon } from '../ui/Icon';
 import { Monogram } from './Monogram';
 import { SocialLinks } from './SocialLinks';
 
+// read once when the page loads, not at every render
+const YEAR = new Date().getFullYear();
+
 export function Footer() {
   const { t, l } = useI18n();
   const { settings } = useDb();
@@ -67,7 +70,7 @@ export function Footer() {
       </div>
       <div className="container footer-bottom small muted">
         <span>
-          © {new Date().getFullYear()} BOGA CAFÉ · {t.footer.rights}
+          © {YEAR} BOGA CAFÉ · {t.footer.rights}
         </span>
         <span className="footer-made">Oujda · Maroc</span>
       </div>
