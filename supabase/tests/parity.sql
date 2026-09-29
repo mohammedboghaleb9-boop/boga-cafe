@@ -72,7 +72,7 @@ insert into public.payment_methods (id, enabled, label) values
   ('cashplus', true, '{"ar":"كاش بلوس","fr":"Cash Plus","en":"Cash Plus"}'),
   ('bank_transfer', true, '{"ar":"تحويل بنكي","fr":"Virement bancaire","en":"Bank transfer"}');
 do $$
-declare o jsonb; n integer := 0;
+declare o jsonb; r record; n integer := 0;
 begin
   foreach o in array array[
     '{"locale":"fr","customer":{"fullName":"Client 0","phone":"+212712345678","email":"client0@example.ma","cityId":"marrakech","address":"0 rue de Test, Oujda","company":"","notes":""},"lines":[{"kind":"custom","name":{"ar":"خلطتي الخاصة","fr":"Mon Custom Blend","en":"My Custom Blend"},"size":500,"qty":3,"unitPrice":115,"lineTotal":345,"composition":[{"originId":"honduras","percent":50,"grams":250},{"originId":"vietnam","percent":50,"grams":250}]}],"weightKg":1.5,"subtotal":345,"shippingFee":45,"total":390,"paymentMethod":"cashplus","stockDeductions":[{"originId":"honduras","kg":0.882},{"originId":"vietnam","kg":0.882}]}'::jsonb,
@@ -117,9 +117,16 @@ begin
     '{"locale":"fr","customer":{"fullName":"Client 39","phone":"+212612345678","email":"client39@example.ma","cityId":"kenitra","address":"39 rue de Test, Oujda","company":"","notes":""},"lines":[{"kind":"product","productId":"boga-signature","name":{"ar":"BOGA Signature","fr":"BOGA Signature","en":"BOGA Signature"},"size":250,"qty":2,"unitPrice":65,"lineTotal":130,"composition":[{"originId":"brazil","percent":50,"grams":125},{"originId":"honduras","percent":30,"grams":75},{"originId":"vietnam","percent":20,"grams":50}]},{"kind":"product","productId":"horeca-premium-arabica","name":{"ar":"HORECA Premium Arabica","fr":"HORECA Premium Arabica","en":"HORECA Premium Arabica"},"size":500,"qty":3,"unitPrice":115,"lineTotal":345,"composition":[{"originId":"brazil","percent":40,"grams":200},{"originId":"colombia","percent":40,"grams":200},{"originId":"honduras","percent":20,"grams":100}]},{"kind":"product","productId":"oriental-intense","name":{"ar":"Oriental Intense","fr":"Oriental Intense","en":"Oriental Intense"},"size":1000,"qty":4,"unitPrice":185,"lineTotal":740,"composition":[{"originId":"brazil","percent":40,"grams":400},{"originId":"vietnam","percent":40,"grams":400},{"originId":"uganda","percent":20,"grams":200}]}],"weightKg":6,"subtotal":1215,"shippingFee":55,"total":1270,"paymentMethod":"card","stockDeductions":[{"originId":"brazil","kg":2.882},{"originId":"honduras","kg":0.529},{"originId":"vietnam","kg":2},{"originId":"colombia","kg":0.706},{"originId":"uganda","kg":0.941}]}'::jsonb,
     '{"locale":"ar","customer":{"fullName":"Client 40","phone":"+212512345678","email":"","cityId":"berkane","address":"40 rue de Test, Oujda","company":"","notes":""},"lines":[{"kind":"product","productId":"boga-signature","name":{"ar":"BOGA Signature","fr":"BOGA Signature","en":"BOGA Signature"},"size":1000,"qty":10,"unitPrice":225,"lineTotal":2250,"composition":[{"originId":"brazil","percent":50,"grams":500},{"originId":"honduras","percent":30,"grams":300},{"originId":"vietnam","percent":20,"grams":200}]}],"weightKg":10,"subtotal":2250,"shippingFee":0,"total":2250,"paymentMethod":"bank_transfer","stockDeductions":[{"originId":"brazil","kg":5.882},{"originId":"honduras","kg":3.529},{"originId":"vietnam","kg":2.353}]}'::jsonb
   ] loop
-    perform public.commit_order(o, '', '', '');
+    select * into r from public.commit_order(o, '', '', '');
+    -- what is saved is what src/core built (lines in the same order; deductions in any order)
+    if exists (select 1 from public.orders x where x.id = r.id and (
+         x.lines <> o -> 'lines'
+         or (x.customer_name, x.phone, x.email) is distinct from (o #>> '{customer,fullName}', o #>> '{customer,phone}', o #>> '{customer,email}')
+         or not (x.stock_deductions @> (o -> 'stockDeductions') and (o -> 'stockDeductions') @> x.stock_deductions))) then
+      raise exception 'TEST FAILED: order % saved differently', r.number;
+    end if;
     n := n + 1;
   end loop;
   if n <> 41 then raise exception 'TEST FAILED: % orders', n; end if;
 end $$;
-select 'ok parity - 41 orders built by src/core accepted by the database' as result;
+select 'ok parity - 41 orders built by src/core accepted and saved as built by the database' as result;

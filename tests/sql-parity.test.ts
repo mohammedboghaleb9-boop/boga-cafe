@@ -2,12 +2,14 @@
  * The site and the database compute an order the same way (audit H2).
  *
  * This test builds orders with src/core (buildOrder, the code the site runs) from
- * the real seed catalog and writes them, with that catalog, to
- * supabase/tests/parity.sql. The database job of CI runs that file: commit_order
- * must accept every order, which means check_order recomputed the same prices,
- * weights, delivery fees and stock. If src/core or the catalog changes, this test
- * fails until the file is regenerated (`npx vitest run tests/sql-parity.test.ts -u`),
- * so the database is always checked against the current rules.
+ * the seed catalog and writes them, with that catalog, to supabase/tests/parity.sql.
+ * The database job of CI runs that file: commit_order must accept every order, and
+ * check_order only accepts figures equal to its own (prices, weight, delivery, stock),
+ * so for each of these orders both sides agree exactly; the lines and customer the
+ * database saves (rebuilt from its catalog) must also equal the ones src/core built.
+ * It is a sample of carts, not a proof for every cart. If src/core or the catalog
+ * changes, this test fails until the file is regenerated
+ * (`npx vitest run tests/sql-parity.test.ts -u`).
  */
 import { describe, expect, it } from 'vitest';
 import { buildOrder, type CheckoutContext } from '../src/core/order';
@@ -115,17 +117,24 @@ function parityFile() {
     'insert into public.payment_methods (id, enabled, label) values',
     seedPaymentMethods.map((m) => `  ('${m.id}', ${m.enabled}, ${lit(m.label)})`).join(',\n') + ';',
     'do $$',
-    'declare o jsonb; n integer := 0;',
+    'declare o jsonb; r record; n integer := 0;',
     'begin',
     '  foreach o in array array[',
     list.map((o) => `    ${lit(o)}::jsonb`).join(',\n'),
     '  ] loop',
-    "    perform public.commit_order(o, '', '', '');",
+    "    select * into r from public.commit_order(o, '', '', '');",
+    '    -- what is saved is what src/core built (lines in the same order; deductions in any order)',
+    '    if exists (select 1 from public.orders x where x.id = r.id and (',
+    "         x.lines <> o -> 'lines'",
+    "         or (x.customer_name, x.phone, x.email) is distinct from (o #>> '{customer,fullName}', o #>> '{customer,phone}', o #>> '{customer,email}')",
+    "         or not (x.stock_deductions @> (o -> 'stockDeductions') and (o -> 'stockDeductions') @> x.stock_deductions))) then",
+    "      raise exception 'TEST FAILED: order % saved differently', r.number;",
+    '    end if;',
     '    n := n + 1;',
     '  end loop;',
     `  if n <> ${list.length} then raise exception 'TEST FAILED: % orders', n; end if;`,
     'end $$;',
-    `select 'ok parity - ${list.length} orders built by src/core accepted by the database' as result;`,
+    `select 'ok parity - ${list.length} orders built by src/core accepted and saved as built by the database' as result;`,
     '',
   ];
   return { sql: out.join('\n'), count: list.length };

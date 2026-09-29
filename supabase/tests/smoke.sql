@@ -580,10 +580,13 @@ begin
     ('size',             jsonb_set(o, '{lines,0,size}', '7')),
     ('size_not_offered', jsonb_set(pg_temp.test_order('signature', 1000, 1, 'card'), '{lines,0,size}', '250')),
     ('qty',              jsonb_set(o, '{lines,0,qty}', '-5')),
+    ('qty',              jsonb_set(o, '{lines,0,qty}', '0')),
     ('qty',              jsonb_set(o, '{lines,0,qty}', '101')),
     ('qty',              jsonb_set(o, '{lines,0,qty}', '1.5')),
     ('price',            jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '1'), '{lines,0,lineTotal}', '2') || '{"subtotal": 2, "total": 22}'),
+    ('price',            jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '61'), '{lines,0,lineTotal}', '122') || '{"subtotal": 122, "total": 142}'),
     ('line_total',       jsonb_set(o, '{lines,0,lineTotal}', '1')),
+    ('composition',      jsonb_set(pg_temp.test_order('signature', 1000, 1, 'card'), '{lines,0,composition}', '[{"originId": "brazil", "percent": 90}, {"originId": "vietnam", "percent": 20}]')),
     ('composition',      jsonb_set(pg_temp.test_order('signature', 1000, 1, 'card'), '{lines,0,composition}', '[{"originId": "brazil", "percent": 100, "grams": 1000}]')),
     ('product',          jsonb_set(o, '{lines,0,productId}', '"ghost"')),
     ('product',          pg_temp.test_order('retired', 250, 1, 'card')),          -- no longer sold
@@ -591,10 +594,20 @@ begin
     ('lines',            o || '{"lines": []}'),
     ('weight',           o || '{"weightKg": 0.1}'),
     ('b2b',              pg_temp.test_order('so-brazil', 1000, 11, 'bank_transfer')),  -- 11 kg
+    ('b2b',              pg_temp.test_order('so-brazil', 250, 100, 'bank_transfer')),  -- 100 bags is a valid quantity, 25 kg is not a cart
     ('phone',            jsonb_set(o, '{customer,phone}', '"DROP TABLE"')),
     ('name',             jsonb_set(o, '{customer,fullName}', '"X"')),
+    ('name',             jsonb_set(o, '{customer,fullName}', '"Al"')),
+    ('name',             jsonb_set(o, '{customer,fullName}', '"\u00a0Al\u3000"')),       -- JavaScript trim() removes both
+    ('name',             jsonb_set(o, '{customer,fullName}', '"\ud83d\ude00\ud83d\ude00"')),  -- two characters, not four
+    ('name',             jsonb_set(o, '{customer,fullName}', to_jsonb(repeat('x', 81)))),
     ('address',          jsonb_set(o, '{customer,address}', '"a"')),
+    ('address',          jsonb_set(o, '{customer,address}', '"12 ru"')),
+    ('address',          jsonb_set(o, '{customer,address}', '"\u200312 ru\u00a0"')),
+    ('address',          jsonb_set(o, '{customer,address}', to_jsonb(repeat('x', 201)))),
+    ('email',            jsonb_set(o, '{customer,email}', to_jsonb(repeat('x', 113) || '@boga.ma'))),  -- 121 characters, 120 is the limit
     ('email',            jsonb_set(o, '{customer,email}', '"pas-un-email"')),
+    ('email',            jsonb_set(o, '{customer,email}', '"a\u00a0b@boga.ma"')),
     ('locale',           o || '{"locale": "de"}'),
     ('city',             jsonb_set(o, '{customer,cityId}', '"nador"')),        -- inactive
     ('city',             jsonb_set(o, '{customer,cityId}', '"paris"')),
@@ -602,6 +615,8 @@ begin
     ('payment_method',   o || '{"paymentMethod": "cashplus"}'),                 -- disabled
     ('payment_method',   o || '{"paymentMethod": "paypal"}'),
     ('deductions',       o || '{"stockDeductions": [{"originId": "brazil", "kg": 0.1}]}'),
+    ('deductions',       o || '{"stockDeductions": [{"originId": "brazil", "kg": 0.501}]}'),
+    ('deductions',       o || '{"stockDeductions": [{"originId": "brazil", "kg": 0.5009}]}'),
     ('deductions',       o || '{"stockDeductions": [{"originId": "brazil", "kg": 0.5}, {"originId": "vietnam", "kg": 0.1}]}'),
     ('blend_paused',     jsonb_set(jsonb_set(o, '{lines,0,kind}', '"custom"'), '{lines,0,composition}', '[{"originId": "brazil", "percent": 100}]'))
   ) as t(reason, bad) loop
@@ -616,13 +631,36 @@ begin
   end loop;
   if (select count(*) from public.orders) <> n then raise exception 'TEST FAILED: a forged order was saved'; end if;
   if (select stock_kg from public.origins where id = 'brazil') <> stock then raise exception 'TEST FAILED: stock moved'; end if;
-  -- the real order still goes through; the stock deducted is the database's own figure
-  -- (the browser's may differ by rounding, up to one gram)
-  perform public.commit_order(o || '{"stockDeductions": [{"originId": "brazil", "kg": 0.5009}]}', '', '', '');
+  -- the real order goes through, at the limits (3-letter name, 6-letter address, white
+  -- space of any kind around them); what is saved is rebuilt by the database: name and
+  -- grams of the line from the catalog, trimmed customer, normalized phone
+  o := jsonb_set(jsonb_set(jsonb_set(jsonb_set(jsonb_set(jsonb_set(o,
+         '{customer,fullName}', '"\u00a0Ali\u3000"'), '{customer,address}', '"\u200312 rue"'),
+         '{customer,phone}', '"06\u00a012 34.56-78"'), '{lines,0,name}', '{"fr": "Offert"}'),
+         '{lines,0,composition,0,grams}', '1'), '{lines,0,promo}', '"-100 %"');
+  perform public.commit_order(o, '', '', '');
   if (select stock_kg from public.origins where id = 'brazil') <> stock - 0.5 then raise exception 'TEST FAILED: real order'; end if;
-  if (select stock_deductions from public.orders order by created_at desc, number desc limit 1) <> '[{"kg": 0.500, "originId": "brazil"}]'::jsonb then
-    raise exception 'TEST FAILED: saved deductions';
+  if (select (customer_name, address, phone, lines, stock_deductions) from public.orders order by created_at desc, number desc limit 1)
+     is distinct from ('Ali'::text, '12 rue'::text, '+212612345678'::text,
+       '[{"kind": "product", "productId": "so-brazil", "name": {"fr": "Brésil"}, "size": 250, "qty": 2, "unitPrice": 60, "lineTotal": 120,
+          "composition": [{"originId": "brazil", "percent": 100, "grams": 250}]}]'::jsonb,
+       '[{"kg": 0.500, "originId": "brazil"}]'::jsonb) then
+    raise exception 'TEST FAILED: saved order is not the one rebuilt by the database';
   end if;
+  -- the table refuses rows that break its own rules, whoever writes them
+  for c in select * from (values
+    ('total',  $q$(99, 60, 20, 0.25, 'Ali')$q$),
+    ('weight', $q$(80, 60, 20, 0, 'Ali')$q$),
+    ('free',   $q$(-40, -60, 20, 0.25, 'Ali')$q$),
+    ('name',   $q$(80, 60, 20, 0.25, '')$q$)
+  ) as t(reason, bad) loop
+    begin
+      execute 'insert into public.orders (number, total, subtotal, shipping_fee, weight_kg, customer_name, phone, city_id, address, lines, payment_method, stock_deductions)
+               select ''T-' || c.reason || ''', v.*, ''+212612345678'', ''oujda'', ''12 rue'', ''[]'', ''card'', ''[]'' from (values ' || c.bad || ') v';
+      raise exception 'TEST FAILED: order row accepted (%)', c.reason;
+    exception when check_violation then null;
+    end;
+  end loop;
 end $$;
 
 -- Custom Blend: price recomputed from the origins, and the blend rules
@@ -659,6 +697,7 @@ begin
          'stockDeductions', '[{"originId": "brazil", "kg": 0.15}, {"originId": "vietnam", "kg": 0.1}]'::jsonb);
   for c in select * from (values
     ('price',        jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '50'), '{lines,0,lineTotal}', '50') || '{"subtotal": 50, "total": 70}'),
+    ('price',        jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '61'), '{lines,0,lineTotal}', '61') || '{"subtotal": 61, "total": 81}'),
     ('blend',        jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 97}, {"originId": "vietnam", "percent": 3}]')),
     ('blend',        jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 60}, {"originId": "vietnam", "percent": 30}]')),
     ('blend',        jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 50}, {"originId": "brazil", "percent": 50}]')),
@@ -681,6 +720,24 @@ begin
     if sqlerrm <> 'invalid_order:blend_origin' then raise; end if;
   end;
   update public.origins set custom_blend_enabled = true where id = 'vietnam';
+  update public.site_config set settings = jsonb_set(settings, '{customBlend,maxOrigins}', '1');
+  begin
+    perform public.commit_order(o, '', '', '');
+    raise exception 'TEST FAILED: more origins than allowed accepted';
+  exception when others then
+    if sqlerrm <> 'invalid_order:blend' then raise; end if;
+  end;
+  update public.site_config set settings = jsonb_set(settings, '{customBlend,maxOrigins}', '4');
   perform public.commit_order(o, '', '', '');   -- the real blend goes through
+  -- 95 % + the minimum 5 %: 54.625 + 1.875 + 10 = 66.5 DH, rounded up to 67 DH; stock
+  -- 0.2375 kg and 0.0125 kg, rounded up to 0.238 and 0.013 (src/core/money.ts)
+  perform public.commit_order(o || jsonb_build_object(
+    'lines', jsonb_build_array(line || '{"unitPrice": 67, "lineTotal": 67, "composition": [{"originId": "brazil", "percent": 95}, {"originId": "vietnam", "percent": 5}]}'),
+    'subtotal', 67, 'total', 87, 'stockDeductions', '[{"originId": "brazil", "kg": 0.238}, {"originId": "vietnam", "kg": 0.013}]'::jsonb), '', '', '');
+  if (select lines -> 0 -> 'name' = '{"ar": "خلطتي الخاصة", "fr": "Mon Custom Blend", "en": "My Custom Blend"}'
+             and lines #> '{0,composition}' = '[{"originId": "brazil", "percent": 95, "grams": 237.5}, {"originId": "vietnam", "percent": 5, "grams": 12.5}]'
+        from public.orders order by created_at desc, number desc limit 1) is not true then
+    raise exception 'TEST FAILED: saved blend line';
+  end if;
 end $$;
 select 'ok 22 - every figure of an order is checked by the database (price, size, quantity, customer, city, payment, stock, blend rules)' as result;

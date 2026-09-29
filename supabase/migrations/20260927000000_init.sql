@@ -344,9 +344,10 @@ create trigger origins_guard_new_stock before insert on public.origins
   for each row execute function public.guard_new_origin_stock();
 
 -- ───────────── Order commit (server only) ─────────────
--- p_order is the object produced by src/core/order.ts buildOrder(), already
--- validated by the Edge Function. This function makes it durable atomically:
--- lock origins → check stock → deduct → insert order + history + movements + notifications.
+-- p_order is the object produced by src/core/order.ts buildOrder(). check_order checks
+-- every figure against the database; commit_order then stores what check_order rebuilt
+-- (lines, customer, stock), atomically: lock origins → check stock → deduct → insert
+-- order + history + movements + notifications.
 
 -- Checks an order against the database itself, the way src/core/order.ts buildOrder
 -- builds it: nothing in it is trusted. Sizes and quantities, each line's price (from
@@ -354,7 +355,9 @@ create trigger origins_guard_new_stock before insert on public.origins
 -- product's recipe, or a blend that follows the rules), subtotal, weight, the B2B
 -- limit, the city and its delivery fee, the payment method, the customer's name,
 -- phone, email and address, and the stock to deduct. Raises invalid_order:<what>.
--- Returns the stock deductions computed here, which commit_order applies.
+-- Every figure must be exactly the one computed here (src/core/money.ts rounds the
+-- way round() does). Returns what commit_order stores, built from the database, not
+-- from the order: {customer, lines, stockDeductions}.
 create or replace function public.check_order(p_order jsonb)
 returns jsonb
 language plpgsql stable set search_path = public as $$
@@ -382,10 +385,19 @@ declare
   v_max_orig  numeric := coalesce((s #>> '{customBlend,maxOrigins}')::numeric, 4);
   v_need      jsonb := '{}'::jsonb;   -- originId -> kg, before rounding
   v_result    jsonb := '[]'::jsonb;
+  v_lines     jsonb := '[]'::jsonb;
+  v_built     jsonb;
+  v_comp      jsonb;
   v_given     numeric;
   k           text;
-  v_phone     text := regexp_replace(coalesce(p_order #>> '{customer,phone}', ''), '[\s.\-()]', '', 'g');
-  v_email     text := btrim(coalesce(p_order #>> '{customer,email}', ''));
+  -- the white space of JavaScript's trim() and \s (src/core/validation.ts), whatever
+  -- the database locale: \s alone would follow it
+  v_ws        constant text := '\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff';
+  v_trim      constant text := '^[' || v_ws || ']+|[' || v_ws || ']+$';
+  v_name      text := regexp_replace(coalesce(p_order #>> '{customer,fullName}', ''), v_trim, '', 'g');
+  v_address   text := regexp_replace(coalesce(p_order #>> '{customer,address}', ''), v_trim, '', 'g');
+  v_email     text := regexp_replace(coalesce(p_order #>> '{customer,email}', ''), v_trim, '', 'g');
+  v_phone     text := regexp_replace(coalesce(p_order #>> '{customer,phone}', ''), '[' || v_ws || '.\-()]', '', 'g');
 begin
   if s is null or v_loss < 0 or v_loss >= 100 then
     raise exception 'invalid_order:settings';
@@ -393,17 +405,19 @@ begin
   if coalesce(p_order ->> 'locale', 'fr') not in ('ar', 'fr', 'en') then
     raise exception 'invalid_order:locale';
   end if;
-  -- customer (src/core/order.ts validateCustomer, src/core/validation.ts)
-  if char_length(btrim(coalesce(p_order #>> '{customer,fullName}', ''))) < 3 then
+  -- customer (src/core/order.ts validateCustomer, src/core/validation.ts); lengths
+  -- count characters, as src/core/validation.ts charCount does; the upper limits are
+  -- the form's (TEXT_MAX) and the table's
+  if char_length(v_name) not between 3 and 80 then
     raise exception 'invalid_order:name';
   end if;
   if v_phone !~ '^(\+212|00212|0)[5-7][0-9]{8}$' then
     raise exception 'invalid_order:phone';
   end if;
-  if v_email <> '' and v_email !~ '^[^\s@]+@[^\s@]+\.[^\s@]{2,}$' then
+  if char_length(v_email) > 120 or v_email <> '' and v_email !~ ('^[^' || v_ws || '@]+@[^' || v_ws || '@]+\.[^' || v_ws || '@]{2,}$') then
     raise exception 'invalid_order:email';
   end if;
-  if char_length(btrim(coalesce(p_order #>> '{customer,address}', ''))) < 6 then
+  if char_length(v_address) not between 6 and 200 then
     raise exception 'invalid_order:address';
   end if;
 
@@ -451,6 +465,7 @@ begin
                                           and (c ->> 'percent')::numeric = r.percent)) then
         raise exception 'invalid_order:composition';
       end if;
+      v_built := jsonb_build_object('kind', 'product', 'productId', v_product.id, 'name', v_product.name);
     elsif v_line ->> 'kind' = 'custom' then
       -- Custom Blend (src/core/blend.ts validateBlend, pricing.ts customBlendPrice)
       if coalesce((s #>> '{customBlend,enabled}')::boolean, false) is not true then
@@ -482,25 +497,35 @@ begin
         raise exception 'invalid_order:blend';
       end if;
       v_expected := round(v_expected);
-      -- the browser adds binary fractions: one dirham of difference is rounding, not a new price
-      if v_expected < 1 or abs(v_unit - v_expected) > 1 then
+      if v_expected < 1 or v_unit <> v_expected then
         raise exception 'invalid_order:price';
       end if;
+      -- the name of every Custom Blend line (src/core/cart.ts CUSTOM_BLEND_NAME)
+      v_built := jsonb_build_object('kind', 'custom', 'name',
+        jsonb_build_object('ar', 'خلطتي الخاصة', 'fr', 'Mon Custom Blend', 'en', 'My Custom Blend'));
     else
       raise exception 'invalid_order:kind';
     end if;
 
-    if (v_line ->> 'lineTotal')::numeric <> round(v_unit * v_qty) then
+    if (v_line ->> 'lineTotal')::numeric <> round(v_expected * v_qty) then
       raise exception 'invalid_order:line_total';
     end if;
-    v_subtotal := v_subtotal + (v_line ->> 'lineTotal')::numeric;
+    v_subtotal := v_subtotal + round(v_expected * v_qty);
     v_weight := v_weight + v_size / 1000 * v_qty;
-    -- stock this line needs (src/core/stock.ts kgNeeded)
+    -- stock this line needs (src/core/stock.ts kgNeeded), and the grams of each origin in
+    -- one bag (src/core/recipe.ts composition): percents are whole, so no rounding
+    v_comp := '[]'::jsonb;
     for v_part in select value from jsonb_array_elements(v_line -> 'composition') loop
+      v_percent := (v_part ->> 'percent')::numeric;
       v_need := jsonb_set(v_need, array[v_part ->> 'originId'],
         to_jsonb(coalesce((v_need ->> (v_part ->> 'originId'))::numeric, 0)
-                 + (v_size / 1000) * ((v_part ->> 'percent')::numeric / 100) * v_qty / (1 - v_loss / 100)));
+                 + (v_size / 1000) * (v_percent / 100) * v_qty / (1 - v_loss / 100)));
+      v_comp := v_comp || jsonb_build_object('originId', v_part ->> 'originId', 'percent', trim_scale(v_percent),
+                                             'grams', trim_scale(v_size * v_percent / 100));
     end loop;
+    v_lines := v_lines || (v_built || jsonb_build_object(
+      'size', v_size::integer, 'qty', v_qty::integer, 'unitPrice', v_expected,
+      'lineTotal', round(v_expected * v_qty), 'composition', v_comp));
   end loop;
 
   if jsonb_typeof(p_order -> 'subtotal') is distinct from 'number' or (p_order ->> 'subtotal')::numeric <> round(v_subtotal) then
@@ -534,7 +559,7 @@ begin
     raise exception 'invalid_order:payment_method';
   end if;
 
-  -- the stock to deduct is computed here; the browser's figures must agree to the gram
+  -- the stock to deduct is computed here; the browser's figures must be the same
   if jsonb_typeof(p_order -> 'stockDeductions') is distinct from 'array'
      or jsonb_array_length(p_order -> 'stockDeductions') <> (select count(*) from jsonb_object_keys(v_need))
      or (select count(distinct d ->> 'originId') from jsonb_array_elements(p_order -> 'stockDeductions') d)
@@ -544,12 +569,16 @@ begin
   for k in select jsonb_object_keys(v_need) loop
     select (d ->> 'kg')::numeric into v_given
       from jsonb_array_elements(p_order -> 'stockDeductions') d where d ->> 'originId' = k;
-    if v_given is null or abs(v_given - round((v_need ->> k)::numeric, 3)) > 0.001 then
+    if v_given is distinct from round((v_need ->> k)::numeric, 3) then
       raise exception 'invalid_order:deductions';
     end if;
     v_result := v_result || jsonb_build_object('originId', k, 'kg', round((v_need ->> k)::numeric, 3));
   end loop;
-  return v_result;
+  return jsonb_build_object(
+    'customer', jsonb_build_object('fullName', v_name, 'phone', '+212' || right(v_phone, 9), 'email', v_email,
+                                   'address', v_address),
+    'lines', v_lines,
+    'stockDeductions', v_result);
 end $$;
 
 create or replace function public.commit_order(p_order jsonb, p_whatsapp text, p_email text, p_subject text)
@@ -557,6 +586,7 @@ returns table (id uuid, number text)
 language plpgsql security definer set search_path = public as $$
 declare
   d          jsonb;
+  v_checked  jsonb;
   v_deductions jsonb;
   v_origin   public.origins;
   v_id       uuid := gen_random_uuid();
@@ -572,9 +602,10 @@ begin
                    or (x ->> 'kg')::numeric in ('NaN', 'Infinity')) then
     raise exception 'invalid_order';
   end if;
-  -- everything else in the order is checked against the database; the deductions used
-  -- below are the ones computed there
-  v_deductions := public.check_order(p_order);
+  -- everything else in the order is checked against the database; what is stored below
+  -- (customer, lines, deductions) is what check_order rebuilt from it
+  v_checked := public.check_order(p_order);
+  v_deductions := v_checked -> 'stockDeductions';
   perform set_config('boga.stock_write', 'on', true);
   -- Lock every origin used, in a fixed order to avoid deadlocks.
   for d in
@@ -598,14 +629,14 @@ begin
   ) values (
     v_id, v_number,
     coalesce(p_order ->> 'locale', 'fr'),
-    p_order #>> '{customer,fullName}',
-    p_order #>> '{customer,phone}',
-    coalesce(p_order #>> '{customer,email}', ''),
+    v_checked #>> '{customer,fullName}',
+    v_checked #>> '{customer,phone}',
+    v_checked #>> '{customer,email}',
     p_order #>> '{customer,cityId}',
-    p_order #>> '{customer,address}',
+    v_checked #>> '{customer,address}',
     coalesce(p_order #>> '{customer,company}', ''),
     coalesce(p_order #>> '{customer,notes}', ''),
-    p_order -> 'lines',
+    v_checked -> 'lines',
     (p_order ->> 'weightKg')::numeric,
     (p_order ->> 'subtotal')::numeric,
     (p_order ->> 'shippingFee')::numeric,

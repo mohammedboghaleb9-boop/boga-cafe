@@ -1,6 +1,6 @@
 import { summarizeCart, type Catalog } from './cart';
 import { shippingFee } from './shipping';
-import { isEmail, normalizePhone } from './validation';
+import { charCount, isEmail, normalizePhone } from './validation';
 import type {
   CartItem,
   CustomerInfo,
@@ -40,11 +40,11 @@ export type CheckoutError =
 
 export function validateCustomer(c: CustomerInfo, rates: ShippingRate[]): CheckoutError[] {
   const errors: CheckoutError[] = [];
-  if (c.fullName.trim().length < 3) errors.push('name');
+  if (charCount(c.fullName) < 3) errors.push('name');
   if (!normalizePhone(c.phone)) errors.push('phone');
   if (c.email.trim() && !isEmail(c.email)) errors.push('email');
   if (!rates.some((r) => r.id === c.cityId && r.active)) errors.push('city');
-  if (c.address.trim().length < 6) errors.push('address');
+  if (charCount(c.address) < 6) errors.push('address');
   return errors;
 }
 
