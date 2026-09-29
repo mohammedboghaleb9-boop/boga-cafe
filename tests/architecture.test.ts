@@ -25,10 +25,11 @@ function files(dir: string): string[] {
  * same rules.
  */
 export function importsOf(source: string, fileInSrc: string): string[] {
-  const code = source.replace(/\/\*[\s\S]*?\*\//g, ' ');
-  const specs = [
-    ...code.matchAll(/(?:\bfrom\s*|\bimport\s*\(?\s*|\bimport\.meta\.glob\s*\(\s*\[?\s*)(['"`])([^'"`]+)\1/g),
-  ].map((m) => m[2]);
+  // comments are skipped only where they sit inside the import itself: removing
+  // every /* … */ first would let a string such as 'img/*' hide the code after it
+  const gap = String.raw`\s*(?:\/\*[\s\S]*?\*\/\s*)*`;
+  const pattern = new RegExp(String.raw`(?:\bfrom${gap}|\bimport${gap}\(?${gap}|\bimport\.meta\.glob${gap}\(${gap}\[?${gap})(['"\`])([^'"\`]+)\1`, 'g');
+  const specs = [...source.matchAll(pattern)].map((m) => m[2]);
   return specs.map((spec) => {
     if (!spec.startsWith('.')) return spec;
     const inSrc = relative(SRC, resolve(SRC, dirname(fileInSrc), spec)).split(sep).join('/');
@@ -92,6 +93,9 @@ describe('the boundary checks cannot be sidestepped', () => {
       `import { useState } from 'react';`,
       `const hidden = () => import(/* @vite-ignore */ '../admin/AdminApp');`,
       `const all = import.meta.glob('../admin/*.tsx');`,
+      `const pattern = 'img/*';`,
+      `import { Hidden } from '../admin/Hidden';`,
+      `const end = '*/';`,
     ].join('\n');
     expect(importsOf(source, 'features/cart/CartPage.tsx')).toEqual([
       '@/features/b2b/SampleRequestForm',
@@ -102,6 +106,7 @@ describe('the boundary checks cannot be sidestepped', () => {
       'react',
       '@/features/admin/AdminApp',
       '@/features/admin/*.tsx',
+      '@/features/admin/Hidden',
     ]);
   });
 
@@ -116,11 +121,13 @@ describe('the boundary checks cannot be sidestepped', () => {
         `const a = () => import(/* @vite-ignore */ '../admin/AdminApp');`,
       ]),
       planted('features/shop/ShopPage.tsx', [`const pages = import.meta.glob('../admin/*.tsx');`]),
+      // a string holding '/*' and a later '*/' must not hide what sits between them
+      planted('shared/ui/Icon.tsx', [`const glob = 'icons/*';`, `import { Shop } from '../../features/shop/ShopPage';`, `const end = '*/';`]),
       planted('app/App.tsx', [`import { AdminApp } from '../features/admin/AdminApp';`]),
     ]);
     expect(found).toEqual({
       core: ['core/cart.ts → @/data/store'],
-      sharedOnFeature: ['shared/layout/Footer.tsx → @/features/shop/ShopPage'],
+      sharedOnFeature: ['shared/layout/Footer.tsx → @/features/shop/ShopPage', 'shared/ui/Icon.tsx → @/features/shop/ShopPage'],
       featureInternals: [
         'features/cart/CartPage.tsx → @/features/b2b/SampleRequestForm',
         'features/cart/CartPage.tsx → @/features/admin/AdminApp',
