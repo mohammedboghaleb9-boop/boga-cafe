@@ -118,3 +118,74 @@ describe('after the merge review', () => {
     expect(db.get().orders.find((x) => x.id === o.id)!.paymentRef).toBe('CP-778812');
   });
 });
+
+describe('admin protection (phase 2)', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('adding a product with an existing name never replaces it', () => {
+    const { api, db } = t;
+    const original = db.get().products.find((p) => p.id === 'boga-signature')!;
+    const draft = { ...original, id: '', slug: '', prices: { 250: 0, 500: 0, 1000: 0 }, active: false };
+    const created = api.createProduct(draft);
+    expect(created.id).toBe('boga-signature-2');
+    expect(created.slug).toBe('boga-signature-2');
+    expect(db.get().products.find((p) => p.id === 'boga-signature')).toEqual(original);
+    expect(db.get().products.filter((p) => p.slug === 'boga-signature')).toHaveLength(1);
+    // saving a product that does not exist creates nothing
+    expect(api.saveProduct({ ...original, id: 'ghost', slug: 'ghost' })).toBe(false);
+    expect(db.get().products.some((p) => p.id === 'ghost')).toBe(false);
+  });
+
+  it('adding an origin with an existing name never replaces it, and starts at 0 kg', () => {
+    const { api, db } = t;
+    const original = db.get().origins[0];
+    const created = api.createOrigin({ ...original, id: '', pricePerKg: 999, stockKg: 50 });
+    expect(created.id).not.toBe(original.id);
+    expect(created.stockKg).toBe(0);
+    expect(db.get().origins.find((o) => o.id === original.id)).toEqual(original);
+    // a name whose id is already taken gets the next free one
+    const twice = api.createOrigin({ ...original, id: '', name: { ...original.name, fr: created.name.fr } });
+    expect(twice.id).toBe(`${created.id}-2`);
+    expect(db.get().origins.find((o) => o.id === created.id)).toEqual(created);
+  });
+
+  it('editing an origin never changes its stock (only adjustStock does, with a history line)', () => {
+    const { api, db } = t;
+    const o = db.get().origins[0];
+    expect(api.saveOrigin({ ...o, stockKg: 999, pricePerKg: o.pricePerKg + 10 })).toBe(true);
+    const after = db.get().origins.find((x) => x.id === o.id)!;
+    expect(after.stockKg).toBe(o.stockKg);
+    expect(after.pricePerKg).toBe(o.pricePerKg + 10);
+    expect(api.saveOrigin({ ...o, id: 'ghost' })).toBe(false);
+  });
+
+  it('cancelling an order gives its coffee back once, with a history line', () => {
+    const { api, db } = t;
+    const o = db.get().orders.find((x) => x.status === 'new')!;
+    const before = new Map(o.stockDeductions.map((d) => [d.originId, stockOf(d.originId)]));
+    expect(api.setOrderStatus(o.id, 'cancelled')).toBeNull();
+    for (const d of o.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
+    expect(db.get().stockMovements.filter((m) => m.ref === o.number && m.reason === 'order_cancelled')).toHaveLength(o.stockDeductions.length);
+    expect(api.setOrderStatus(o.id, 'cancelled')).toBe('closed');
+    for (const d of o.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
+  });
+
+  it('a card order cannot be "reported" as paid by Cash Plus or transfer', async () => {
+    // a card order still waiting for the gateway (prototype build, where cards exist)
+    vi.stubEnv('VITE_CARD_GATEWAY', 'demo');
+    const { api, db } = await fresh();
+    const product = db.get().products.find((p) => p.active && p.kind !== 'b2b')!;
+    const placed = await api.placeOrder({
+      items: [{ id: 'i1', type: 'product', productId: product.id, size: 250, qty: 1 }],
+      customer: { fullName: 'Test Client', phone: '0612345678', email: '', cityId: 'oujda', address: 'Bd Mohammed V, Oujda', company: '', notes: '' },
+      paymentMethod: 'card',
+      locale: 'fr',
+    });
+    if (!placed.ok) throw new Error(placed.errors.join());
+    expect(placed.order.paymentStatus).toBe('pending');
+    await api.reportOfflinePayment(placed.order.id, 'FAKE');
+    const after = db.get().orders.find((x) => x.id === placed.order.id)!;
+    expect(after.paymentStatus).toBe('pending');
+    expect(after.paymentRef).toBeUndefined();
+  });
+});

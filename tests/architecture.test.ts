@@ -3,7 +3,7 @@
  * These rules keep it that way: a change that breaks them fails the tests.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SRC = join(__dirname, '..', 'src');
@@ -16,10 +16,25 @@ function files(dir: string): string[] {
   });
 }
 
-const imports = (file: string) =>
-  [...readFileSync(file, 'utf8').matchAll(/from '([^']+)'|import '([^']+)'/g)].map((m) => m[1] ?? m[2]);
+/**
+ * Every module a source file uses, written as '@/…' whatever the spelling:
+ * single or double quotes, `import x from`, `export … from`, side-effect
+ * `import '…'` and dynamic `import('…')`; relative paths ('../b2b/Form') are
+ * resolved from the file's folder, so they obey the same rules.
+ */
+export function importsOf(source: string, fileInSrc: string): string[] {
+  const specs = [...source.matchAll(/(?:\bfrom\s*|\bimport\s*\(?\s*)(['"`])([^'"`]+)\1/g)].map((m) => m[2]);
+  return specs.map((spec) => {
+    if (!spec.startsWith('.')) return spec;
+    const inSrc = relative(SRC, resolve(SRC, dirname(fileInSrc), spec)).split(sep).join('/');
+    return inSrc.startsWith('..') ? spec : `@/${inSrc}`;
+  });
+}
 
-const all = files(SRC).map((f) => ({ path: relative(SRC, f), imports: imports(f) }));
+const all = files(SRC).map((f) => {
+  const path = relative(SRC, f).split(sep).join('/');
+  return { path, imports: importsOf(readFileSync(f, 'utf8'), path) };
+});
 const inside = (area: string) => all.filter((f) => f.path.startsWith(`${area}/`));
 
 describe('module boundaries', () => {
@@ -44,7 +59,7 @@ describe('module boundaries', () => {
         .filter((i) => i.startsWith('@/features/'))
         .filter((i) => {
           const [, , other, ...rest] = i.split('/');
-          return other !== own && rest.length > 0;
+          return other !== own && rest.length > 0 && rest.join('/') !== 'index';
         })
         .map((i) => `${f.path} → ${i}`);
     });
@@ -56,5 +71,27 @@ describe('module boundaries', () => {
       .filter((f) => !f.path.startsWith('features/admin/') && f.path !== 'app/App.tsx')
       .flatMap((f) => f.imports.filter((i) => i.startsWith('@/features/admin')).map((i) => `${f.path} → ${i}`));
     expect(bad).toEqual([]);
+  });
+});
+
+describe('the boundary checks cannot be sidestepped', () => {
+  it('see relative, double-quoted, dynamic and re-exported imports', () => {
+    const source = [
+      `import { SampleRequestForm } from '../b2b/SampleRequestForm';`,
+      `import AdminApp from "@/features/admin/AdminApp";`,
+      `const Shop = lazy(() => import('../../features/shop/ShopPage'));`,
+      `export { db } from '../../data/store';`,
+      `import './cart.css';`,
+      `import { useState } from 'react';`,
+    ].join('\n');
+    expect(importsOf(source, 'features/cart/CartPage.tsx')).toEqual([
+      '@/features/b2b/SampleRequestForm',
+      '@/features/admin/AdminApp',
+      '@/features/shop/ShopPage',
+      '@/data/store',
+      '@/features/cart/cart.css',
+      'react',
+    ]);
+    expect(importsOf(`import { db } from "../data/store";`, 'core/cart.ts')).toEqual(['@/data/store']);
   });
 });

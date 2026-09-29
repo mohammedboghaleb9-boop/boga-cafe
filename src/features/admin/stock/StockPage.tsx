@@ -228,8 +228,9 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
   const valid = o.name.fr.trim() && o.countryCode.trim().length === 2;
   function save() {
     if (!valid) return;
-    const id = o.id || o.name.fr.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    api.saveOrigin({ ...o, id, countryCode: o.countryCode.toUpperCase() });
+    const next = { ...o, countryCode: o.countryCode.toUpperCase() };
+    if (origin) api.saveOrigin(next);
+    else api.createOrigin(next);
     onClose();
   }
   return (

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { formatSize } from '@/core/format';
-import { offeredSizes } from '@/core/pricing';
+import { offeredSizes, productPrice } from '@/core/pricing';
 import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type PackSize } from '@/core/types';
 import { NotFound } from '@/app/NotFound';
@@ -37,7 +37,7 @@ function ProductDetails({ slug }: { slug?: string }) {
   if (!product || !size) return <NotFound />;
 
   const view = recipeView(product.recipe, originIndex, l);
-  const price = product.prices[size] ?? 0;
+  const price = productPrice(product, size) ?? 0;
   const inCart = cart.items.reduce(
     (s, i) => (i.type === 'product' && i.productId === product.id && i.size === size ? s + i.qty : s),
     0,
@@ -123,7 +123,7 @@ function ProductDetails({ slug }: { slug?: string }) {
                   }}
                 >
                   {formatSize(s)}
-                  {product.prices[s] !== undefined && <span className="seg-price num"> · {money(product.prices[s]!)}</span>}
+                  {sizes.includes(s) && <span className="seg-price num"> · {money(productPrice(product, s)!)}</span>}
                 </button>
               ))}
             </div>

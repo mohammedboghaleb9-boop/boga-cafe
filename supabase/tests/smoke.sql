@@ -411,3 +411,40 @@ do $$ begin
   end;
 end $$;
 select 'ok 18 - payment reports can reach the team; unknown events cannot' as result;
+
+-- 19. Staff cannot change an origin's price per kg (it prices every blend) ------
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000002'; -- staff
+update public.origins set price_per_kg = 1 where id = 'brazil';
+do $$ begin
+  begin
+    insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg)
+    values ('staff-origin', '{"fr": "X"}', 'BR', 'arabica', 'light', 0, 1, 1);
+    raise exception 'TEST FAILED: staff created an origin';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+do $$ begin
+  if (select price_per_kg from public.origins where id = 'brazil') <> 230 then raise exception 'TEST FAILED: staff changed a price per kg'; end if;
+end $$;
+select 'ok 19 - staff cannot change origin prices or add origins' as result;
+
+-- 20. Sample and B2B requests keep the same text limits as orders ---------------
+do $$ begin
+  begin
+    insert into public.sample_requests (number, business_type, contact_name, phone, city_id, product_id, notes)
+    values ('SR-2026-LONG01', 'cafe', 'X', '1', 'oujda', 'signature', repeat('x', 501));
+    raise exception 'TEST FAILED: 501-character note accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into public.quote_requests (number, business_type, contact_name, phone, city_id, lines, weight_kg, indicative_total)
+    values ('QR-2026-LONG01', 'cafe', repeat('x', 81), '1', 'oujda', '[]', 11, 100);
+    raise exception 'TEST FAILED: 81-character name accepted';
+  exception when check_violation then null;
+  end;
+  insert into public.sample_requests (number, business_type, contact_name, phone, city_id, product_id, notes)
+  values ('SR-2026-OK0001', 'cafe', 'Sara', '+212661000000', 'oujda', 'signature', repeat('x', 500));
+end $$;
+select 'ok 20 - sample and B2B requests have the same length limits as orders' as result;

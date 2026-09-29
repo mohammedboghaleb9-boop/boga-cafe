@@ -527,6 +527,7 @@ export const en = {
       recipeHint: 'Origins and percentages (total 100%)',
       addLine: 'Add an origin',
       pricesHint: 'Price per bag (MAD). Leave empty to not offer the size.',
+      needsPrice: 'An active product needs at least one size with a price above 0.',
       featured: 'Show on home page',
       active: 'Visible on the site',
       sortOrder: 'Order',

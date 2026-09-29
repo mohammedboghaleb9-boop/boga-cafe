@@ -525,6 +525,7 @@ export const fr: Dict = {
       recipeHint: 'Origines et pourcentages (total 100 %)',
       addLine: 'Ajouter une origine',
       pricesHint: 'Prix par sachet (MAD). Laisser vide pour ne pas proposer le format.',
+      needsPrice: 'Un produit actif doit avoir au moins un format avec un prix supérieur à 0.',
       featured: 'Afficher sur l’accueil',
       active: 'Visible sur le site',
       sortOrder: 'Ordre',
