@@ -27,7 +27,7 @@ function files(dir: string): string[] {
 export function importsOf(source: string, fileInSrc: string): string[] {
   // comments are skipped only where they sit inside the import itself: removing
   // every /* … */ first would let a string such as 'img/*' hide the code after it
-  const gap = String.raw`\s*(?:(?:\/\*[\s\S]*?\*\/|\/\/[^\n]*)\s*)*`;
+  const gap = String.raw`\s*(?:(?:\/\*(?:[^*]|\*(?!\/))*\*\/|\/\/[^\n]*)\s*)*`;
   // a typed glob, import.meta.glob<string>(…) or glob<{ default: Page }>(…)
   const typeArg = String.raw`(?:<(?:[^<>]|<[^<>]*>)*>${gap})?`;
   const pattern = new RegExp(String.raw`(?:\bfrom${gap}|\bimport${gap}\(?${gap}|\bimport\.meta\.glob${gap}${typeArg}\(${gap}\[?${gap})(['"\`])([^'"\`]+)\1`, 'g');
