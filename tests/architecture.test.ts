@@ -31,14 +31,27 @@ export function importsOf(source: string, fileInSrc: string): string[] {
   const pattern = new RegExp(String.raw`(?:\bfrom${gap}|\bimport${gap}\(?${gap}|\bimport\.meta\.glob${gap}\(${gap}\[?${gap})(['"\`])([^'"\`]+)\1`, 'g');
   const specs = [...source.matchAll(pattern)].map((m) => m[2]);
   // every pattern of a glob list, not only the first: import.meta.glob(['./a/*', '../admin/*'])
-  for (const list of source.matchAll(/\bimport\.meta\.glob\s*\(\s*\[([^\]]*)\]/g)) {
-    specs.push(...[...list[1].matchAll(/(['"`])([^'"`]+)\1/g)].slice(1).map((m) => m[2]));
+  for (const open of source.matchAll(new RegExp(String.raw`\bimport\.meta\.glob${gap}\(${gap}\[`, 'g'))) {
+    specs.push(...globList(source, open.index + open[0].length).slice(1));
   }
   return specs.map((spec) => {
     if (!spec.startsWith('.')) return spec;
     const inSrc = relative(SRC, resolve(SRC, dirname(fileInSrc), spec)).split(sep).join('/');
     return inSrc.startsWith('..') ? spec : `@/${inSrc}`;
   });
+}
+
+/**
+ * The patterns of a glob list, read token by token from just after its '[' up
+ * to the closing ']': a ']' inside a pattern ('*.[jt]sx') or a quote inside a
+ * comment (// don't) does not end the list or pair with a real quote.
+ */
+function globList(source: string, at: number): string[] {
+  const token = /\s+|,|\/\*[\s\S]*?\*\/|\/\/[^\n]*|(['"`])((?:\\[\s\S]|(?!\1)[^\\])*)\1/y;
+  const found: string[] = [];
+  token.lastIndex = at;
+  for (let m = token.exec(source); m; m = token.exec(source)) if (m[2]) found.push(m[2]);
+  return found;
 }
 
 interface Module {
@@ -112,6 +125,17 @@ describe('the boundary checks cannot be sidestepped', () => {
       '@/features/admin/*.tsx',
       '@/features/admin/Hidden',
     ]);
+  });
+
+  it('read every pattern of a glob list, whatever sits around them', () => {
+    const lists = [
+      `import.meta.glob(/* pages */ ['./*.css', '../admin/*.tsx'])`,
+      `import.meta.glob(\n  // pages\n  ['./*.css', '../admin/*.tsx'])`,
+      `import.meta.glob(['./*.[jt]sx', '../admin/*.tsx'])`,
+      `import.meta.glob([\n  './*.css',\n  // don't forget admin\n  '../admin/*.tsx',\n])`,
+    ];
+    for (const list of lists) expect(importsOf(list, 'features/b2b/B2BPage.tsx'), list).toContain('@/features/admin/*.tsx');
+    expect(importsOf(lists[3], 'features/b2b/B2BPage.tsx')).toEqual(['@/features/b2b/*.css', '@/features/admin/*.tsx']);
   });
 
   it('and each rule refuses what it must, and only that', () => {
