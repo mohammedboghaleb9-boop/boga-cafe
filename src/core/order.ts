@@ -50,8 +50,8 @@ export function validateCustomer(c: CustomerInfo, rates: ShippingRate[]): Checko
 
 /**
  * Builds an order from scratch: prices, weight, delivery and stock are recomputed
- * from the catalog — never trusted from the browser. The server runs this same
- * function before saving the order.
+ * from the catalog — never trusted from the browser. The database checks every figure
+ * again before saving (supabase check_order); tests/sql-parity.test.ts shows both agree.
  */
 export function buildOrder(
   input: CheckoutInput,

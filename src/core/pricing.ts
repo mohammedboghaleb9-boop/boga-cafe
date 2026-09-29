@@ -30,7 +30,8 @@ export interface BlendPriceBreakdown {
 
 /**
  * Custom Blend price = Σ (origin price per kg × kg of that origin in the bag) + bag fee.
- * Computed live in the builder and recomputed on the server when the order is placed.
+ * Computed live in the builder, and recomputed by the database (supabase check_order)
+ * when the order is saved.
  */
 export function customBlendPrice(
   spec: CustomBlendSpec,

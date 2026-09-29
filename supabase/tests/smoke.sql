@@ -16,11 +16,40 @@ insert into public.origins (id, name, country_code, species, roast_level, stock_
   ('vietnam', '{"fr": "Viêt Nam"}', 'VN', 'robusta', 'dark',   1, 0.5, 150);
 insert into public.shipping_rates (id, city, base_fee) values ('oujda', '{"fr": "Oujda"}', 20);
 insert into public.payment_methods (id, label) values ('card', '{"fr": "Carte"}'), ('bank_transfer', '{"fr": "Virement"}');
+insert into public.payment_methods (id, label, enabled) values ('cashplus', '{"fr": "Cash Plus"}', false);
+insert into public.shipping_rates (id, city, base_fee, active) values ('nador', '{"fr": "Nador"}', 30, false);
 begin;
 insert into public.products (id, slug, kind, name, roast_level, prices, active)
 values ('signature', 'signature', 'signature', '{"fr": "Signature"}', 'medium', '{"1000": 225}', true);
 insert into public.product_recipes values ('signature', 'brazil', 80), ('signature', 'vietnam', 20);
+insert into public.products (id, slug, kind, name, roast_level, prices, active)
+values ('so-brazil', 'so-brazil', 'single-origin', '{"fr": "Brésil"}', 'medium', '{"250": 60, "500": 110, "1000": 220}', true);
+insert into public.product_recipes values ('so-brazil', 'brazil', 100);
+insert into public.products (id, slug, kind, name, roast_level, prices, active)
+values ('retired', 'retired', 'single-origin', '{"fr": "Ancien"}', 'medium', '{"250": 60}', false);
+insert into public.product_recipes values ('retired', 'brazil', 100);
 commit;
+
+-- A real order for these tests: bags of one product delivered in Oujda, built from the
+-- catalog the way the site builds it (commit_order checks every figure in it).
+create function pg_temp.test_order(p_product text, p_size integer, p_qty integer, p_payment text, p_name text default 'Client Test')
+returns jsonb language sql as $$
+  select jsonb_build_object(
+    'locale', 'fr',
+    'customer', jsonb_build_object('fullName', p_name, 'phone', '+212612345678', 'cityId', 'oujda', 'address', '12 rue Test'),
+    'lines', jsonb_build_array(jsonb_build_object(
+      'kind', 'product', 'productId', p_product, 'name', jsonb_build_object('fr', p_product), 'size', p_size, 'qty', p_qty,
+      'unitPrice', price, 'lineTotal', price * p_qty,
+      'composition', (select jsonb_agg(jsonb_build_object('originId', origin_id, 'percent', percent, 'grams', p_size * percent / 100.0))
+                        from public.product_recipes where product_id = p_product))),
+    'weightKg', p_size * p_qty / 1000.0,
+    'subtotal', price * p_qty, 'shippingFee', fee, 'total', price * p_qty + fee,
+    'paymentMethod', p_payment,
+    'stockDeductions', (select jsonb_agg(jsonb_build_object('originId', origin_id, 'kg', round(p_size / 1000.0 * percent / 100.0 * p_qty, 3)))
+                          from public.product_recipes where product_id = p_product))
+  from (select (prices ->> p_size::text)::numeric as price from public.products where id = p_product) pr,
+       (select base_fee as fee from public.shipping_rates where id = 'oujda') r
+$$;
 
 -- 1. A recipe that does not add up to 100 % is refused -------------------
 do $$ begin
@@ -37,9 +66,7 @@ select 'ok 1 - recipe must total 100 %' as result;
 
 -- 2. commit_order deducts stock, logs movements, queues 2 notifications ---
 select * from public.commit_order(
-  '{"locale": "fr", "customer": {"fullName": "Test", "phone": "+212612345678", "cityId": "oujda", "address": "Rue 1"},
-    "lines": [], "weightKg": 1, "subtotal": 225, "shippingFee": 20, "total": 245, "paymentMethod": "card",
-    "stockDeductions": [{"originId": "brazil", "kg": 0.8}, {"originId": "vietnam", "kg": 0.2}]}',
+  pg_temp.test_order('signature', 1000, 1, 'card'),  -- 225 DH + 20 delivery; 0.8 kg Brazil, 0.2 kg Viet Nam
   'Nouvelle commande {number}', 'Nouvelle commande {number}', '[BOGA CAFÉ] Commande {number}');
 do $$ begin
   if (select stock_kg from public.origins where id = 'brazil') <> 9.2 then raise exception 'TEST FAILED: brazil stock'; end if;
@@ -53,10 +80,7 @@ select 'ok 2 - order committed, stock deducted, notifications queued' as result;
 -- 3. Not enough stock → nothing changes -----------------------------------
 do $$ begin
   begin
-    perform public.commit_order(
-      '{"customer": {"fullName": "X", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 5,
-        "subtotal": 1, "shippingFee": 1, "total": 2, "paymentMethod": "card",
-        "stockDeductions": [{"originId": "brazil", "kg": 1}, {"originId": "vietnam", "kg": 5}]}', '', '', '');
+    perform public.commit_order(pg_temp.test_order('signature', 1000, 6, 'card'), '', '', ''); -- needs 1.2 kg of Viet Nam, 0.8 left
     raise exception 'TEST FAILED: oversold';
   exception when others then
     if sqlerrm not like 'out_of_stock:vietnam%' then raise; end if;
@@ -69,7 +93,7 @@ select 'ok 3 - out of stock refused atomically' as result;
 -- 4. Anonymous visitor: reads catalog, cannot read or write orders --------
 set role anon;
 do $$ begin
-  if (select count(*) from public.products) <> 1 then raise exception 'TEST FAILED: anon catalog'; end if;
+  if (select count(*) from public.products) <> 2 then raise exception 'TEST FAILED: anon catalog'; end if; -- the retired one is hidden
   if (select count(*) from public.orders) <> 0 then raise exception 'TEST FAILED: anon sees orders'; end if;
   if (select count(*) from public.admin_config) <> 0 then raise exception 'TEST FAILED: anon sees admin config'; end if;
   begin
@@ -154,18 +178,14 @@ begin
     end;
   end loop;
   begin
-    perform public.commit_order(
-      '{"customer": {"fullName": "X", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 1,
-        "subtotal": -40, "shippingFee": 20, "total": -20, "paymentMethod": "card", "stockDeductions": [{"originId": "brazil", "kg": 0.1}]}', '', '', '');
+    perform public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'card') || '{"subtotal": -40, "total": -20}', '', '', '');
     raise exception 'TEST FAILED: negative total accepted';
-  exception when check_violation then null;
+  exception when others then
+    if sqlerrm <> 'invalid_order:subtotal' then raise; end if;
   end;
   if (select stock_kg from public.origins where id = 'brazil') <> 10 then raise exception 'TEST FAILED: stock moved by a refused order'; end if;
   perform setval('public.order_number_seq', 9999);
-  if (select number from public.commit_order(
-        '{"customer": {"fullName": "X", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 0.1,
-          "subtotal": 22, "shippingFee": 20, "total": 42, "paymentMethod": "bank_transfer", "stockDeductions": [{"originId": "brazil", "kg": 0.1}]}',
-        '', '', '')) not like 'BC-%-10000' then
+  if (select number from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '')) not like 'BC-%-10000' then
     raise exception 'TEST FAILED: order 10000 numbering';
   end if;
 end $$;
@@ -243,10 +263,7 @@ select 'ok 10 - settings (bank) owner only, texts for managers' as result;
 do $$
 declare v_id uuid; v_before numeric;
 begin
-  select id into v_id from public.commit_order(
-    '{"customer": {"fullName": "Late", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 0.5,
-      "subtotal": 110, "shippingFee": 20, "total": 130, "paymentMethod": "bank_transfer", "stockDeductions": [{"originId": "brazil", "kg": 0.5}]}',
-    '', '', '');
+  select id into v_id from public.commit_order(pg_temp.test_order('so-brazil', 500, 1, 'bank_transfer', 'Late'), '', '', '');
   v_before := (select stock_kg from public.origins where id = 'brazil');
   if public.expire_unpaid_orders() <> 0 then raise exception 'TEST FAILED: expired a fresh order'; end if;
   update public.orders set created_at = now() - interval '49 hours' where id = v_id;
@@ -280,10 +297,7 @@ select 'ok 12 - stock history matches reality' as result;
 do $$
 declare v_id uuid;
 begin
-  select id into v_id from public.commit_order(
-    '{"customer": {"fullName": "Annule", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 0.1,
-      "subtotal": 22, "shippingFee": 20, "total": 42, "paymentMethod": "bank_transfer", "stockDeductions": [{"originId": "brazil", "kg": 0.1}]}',
-    '', '', '');
+  select id into v_id from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer', 'Annule'), '', '', '');
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true); -- owner
   set local role authenticated;
   perform public.set_order_status(v_id, 'cancelled');
@@ -357,10 +371,7 @@ select 'ok 15 - new origins start at 0 kg; first lot goes through the history' a
 do $$
 declare v_id uuid; v_before numeric;
 begin
-  select id into v_id from public.commit_order(
-    '{"customer": {"fullName": "Rembourse", "phone": "1", "cityId": "oujda", "address": "a"}, "lines": [], "weightKg": 0.2,
-      "subtotal": 44, "shippingFee": 20, "total": 64, "paymentMethod": "card", "stockDeductions": [{"originId": "brazil", "kg": 0.2}]}',
-    '', '', '');
+  select id into v_id from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'card', 'Rembourse'), '', '', '');
   v_before := (select stock_kg from public.origins where id = 'brazil');
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true); -- owner
   set local role authenticated;
@@ -368,7 +379,7 @@ begin
   perform public.set_payment_status(v_id, 'refunded');  -- customer changed their mind
   reset role;
   if (select status from public.orders where id = v_id) <> 'cancelled' then raise exception 'TEST FAILED: refunded order left open'; end if;
-  if (select stock_kg from public.origins where id = 'brazil') <> v_before + 0.2 then raise exception 'TEST FAILED: stock not returned on refund'; end if;
+  if (select stock_kg from public.origins where id = 'brazil') <> v_before + 0.25 then raise exception 'TEST FAILED: stock not returned on refund'; end if;
   if (select count(*) from public.order_events where order_id = v_id and label in ('payment.refunded', 'status.cancelled')) <> 2 then raise exception 'TEST FAILED: history'; end if;
 end $$;
 select 'ok 16 - a refund before production cancels the order and returns the stock' as result;
@@ -404,10 +415,7 @@ select 'ok 17 - the free-shipping threshold stays a number, 0 or more' as result
 do $$
 declare v_id uuid; v_number text;
 begin
-  select id, number into v_id, v_number from public.commit_order(
-    '{"customer": {"fullName": "Virement", "phone": "+212661000000", "cityId": "oujda", "address": "12 rue Test"}, "lines": [], "weightKg": 0.1,
-      "subtotal": 22, "shippingFee": 20, "total": 42, "paymentMethod": "bank_transfer", "stockDeductions": [{"originId": "brazil", "kg": 0.1}]}',
-    '', '', '');
+  select id, number into v_id, v_number from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer', 'Virement'), '', '', '');
   set local role anon;
   perform public.report_offline_payment(v_id, 'VIR-2026-55');
   perform public.report_offline_payment(v_id, 'AUTRE'); -- already waiting for checking: nothing new
@@ -556,3 +564,123 @@ begin
   end loop;
 end $$;
 select 'ok 21 - stock and amounts are real numbers (no NaN, no Infinity)' as result;
+
+-- 22. The database checks every figure of an order itself (audit H2): a forged
+--     price, size, quantity, customer, city, payment method or stock is refused ---
+do $$
+declare
+  o      jsonb := pg_temp.test_order('so-brazil', 250, 2, 'bank_transfer');  -- 2 × 60 DH + 20
+  c      record;
+  n      integer := (select count(*) from public.orders);
+  stock  numeric := (select stock_kg from public.origins where id = 'brazil');
+begin
+  for c in select * from (values
+    ('total',            o || '{"total": 0.01}'),
+    ('subtotal',         o || '{"subtotal": 1, "total": 21}'),
+    ('size',             jsonb_set(o, '{lines,0,size}', '7')),
+    ('size_not_offered', jsonb_set(pg_temp.test_order('signature', 1000, 1, 'card'), '{lines,0,size}', '250')),
+    ('qty',              jsonb_set(o, '{lines,0,qty}', '-5')),
+    ('qty',              jsonb_set(o, '{lines,0,qty}', '101')),
+    ('qty',              jsonb_set(o, '{lines,0,qty}', '1.5')),
+    ('price',            jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '1'), '{lines,0,lineTotal}', '2') || '{"subtotal": 2, "total": 22}'),
+    ('line_total',       jsonb_set(o, '{lines,0,lineTotal}', '1')),
+    ('composition',      jsonb_set(pg_temp.test_order('signature', 1000, 1, 'card'), '{lines,0,composition}', '[{"originId": "brazil", "percent": 100, "grams": 1000}]')),
+    ('product',          jsonb_set(o, '{lines,0,productId}', '"ghost"')),
+    ('product',          pg_temp.test_order('retired', 250, 1, 'card')),          -- no longer sold
+    ('kind',             jsonb_set(o, '{lines,0,kind}', '"gift"')),
+    ('lines',            o || '{"lines": []}'),
+    ('weight',           o || '{"weightKg": 0.1}'),
+    ('b2b',              pg_temp.test_order('so-brazil', 1000, 11, 'bank_transfer')),  -- 11 kg
+    ('phone',            jsonb_set(o, '{customer,phone}', '"DROP TABLE"')),
+    ('name',             jsonb_set(o, '{customer,fullName}', '"X"')),
+    ('address',          jsonb_set(o, '{customer,address}', '"a"')),
+    ('email',            jsonb_set(o, '{customer,email}', '"pas-un-email"')),
+    ('locale',           o || '{"locale": "de"}'),
+    ('city',             jsonb_set(o, '{customer,cityId}', '"nador"')),        -- inactive
+    ('city',             jsonb_set(o, '{customer,cityId}', '"paris"')),
+    ('shipping',         o || '{"shippingFee": 0, "total": 120}'),
+    ('payment_method',   o || '{"paymentMethod": "cashplus"}'),                 -- disabled
+    ('payment_method',   o || '{"paymentMethod": "paypal"}'),
+    ('deductions',       o || '{"stockDeductions": [{"originId": "brazil", "kg": 0.1}]}'),
+    ('deductions',       o || '{"stockDeductions": [{"originId": "brazil", "kg": 0.5}, {"originId": "vietnam", "kg": 0.1}]}'),
+    ('blend_paused',     jsonb_set(jsonb_set(o, '{lines,0,kind}', '"custom"'), '{lines,0,composition}', '[{"originId": "brazil", "percent": 100}]'))
+  ) as t(reason, bad) loop
+    begin
+      perform public.commit_order(c.bad, '', '', '');
+      raise exception 'TEST FAILED: forged order accepted (%)', c.reason;
+    exception when others then
+      if sqlerrm <> 'invalid_order:' || c.reason then
+        raise exception 'TEST FAILED: expected invalid_order:%, got %', c.reason, sqlerrm;
+      end if;
+    end;
+  end loop;
+  if (select count(*) from public.orders) <> n then raise exception 'TEST FAILED: a forged order was saved'; end if;
+  if (select stock_kg from public.origins where id = 'brazil') <> stock then raise exception 'TEST FAILED: stock moved'; end if;
+  -- the real order still goes through; the stock deducted is the database's own figure
+  -- (the browser's may differ by rounding, up to one gram)
+  perform public.commit_order(o || '{"stockDeductions": [{"originId": "brazil", "kg": 0.5009}]}', '', '', '');
+  if (select stock_kg from public.origins where id = 'brazil') <> stock - 0.5 then raise exception 'TEST FAILED: real order'; end if;
+  if (select stock_deductions from public.orders order by created_at desc, number desc limit 1) <> '[{"kg": 0.500, "originId": "brazil"}]'::jsonb then
+    raise exception 'TEST FAILED: saved deductions';
+  end if;
+end $$;
+
+-- Custom Blend: price recomputed from the origins, and the blend rules
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001'; -- owner changes the settings
+-- free delivery from the threshold itself (src/core/shipping.ts: subtotal >= freeShippingOver)
+update public.site_config set settings = settings || '{"freeShippingOver": 120}';
+do $$
+declare o jsonb := pg_temp.test_order('so-brazil', 250, 2, 'bank_transfer');  -- subtotal 120
+begin
+  begin
+    perform public.commit_order(o, '', '', '');  -- still charges 20 DH of delivery
+    raise exception 'TEST FAILED: delivery charged at the free-delivery threshold';
+  exception when others then
+    if sqlerrm <> 'invalid_order:shipping' then raise; end if;
+  end;
+  perform public.commit_order(o || '{"shippingFee": 0, "total": 120}', '', '', '');
+end $$;
+update public.site_config set settings = settings || '{"freeShippingOver": 0}';
+update public.site_config set settings = settings || '{"customBlend": {"enabled": true, "minPercent": 5, "maxOrigins": 4, "feeBySize": {"250": 10, "500": 15, "1000": 20}}}';
+select set_config('boga.stock_write', 'on', false);  -- test setup: enough Viet Nam for the blend
+update public.origins set stock_kg = 5 where id = 'vietnam';
+select set_config('boga.stock_write', '', false);
+do $$
+declare
+  -- 250 g, 60 % Brazil (230 DH/kg since check 20) + 40 % Viet Nam (150 DH/kg) + 10 DH bag
+  -- = 34.5 + 15 + 10 = 59.5, rounded to 60 DH (src/core/money.ts roundMoney)
+  line   jsonb := '{"kind": "custom", "name": {"fr": "Mon Custom Blend"}, "size": 250, "qty": 1, "unitPrice": 60, "lineTotal": 60,
+                    "composition": [{"originId": "brazil", "percent": 60, "grams": 150}, {"originId": "vietnam", "percent": 40, "grams": 100}]}';
+  o      jsonb;
+  c      record;
+begin
+  o := pg_temp.test_order('so-brazil', 250, 1, 'card') || jsonb_build_object(
+         'lines', jsonb_build_array(line), 'weightKg', 0.25, 'subtotal', 60, 'shippingFee', 20, 'total', 80,
+         'stockDeductions', '[{"originId": "brazil", "kg": 0.15}, {"originId": "vietnam", "kg": 0.1}]'::jsonb);
+  for c in select * from (values
+    ('price',        jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '50'), '{lines,0,lineTotal}', '50') || '{"subtotal": 50, "total": 70}'),
+    ('blend',        jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 97}, {"originId": "vietnam", "percent": 3}]')),
+    ('blend',        jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 60}, {"originId": "vietnam", "percent": 30}]')),
+    ('blend',        jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 50}, {"originId": "brazil", "percent": 50}]')),
+    ('blend_origin', jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 60}, {"originId": "ghost", "percent": 40}]'))
+  ) as t(reason, bad) loop
+    begin
+      perform public.commit_order(c.bad, '', '', '');
+      raise exception 'TEST FAILED: forged blend accepted (%)', c.reason;
+    exception when others then
+      if sqlerrm <> 'invalid_order:' || c.reason then
+        raise exception 'TEST FAILED: expected invalid_order:%, got %', c.reason, sqlerrm;
+      end if;
+    end;
+  end loop;
+  update public.origins set custom_blend_enabled = false where id = 'vietnam';
+  begin
+    perform public.commit_order(o, '', '', '');
+    raise exception 'TEST FAILED: origin out of the builder accepted';
+  exception when others then
+    if sqlerrm <> 'invalid_order:blend_origin' then raise; end if;
+  end;
+  update public.origins set custom_blend_enabled = true where id = 'vietnam';
+  perform public.commit_order(o, '', '', '');   -- the real blend goes through
+end $$;
+select 'ok 22 - every figure of an order is checked by the database (price, size, quantity, customer, city, payment, stock, blend rules)' as result;
