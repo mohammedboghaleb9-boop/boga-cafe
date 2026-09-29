@@ -31,7 +31,7 @@ describe('automatic delivery status', () => {
     const d = await load('');
     d.deliver('sample.created', 'SR-2026-AAAAAA', draft);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(d.deliveryStatus('SR-2026-AAAAAA')).toBe('off');
+    expect(d.deliveryStatus('sample.created', 'SR-2026-AAAAAA')).toBe('off');
   });
 
   it('goes pending → sent only when the server confirms a channel', async () => {
@@ -39,11 +39,11 @@ describe('automatic delivery status', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((r) => (answer = r))));
     const d = await load('/api/notify');
     const seen: string[] = [];
-    d.onDeliveryChange(() => seen.push(d.deliveryStatus('SR-2026-BBBBBB')));
+    d.onDeliveryChange(() => seen.push(d.deliveryStatus('sample.created', 'SR-2026-BBBBBB')));
     d.deliver('sample.created', 'SR-2026-BBBBBB', draft);
-    expect(d.deliveryStatus('SR-2026-BBBBBB')).toBe('pending');
+    expect(d.deliveryStatus('sample.created', 'SR-2026-BBBBBB')).toBe('pending');
     answer(new Response(JSON.stringify({ whatsapp: 'failed', email: 'sent' }), { status: 200 }));
-    await vi.waitFor(() => expect(d.deliveryStatus('SR-2026-BBBBBB')).toBe('sent'));
+    await vi.waitFor(() => expect(d.deliveryStatus('sample.created', 'SR-2026-BBBBBB')).toBe('sent'));
     expect(seen).toEqual(['pending', 'sent']);
   });
 
@@ -51,11 +51,11 @@ describe('automatic delivery status', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ whatsapp: 'failed', email: 'failed' }), { status: 502 })));
     const d = await load('/api/notify');
     d.deliver('order.created', 'BC-2026-CCCCCC', draft);
-    await vi.waitFor(() => expect(d.deliveryStatus('BC-2026-CCCCCC')).toBe('failed'));
+    await vi.waitFor(() => expect(d.deliveryStatus('order.created', 'BC-2026-CCCCCC')).toBe('failed'));
 
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('network'))));
     d.deliver('order.created', 'BC-2026-DDDDDD', draft);
-    await vi.waitFor(() => expect(d.deliveryStatus('BC-2026-DDDDDD')).toBe('failed'));
+    await vi.waitFor(() => expect(d.deliveryStatus('order.created', 'BC-2026-DDDDDD')).toBe('failed'));
   });
 
   it('shows the manual step after 9 s, and still reports a late confirmation (review NEW-6)', async () => {
@@ -72,13 +72,13 @@ describe('automatic delivery status', () => {
     const d = await load('/api/notify');
     d.deliver('quote.created', 'QR-2026-EEEEEE', draft);
     vi.advanceTimersByTime(9_000);
-    expect(d.deliveryStatus('QR-2026-EEEEEE')).toBe('slow');
+    expect(d.deliveryStatus('quote.created', 'QR-2026-EEEEEE')).toBe('slow');
     expect(signal).toBeUndefined(); // the request is never aborted: the team may still receive it
     // Gmail answered at 15 s: the customer is told it arrived, not that it failed
     vi.advanceTimersByTime(6_000);
     answer(new Response(JSON.stringify({ whatsapp: 'failed', email: 'sent' }), { status: 200 }));
     vi.useRealTimers();
-    await vi.waitFor(() => expect(d.deliveryStatus('QR-2026-EEEEEE')).toBe('sent'));
+    await vi.waitFor(() => expect(d.deliveryStatus('quote.created', 'QR-2026-EEEEEE')).toBe('sent'));
   });
 
   it('remembers the result after a page reload in the same tab', async () => {
@@ -86,16 +86,16 @@ describe('automatic delivery status', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ whatsapp: 'sent', email: 'sent' }), { status: 200 })));
     const first = await load('/api/notify');
     first.deliver('sample.created', 'SR-2026-FFFFFF', draft);
-    await vi.waitFor(() => expect(first.deliveryStatus('SR-2026-FFFFFF')).toBe('sent'));
+    await vi.waitFor(() => expect(first.deliveryStatus('sample.created', 'SR-2026-FFFFFF')).toBe('sent'));
 
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
     first.deliver('sample.created', 'SR-2026-GGGGGG', draft); // still waiting when the page reloads
     expect(tab.size).toBe(1);
 
     const reloaded = await load('/api/notify');
-    expect(reloaded.deliveryStatus('SR-2026-FFFFFF')).toBe('sent');
-    expect(reloaded.deliveryStatus('SR-2026-GGGGGG')).toBe('slow'); // unknown answer: manual step, never "failed"
-    expect(reloaded.deliveryStatus('SR-2026-HHHHHH')).toBe('off');
+    expect(reloaded.deliveryStatus('sample.created', 'SR-2026-FFFFFF')).toBe('sent');
+    expect(reloaded.deliveryStatus('sample.created', 'SR-2026-GGGGGG')).toBe('slow'); // unknown answer: manual step, never "failed"
+    expect(reloaded.deliveryStatus('sample.created', 'SR-2026-HHHHHH')).toBe('off');
   });
 
   it('does not record a request cut by a page reload as failed (review)', async () => {
@@ -109,16 +109,31 @@ describe('automatic delivery status', () => {
     page.dispatchEvent(new Event('pagehide')); // the customer reloads: the browser cuts the request
     cut(new TypeError('Failed to fetch'));
     await new Promise((r) => setTimeout(r, 0));
-    expect(d.deliveryStatus('SR-2026-KKKKKK')).toBe('pending');
-    expect(tab.get('boga.delivery')).toContain('"SR-2026-KKKKKK":"pending"');
+    expect(d.deliveryStatus('sample.created', 'SR-2026-KKKKKK')).toBe('pending');
+    expect(tab.get('boga.delivery')).toContain('"sample.created SR-2026-KKKKKK":"pending"');
     const reloaded = await load('/api/notify');
-    expect(reloaded.deliveryStatus('SR-2026-KKKKKK')).toBe('slow');
+    expect(reloaded.deliveryStatus('sample.created', 'SR-2026-KKKKKK')).toBe('slow');
 
     // the page comes back from the back/forward cache: real failures count again
     page.dispatchEvent(new Event('pageshow'));
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('network'))));
     d.deliver('sample.created', 'SR-2026-LLLLLL', draft);
-    await vi.waitFor(() => expect(d.deliveryStatus('SR-2026-LLLLLL')).toBe('failed'));
+    await vi.waitFor(() => expect(d.deliveryStatus('sample.created', 'SR-2026-LLLLLL')).toBe('failed'));
+  });
+
+  it('follows an order and its payment report separately, though they share a reference', async () => {
+    let answer!: (r: Response) => void;
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ whatsapp: 'sent' }), { status: 200 })));
+    const d = await load('/api/notify');
+    d.deliver('order.created', 'BC-2026-MMMMMM', draft);
+    await vi.waitFor(() => expect(d.deliveryStatus('order.created', 'BC-2026-MMMMMM')).toBe('sent'));
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((r) => (answer = r))));
+    d.deliver('payment.reported', 'BC-2026-MMMMMM', draft);
+    expect(d.deliveryStatus('payment.reported', 'BC-2026-MMMMMM')).toBe('pending');
+    expect(d.deliveryStatus('order.created', 'BC-2026-MMMMMM')).toBe('sent');
+    answer(new Response('{}', { status: 502 }));
+    await vi.waitFor(() => expect(d.deliveryStatus('payment.reported', 'BC-2026-MMMMMM')).toBe('failed'));
+    expect(d.deliveryStatus('order.created', 'BC-2026-MMMMMM')).toBe('sent');
   });
 
   it('works when the browser refuses storage (private mode)', async () => {
@@ -133,6 +148,6 @@ describe('automatic delivery status', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ whatsapp: 'sent' }), { status: 200 })));
     const d = await load('/api/notify');
     d.deliver('order.created', 'BC-2026-JJJJJJ', draft);
-    await vi.waitFor(() => expect(d.deliveryStatus('BC-2026-JJJJJJ')).toBe('sent'));
+    await vi.waitFor(() => expect(d.deliveryStatus('order.created', 'BC-2026-JJJJJJ')).toBe('sent'));
   });
 });

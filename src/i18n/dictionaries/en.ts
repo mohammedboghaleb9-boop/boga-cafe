@@ -123,6 +123,7 @@ export const en = {
     factSizes: '250 g · 500 g · 1 kg',
     factDelivery: 'Delivered across Morocco',
     factPayment: 'Card, Cash Plus or transfer',
+    factPaymentSoon: 'Cash Plus or bank transfer · card coming soon',
     featuredTitle: 'Signature blends',
     featuredText: 'Our recipes, roasted to our specification and packed in BOGA CAFÉ bags.',
     seeAll: 'See all coffees',
@@ -273,6 +274,8 @@ export const en = {
   },
 
   checkout: {
+    cardSoon: 'coming soon',
+    cardSoonText: 'Online card payment arrives soon. Meanwhile, pay by Cash Plus or bank transfer.',
     title: 'Checkout',
     noAccount: 'No account needed.',
     contactTitle: 'Contact & delivery',
@@ -304,6 +307,7 @@ export const en = {
   },
 
   payment: {
+    cardUnavailable: 'Card payment is not available yet. Contact us on WhatsApp: you can pay by Cash Plus or bank transfer.',
     gatewayTitle: 'Secure card payment',
     gatewayNote:
       'Simulation of the CMI page. On the real site, you are sent to the bank page (3-D Secure).',
@@ -574,6 +578,7 @@ export const en = {
       simResult: 'Delivery fee: {fee}',
     },
     payments: {
+      cardOff: 'Not offered on the site until the CMI gateway is connected (phase D). Customers see it as “coming soon”; Cash Plus and bank transfer stay available.',
       intro:
         'All payments go to the official BOGA CAFÉ bank account. Card payments are confirmed by the gateway, Cash Plus and transfers are verified here.',
       methods: 'Payment methods',
@@ -598,6 +603,7 @@ export const en = {
       simulated: 'simulated',
       events: {
         'order.created': 'New order',
+        'payment.reported': 'Payment reported',
         'sample.created': 'Sample request',
         'quote.created': 'B2B request',
         'stock.low': 'Low stock',

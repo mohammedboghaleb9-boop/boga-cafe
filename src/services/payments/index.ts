@@ -9,7 +9,7 @@
  *                   the admin marks the order as paid.
  * - bank_transfer → offline: same flow with the bank RIB.
  */
-import type { Order, PaymentMethodId } from '@/core/types';
+import type { Order, PaymentMethodConfig, PaymentMethodId } from '@/core/types';
 
 export type PaymentNextStep =
   /** Production: auto-submitted form to the CMI gateway (fields signed by the server). */
@@ -17,7 +17,21 @@ export type PaymentNextStep =
   /** Prototype: simulated card page inside the site. */
   | { type: 'demo-gateway'; orderId: string }
   /** Offline methods: show instructions + reference. */
-  | { type: 'instructions'; method: Exclude<PaymentMethodId, 'card'>; reference: string };
+  | { type: 'instructions'; method: Exclude<PaymentMethodId, 'card'>; reference: string }
+  /** No card gateway on this site yet (CMI not connected). */
+  | { type: 'unavailable' };
+
+/**
+ * The card gateway behind this build. The simulated page exists only in the
+ * prototype (VITE_CARD_GATEWAY=demo): the real site offers no card payment
+ * until CMI is connected (phase D), so no customer ever sees a fake bank page.
+ */
+export type CardGateway = 'demo' | 'off';
+export const cardGateway: CardGateway = import.meta.env.VITE_CARD_GATEWAY === 'demo' ? 'demo' : 'off';
+
+/** A method the customer can choose now: switched on in the admin, and for the card, a gateway behind it. */
+export const methodAvailable = (m: Pick<PaymentMethodConfig, 'id' | 'enabled'>, gateway: CardGateway = cardGateway): boolean =>
+  m.enabled && (m.id !== 'card' || gateway !== 'off');
 
 export interface PaymentAdapter {
   id: PaymentMethodId;
@@ -30,6 +44,12 @@ const demoCard: PaymentAdapter = {
   id: 'card',
   online: true,
   start: (order) => ({ type: 'demo-gateway', orderId: order.id }),
+};
+
+const noCard: PaymentAdapter = {
+  id: 'card',
+  online: true,
+  start: () => ({ type: 'unavailable' }),
 };
 
 const cashplus: PaymentAdapter = {
@@ -45,7 +65,7 @@ const bankTransfer: PaymentAdapter = {
 };
 
 const adapters: Record<PaymentMethodId, PaymentAdapter> = {
-  card: demoCard,
+  card: cardGateway === 'demo' ? demoCard : noCard,
   cashplus,
   bank_transfer: bankTransfer,
 };

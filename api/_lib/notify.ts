@@ -1,13 +1,15 @@
 /**
- * Sends each new order, sample request and B2B quote to BOGA CAFÉ:
+ * Sends each new order, payment report, sample request and B2B quote to BOGA CAFÉ:
  *  - by email, through the Gmail account (SMTP with an App Password),
  *  - on WhatsApp, to the owner's own number through CallMeBot (free, owner-only).
  *
  * Recipients are fixed here on the server: the browser only sends the text.
- * Until phase 2 (database), that text is written by the site, so the server
- * accepts nothing else than the site's three messages (checked line by line
- * below), removes links, and marks every message as coming from the website
- * form: a message never proves a payment.
+ * Until phase 2 (database), that text is written in the browser, so it cannot
+ * be trusted: the server checks the kind of message, its reference, its
+ * subject and its first line (not the rest, which carries what the customer
+ * typed), makes links unclickable, and marks every message as coming from the
+ * website form. A message never proves a payment: check the money at the bank
+ * or at CMI (and, from phase 2, the order in the admin) before preparing anything.
  */
 
 export type Channel = 'sent' | 'skipped' | 'failed';
@@ -44,7 +46,7 @@ export interface NotifyDeps {
   now: () => number;
 }
 
-export type NotifyEvent = 'order.created' | 'sample.created' | 'quote.created';
+export type NotifyEvent = 'order.created' | 'payment.reported' | 'sample.created' | 'quote.created';
 
 export interface NotifyPayload {
   event: NotifyEvent;
@@ -60,6 +62,11 @@ const SHAPE: Record<NotifyEvent, { prefix: string; firstLine: (ref: string) => s
     prefix: 'BC',
     firstLine: (ref) => `Nouvelle commande ${ref}`,
     subject: (ref) => `[BOGA CAFÉ] Commande ${ref} - `,
+  },
+  'payment.reported': {
+    prefix: 'BC',
+    firstLine: (ref) => `Paiement signalé ${ref}`,
+    subject: (ref) => `[BOGA CAFÉ] Paiement signalé ${ref} - `,
   },
   'sample.created': {
     prefix: 'SR',

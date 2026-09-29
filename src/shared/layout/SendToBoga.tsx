@@ -2,7 +2,7 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { useDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink, type MessageDraft } from '@/services/notifications';
-import { deliveryStatus, onDeliveryChange } from '@/services/notifications/deliver';
+import { deliveryStatus, onDeliveryChange, type DeliverableEvent } from '@/services/notifications/deliver';
 import { gmailComposeLink, mailtoLink } from '../contact';
 import { BrandIcon } from '../ui/BrandIcon';
 import './channels.css';
@@ -23,11 +23,14 @@ const GREETING = 'Bonjour BOGA CAFÉ,';
  * when it replaces a form, so a phone user does not stay on an empty screen).
  */
 export function SendToBoga({
+  event,
   draft,
   refNumber,
   showSaved = true,
   reveal = false,
 }: {
+  /** Which message this is: its automatic delivery status is followed by kind and reference. */
+  event: DeliverableEvent;
   draft: MessageDraft;
   refNumber: string;
   showSaved?: boolean;
@@ -36,7 +39,7 @@ export function SendToBoga({
   const { t } = useI18n();
   const { settings } = useDb();
   const c = settings.contact;
-  const status = useSyncExternalStore(onDeliveryChange, () => deliveryStatus(refNumber));
+  const status = useSyncExternalStore(onDeliveryChange, () => deliveryStatus(event, refNumber));
   const head = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {

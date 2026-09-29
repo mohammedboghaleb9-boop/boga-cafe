@@ -3,6 +3,7 @@ import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { Photo } from '@/shared/ui/Photo';
+import { cardGateway } from '@/services/payments';
 
 /** The three real pouch sizes open the site: the whole offer in one image. */
 export function Hero() {
@@ -12,7 +13,7 @@ export function Hero() {
     { icon: 'bean', text: t.home.factBeans },
     { icon: 'scale', text: t.home.factSizes },
     { icon: 'truck', text: t.home.factDelivery },
-    { icon: 'lock', text: t.home.factPayment },
+    { icon: 'lock', text: cardGateway === 'off' ? t.home.factPaymentSoon : t.home.factPayment },
   ];
   return (
     <section className="hero">

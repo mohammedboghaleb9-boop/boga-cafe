@@ -6,7 +6,7 @@ import { templateContext } from '@/data/context';
 import { useDb } from '@/data/hooks';
 import { LineDetails } from '@/shared/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
-import { orderMessage } from '@/services/notifications';
+import { orderMessage, paymentReportMessage } from '@/services/notifications';
 import { SendToBoga } from '@/shared/layout/SendToBoga';
 import { CopyButton } from '@/shared/ui/bits';
 import { PaymentPanel } from './PaymentPanel';
@@ -48,9 +48,14 @@ export function OrderPage() {
 
       <div className="order-grid">
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>
-          {order.status !== 'cancelled' && order.status !== 'delivered' && (
-            <SendToBoga draft={orderMessage(order, templateContext(db))} refNumber={order.number} showSaved={false} />
-          )}
+          {order.status !== 'cancelled' &&
+            order.status !== 'delivered' &&
+            // once the customer reported a Cash Plus / transfer payment, that is the message to send
+            (order.paymentStatus === 'awaiting_verification' ? (
+              <SendToBoga event="payment.reported" draft={paymentReportMessage(order, templateContext(db))} refNumber={order.number} showSaved={false} />
+            ) : (
+              <SendToBoga event="order.created" draft={orderMessage(order, templateContext(db))} refNumber={order.number} showSaved={false} />
+            ))}
           <PaymentPanel order={order} />
 
           <section className="panel stack">

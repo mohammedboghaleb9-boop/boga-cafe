@@ -226,7 +226,7 @@ export interface StockMovement {
 }
 
 export type NotificationChannel = 'whatsapp' | 'email';
-export type NotificationEvent = 'order.created' | 'sample.created' | 'quote.created' | 'stock.low';
+export type NotificationEvent = 'order.created' | 'payment.reported' | 'sample.created' | 'quote.created' | 'stock.low';
 
 export interface NotificationLog {
   id: string;

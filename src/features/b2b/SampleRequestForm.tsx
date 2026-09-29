@@ -39,7 +39,7 @@ export function SampleRequestForm({ initialProductId }: { initialProductId?: str
   if (sent) {
     return (
       <div className="stack">
-        <SendToBoga draft={sent.message} refNumber={sent.ref} reveal />
+        <SendToBoga event="sample.created" draft={sent.message} refNumber={sent.ref} reveal />
         <button type="button" className="btn-link small" onClick={() => setSent(null)} style={{ alignSelf: 'flex-start' }}>
           {t.common.back}
         </button>

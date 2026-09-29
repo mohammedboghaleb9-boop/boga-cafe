@@ -121,6 +121,7 @@ export const fr: Dict = {
     factSizes: '250 g · 500 g · 1 kg',
     factDelivery: 'Livraison dans tout le Maroc',
     factPayment: 'Carte, Cash Plus ou virement',
+    factPaymentSoon: 'Cash Plus ou virement · carte bientôt',
     featuredTitle: 'Blends signature',
     featuredText: 'Nos recettes, torréfiées selon notre cahier des charges et conditionnées dans les sachets BOGA CAFÉ.',
     seeAll: 'Voir tous les cafés',
@@ -271,6 +272,8 @@ export const fr: Dict = {
   },
 
   checkout: {
+    cardSoon: 'bientôt',
+    cardSoonText: 'Le paiement par carte arrive bientôt. En attendant, payez par Cash Plus ou virement.',
     title: 'Commande',
     noAccount: 'Aucun compte nécessaire.',
     contactTitle: 'Coordonnées & livraison',
@@ -302,6 +305,7 @@ export const fr: Dict = {
   },
 
   payment: {
+    cardUnavailable: 'Le paiement par carte n’est pas encore disponible. Écrivez-nous sur WhatsApp : vous pouvez payer par Cash Plus ou virement.',
     gatewayTitle: 'Paiement sécurisé par carte',
     gatewayNote:
       'Simulation de la page CMI. Sur le vrai site, vous êtes redirigé vers la page de la banque (3-D Secure).',
@@ -572,6 +576,7 @@ export const fr: Dict = {
       simResult: 'Frais de livraison : {fee}',
     },
     payments: {
+      cardOff: 'Non proposée sur le site tant que la passerelle CMI n’est pas branchée (phase D). Les clients la voient « bientôt » ; Cash Plus et virement restent actifs.',
       intro:
         'Tous les paiements arrivent sur le compte bancaire officiel de BOGA CAFÉ. La carte est confirmée par la passerelle, Cash Plus et les virements sont vérifiés ici.',
       methods: 'Moyens de paiement',
@@ -596,6 +601,7 @@ export const fr: Dict = {
       simulated: 'simulé',
       events: {
         'order.created': 'Nouvelle commande',
+        'payment.reported': 'Paiement signalé',
         'sample.created': 'Demande d’échantillon',
         'quote.created': 'Demande B2B',
         'stock.low': 'Stock bas',

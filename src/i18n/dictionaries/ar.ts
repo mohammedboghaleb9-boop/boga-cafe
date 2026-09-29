@@ -121,6 +121,7 @@ export const ar: Dict = {
     factSizes: '250 غ · 500 غ · 1 كلغ',
     factDelivery: 'توصيل لكل مدن المغرب',
     factPayment: 'بطاقة، كاش بلوس أو تحويل',
+    factPaymentSoon: 'كاش بلوس أو تحويل بنكي · البطاقة قريباً',
     featuredTitle: 'الخلطات المميزة',
     featuredText: 'وصفاتنا، محمّصة وفق مواصفاتنا ومعبأة في أكياس BOGA CAFÉ.',
     seeAll: 'كل أنواع القهوة',
@@ -268,6 +269,8 @@ export const ar: Dict = {
   },
 
   checkout: {
+    cardSoon: 'قريباً',
+    cardSoonText: 'الدفع بالبطاقة قريباً. في الأثناء، ادفع عبر كاش بلوس أو التحويل البنكي.',
     title: 'تأكيد الطلب',
     noAccount: 'لا حاجة لإنشاء حساب.',
     contactTitle: 'المعلومات والتوصيل',
@@ -299,6 +302,7 @@ export const ar: Dict = {
   },
 
   payment: {
+    cardUnavailable: 'الدفع بالبطاقة غير متوفر بعد. راسلنا على واتساب: يمكنك الدفع عبر كاش بلوس أو التحويل البنكي.',
     gatewayTitle: 'دفع آمن بالبطاقة',
     gatewayNote: 'محاكاة لصفحة CMI. في الموقع الحقيقي يتم تحويلك إلى صفحة البنك (3-D Secure).',
     cardNumber: 'رقم البطاقة',
@@ -567,6 +571,7 @@ export const ar: Dict = {
       simResult: 'تكلفة التوصيل: {fee}',
     },
     payments: {
+      cardOff: 'غير مقترحة في الموقع حتى ربط بوابة CMI (المرحلة D). يراها الزبائن «قريباً»، ويبقى كاش بلوس والتحويل متاحين.',
       intro:
         'كل المدفوعات تصل إلى الحساب البنكي الرسمي لـ BOGA CAFÉ. الدفع بالبطاقة تؤكده بوابة الدفع، أما كاش بلوس والتحويل فيتم التحقق منهما هنا.',
       methods: 'طرق الدفع',
@@ -591,6 +596,7 @@ export const ar: Dict = {
       simulated: 'محاكاة',
       events: {
         'order.created': 'طلب جديد',
+        'payment.reported': 'تصريح بالدفع',
         'sample.created': 'طلب عيّنة',
         'quote.created': 'طلب B2B',
         'stock.low': 'مخزون منخفض',

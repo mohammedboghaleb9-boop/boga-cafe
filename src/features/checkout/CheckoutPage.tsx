@@ -6,6 +6,7 @@ import type { CheckoutError } from '@/core/order';
 import { shippingFee } from '@/core/shipping';
 import type { CustomerInfo, PaymentMethodId } from '@/core/types';
 import { api } from '@/data/api';
+import { methodAvailable } from '@/services/payments';
 import { useCatalog, useDb } from '@/data/hooks';
 import { useCart } from '@/shared/cart/CartProvider';
 import { LineDetails } from '@/shared/cart/CartLineView';
@@ -55,8 +56,9 @@ export function CheckoutPage() {
   const { products, originIndex } = useCatalog();
   const { settings, shippingRates, paymentMethods } = useDb();
   const [customer, setCustomer] = useState<CustomerInfo>(emptyCustomer);
+  // the card stays listed as "soon" while no gateway is connected (services/payments)
   const methods = paymentMethods.filter((m) => m.enabled);
-  const [method, setMethod] = useState<PaymentMethodId | ''>(methods[0]?.id ?? '');
+  const [method, setMethod] = useState<PaymentMethodId | ''>(methods.find((m) => methodAvailable(m))?.id ?? '');
   const [errors, setErrors] = useState<CheckoutError[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -200,22 +202,28 @@ export function CheckoutPage() {
               <span className="step-n">2</span> {t.checkout.paymentTitle}
             </h2>
             <div className="pay-options" role="radiogroup" aria-label={t.checkout.paymentTitle}>
-              {methods.map((m) => (
-                <label key={m.id} className="pay-option" data-checked={method === m.id}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    value={m.id}
-                    checked={method === m.id}
-                    onChange={() => setMethod(m.id)}
-                  />
-                  <Icon name={methodIcon[m.id]} size={22} />
-                  <span className="stack" style={{ ['--gap' as string]: '2px' }}>
-                    <strong>{l(m.label)}</strong>
-                    <span className="small muted">{l(m.instructions)}</span>
-                  </span>
-                </label>
-              ))}
+              {methods.map((m) => {
+                const available = methodAvailable(m);
+                return (
+                  <label key={m.id} className="pay-option" data-checked={method === m.id} data-disabled={!available || undefined}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value={m.id}
+                      checked={method === m.id}
+                      disabled={!available}
+                      onChange={() => setMethod(m.id)}
+                    />
+                    <Icon name={methodIcon[m.id]} size={22} />
+                    <span className="stack" style={{ ['--gap' as string]: '2px' }}>
+                      <strong>
+                        {l(m.label)} {!available && <span className="pill">{t.checkout.cardSoon}</span>}
+                      </strong>
+                      <span className="small muted">{available ? l(m.instructions) : t.checkout.cardSoonText}</span>
+                    </span>
+                  </label>
+                );
+              })}
             </div>
             {err('payment_method') && <span className="field-error">{err('payment_method')}</span>}
             <p className="small muted icon-line">

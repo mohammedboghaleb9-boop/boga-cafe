@@ -23,9 +23,9 @@ import type {
   StockMovement,
   StockReason,
 } from '@/core/types';
-import { draftsToLogs, lowStockMessage, orderMessage, quoteMessage, sampleMessage } from '@/services/notifications';
+import { draftsToLogs, lowStockMessage, orderMessage, paymentReportMessage, quoteMessage, sampleMessage } from '@/services/notifications';
 import { deliver } from '@/services/notifications/deliver';
-import { checkoutContext, templateContext } from './context';
+import { checkoutContext, storefrontCheckoutContext, templateContext } from './context';
 import { newReference, uid } from './ids';
 import type { DbState } from './state';
 import { db } from './store';
@@ -93,7 +93,8 @@ export const api = {
     const s = db.get();
     const at = now();
     const number = newReference('BC', (r) => s.orders.some((o) => o.number === r));
-    const result = buildOrder(input, checkoutContext(s), { id: uid(), number, now: at });
+    // refused like any unknown method: a card order while no gateway is connected
+    const result = buildOrder(input, storefrontCheckoutContext(s), { id: uid(), number, now: at });
     if (!result.ok) return result;
     const order = result.order;
     const message = orderMessage(order, templateContext(s));
@@ -139,11 +140,21 @@ export const api = {
     const o = db.get().orders.find((x) => x.id === orderId);
     // Cash Plus / transfer only, and never over a payment already confirmed
     if (!o || o.paymentMethod === 'card' || o.status === 'cancelled' || o.paymentStatus !== 'pending') return;
-    patchOrder(orderId, (o) => ({
+    const at = now();
+    const reported: Order = {
+      ...o,
       paymentStatus: 'awaiting_verification',
       paymentRef: paymentRef.trim().slice(0, 80),
-      history: [...o.history, { at: now(), label: 'payment.reported' }],
+      history: [...o.history, { at, label: 'payment.reported' }],
+    };
+    // the team is told like for a new order: admin log, and WhatsApp + Gmail once deployed
+    const message = paymentReportMessage(reported, templateContext(db.get()));
+    db.update((s) => ({
+      ...s,
+      orders: s.orders.map((x) => (x.id === orderId ? reported : x)),
+      notifications: [...draftsToLogs('payment.reported', message, s.settings, at, uid), ...s.notifications],
     }));
+    deliver('payment.reported', reported.number, message);
   },
 
   async requestSample(input: ContactRequestInput & { productId: string; estMonthlyKg: number }) {

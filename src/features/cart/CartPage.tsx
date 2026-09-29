@@ -28,7 +28,7 @@ export function CartPage() {
     return (
       <div className="container page stack quote-done">
         <h1>{t.cart.title}</h1>
-        <SendToBoga draft={quote.message} refNumber={quote.ref} reveal />
+        <SendToBoga event="quote.created" draft={quote.message} refNumber={quote.ref} reveal />
         <Link to="/shop" className="btn btn-ghost" style={{ alignSelf: 'flex-start' }}>
           {t.cart.emptyCta}
         </Link>

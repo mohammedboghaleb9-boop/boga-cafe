@@ -7,6 +7,7 @@ import { useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { LocalizedInput, PaymentPill, SavedFlash, Switch, useSavedFlash } from '../ui';
 import type { Role } from '../permissions';
+import { methodAvailable } from '@/services/payments';
 import { useAdminRole } from '../session';
 
 const icons: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
@@ -102,6 +103,7 @@ function MethodEditor({ method }: { method: PaymentMethodConfig }) {
           </button>
         </div>
       </div>
+      {m.id === 'card' && !methodAvailable({ id: 'card', enabled: true }) && <p className="notice small">{t.admin.payments.cardOff}</p>}
       <div className="detail-grid">
         <LocalizedInput id={`pm-${m.id}-label`} label={t.admin.payments.label} value={m.label} onChange={(v) => setM({ ...m, label: v })} />
         <LocalizedInput

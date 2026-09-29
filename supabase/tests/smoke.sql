@@ -399,3 +399,15 @@ do $$ begin
   if (select settings -> 'freeShippingOver' from public.site_config) <> '600'::jsonb then raise exception 'TEST FAILED: threshold changed'; end if;
 end $$;
 select 'ok 17 - the free-shipping threshold stays a number, 0 or more' as result;
+
+-- 18. A reported payment can be queued for the team, an unknown event cannot --
+do $$ begin
+  perform public.queue_notification('payment.reported', '[BOGA CAFÉ] Paiement signalé BC-2026-0001', 'Paiement signalé BC-2026-0001', 'Paiement signalé BC-2026-0001');
+  if (select count(*) from public.notification_outbox where event = 'payment.reported') <> 2 then raise exception 'TEST FAILED: payment report not queued'; end if;
+  begin
+    perform public.queue_notification('payment.paid', 'x', 'x', 'x');
+    raise exception 'TEST FAILED: unknown event queued';
+  exception when check_violation then null;
+  end;
+end $$;
+select 'ok 18 - payment reports can reach the team; unknown events cannot' as result;

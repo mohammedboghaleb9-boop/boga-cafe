@@ -244,7 +244,7 @@ create table public.notification_outbox (
   id         bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
   channel    text not null check (channel in ('whatsapp', 'email')),
-  event      text not null check (event in ('order.created', 'sample.created', 'quote.created', 'stock.low')),
+  event      text not null check (event in ('order.created', 'payment.reported', 'sample.created', 'quote.created', 'stock.low')),
   recipient  text not null,
   subject    text not null default '',
   body       text not null,
