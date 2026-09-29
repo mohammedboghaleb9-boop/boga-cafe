@@ -6,3 +6,6 @@ export function normalizePhone(raw: string): string | null {
 }
 
 export const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
+
+/** Characters in a trimmed text, as the database counts them (an emoji is one, not two). */
+export const charCount = (value: string) => [...value.trim()].length;

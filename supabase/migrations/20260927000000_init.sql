@@ -344,22 +344,264 @@ create trigger origins_guard_new_stock before insert on public.origins
   for each row execute function public.guard_new_origin_stock();
 
 -- ───────────── Order commit (server only) ─────────────
--- p_order is the object produced by src/core/order.ts buildOrder(), already
--- validated by the Edge Function. This function makes it durable atomically:
--- lock origins → check stock → deduct → insert order + history + movements + notifications.
+-- p_order is the object produced by src/core/order.ts buildOrder(). check_order checks
+-- every figure against the database; commit_order then stores what check_order rebuilt
+-- (lines, customer, stock), atomically: lock origins → check stock → deduct → insert
+-- order + history + movements + notifications.
+
+-- Checks an order against the database itself, the way src/core/order.ts buildOrder
+-- builds it: nothing in it is trusted. Sizes and quantities, each line's price (from
+-- the product's prices, or recomputed for a Custom Blend), its composition (the
+-- product's recipe, or a blend that follows the rules), subtotal, weight, the B2B
+-- limit, the city and its delivery fee, the payment method, the customer's name,
+-- phone, email and address, and the stock to deduct. Raises invalid_order:<what>.
+-- Every figure must be exactly the one computed here (src/core/money.ts rounds the
+-- way round() does). Returns what commit_order stores, built from the database, not
+-- from the order: {customer, lines, stockDeductions}.
+create or replace function public.check_order(p_order jsonb)
+returns jsonb
+language plpgsql stable set search_path = public as $$
+declare
+  s           jsonb := (select settings from public.site_config where id = 1);
+  v_line      jsonb;
+  v_part      jsonb;
+  v_product   public.products;
+  v_origin    public.origins;
+  v_rate      public.shipping_rates;
+  v_size      numeric;
+  v_qty       numeric;
+  v_unit      numeric;
+  v_expected  numeric;
+  v_percent   numeric;
+  v_total_pct numeric;
+  v_count     integer;
+  v_subtotal  numeric := 0;
+  v_weight    numeric := 0;
+  v_fee       numeric;
+  v_extra_kg  numeric;
+  v_free      numeric := coalesce((s ->> 'freeShippingOver')::numeric, 0);
+  v_loss      numeric := coalesce((s ->> 'roastLossPercent')::numeric, 0);
+  v_min_pct   numeric := coalesce((s #>> '{customBlend,minPercent}')::numeric, 5);
+  v_max_orig  numeric := coalesce((s #>> '{customBlend,maxOrigins}')::numeric, 4);
+  v_need      jsonb := '{}'::jsonb;   -- originId -> size × percent × bags, whole numbers
+  v_result    jsonb := '[]'::jsonb;
+  v_lines     jsonb := '[]'::jsonb;
+  v_built     jsonb;
+  v_comp      jsonb;
+  v_given     numeric;
+  v_kg        numeric;
+  k           text;
+  -- the white space of JavaScript's trim() and \s (src/core/validation.ts), whatever
+  -- the database locale: \s alone would follow it
+  v_ws        constant text := '\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff';
+  v_trim      constant text := '^[' || v_ws || ']+|[' || v_ws || ']+$';
+  v_name      text := regexp_replace(coalesce(p_order #>> '{customer,fullName}', ''), v_trim, '', 'g');
+  v_address   text := regexp_replace(coalesce(p_order #>> '{customer,address}', ''), v_trim, '', 'g');
+  v_email     text := regexp_replace(coalesce(p_order #>> '{customer,email}', ''), v_trim, '', 'g');
+  v_phone     text := regexp_replace(coalesce(p_order #>> '{customer,phone}', ''), '[' || v_ws || '.\-()]', '', 'g');
+begin
+  if s is null or v_loss < 0 or v_loss >= 100 then
+    raise exception 'invalid_order:settings';
+  end if;
+  if coalesce(p_order ->> 'locale', 'fr') not in ('ar', 'fr', 'en') then
+    raise exception 'invalid_order:locale';
+  end if;
+  -- customer (src/core/order.ts validateCustomer, src/core/validation.ts); lengths
+  -- count characters, as src/core/validation.ts charCount does; the upper limits are
+  -- the form's (TEXT_MAX) and the table's
+  if char_length(v_name) not between 3 and 80 then
+    raise exception 'invalid_order:name';
+  end if;
+  if v_phone !~ '^(\+212|00212|0)[5-7][0-9]{8}$' then
+    raise exception 'invalid_order:phone';
+  end if;
+  if char_length(v_email) > 120 or v_email <> '' and v_email !~ ('^[^' || v_ws || '@]+@[^' || v_ws || '@]+\.[^' || v_ws || '@]{2,}$') then
+    raise exception 'invalid_order:email';
+  end if;
+  if char_length(v_address) not between 6 and 200 then
+    raise exception 'invalid_order:address';
+  end if;
+  if char_length(coalesce(p_order #>> '{customer,company}', '')) > 80
+     or char_length(coalesce(p_order #>> '{customer,notes}', '')) > 500 then
+    raise exception 'invalid_order:text_too_long';
+  end if;
+
+  if jsonb_typeof(p_order -> 'lines') is distinct from 'array' or jsonb_array_length(p_order -> 'lines') = 0 then
+    raise exception 'invalid_order:lines';
+  end if;
+  for v_line in select value from jsonb_array_elements(p_order -> 'lines') loop
+    -- bag size and quantity (src/core/cart.ts PACK_SIZES, isValidQty: 1 to 100 bags)
+    if jsonb_typeof(v_line -> 'size') is distinct from 'number' or jsonb_typeof(v_line -> 'qty') is distinct from 'number'
+       or jsonb_typeof(v_line -> 'unitPrice') is distinct from 'number' or jsonb_typeof(v_line -> 'lineTotal') is distinct from 'number'
+       or jsonb_typeof(v_line -> 'composition') is distinct from 'array' then
+      raise exception 'invalid_order:line';
+    end if;
+    v_size := (v_line ->> 'size')::numeric;
+    v_qty  := (v_line ->> 'qty')::numeric;
+    v_unit := (v_line ->> 'unitPrice')::numeric;
+    if v_size not in (250, 500, 1000) then
+      raise exception 'invalid_order:size';
+    end if;
+    if v_qty <> trunc(v_qty) or v_qty < 1 or v_qty > 100 then
+      raise exception 'invalid_order:qty';
+    end if;
+
+    if v_line ->> 'kind' = 'product' then
+      select * into v_product from public.products where id = v_line ->> 'productId' and active;
+      if not found then
+        raise exception 'invalid_order:product';
+      end if;
+      -- the price of this size, a real price (src/core/pricing.ts productPrice, isPrice)
+      v_expected := case when jsonb_typeof(v_product.prices -> v_size::integer::text) = 'number'
+                         then (v_product.prices ->> v_size::integer::text)::numeric end;
+      if v_expected is null or v_expected < 1 then
+        raise exception 'invalid_order:size_not_offered';
+      end if;
+      if v_unit <> v_expected then
+        raise exception 'invalid_order:price';
+      end if;
+      -- the composition is the product's recipe, nothing else
+      if jsonb_array_length(v_line -> 'composition') <> (select count(*) from public.product_recipes where product_id = v_product.id)
+         or exists (select 1 from public.product_recipes r
+                     where r.product_id = v_product.id
+                       and not exists (select 1 from jsonb_array_elements(v_line -> 'composition') c
+                                        where c ->> 'originId' = r.origin_id
+                                          and jsonb_typeof(c -> 'percent') = 'number'
+                                          and (c ->> 'percent')::numeric = r.percent)) then
+        raise exception 'invalid_order:composition';
+      end if;
+      v_built := jsonb_build_object('kind', 'product', 'productId', v_product.id, 'name', v_product.name);
+    elsif v_line ->> 'kind' = 'custom' then
+      -- Custom Blend (src/core/blend.ts validateBlend, pricing.ts customBlendPrice)
+      if coalesce((s #>> '{customBlend,enabled}')::boolean, false) is not true then
+        raise exception 'invalid_order:blend_paused';
+      end if;
+      v_count := jsonb_array_length(v_line -> 'composition');
+      if v_count = 0 or v_count > v_max_orig
+         or (select count(distinct c ->> 'originId') from jsonb_array_elements(v_line -> 'composition') c) <> v_count then
+        raise exception 'invalid_order:blend';
+      end if;
+      v_total_pct := 0;
+      v_expected := coalesce((s #>> array['customBlend', 'feeBySize', v_size::integer::text])::numeric, 0);
+      for v_part in select value from jsonb_array_elements(v_line -> 'composition') loop
+        if jsonb_typeof(v_part -> 'percent') is distinct from 'number' then
+          raise exception 'invalid_order:blend';
+        end if;
+        v_percent := (v_part ->> 'percent')::numeric;
+        if v_percent <> trunc(v_percent) or v_percent < v_min_pct then
+          raise exception 'invalid_order:blend';
+        end if;
+        select * into v_origin from public.origins where id = v_part ->> 'originId';
+        if not found or not v_origin.active or not v_origin.custom_blend_enabled or v_origin.price_per_kg < 1 then
+          raise exception 'invalid_order:blend_origin';
+        end if;
+        v_total_pct := v_total_pct + v_percent;
+        v_expected := v_expected + v_origin.price_per_kg * (v_size * v_percent / 100) / 1000;
+      end loop;
+      if v_total_pct <> 100 then
+        raise exception 'invalid_order:blend';
+      end if;
+      v_expected := round(v_expected);
+      if v_expected < 1 or v_unit <> v_expected then
+        raise exception 'invalid_order:price';
+      end if;
+      -- the name of every Custom Blend line (src/core/cart.ts CUSTOM_BLEND_NAME)
+      v_built := jsonb_build_object('kind', 'custom', 'name',
+        jsonb_build_object('ar', 'خلطتي الخاصة', 'fr', 'Mon Custom Blend', 'en', 'My Custom Blend'));
+    else
+      raise exception 'invalid_order:kind';
+    end if;
+
+    if (v_line ->> 'lineTotal')::numeric <> round(v_expected * v_qty) then
+      raise exception 'invalid_order:line_total';
+    end if;
+    v_subtotal := v_subtotal + round(v_expected * v_qty);
+    v_weight := v_weight + v_size / 1000 * v_qty;
+    -- stock this line needs (src/core/stock.ts kgNeeded: kept whole here and divided once
+    -- per origin below, so 16 % roasting loss cannot make 0.0625 kg 0.06249…), and the grams of each origin in
+    -- one bag (src/core/recipe.ts composition): percents are whole, so no rounding
+    v_comp := '[]'::jsonb;
+    for v_part in select value from jsonb_array_elements(v_line -> 'composition') loop
+      v_percent := (v_part ->> 'percent')::numeric;
+      v_need := jsonb_set(v_need, array[v_part ->> 'originId'],
+        to_jsonb(coalesce((v_need ->> (v_part ->> 'originId'))::numeric, 0) + v_size * v_percent * v_qty));
+      v_comp := v_comp || jsonb_build_object('originId', v_part ->> 'originId', 'percent', trim_scale(v_percent),
+                                             'grams', trim_scale(v_size * v_percent / 100));
+    end loop;
+    v_lines := v_lines || (v_built || jsonb_build_object(
+      'size', v_size::integer, 'qty', v_qty::integer, 'unitPrice', v_expected,
+      'lineTotal', round(v_expected * v_qty), 'composition', v_comp));
+  end loop;
+
+  if jsonb_typeof(p_order -> 'subtotal') is distinct from 'number' or (p_order ->> 'subtotal')::numeric <> round(v_subtotal) then
+    raise exception 'invalid_order:subtotal';
+  end if;
+  if jsonb_typeof(p_order -> 'weightKg') is distinct from 'number' or (p_order ->> 'weightKg')::numeric <> round(v_weight, 3) then
+    raise exception 'invalid_order:weight';
+  end if;
+  -- above the B2B limit the order is a quote, not a cart (src/core/cart.ts isB2B)
+  if v_weight > coalesce((s ->> 'b2bThresholdKg')::numeric, 10) then
+    raise exception 'invalid_order:b2b';
+  end if;
+  -- delivery (src/core/shipping.ts shippingFee)
+  select * into v_rate from public.shipping_rates where id = p_order #>> '{customer,cityId}' and active;
+  if not found then
+    raise exception 'invalid_order:city';
+  end if;
+  if v_free > 0 and round(v_subtotal) >= v_free then
+    v_fee := 0;
+  else
+    v_extra_kg := greatest(0, ceil(round(v_weight, 3) - v_rate.included_kg - 0.000000001));
+    v_fee := round(v_rate.base_fee + v_extra_kg * v_rate.extra_per_kg);
+  end if;
+  if jsonb_typeof(p_order -> 'shippingFee') is distinct from 'number' or (p_order ->> 'shippingFee')::numeric <> v_fee then
+    raise exception 'invalid_order:shipping';
+  end if;
+  if jsonb_typeof(p_order -> 'total') is distinct from 'number' or (p_order ->> 'total')::numeric <> round(v_subtotal) + v_fee then
+    raise exception 'invalid_order:total';
+  end if;
+  if not exists (select 1 from public.payment_methods where id = p_order ->> 'paymentMethod' and enabled) then
+    raise exception 'invalid_order:payment_method';
+  end if;
+
+  -- the stock to deduct is computed here; the browser's figures must be the same
+  if jsonb_typeof(p_order -> 'stockDeductions') is distinct from 'array'
+     or jsonb_array_length(p_order -> 'stockDeductions') <> (select count(*) from jsonb_object_keys(v_need))
+     or (select count(distinct d ->> 'originId') from jsonb_array_elements(p_order -> 'stockDeductions') d)
+        <> jsonb_array_length(p_order -> 'stockDeductions') then
+    raise exception 'invalid_order:deductions';
+  end if;
+  for k in select jsonb_object_keys(v_need) loop
+    select (d ->> 'kg')::numeric into v_given
+      from jsonb_array_elements(p_order -> 'stockDeductions') d where d ->> 'originId' = k;
+    -- kg = size × percent × bags / (1000 × (100 − loss %))
+    v_kg := round((v_need ->> k)::numeric / (1000 * (100 - v_loss)), 3);
+    if v_given is distinct from v_kg then
+      raise exception 'invalid_order:deductions';
+    end if;
+    v_result := v_result || jsonb_build_object('originId', k, 'kg', v_kg);
+  end loop;
+  return jsonb_build_object(
+    'customer', jsonb_build_object('fullName', v_name, 'phone', '+212' || right(v_phone, 9), 'email', v_email,
+                                   'address', v_address),
+    'lines', v_lines,
+    'stockDeductions', v_result);
+end $$;
 
 create or replace function public.commit_order(p_order jsonb, p_whatsapp text, p_email text, p_subject text)
 returns table (id uuid, number text)
 language plpgsql security definer set search_path = public as $$
 declare
   d          jsonb;
+  v_checked  jsonb;
+  v_deductions jsonb;
   v_origin   public.origins;
   v_id       uuid := gen_random_uuid();
   v_seq      bigint := nextval('public.order_number_seq');
   -- lpad would cut 10000 to '1000': pad to 4 digits, never shorten
   v_number   text := 'BC-' || to_char(now(), 'YYYY') || '-' || lpad(v_seq::text, greatest(4, length(v_seq::text)), '0');
 begin
-  -- the Edge Function already ran buildOrder(); refuse anything that could add stock or be free
+  -- refuse anything that could add stock or be free before looking further
   if jsonb_typeof(p_order -> 'stockDeductions') is distinct from 'array'
      or jsonb_array_length(p_order -> 'stockDeductions') = 0
      or exists (select 1 from jsonb_array_elements(p_order -> 'stockDeductions') x
@@ -367,10 +609,14 @@ begin
                    or (x ->> 'kg')::numeric in ('NaN', 'Infinity')) then
     raise exception 'invalid_order';
   end if;
+  -- everything else in the order is checked against the database; what is stored below
+  -- (customer, lines, deductions) is what check_order rebuilt from it
+  v_checked := public.check_order(p_order);
+  v_deductions := v_checked -> 'stockDeductions';
   perform set_config('boga.stock_write', 'on', true);
   -- Lock every origin used, in a fixed order to avoid deadlocks.
   for d in
-    select value from jsonb_array_elements(p_order -> 'stockDeductions') order by value ->> 'originId'
+    select value from jsonb_array_elements(v_deductions) order by value ->> 'originId'
   loop
     select * into v_origin from public.origins o where o.id = d ->> 'originId' for update;
     if not found or not v_origin.active then
@@ -390,20 +636,20 @@ begin
   ) values (
     v_id, v_number,
     coalesce(p_order ->> 'locale', 'fr'),
-    p_order #>> '{customer,fullName}',
-    p_order #>> '{customer,phone}',
-    coalesce(p_order #>> '{customer,email}', ''),
+    v_checked #>> '{customer,fullName}',
+    v_checked #>> '{customer,phone}',
+    v_checked #>> '{customer,email}',
     p_order #>> '{customer,cityId}',
-    p_order #>> '{customer,address}',
+    v_checked #>> '{customer,address}',
     coalesce(p_order #>> '{customer,company}', ''),
     coalesce(p_order #>> '{customer,notes}', ''),
-    p_order -> 'lines',
+    v_checked -> 'lines',
     (p_order ->> 'weightKg')::numeric,
     (p_order ->> 'subtotal')::numeric,
     (p_order ->> 'shippingFee')::numeric,
     (p_order ->> 'total')::numeric,
     p_order ->> 'paymentMethod',
-    p_order -> 'stockDeductions'
+    v_deductions
   );
 
   insert into public.order_events (order_id, label) values (v_id, 'order.created');
@@ -707,6 +953,7 @@ create policy "admins manage" on public.sample_requests for all using (public.is
 create policy "admins manage" on public.quote_requests for all using (public.is_admin()) with check (public.is_admin());
 
 -- Functions: who may call what.
+revoke all on function public.check_order(jsonb) from public, anon, authenticated;
 revoke all on function public.commit_order(jsonb, text, text, text) from public, anon, authenticated;
 grant execute on function public.commit_order(jsonb, text, text, text) to service_role;
 revoke all on function public.expire_unpaid_orders() from public, anon, authenticated;

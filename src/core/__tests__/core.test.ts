@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { balanceBlend, validateBlend } from '../blend';
 import { summarizeCart } from '../cart';
-import { buildOrder } from '../order';
+import { buildOrder, validateCustomer } from '../order';
 import { customBlendPrice } from '../pricing';
 import { composition, speciesSplit } from '../recipe';
 import { shippingFee } from '../shipping';
@@ -40,6 +40,16 @@ describe('custom blend', () => {
     // 0.5 kg × 200 + 0.5 kg × 300 + 20 fee
     expect(customBlendPrice(spec, originIndex, settings).total).toBe(270);
     expect(customBlendPrice({ ...spec, size: 250 }, originIndex, settings).total).toBe(73);
+  });
+
+  it('rounds a half dirham up, as the database does, whatever binary fractions add up to', () => {
+    // 1 kg: 810 g × 303 + 90 g × 483 + 50 g × 369 + 50 g × 443 DH/kg + 15 = 344.5 exactly
+    const index = Object.fromEntries(
+      [['a', 303], ['b', 483], ['c', 369], ['d', 443]].map(([id, pricePerKg]) => [id, { ...origins[0], id: id as string, pricePerKg: pricePerKg as number }]),
+    );
+    const lines = [{ originId: 'a', percent: 81 }, { originId: 'b', percent: 9 }, { originId: 'c', percent: 5 }, { originId: 'd', percent: 5 }];
+    const fee = { ...settings, customBlend: { ...settings.customBlend, feeBySize: { 250: 0, 500: 0, 1000: 15 } } };
+    expect(customBlendPrice({ size: 1000, lines }, index, fee).total).toBe(345);
   });
 
   it('accepts a valid recipe', () => {
@@ -99,6 +109,12 @@ describe('stock', () => {
     expect(req[0].kg).toBe(1.25);
   });
 
+  it('rounds half a gram up, as the database does', () => {
+    // 250 g × 4 % with 20 % roasting loss = 0.0125 kg exactly, 0.012499999… in binary
+    const req = stockRequirements([{ recipe: [{ originId: 'brazil', percent: 96 }, { originId: 'colombia', percent: 4 }], size: 250, qty: 1 }], 20);
+    expect(req).toEqual([{ originId: 'brazil', kg: 0.3 }, { originId: 'colombia', kg: 0.013 }]);
+  });
+
   it('knows how many bags are left', () => {
     // vietnam 1 kg, 20 % of 1 kg = 0.2 kg per bag → 5 bags
     expect(maxBags(product.recipe, 1000, originIndex, 0)).toBe(5);
@@ -145,6 +161,11 @@ describe('shipping', () => {
     expect(shippingFee(rate, 2, 100, settings)).toBe(20);
     expect(shippingFee(rate, 3.25, 100, settings)).toBe(30);
     expect(shippingFee(rate, 3.25, 900, { freeShippingOver: 500 })).toBe(0);
+  });
+
+  it('rounds a half dirham up, as the database does', () => {
+    // 10.10 + 6 extra kg × 16.40 = 108.5 exactly, 108.49999… in binary
+    expect(shippingFee({ ...rate, baseFee: 10.1, includedKg: 3, extraPerKg: 16.4 }, 9, 100, { freeShippingOver: 0 })).toBe(109);
   });
 });
 
@@ -211,6 +232,20 @@ describe('order', () => {
       ids,
     );
     expect(r).toMatchObject({ ok: false, errors: expect.arrayContaining(['b2b_required']) });
+  });
+});
+
+describe('customer', () => {
+  const customer: CustomerInfo = { fullName: 'Ali', phone: '0612345678', email: '', cityId: rate.id, address: '12 rue', company: '', notes: '' };
+  it('counts characters as the database does, after trimming any white space', () => {
+    expect(validateCustomer(customer, [rate])).toEqual([]);
+    expect(validateCustomer({ ...customer, fullName: '\u00a0Ali\u3000', address: '\u200312 rue' }, [rate])).toEqual([]);
+    expect(validateCustomer({ ...customer, fullName: '\u00a0Al\u3000', address: '12 ru' }, [rate])).toEqual(['name', 'address']);
+    expect(validateCustomer({ ...customer, fullName: '😀😀' }, [rate])).toEqual(['name']); // two characters, not four
+    // the upper limits are the database's: 80, 120 and 200 characters
+    const long = { ...customer, fullName: 'x'.repeat(80), email: `${'x'.repeat(112)}@boga.ma`, address: 'x'.repeat(200) };
+    expect(validateCustomer(long, [rate])).toEqual([]);
+    expect(validateCustomer({ ...long, fullName: 'x'.repeat(81), email: `${'x'.repeat(113)}@boga.ma`, address: 'x'.repeat(201) }, [rate])).toEqual(['name', 'email', 'address']);
   });
 });
 
