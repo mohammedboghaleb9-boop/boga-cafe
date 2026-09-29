@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "react", "jsx-a11y", "import", "vitest"],
+  // "plugins" replaces Oxlint's default set, so the defaults (unicorn, oxc) are listed again
+  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "import", "vitest"],
   "categories": { "correctness": "error", "suspicious": "error" },
   "rules": {
     "react/react-in-jsx-scope": "off",
@@ -14,7 +15,13 @@
     "vitest/require-mock-type-parameters": "off",
     // role="img" on an <svg>, role="group" around buttons and role="status" on a live
     // message are the recommended ARIA patterns; the suggested tags mean something else
-    "jsx-a11y/prefer-tag-over-role": "off"
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // every sort/reverse here works on a fresh array; toSorted()/toReversed() are ES2023,
+    // above this project's ES2022 lib
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-array-reverse": "off",
+    // small helpers kept next to the test or component that reads them
+    "unicorn/consistent-function-scoping": "off"
   },
   "ignorePatterns": ["dist", "dist-demo", "node_modules", "brand"]
 }

@@ -161,7 +161,7 @@ export function useSavedFlash(): [boolean, () => void] {
 export function Switch({ checked, onChange, label, name, id }: { checked: boolean; onChange: (v: boolean) => void; label: string; name?: string; id?: string }) {
   return (
     <label className="switch">
-      <input id={id} type="checkbox" checked={checked} aria-label={name} onChange={(e) => onChange(e.target.checked)} />
+      <input id={id} type="checkbox" checked={checked} aria-label={name && label ? `${name} · ${label}` : name} onChange={(e) => onChange(e.target.checked)} />
       <span className="switch-track" />
       <span className="small">{label}</span>
     </label>

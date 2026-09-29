@@ -22,7 +22,7 @@ export function socialHandle(url: string, fallbackName = ''): string {
   try {
     const u = new URL(url.trim());
     if (facebookId(u)) return fallbackName;
-    if (/^\/profile\.php/.test(u.pathname)) return ''; // profile.php without its id: broken link
+    if (u.pathname.startsWith('/profile.php')) return ''; // profile.php without its id: broken link
     const first = u.pathname.split('/').find(Boolean) ?? '';
     const name = decodeURIComponent(first).replace(/^@/, '');
     return name ? `@${name}` : '';

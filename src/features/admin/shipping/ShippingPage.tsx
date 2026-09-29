@@ -11,6 +11,8 @@ import { useAdminRole } from '../session';
 export function ShippingPage() {
   const role = useAdminRole()!;
   const { t, l, money } = useI18n();
+  // "Distance (km) · Oujda"; a new city without a name yet gives just the field name
+  const rowLabel = (field: string, r: ShippingRate) => (l(r.city).trim() ? `${field} · ${l(r.city).trim()}` : field);
   const { shippingRates, settings } = useDb();
   const [simCity, setSimCity] = useState(shippingRates[0]?.id ?? '');
   const [simKg, setSimKg] = useState(4);
@@ -123,22 +125,22 @@ export function ShippingPage() {
                   />
                 </td>
                 <td>
-                  <input className="input num" type="number" min={0} value={r.distanceKm} aria-label={`${t.admin.shipping.distance} · ${l(r.city)}`} onChange={(e) => save(r, { distanceKm: num(e.target.value) })} />
+                  <input className="input num" type="number" min={0} value={r.distanceKm} aria-label={rowLabel(t.admin.shipping.distance, r)} onChange={(e) => save(r, { distanceKm: num(e.target.value) })} />
                 </td>
                 <td>
-                  <input className="input num" type="number" min={0} value={r.baseFee} aria-label={`${t.admin.shipping.base} · ${l(r.city)}`} onChange={(e) => save(r, { baseFee: num(e.target.value) })} />
+                  <input className="input num" type="number" min={0} value={r.baseFee} aria-label={rowLabel(t.admin.shipping.base, r)} onChange={(e) => save(r, { baseFee: num(e.target.value) })} />
                 </td>
                 <td>
-                  <input className="input num" type="number" min={0} value={r.includedKg} aria-label={`${t.admin.shipping.included} · ${l(r.city)}`} onChange={(e) => save(r, { includedKg: num(e.target.value) })} />
+                  <input className="input num" type="number" min={0} value={r.includedKg} aria-label={rowLabel(t.admin.shipping.included, r)} onChange={(e) => save(r, { includedKg: num(e.target.value) })} />
                 </td>
                 <td>
-                  <input className="input num" type="number" min={0} value={r.extraPerKg} aria-label={`${t.admin.shipping.extra} · ${l(r.city)}`} onChange={(e) => save(r, { extraPerKg: num(e.target.value) })} />
+                  <input className="input num" type="number" min={0} value={r.extraPerKg} aria-label={rowLabel(t.admin.shipping.extra, r)} onChange={(e) => save(r, { extraPerKg: num(e.target.value) })} />
                 </td>
                 <td>
-                  <input className="input" value={r.deliveryDays} aria-label={`${t.admin.shipping.days} · ${l(r.city)}`} onChange={(e) => save(r, { deliveryDays: e.target.value })} />
+                  <input className="input" value={r.deliveryDays} aria-label={rowLabel(t.admin.shipping.days, r)} onChange={(e) => save(r, { deliveryDays: e.target.value })} />
                 </td>
                 <td>
-                  <Switch checked={r.active} onChange={(v) => save(r, { active: v })} label="" name={`${t.admin.payments.enabled} · ${l(r.city)}`} />
+                  <Switch checked={r.active} onChange={(v) => save(r, { active: v })} label="" name={rowLabel(t.admin.payments.enabled, r)} />
                 </td>
                 <td>
                   <ConfirmButton label={t.common.delete} confirmLabel={t.common.confirmDelete} onConfirm={() => api.deleteShippingRate(r.id)} />
