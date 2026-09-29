@@ -9,6 +9,18 @@ for (const width of [320, 390]) {
     test.describe(`${width}px ${locale}`, () => {
       test.use({ viewport: { width, height: 800 }, locale });
 
+      test('form fields are 16px or more, so iPhone does not zoom in when one is tapped', async ({ page }) => {
+        for (const path of ['/checkout', '/b2b', '/contact', '/custom-blend']) {
+          await open(page, path);
+          const small = await page.evaluate(() =>
+            [...document.querySelectorAll('input, select, textarea')]
+              .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 16)
+              .map((e) => e.id || e.getAttribute('name') || e.tagName),
+          );
+          expect(small, path).toEqual([]);
+        }
+      });
+
       test('store: no sideways scroll and nothing cut off', async ({ page }) => {
         for (const path of store) {
           await open(page, path);
