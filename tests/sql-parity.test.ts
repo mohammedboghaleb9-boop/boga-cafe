@@ -19,10 +19,10 @@ import type { CartItem, PackSize, PaymentMethodId } from '../src/core/types';
 import { seedOrigins, seedProducts } from '../src/data/seed/catalog';
 import { seedPaymentMethods, seedSettings, seedShippingRates } from '../src/data/seed/config';
 
-// the seed catalog, with plenty of stock, stock counted in green coffee (15 % roast
-// loss: deductions are no longer round numbers) and free delivery above 1500 DH, so
+// the seed catalog, with plenty of stock, stock counted in green coffee (16 % roast
+// loss: deductions are no longer round numbers, and 1/84 never ends in decimals) and free delivery above 1500 DH, so
 // most orders pay delivery, extra kg included
-const settings = { ...seedSettings, roastLossPercent: 15, freeShippingOver: 1500, customBlend: { ...seedSettings.customBlend, enabled: true } };
+const settings = { ...seedSettings, roastLossPercent: 16, freeShippingOver: 1500, customBlend: { ...seedSettings.customBlend, enabled: true } };
 const origins = seedOrigins.map((o) => ({ ...o, stockKg: 5000 }));
 const ctx: CheckoutContext = {
   catalog: { products: seedProducts, origins: indexOrigins(origins) },
@@ -74,12 +74,22 @@ function orders() {
   // edges: exactly the 10 kg limit, free delivery, extra kg on a far city
   const signature = products.find((p) => offeredSizes(p).includes(1000))!;
   carts.push([{ id: 'edge-10kg', type: 'product', productId: signature.id, size: 1000, qty: 10 }]);
+  // three bags with 7 % Brazil each: 3 × 250 × 7 % / 84 % = 0.0625 kg exactly, a half gram
+  // that per-bag sums in decimals would make 0.06249… (the database divides once)
+  carts.push(
+    ['honduras', 'colombia', 'uganda'].map((other, i): CartItem => ({
+      id: `edge-half-${i}`,
+      type: 'custom',
+      qty: 1,
+      blend: { size: 250, lines: [{ originId: 'brazil', percent: 7 }, { originId: other, percent: 93 }] },
+    })),
+  );
 
   return carts.flatMap((items, i) => {
     const r = buildOrder(
       {
         items,
-        customer: { fullName: `Client ${i}`, phone: pick(phones), email: i % 3 ? '' : `client${i}@example.ma`, cityId: pick(cities).id, address: `${i} rue de Test, Oujda`, company: '', notes: '' },
+        customer: { fullName: `Client ${i}`, phone: pick(phones), email: i % 3 ? '' : `client${i}@example.ma`, cityId: pick(cities).id, address: ` ${i} rue de Test, Oujda\n`, company: '', notes: '' },
         paymentMethod: pick(methods),
         locale: pick(['ar', 'fr', 'en'] as const),
       },
@@ -126,7 +136,7 @@ function parityFile() {
     '    -- what is saved is what src/core built (lines in the same order; deductions in any order)',
     '    if exists (select 1 from public.orders x where x.id = r.id and (',
     "         x.lines <> o -> 'lines'",
-    "         or (x.customer_name, x.phone, x.email) is distinct from (o #>> '{customer,fullName}', o #>> '{customer,phone}', o #>> '{customer,email}')",
+    "         or (x.customer_name, x.phone, x.email, x.address) is distinct from (o #>> '{customer,fullName}', o #>> '{customer,phone}', o #>> '{customer,email}', o #>> '{customer,address}')",
     "         or not (x.stock_deductions @> (o -> 'stockDeductions') and (o -> 'stockDeductions') @> x.stock_deductions))) then",
     "      raise exception 'TEST FAILED: order % saved differently', r.number;",
     '    end if;',

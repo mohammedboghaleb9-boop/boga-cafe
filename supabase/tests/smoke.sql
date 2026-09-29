@@ -585,6 +585,7 @@ begin
     ('qty',              jsonb_set(o, '{lines,0,qty}', '1.5')),
     ('price',            jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '1'), '{lines,0,lineTotal}', '2') || '{"subtotal": 2, "total": 22}'),
     ('price',            jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '61'), '{lines,0,lineTotal}', '122') || '{"subtotal": 122, "total": 142}'),
+    ('price',            jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '60.5'), '{lines,0,lineTotal}', '121') || '{"subtotal": 121, "total": 141}'),
     ('line_total',       jsonb_set(o, '{lines,0,lineTotal}', '1')),
     ('composition',      jsonb_set(pg_temp.test_order('signature', 1000, 1, 'card'), '{lines,0,composition}', '[{"originId": "brazil", "percent": 90}, {"originId": "vietnam", "percent": 20}]')),
     ('composition',      jsonb_set(pg_temp.test_order('signature', 1000, 1, 'card'), '{lines,0,composition}', '[{"originId": "brazil", "percent": 100, "grams": 1000}]')),
@@ -608,6 +609,8 @@ begin
     ('email',            jsonb_set(o, '{customer,email}', to_jsonb(repeat('x', 113) || '@boga.ma'))),  -- 121 characters, 120 is the limit
     ('email',            jsonb_set(o, '{customer,email}', '"pas-un-email"')),
     ('email',            jsonb_set(o, '{customer,email}', '"a\u00a0b@boga.ma"')),
+    ('text_too_long',    jsonb_set(o, '{customer,company}', to_jsonb(repeat('x', 81)))),
+    ('text_too_long',    jsonb_set(o, '{customer,notes}', to_jsonb(repeat('x', 501)))),
     ('locale',           o || '{"locale": "de"}'),
     ('city',             jsonb_set(o, '{customer,cityId}', '"nador"')),        -- inactive
     ('city',             jsonb_set(o, '{customer,cityId}', '"paris"')),
@@ -638,6 +641,10 @@ begin
          '{customer,fullName}', '"\u00a0Ali\u3000"'), '{customer,address}', '"\u200312 rue"'),
          '{customer,phone}', '"06\u00a012 34.56-78"'), '{lines,0,name}', '{"fr": "Offert"}'),
          '{lines,0,composition,0,grams}', '1'), '{lines,0,promo}', '"-100 %"');
+  -- and at the upper limits: 80, 200 and 120 characters
+  perform public.commit_order(jsonb_set(jsonb_set(jsonb_set(o, '{customer,fullName}', to_jsonb(repeat('x', 80))),
+    '{customer,address}', to_jsonb(repeat('x', 200))), '{customer,email}', to_jsonb(repeat('x', 112) || '@boga.ma')), '', '', '');
+  stock := stock - 0.5;
   perform public.commit_order(o, '', '', '');
   if (select stock_kg from public.origins where id = 'brazil') <> stock - 0.5 then raise exception 'TEST FAILED: real order'; end if;
   if (select (customer_name, address, phone, lines, stock_deductions) from public.orders order by created_at desc, number desc limit 1)
@@ -698,7 +705,9 @@ begin
   for c in select * from (values
     ('price',        jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '50'), '{lines,0,lineTotal}', '50') || '{"subtotal": 50, "total": 70}'),
     ('price',        jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '61'), '{lines,0,lineTotal}', '61') || '{"subtotal": 61, "total": 81}'),
+    ('price',        jsonb_set(jsonb_set(o, '{lines,0,unitPrice}', '60.5'), '{lines,0,lineTotal}', '61') || '{"subtotal": 61, "total": 81}'),
     ('blend',        jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 97}, {"originId": "vietnam", "percent": 3}]')),
+    ('blend',        jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 96}, {"originId": "vietnam", "percent": 4}]')),
     ('blend',        jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 60}, {"originId": "vietnam", "percent": 30}]')),
     ('blend',        jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 50}, {"originId": "brazil", "percent": 50}]')),
     ('blend_origin', jsonb_set(o, '{lines,0,composition}', '[{"originId": "brazil", "percent": 60}, {"originId": "ghost", "percent": 40}]'))
@@ -727,8 +736,8 @@ begin
   exception when others then
     if sqlerrm <> 'invalid_order:blend' then raise; end if;
   end;
-  update public.site_config set settings = jsonb_set(settings, '{customBlend,maxOrigins}', '4');
-  perform public.commit_order(o, '', '', '');   -- the real blend goes through
+  update public.site_config set settings = jsonb_set(settings, '{customBlend,maxOrigins}', '2');
+  perform public.commit_order(o, '', '', '');   -- the real blend goes through, 2 origins of 2 allowed
   -- 95 % + the minimum 5 %: 54.625 + 1.875 + 10 = 66.5 DH, rounded up to 67 DH; stock
   -- 0.2375 kg and 0.0125 kg, rounded up to 0.238 and 0.013 (src/core/money.ts)
   perform public.commit_order(o || jsonb_build_object(

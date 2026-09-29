@@ -1,5 +1,6 @@
 import { summarizeCart, type Catalog } from './cart';
 import { shippingFee } from './shipping';
+import { TEXT_MAX } from './limits';
 import { charCount, isEmail, normalizePhone } from './validation';
 import type {
   CartItem,
@@ -40,18 +41,21 @@ export type CheckoutError =
 
 export function validateCustomer(c: CustomerInfo, rates: ShippingRate[]): CheckoutError[] {
   const errors: CheckoutError[] = [];
-  if (charCount(c.fullName) < 3) errors.push('name');
+  // the upper limits are the form's and the database's (TEXT_MAX)
+  const name = charCount(c.fullName);
+  const address = charCount(c.address);
+  if (name < 3 || name > TEXT_MAX.name) errors.push('name');
   if (!normalizePhone(c.phone)) errors.push('phone');
-  if (c.email.trim() && !isEmail(c.email)) errors.push('email');
+  if ((c.email.trim() && !isEmail(c.email)) || charCount(c.email) > TEXT_MAX.email) errors.push('email');
   if (!rates.some((r) => r.id === c.cityId && r.active)) errors.push('city');
-  if (charCount(c.address) < 6) errors.push('address');
+  if (address < 6 || address > TEXT_MAX.address) errors.push('address');
   return errors;
 }
 
 /**
  * Builds an order from scratch: prices, weight, delivery and stock are recomputed
  * from the catalog — never trusted from the browser. The database checks every figure
- * again before saving (supabase check_order); tests/sql-parity.test.ts shows both agree.
+ * again before saving (supabase check_order); tests/sql-parity.test.ts checks both agree on a sample of carts.
  */
 export function buildOrder(
   input: CheckoutInput,
@@ -88,6 +92,7 @@ export function buildOrder(
         phone: normalizePhone(input.customer.phone)!,
         fullName: input.customer.fullName.trim(),
         email: input.customer.email.trim(),
+        address: input.customer.address.trim(),
       },
       lines,
       weightKg: cart.weightKg,

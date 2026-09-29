@@ -242,6 +242,10 @@ describe('customer', () => {
     expect(validateCustomer({ ...customer, fullName: '\u00a0Ali\u3000', address: '\u200312 rue' }, [rate])).toEqual([]);
     expect(validateCustomer({ ...customer, fullName: '\u00a0Al\u3000', address: '12 ru' }, [rate])).toEqual(['name', 'address']);
     expect(validateCustomer({ ...customer, fullName: '😀😀' }, [rate])).toEqual(['name']); // two characters, not four
+    // the upper limits are the database's: 80, 120 and 200 characters
+    const long = { ...customer, fullName: 'x'.repeat(80), email: `${'x'.repeat(112)}@boga.ma`, address: 'x'.repeat(200) };
+    expect(validateCustomer(long, [rate])).toEqual([]);
+    expect(validateCustomer({ ...long, fullName: 'x'.repeat(81), email: `${'x'.repeat(113)}@boga.ma`, address: 'x'.repeat(201) }, [rate])).toEqual(['name', 'email', 'address']);
   });
 });
 

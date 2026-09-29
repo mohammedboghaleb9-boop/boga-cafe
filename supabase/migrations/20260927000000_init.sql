@@ -383,12 +383,13 @@ declare
   v_loss      numeric := coalesce((s ->> 'roastLossPercent')::numeric, 0);
   v_min_pct   numeric := coalesce((s #>> '{customBlend,minPercent}')::numeric, 5);
   v_max_orig  numeric := coalesce((s #>> '{customBlend,maxOrigins}')::numeric, 4);
-  v_need      jsonb := '{}'::jsonb;   -- originId -> kg, before rounding
+  v_need      jsonb := '{}'::jsonb;   -- originId -> size × percent × bags, whole numbers
   v_result    jsonb := '[]'::jsonb;
   v_lines     jsonb := '[]'::jsonb;
   v_built     jsonb;
   v_comp      jsonb;
   v_given     numeric;
+  v_kg        numeric;
   k           text;
   -- the white space of JavaScript's trim() and \s (src/core/validation.ts), whatever
   -- the database locale: \s alone would follow it
@@ -419,6 +420,10 @@ begin
   end if;
   if char_length(v_address) not between 6 and 200 then
     raise exception 'invalid_order:address';
+  end if;
+  if char_length(coalesce(p_order #>> '{customer,company}', '')) > 80
+     or char_length(coalesce(p_order #>> '{customer,notes}', '')) > 500 then
+    raise exception 'invalid_order:text_too_long';
   end if;
 
   if jsonb_typeof(p_order -> 'lines') is distinct from 'array' or jsonb_array_length(p_order -> 'lines') = 0 then
@@ -512,14 +517,14 @@ begin
     end if;
     v_subtotal := v_subtotal + round(v_expected * v_qty);
     v_weight := v_weight + v_size / 1000 * v_qty;
-    -- stock this line needs (src/core/stock.ts kgNeeded), and the grams of each origin in
+    -- stock this line needs (src/core/stock.ts kgNeeded: kept whole here and divided once
+    -- per origin below, so 16 % roasting loss cannot make 0.0625 kg 0.06249…), and the grams of each origin in
     -- one bag (src/core/recipe.ts composition): percents are whole, so no rounding
     v_comp := '[]'::jsonb;
     for v_part in select value from jsonb_array_elements(v_line -> 'composition') loop
       v_percent := (v_part ->> 'percent')::numeric;
       v_need := jsonb_set(v_need, array[v_part ->> 'originId'],
-        to_jsonb(coalesce((v_need ->> (v_part ->> 'originId'))::numeric, 0)
-                 + (v_size / 1000) * (v_percent / 100) * v_qty / (1 - v_loss / 100)));
+        to_jsonb(coalesce((v_need ->> (v_part ->> 'originId'))::numeric, 0) + v_size * v_percent * v_qty));
       v_comp := v_comp || jsonb_build_object('originId', v_part ->> 'originId', 'percent', trim_scale(v_percent),
                                              'grams', trim_scale(v_size * v_percent / 100));
     end loop;
@@ -569,10 +574,12 @@ begin
   for k in select jsonb_object_keys(v_need) loop
     select (d ->> 'kg')::numeric into v_given
       from jsonb_array_elements(p_order -> 'stockDeductions') d where d ->> 'originId' = k;
-    if v_given is distinct from round((v_need ->> k)::numeric, 3) then
+    -- kg = size × percent × bags / (1000 × (100 − loss %))
+    v_kg := round((v_need ->> k)::numeric / (1000 * (100 - v_loss)), 3);
+    if v_given is distinct from v_kg then
       raise exception 'invalid_order:deductions';
     end if;
-    v_result := v_result || jsonb_build_object('originId', k, 'kg', round((v_need ->> k)::numeric, 3));
+    v_result := v_result || jsonb_build_object('originId', k, 'kg', v_kg);
   end loop;
   return jsonb_build_object(
     'customer', jsonb_build_object('fullName', v_name, 'phone', '+212' || right(v_phone, 9), 'email', v_email,
