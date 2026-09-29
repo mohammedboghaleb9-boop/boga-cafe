@@ -400,14 +400,27 @@ do $$ begin
 end $$;
 select 'ok 17 - the free-shipping threshold stays a number, 0 or more' as result;
 
--- 18. A reported payment can be queued for the team, an unknown event cannot --
-do $$ begin
-  perform public.queue_notification('payment.reported', '[BOGA CAFÉ] Paiement signalé BC-2026-0001', 'Paiement signalé BC-2026-0001', 'Paiement signalé BC-2026-0001');
-  if (select count(*) from public.notification_outbox where event = 'payment.reported') <> 2 then raise exception 'TEST FAILED: payment report not queued'; end if;
+-- 18. "I have paid" reaches the team (once); an unknown event cannot be queued --
+do $$
+declare v_id uuid; v_number text;
+begin
+  select id, number into v_id, v_number from public.commit_order(
+    '{"customer": {"fullName": "Virement", "phone": "+212661000000", "cityId": "oujda", "address": "12 rue Test"}, "lines": [], "weightKg": 0.1,
+      "subtotal": 22, "shippingFee": 20, "total": 42, "paymentMethod": "bank_transfer", "stockDeductions": [{"originId": "brazil", "kg": 0.1}]}',
+    '', '', '');
+  set local role anon;
+  perform public.report_offline_payment(v_id, 'VIR-2026-55');
+  perform public.report_offline_payment(v_id, 'AUTRE'); -- already waiting for checking: nothing new
+  reset role;
+  if (select count(*) from public.notification_outbox where event = 'payment.reported') <> 2 then raise exception 'TEST FAILED: report not queued once per channel'; end if;
+  if not exists (select 1 from public.notification_outbox where event = 'payment.reported'
+                   and body like 'Paiement signalé ' || v_number || '%' and body like '%VIR-2026-55%' and body like '%12 rue Test%') then
+    raise exception 'TEST FAILED: report message';
+  end if;
   begin
     perform public.queue_notification('payment.paid', 'x', 'x', 'x');
     raise exception 'TEST FAILED: unknown event queued';
   exception when check_violation then null;
   end;
 end $$;
-select 'ok 18 - payment reports can reach the team; unknown events cannot' as result;
+select 'ok 18 - "I have paid" reaches the team once; unknown events cannot be queued' as result;

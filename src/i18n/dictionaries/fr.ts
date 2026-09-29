@@ -381,6 +381,8 @@ export const fr: Dict = {
     title: 'Dernière étape : envoyez-nous votre demande',
     text: 'Elle arrive sur notre WhatsApp depuis votre numéro, pour qu’on vous réponde directement. Tout est déjà rédigé : il suffit d’appuyer sur envoyer.',
     slow: 'L’envoi automatique prend plus de temps que prévu. Pour être sûr, envoyez-la aussi sur WhatsApp : tout est déjà rédigé.',
+    titlePayment: 'Dernière étape : envoyez-nous la référence de votre paiement',
+    textPayment: 'Elle arrive sur notre WhatsApp depuis votre numéro, avec votre commande. Nous vérifions le paiement puis préparons votre café. Tout est déjà rédigé : il suffit d’appuyer sur envoyer.',
     titleAuto: 'Votre demande nous est parvenue',
     textAuto: 'L’équipe a été prévenue. Pour aller plus vite, vous pouvez aussi l’envoyer sur WhatsApp.',
     whatsapp: 'Envoyer sur WhatsApp',
@@ -592,7 +594,7 @@ export const fr: Dict = {
     },
     notif: {
       intro:
-        'Pour chaque nouvelle commande, demande d’échantillon ou demande B2B, l’administration reçoit un message WhatsApp et un email. Dans le prototype, les messages sont simulés et listés ici.',
+        'Pour chaque nouvelle commande, paiement signalé, demande d’échantillon ou demande B2B, l’administration reçoit un message WhatsApp et un email. Dans le prototype, les messages sont simulés et listés ici.',
       adminWhatsapp: 'Numéro WhatsApp de l’admin',
       adminEmail: 'Email de l’admin (Gmail)',
       whatsappOn: 'Notifications WhatsApp',

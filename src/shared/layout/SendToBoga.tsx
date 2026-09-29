@@ -51,8 +51,9 @@ export function SendToBoga({
 
   const whatsappText = `${GREETING}\n\n${draft.whatsapp}`;
   const emailText = `${GREETING}\n\n${draft.email}`;
-  const title = status === 'sent' ? t.handoff.titleAuto : status === 'pending' ? t.handoff.pending : t.handoff.title;
-  const text = status === 'sent' ? t.handoff.textAuto : status === 'slow' ? t.handoff.slow : t.handoff.text;
+  const payment = event === 'payment.reported';
+  const title = status === 'sent' ? t.handoff.titleAuto : status === 'pending' ? t.handoff.pending : payment ? t.handoff.titlePayment : t.handoff.title;
+  const text = status === 'sent' ? t.handoff.textAuto : status === 'slow' ? t.handoff.slow : payment ? t.handoff.textPayment : t.handoff.text;
 
   return (
     <section className={`handoff handoff-${status}`} aria-label={t.handoff.title}>
