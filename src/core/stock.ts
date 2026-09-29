@@ -96,8 +96,10 @@ export function applyStock(origins: Origin[], deductions: StockDeduction[], sign
  */
 export function adjustOriginStock(origins: Origin[], originId: string, deltaKg: number): { origins: Origin[]; appliedKg: number } {
   const before = origins.find((o) => o.id === originId);
-  if (!before) return { origins, appliedKg: 0 };
-  const stockKg = Math.max(0, roundKg(before.stockKg + deltaKg));
+  // NaN or Infinity ("Infinity" or "1e306" typed in the form) would corrupt the stock
+  const next = before ? roundKg(before.stockKg + deltaKg) : Number.NaN;
+  if (!before || !Number.isFinite(next)) return { origins, appliedKg: 0 };
+  const stockKg = Math.max(0, next);
   return {
     origins: origins.map((o) => (o.id === originId ? { ...o, stockKg } : o)),
     appliedKg: roundKg(stockKg - before.stockKg),

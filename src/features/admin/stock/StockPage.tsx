@@ -181,7 +181,7 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
   const value = Number(delta.replace(',', '.'));
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (!value) return;
+    if (!Number.isFinite(value) || value === 0) return;
     api.adjustStock(origin.id, value, reason, note);
     onDone();
   }
@@ -203,7 +203,7 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
         <span className="label">{t.admin.stock.note}</span>
         <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
-      <button type="submit" className="btn btn-primary btn-sm" disabled={!value}>
+      <button type="submit" className="btn btn-primary btn-sm" disabled={!Number.isFinite(value) || value === 0}>
         {t.admin.stock.apply}
       </button>
     </form>
