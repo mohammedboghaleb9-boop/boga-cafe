@@ -36,6 +36,13 @@ export function PaymentPanel({ order }: { order: Order }) {
   const step = paymentAdapter(order.paymentMethod).start(order);
 
   if (step.type === 'demo-gateway') return <DemoGateway order={order} />;
+  if (step.type === 'unavailable') {
+    return (
+      <p className="notice row">
+        <Icon name="card" size={18} /> {t.payment.cardUnavailable}
+      </p>
+    );
+  }
   if (step.type === 'form-post') {
     return (
       <form method="post" action={step.action}>

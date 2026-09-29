@@ -2,8 +2,8 @@
  * Real delivery of the administration messages (WhatsApp + Gmail).
  *
  * When the site is deployed with the notification function (api/notify.ts),
- * VITE_NOTIFY_URL points to it and every new order, sample request and B2B
- * quote is sent automatically, whatever the customer does next.
+ * VITE_NOTIFY_URL points to it and every new order, payment report, sample
+ * request and B2B quote is sent automatically, whatever the customer does next.
  * Without it (the clickable prototype), nothing leaves the browser and the
  * customer's "send on WhatsApp / Gmail" step is the delivery.
  *
@@ -12,13 +12,15 @@
  * `deliveryStatus` / `onDeliveryChange`:
  *   'pending' → 'sent' | 'failed', with 'slow' in between when the server takes
  *   longer than PATIENCE_MS (Gmail can need up to ~17 s: api/notify.ts timeouts).
- * The last known status of each request is kept for the tab (sessionStorage),
+ * The last known status of each message is kept for the tab (sessionStorage),
  * so a reload of the confirmation page does not forget a confirmed delivery.
+ * A message is known by its kind and reference: an order and its payment
+ * report share the reference BC-…, each has its own status.
  */
 import type { NotificationEvent } from '@/core/types';
 import type { MessageDraft } from './templates';
 
-export type DeliverableEvent = Extract<NotificationEvent, 'order.created' | 'sample.created' | 'quote.created'>;
+export type DeliverableEvent = Extract<NotificationEvent, 'order.created' | 'payment.reported' | 'sample.created' | 'quote.created'>;
 export type DeliveryStatus = 'off' | 'pending' | 'slow' | 'sent' | 'failed';
 
 export const notifyUrl: string = import.meta.env.VITE_NOTIFY_URL ?? '';
@@ -27,23 +29,24 @@ export const notifyUrl: string = import.meta.env.VITE_NOTIFY_URL ?? '';
 const PATIENCE_MS = 9_000;
 
 const STORE_KEY = 'boga.delivery';
+const keyOf = (event: DeliverableEvent, ref: string) => `${event} ${ref}`;
 const statuses = new Map<string, DeliveryStatus>(readStored());
 const listeners = new Set<() => void>();
 
 function readStored(): [string, DeliveryStatus][] {
   try {
     const raw = JSON.parse(sessionStorage.getItem(STORE_KEY) ?? '{}') as Record<string, unknown>;
-    return Object.entries(raw).flatMap(([ref, s]): [string, DeliveryStatus][] =>
+    return Object.entries(raw).flatMap(([key, s]): [string, DeliveryStatus][] =>
       // an answer that never came back before the reload is unknown: show the manual step
-      s === 'sent' || s === 'failed' ? [[ref, s]] : s === 'pending' || s === 'slow' ? [[ref, 'slow']] : [],
+      s === 'sent' || s === 'failed' ? [[key, s]] : s === 'pending' || s === 'slow' ? [[key, 'slow']] : [],
     );
   } catch {
     return [];
   }
 }
 
-function setStatus(ref: string, status: DeliveryStatus) {
-  statuses.set(ref, status);
+function setStatus(key: string, status: DeliveryStatus) {
+  statuses.set(key, status);
   try {
     sessionStorage.setItem(STORE_KEY, JSON.stringify(Object.fromEntries([...statuses].slice(-20))));
   } catch {
@@ -52,7 +55,7 @@ function setStatus(ref: string, status: DeliveryStatus) {
   listeners.forEach((l) => l());
 }
 
-export const deliveryStatus = (ref: string): DeliveryStatus => statuses.get(ref) ?? 'off';
+export const deliveryStatus = (event: DeliverableEvent, ref: string): DeliveryStatus => statuses.get(keyOf(event, ref)) ?? 'off';
 
 // While the page is being left (reload, card payment page), the browser cuts the
 // requests of this page: that is not an answer from the server, so it is not
@@ -87,15 +90,16 @@ async function post(event: DeliverableEvent, ref: string, draft: MessageDraft): 
 /** Starts the delivery and returns at once. */
 export function deliver(event: DeliverableEvent, ref: string, draft: MessageDraft): void {
   if (!notifyUrl) return;
-  setStatus(ref, 'pending');
+  const key = keyOf(event, ref);
+  setStatus(key, 'pending');
   let settled = false;
   const timer = setTimeout(() => {
-    if (!settled) setStatus(ref, 'slow'); // show the manual step meanwhile; the answer can still come
+    if (!settled) setStatus(key, 'slow'); // show the manual step meanwhile; the answer can still come
   }, PATIENCE_MS);
   void post(event, ref, draft).then((ok) => {
     settled = true;
     clearTimeout(timer);
     if (!ok && leaving) return;
-    setStatus(ref, ok ? 'sent' : 'failed');
+    setStatus(key, ok ? 'sent' : 'failed');
   });
 }

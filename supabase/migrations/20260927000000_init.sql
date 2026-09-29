@@ -244,7 +244,7 @@ create table public.notification_outbox (
   id         bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
   channel    text not null check (channel in ('whatsapp', 'email')),
-  event      text not null check (event in ('order.created', 'sample.created', 'quote.created', 'stock.low')),
+  event      text not null check (event in ('order.created', 'payment.reported', 'sample.created', 'quote.created', 'stock.low')),
   recipient  text not null,
   subject    text not null default '',
   body       text not null,
@@ -618,13 +618,32 @@ $$;
 create or replace function public.report_offline_payment(p_order_id uuid, p_ref text)
 returns void
 language plpgsql security definer set search_path = public as $$
+declare
+  v_order  public.orders;
+  v_method text;
+  v_body   text;
 begin
   update public.orders
      set payment_status = 'awaiting_verification', payment_ref = left(p_ref, 80)
-   where id = p_order_id and payment_status = 'pending' and payment_method <> 'card' and status <> 'cancelled';
-  if found then
-    insert into public.order_events (order_id, label) values (p_order_id, 'payment.reported');
+   where id = p_order_id and payment_status = 'pending' and payment_method <> 'card' and status <> 'cancelled'
+  returning * into v_order;
+  if not found then
+    return;
   end if;
+  insert into public.order_events (order_id, label) values (p_order_id, 'payment.reported');
+  -- the team is told, like for a new order (same first line as
+  -- src/services/notifications/templates.ts paymentReportMessage)
+  select coalesce(label ->> 'fr', id) into v_method from public.payment_methods where id = v_order.payment_method;
+  v_body := concat_ws(E'\n',
+    'Paiement signalé ' || v_order.number,
+    'Moyen : ' || coalesce(v_method, v_order.payment_method),
+    'Montant attendu : ' || v_order.total || ' DH',
+    'Référence donnée par le client : ' || v_order.payment_ref,
+    'À vérifier sur le compte avant de préparer la commande.',
+    'Client : ' || v_order.customer_name || ' (' || v_order.phone || ')',
+    'Adresse : ' || v_order.address);
+  perform public.queue_notification('payment.reported',
+    '[BOGA CAFÉ] Paiement signalé ' || v_order.number || ' - ' || v_order.total || ' DH', v_body, v_body);
 end $$;
 
 -- ───────────── Row Level Security ─────────────

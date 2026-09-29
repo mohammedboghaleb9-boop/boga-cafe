@@ -2,7 +2,7 @@
  * The demo data layer applies the core rules (review: undoing this wiring
  * left every core test green). Each test starts from a fresh demo store.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 async function fresh() {
   vi.resetModules();
@@ -69,5 +69,52 @@ describe('demo data layer', () => {
     expect(api.setPaymentStatus(o.id, 'paid', 'manager')).toBe(false);
     expect(api.setPaymentStatus(o.id, 'paid', 'staff')).toBe(false);
     expect(order((x) => x.id === o.id).paymentStatus).toBe('pending');
+  });
+});
+
+describe('after the merge review', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  const customer = { fullName: 'Test Client', phone: '0612345678', email: '', cityId: 'oujda', address: 'Bd Mohammed V, Oujda', company: '', notes: '' };
+  const firstProduct = () => t.db.get().products.find((p) => p.active && p.kind !== 'b2b')!;
+
+  it('refuses a card order while no card gateway is connected, and takes it in the prototype', async () => {
+    const off = await fresh();
+    const item = { id: 'i1', type: 'product' as const, productId: firstProduct().id, size: 250 as const, qty: 1 };
+    const refused = await off.api.placeOrder({ items: [item], customer, paymentMethod: 'card', locale: 'fr' });
+    expect(refused).toEqual({ ok: false, errors: ['payment_method'] });
+    expect((await off.api.placeOrder({ items: [item], customer, paymentMethod: 'cashplus', locale: 'fr' })).ok).toBe(true);
+
+    vi.stubEnv('VITE_CARD_GATEWAY', 'demo');
+    const demo = await fresh();
+    expect((await demo.api.placeOrder({ items: [item], customer, paymentMethod: 'card', locale: 'fr' })).ok).toBe(true);
+  });
+
+  it('tells the team when a customer reports a Cash Plus / transfer payment', async () => {
+    const posts: { event: string; ref: string; whatsapp: string }[] = [];
+    vi.stubEnv('VITE_NOTIFY_URL', '/api/notify');
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: RequestInit) => {
+      posts.push(JSON.parse(String(init.body)));
+      return new Response(JSON.stringify({ whatsapp: 'sent', email: 'sent' }), { status: 200 });
+    }));
+    const { api, db } = await fresh();
+    const o = db.get().orders.find((x) => x.status === 'new' && x.paymentMethod !== 'card' && x.paymentStatus === 'pending')!;
+    const logsBefore = db.get().notifications.length;
+    await api.reportOfflinePayment(o.id, 'CP-778812');
+
+    const logs = db.get().notifications.slice(0, db.get().notifications.length - logsBefore);
+    expect(logs.map((l) => `${l.event} ${l.channel}`).sort()).toEqual(['payment.reported email', 'payment.reported whatsapp']);
+    expect(logs[0].body).toContain('CP-778812');
+    expect(posts).toHaveLength(1);
+    expect(posts[0]).toMatchObject({ event: 'payment.reported', ref: o.number });
+    expect(posts[0].whatsapp).toContain(`Paiement signalé ${o.number}`);
+
+    // a second report does nothing: the payment is already waiting for checking
+    await api.reportOfflinePayment(o.id, 'AUTRE');
+    expect(posts).toHaveLength(1);
+    expect(db.get().orders.find((x) => x.id === o.id)!.paymentRef).toBe('CP-778812');
   });
 });

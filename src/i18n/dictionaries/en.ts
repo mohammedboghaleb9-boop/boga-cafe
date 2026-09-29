@@ -123,6 +123,7 @@ export const en = {
     factSizes: '250 g · 500 g · 1 kg',
     factDelivery: 'Delivered across Morocco',
     factPayment: 'Card, Cash Plus or transfer',
+    factPaymentSoon: 'Cash Plus or bank transfer · card coming soon',
     featuredTitle: 'Signature blends',
     featuredText: 'Our recipes, roasted to our specification and packed in BOGA CAFÉ bags.',
     seeAll: 'See all coffees',
@@ -273,6 +274,8 @@ export const en = {
   },
 
   checkout: {
+    cardSoon: 'coming soon',
+    cardSoonText: 'Online card payment arrives soon. Meanwhile, pay by Cash Plus or bank transfer.',
     title: 'Checkout',
     noAccount: 'No account needed.',
     contactTitle: 'Contact & delivery',
@@ -304,6 +307,7 @@ export const en = {
   },
 
   payment: {
+    cardUnavailable: 'Card payment is not available yet. Contact us on WhatsApp: you can pay by Cash Plus or bank transfer.',
     gatewayTitle: 'Secure card payment',
     gatewayNote:
       'Simulation of the CMI page. On the real site, you are sent to the bank page (3-D Secure).',
@@ -379,6 +383,8 @@ export const en = {
     title: 'Last step: send us your request',
     text: 'It reaches our WhatsApp from your number, so we answer you directly. Everything is already written: just press send.',
     slow: 'Automatic sending is taking longer than usual. To be sure, send it on WhatsApp as well: everything is already written.',
+    titlePayment: 'Last step: send us your payment reference',
+    textPayment: 'It reaches our WhatsApp from your number, with your order. We check the payment, then prepare your coffee. Everything is already written: just press send.',
     titleAuto: 'Your request has reached us',
     textAuto: 'The team has been notified. To speed things up, you can also send it on WhatsApp.',
     whatsapp: 'Send on WhatsApp',
@@ -574,6 +580,7 @@ export const en = {
       simResult: 'Delivery fee: {fee}',
     },
     payments: {
+      cardOff: 'Not offered on the site until the CMI gateway is connected (phase D). Customers see it as “coming soon”; Cash Plus and bank transfer stay available.',
       intro:
         'All payments go to the official BOGA CAFÉ bank account. Card payments are confirmed by the gateway, Cash Plus and transfers are verified here.',
       methods: 'Payment methods',
@@ -589,7 +596,7 @@ export const en = {
     },
     notif: {
       intro:
-        'For every new order, sample request or B2B request, the administration receives a WhatsApp message and an email. In the prototype, messages are simulated and listed here.',
+        'For every new order, reported payment, sample request or B2B request, the administration receives a WhatsApp message and an email. In the prototype, messages are simulated and listed here.',
       adminWhatsapp: 'Admin WhatsApp number',
       adminEmail: 'Admin email (Gmail)',
       whatsappOn: 'WhatsApp notifications',
@@ -598,6 +605,7 @@ export const en = {
       simulated: 'simulated',
       events: {
         'order.created': 'New order',
+        'payment.reported': 'Payment reported',
         'sample.created': 'Sample request',
         'quote.created': 'B2B request',
         'stock.low': 'Low stock',

@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Link, useParams } from 'react-router';
 import { formatKg } from '@/core/format';
 import { orderPhase } from '@/core/orderFlow';
@@ -6,7 +7,7 @@ import { templateContext } from '@/data/context';
 import { useDb } from '@/data/hooks';
 import { LineDetails } from '@/shared/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
-import { orderMessage } from '@/services/notifications';
+import { orderHandoff } from '@/services/notifications';
 import { SendToBoga } from '@/shared/layout/SendToBoga';
 import { CopyButton } from '@/shared/ui/bits';
 import { PaymentPanel } from './PaymentPanel';
@@ -20,6 +21,8 @@ export function OrderPage() {
   const db = useDb();
   const { orders, shippingRates } = db;
   const order = orders.find((o) => o.id === id);
+  // the payment was reported during this visit: bring the new message into view
+  const statusOnArrival = useRef(order?.paymentStatus);
 
   if (!order) {
     return (
@@ -33,6 +36,8 @@ export function OrderPage() {
   }
 
   const city = shippingRates.find((r) => r.id === order.customer.cityId);
+  const handoff = orderHandoff(order, templateContext(db));
+  const justReported = handoff?.event === 'payment.reported' && statusOnArrival.current !== 'awaiting_verification';
   const reached = FLOW.indexOf(order.status);
   const firstName = order.customer.fullName.split(' ')[0];
 
@@ -48,8 +53,8 @@ export function OrderPage() {
 
       <div className="order-grid">
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>
-          {order.status !== 'cancelled' && order.status !== 'delivered' && (
-            <SendToBoga draft={orderMessage(order, templateContext(db))} refNumber={order.number} showSaved={false} />
+          {handoff && (
+            <SendToBoga key={handoff.event} event={handoff.event} draft={handoff.draft} refNumber={order.number} showSaved={false} reveal={justReported} />
           )}
           <PaymentPanel order={order} />
 

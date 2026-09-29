@@ -121,6 +121,7 @@ export const fr: Dict = {
     factSizes: '250 g · 500 g · 1 kg',
     factDelivery: 'Livraison dans tout le Maroc',
     factPayment: 'Carte, Cash Plus ou virement',
+    factPaymentSoon: 'Cash Plus ou virement · carte bientôt',
     featuredTitle: 'Blends signature',
     featuredText: 'Nos recettes, torréfiées selon notre cahier des charges et conditionnées dans les sachets BOGA CAFÉ.',
     seeAll: 'Voir tous les cafés',
@@ -271,6 +272,8 @@ export const fr: Dict = {
   },
 
   checkout: {
+    cardSoon: 'bientôt',
+    cardSoonText: 'Le paiement par carte arrive bientôt. En attendant, payez par Cash Plus ou virement.',
     title: 'Commande',
     noAccount: 'Aucun compte nécessaire.',
     contactTitle: 'Coordonnées & livraison',
@@ -302,6 +305,7 @@ export const fr: Dict = {
   },
 
   payment: {
+    cardUnavailable: 'Le paiement par carte n’est pas encore disponible. Écrivez-nous sur WhatsApp : vous pouvez payer par Cash Plus ou virement.',
     gatewayTitle: 'Paiement sécurisé par carte',
     gatewayNote:
       'Simulation de la page CMI. Sur le vrai site, vous êtes redirigé vers la page de la banque (3-D Secure).',
@@ -377,6 +381,8 @@ export const fr: Dict = {
     title: 'Dernière étape : envoyez-nous votre demande',
     text: 'Elle arrive sur notre WhatsApp depuis votre numéro, pour qu’on vous réponde directement. Tout est déjà rédigé : il suffit d’appuyer sur envoyer.',
     slow: 'L’envoi automatique prend plus de temps que prévu. Pour être sûr, envoyez-la aussi sur WhatsApp : tout est déjà rédigé.',
+    titlePayment: 'Dernière étape : envoyez-nous la référence de votre paiement',
+    textPayment: 'Elle arrive sur notre WhatsApp depuis votre numéro, avec votre commande. Nous vérifions le paiement puis préparons votre café. Tout est déjà rédigé : il suffit d’appuyer sur envoyer.',
     titleAuto: 'Votre demande nous est parvenue',
     textAuto: 'L’équipe a été prévenue. Pour aller plus vite, vous pouvez aussi l’envoyer sur WhatsApp.',
     whatsapp: 'Envoyer sur WhatsApp',
@@ -572,6 +578,7 @@ export const fr: Dict = {
       simResult: 'Frais de livraison : {fee}',
     },
     payments: {
+      cardOff: 'Non proposée sur le site tant que la passerelle CMI n’est pas branchée (phase D). Les clients la voient « bientôt » ; Cash Plus et virement restent actifs.',
       intro:
         'Tous les paiements arrivent sur le compte bancaire officiel de BOGA CAFÉ. La carte est confirmée par la passerelle, Cash Plus et les virements sont vérifiés ici.',
       methods: 'Moyens de paiement',
@@ -587,7 +594,7 @@ export const fr: Dict = {
     },
     notif: {
       intro:
-        'Pour chaque nouvelle commande, demande d’échantillon ou demande B2B, l’administration reçoit un message WhatsApp et un email. Dans le prototype, les messages sont simulés et listés ici.',
+        'Pour chaque nouvelle commande, paiement signalé, demande d’échantillon ou demande B2B, l’administration reçoit un message WhatsApp et un email. Dans le prototype, les messages sont simulés et listés ici.',
       adminWhatsapp: 'Numéro WhatsApp de l’admin',
       adminEmail: 'Email de l’admin (Gmail)',
       whatsappOn: 'Notifications WhatsApp',
@@ -596,6 +603,7 @@ export const fr: Dict = {
       simulated: 'simulé',
       events: {
         'order.created': 'Nouvelle commande',
+        'payment.reported': 'Paiement signalé',
         'sample.created': 'Demande d’échantillon',
         'quote.created': 'Demande B2B',
         'stock.low': 'Stock bas',

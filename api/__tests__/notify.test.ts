@@ -135,7 +135,7 @@ describe('POST /api/notify', () => {
     expect(deps.sendMail).toHaveBeenCalledTimes(1);
   });
 
-  it('accepts only the three messages of the site', async () => {
+  it('accepts only the messages of the site', async () => {
     const { deps, guard } = setup();
     for (const bad of [
       { ...payload, event: 'spam' },
@@ -238,6 +238,32 @@ describe('POST /api/notify', () => {
     expect(ok.headers.get('access-control-allow-origin')).toBe(SITE);
     const no = handlePreflight(new Request(`${SITE}/api/notify`, { method: 'OPTIONS', headers: { origin: 'https://evil.example' } }), env);
     expect(no.status).toBe(403);
+  });
+
+  it('accepts a payment report only in its own shape', () => {
+    const ref = 'BC-2026-7K4M2Q';
+    const report = {
+      event: 'payment.reported',
+      ref,
+      subject: `[BOGA CAFÉ] Paiement signalé ${ref} - 290 DH`,
+      whatsapp: `Paiement signalé ${ref}\nRéférence donnée par le client : CP-1`,
+      email: `Paiement signalé ${ref}\nRéférence donnée par le client : CP-1`,
+    };
+    expect(parsePayload(report)).not.toHaveProperty('error');
+    for (const bad of [
+      // a payment belongs to an order: only the prefix is wrong here
+      {
+        ...report,
+        ref: 'SR-2026-7K4M2Q',
+        subject: '[BOGA CAFÉ] Paiement signalé SR-2026-7K4M2Q - 290 DH',
+        whatsapp: 'Paiement signalé SR-2026-7K4M2Q',
+        email: 'Paiement signalé SR-2026-7K4M2Q',
+      },
+      { ...report, whatsapp: `Nouvelle commande ${ref}` },
+      { ...report, subject: `[BOGA CAFÉ] Commande ${ref} - 290 DH` },
+    ]) {
+      expect(parsePayload(bad)).toHaveProperty('error');
+    }
   });
 
   it('parses a valid payload and accepts database-style numbers', () => {

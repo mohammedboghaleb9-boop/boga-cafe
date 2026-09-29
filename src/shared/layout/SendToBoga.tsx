@@ -2,7 +2,7 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { useDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink, type MessageDraft } from '@/services/notifications';
-import { deliveryStatus, onDeliveryChange } from '@/services/notifications/deliver';
+import { deliveryStatus, onDeliveryChange, type DeliverableEvent } from '@/services/notifications/deliver';
 import { gmailComposeLink, mailtoLink } from '../contact';
 import { BrandIcon } from '../ui/BrandIcon';
 import './channels.css';
@@ -23,11 +23,14 @@ const GREETING = 'Bonjour BOGA CAFÉ,';
  * when it replaces a form, so a phone user does not stay on an empty screen).
  */
 export function SendToBoga({
+  event,
   draft,
   refNumber,
   showSaved = true,
   reveal = false,
 }: {
+  /** Which message this is: its automatic delivery status is followed by kind and reference. */
+  event: DeliverableEvent;
   draft: MessageDraft;
   refNumber: string;
   showSaved?: boolean;
@@ -36,7 +39,7 @@ export function SendToBoga({
   const { t } = useI18n();
   const { settings } = useDb();
   const c = settings.contact;
-  const status = useSyncExternalStore(onDeliveryChange, () => deliveryStatus(refNumber));
+  const status = useSyncExternalStore(onDeliveryChange, () => deliveryStatus(event, refNumber));
   const head = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
@@ -48,8 +51,9 @@ export function SendToBoga({
 
   const whatsappText = `${GREETING}\n\n${draft.whatsapp}`;
   const emailText = `${GREETING}\n\n${draft.email}`;
-  const title = status === 'sent' ? t.handoff.titleAuto : status === 'pending' ? t.handoff.pending : t.handoff.title;
-  const text = status === 'sent' ? t.handoff.textAuto : status === 'slow' ? t.handoff.slow : t.handoff.text;
+  const payment = event === 'payment.reported';
+  const title = status === 'sent' ? t.handoff.titleAuto : status === 'pending' ? t.handoff.pending : payment ? t.handoff.titlePayment : t.handoff.title;
+  const text = status === 'sent' ? t.handoff.textAuto : status === 'slow' ? t.handoff.slow : payment ? t.handoff.textPayment : t.handoff.text;
 
   return (
     <section className={`handoff handoff-${status}`} aria-label={t.handoff.title}>

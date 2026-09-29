@@ -4,7 +4,7 @@
  * Admin messages are written in French; change the wording here only.
  */
 import { formatKg, formatNumber, formatSize } from '@/core/format';
-import type { BusinessType, Order, OrderLine, Origin, QuoteRequest, SampleRequest, ShippingRate, Product } from '@/core/types';
+import type { BusinessType, Order, OrderLine, Origin, PaymentStatus, QuoteRequest, SampleRequest, ShippingRate, Product } from '@/core/types';
 
 export interface TemplateContext {
   origins: Origin[];
@@ -58,28 +58,41 @@ export function describeLine(line: OrderLine, ctx: TemplateContext): string {
   return `${head} (${recipe}) = ${dh(line.lineTotal)}`;
 }
 
-export function orderMessage(order: Order, ctx: TemplateContext): MessageDraft {
+/** Where the money stands, as the team reads it (never a proof: see api/_lib/notify.ts). */
+const PAYMENT_STATE: Record<PaymentStatus, string> = {
+  pending: 'en attente',
+  failed: 'échoué, en attente',
+  awaiting_verification: 'signalé par le client, à vérifier',
+  paid: 'payé',
+  refunded: 'remboursé',
+};
+
+/** Who orders and where it goes: in both messages, WhatsApp may be the only one the team reads. */
+function customerLines(order: Order, ctx: TemplateContext): string[] {
   const c = order.customer;
-  const lines = order.lines.map((l) => `- ${describeLine(l, ctx)}`);
-  const head = [
-    `Nouvelle commande ${order.number}`,
+  return [
     `Client : ${c.fullName} (${c.phone})`,
     `Ville : ${cityName(ctx, c.cityId)}`,
-  ];
+    `Adresse : ${c.address}`,
+    c.email ? `Email : ${c.email}` : '',
+    c.notes ? `Note : ${c.notes}` : '',
+  ].filter(Boolean);
+}
+
+export function orderMessage(order: Order, ctx: TemplateContext): MessageDraft {
+  const lines = order.lines.map((l) => `- ${describeLine(l, ctx)}`);
+  const head = [`Nouvelle commande ${order.number}`, ...customerLines(order, ctx)];
   const foot = [
     `Poids : ${formatKg(order.weightKg)}`,
     `Livraison : ${dh(order.shippingFee)}`,
     `Total : ${dh(order.total)}`,
-    `Paiement : ${ctx.paymentLabel(order.paymentMethod)} (en attente)`,
+    `Paiement : ${ctx.paymentLabel(order.paymentMethod)} (${PAYMENT_STATE[order.paymentStatus]})`,
   ];
   return plain({
     subject: `[BOGA CAFÉ] Commande ${order.number} - ${dh(order.total)}`,
     whatsapp: [...head, ...lines, ...foot].join('\n'),
     email: [
       ...head,
-      `Adresse : ${c.address}`,
-      c.email ? `Email : ${c.email}` : '',
-      c.notes ? `Note : ${c.notes}` : '',
       '',
       'Articles :',
       ...lines,
@@ -97,6 +110,44 @@ export function orderMessage(order: Order, ctx: TemplateContext): MessageDraft {
       .filter((x) => x !== '')
       .join('\n'),
   });
+}
+
+/**
+ * The customer says they paid by Cash Plus or transfer. The message carries the
+ * whole order, so it is enough on its own even if the order message never left.
+ */
+export function paymentReportMessage(order: Order, ctx: TemplateContext): MessageDraft {
+  const lines = order.lines.map((l) => `- ${describeLine(l, ctx)}`);
+  const body = [
+    `Paiement signalé ${order.number}`,
+    `Moyen : ${ctx.paymentLabel(order.paymentMethod)}`,
+    `Montant attendu : ${dh(order.total)}`,
+    `Référence donnée par le client : ${order.paymentRef ?? '-'}`,
+    'À vérifier sur le compte avant de préparer la commande.',
+    '',
+    ...customerLines(order, ctx),
+    ...lines,
+  ];
+  return plain({
+    subject: `[BOGA CAFÉ] Paiement signalé ${order.number} - ${dh(order.total)}`,
+    whatsapp: body.join('\n'),
+    email: body.join('\n'),
+  });
+}
+
+/**
+ * What the order page asks the customer to send to BOGA: the order itself,
+ * or, once they reported a Cash Plus / transfer payment, that report (it
+ * carries the whole order). Nothing once the order is closed.
+ */
+export function orderHandoff(
+  order: Order,
+  ctx: TemplateContext,
+): { event: 'order.created' | 'payment.reported'; draft: MessageDraft } | null {
+  if (order.status === 'cancelled' || order.status === 'delivered') return null;
+  return order.paymentStatus === 'awaiting_verification'
+    ? { event: 'payment.reported', draft: paymentReportMessage(order, ctx) }
+    : { event: 'order.created', draft: orderMessage(order, ctx) };
 }
 
 export function sampleMessage(s: SampleRequest, ctx: TemplateContext): MessageDraft {
