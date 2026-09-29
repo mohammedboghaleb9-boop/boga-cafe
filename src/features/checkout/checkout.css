@@ -195,3 +195,9 @@
   background: var(--info-soft);
   color: var(--info);
 }
+
+/* a 24-digit RIB has no space to break at: on a narrow phone it breaks between digits (the copy button copies it whole) */
+.rib {
+  overflow-wrap: anywhere;
+  min-inline-size: 0;
+}

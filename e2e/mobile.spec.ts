@@ -51,6 +51,18 @@ for (const width of [320, 390]) {
   }
 }
 
+// narrower than the target phones: fonts differ a little between machines, so a
+// long unbroken text (the 24-digit RIB) that just fits at 320 px locally is caught here
+test.describe('300px fr-FR', () => {
+  test.use({ viewport: { width: 300, height: 800 }, locale: 'fr-FR' });
+  test('a placed order: nothing cut off', async ({ page }) => {
+    await addSignatureBag(page);
+    await fillCheckout(page, 'bank_transfer');
+    await expect(page.locator('.handoff-wa')).toBeVisible();
+    expect(await clippedContent(page)).toEqual([]);
+  });
+});
+
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
   test('product cards: status labels are not cut', async ({ page }) => {
