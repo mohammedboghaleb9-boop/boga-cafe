@@ -3,7 +3,7 @@ export const uid = (): string =>
     ? crypto.randomUUID()
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
-export type RefPrefix = 'BC' | 'SR' | 'QR';
+export type RefPrefix = 'BC' | 'QR';
 
 /** Sequential reference, used for the demo history: BC-2026-0007. */
 export const reference = (prefix: RefPrefix, n: number, year = new Date().getFullYear()) =>
@@ -26,7 +26,7 @@ function randomCode(length: number): string {
 }
 
 /**
- * Reference for a new order (BC), sample request (SR) or B2B quote (QR):
+ * Reference for a new order (BC) or B2B quote (QR):
  * BC-2026-7K4M2Q. Random, so two customers never share one, even though each
  * browser keeps its own data in the prototype (31^6 ≈ 887 million codes).
  * `taken` lets the caller avoid the (very unlikely) clash with an existing one.

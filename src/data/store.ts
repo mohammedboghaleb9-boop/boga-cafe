@@ -8,7 +8,6 @@ import {
   draftsToLogs,
   orderMessage,
   quoteMessage,
-  sampleMessage,
 } from '@/services/notifications';
 import { templateContext } from './context';
 import { uid } from './ids';
@@ -31,7 +30,6 @@ export function initialState(demo: boolean = DEMO_DATA): DbState {
     settings: seedSettings,
     content: seedContent,
     orders: [],
-    samples: [],
     quotes: [],
     stockMovements: [],
     notifications: [],
@@ -42,7 +40,6 @@ export function initialState(demo: boolean = DEMO_DATA): DbState {
   const ctx = templateContext(s);
   const notifications = [
     ...s.orders.flatMap((o) => draftsToLogs('order.created', orderMessage(o, ctx), s.settings, o.createdAt, uid)),
-    ...s.samples.flatMap((x) => draftsToLogs('sample.created', sampleMessage(x, ctx), s.settings, x.createdAt, uid)),
     ...s.quotes.flatMap((q) => draftsToLogs('quote.created', quoteMessage(q, ctx), s.settings, q.createdAt, uid)),
   ].sort((a, b) => b.at.localeCompare(a.at));
   return { ...s, notifications };

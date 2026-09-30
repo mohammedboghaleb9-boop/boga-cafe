@@ -28,6 +28,9 @@ insert into public.product_recipes values ('so-brazil', 'brazil', 100);
 insert into public.products (id, slug, kind, name, roast_level, prices, active)
 values ('retired', 'retired', 'single-origin', '{"fr": "Ancien"}', 'medium', '{"250": 60}', false);
 insert into public.product_recipes values ('retired', 'brazil', 100);
+insert into public.products (id, slug, kind, name, roast_level, prices, active)
+values ('horeca', 'horeca', 'b2b', '{"fr": "Horeca"}', 'dark', '{"250": 45, "500": 80, "1000": 150}', true);
+insert into public.product_recipes values ('horeca', 'brazil', 100);
 commit;
 
 -- A real order for these tests: bags of one product delivered in Oujda, built from the
@@ -93,7 +96,7 @@ select 'ok 3 - out of stock refused atomically' as result;
 -- 4. Anonymous visitor: reads catalog, cannot read or write orders --------
 set role anon;
 do $$ begin
-  if (select count(*) from public.products) <> 2 then raise exception 'TEST FAILED: anon catalog'; end if; -- the retired one is hidden
+  if (select count(*) from public.products) <> 3 then raise exception 'TEST FAILED: anon catalog'; end if; -- the retired one is hidden
   if (select count(*) from public.orders) <> 0 then raise exception 'TEST FAILED: anon sees orders'; end if;
   if (select count(*) from public.admin_config) <> 0 then raise exception 'TEST FAILED: anon sees admin config'; end if;
   begin
@@ -451,36 +454,29 @@ do $$ begin
 end $$;
 select 'ok 19 - staff cannot change origin prices or add origins' as result;
 
--- 20. Sample and B2B requests keep the same text limits as orders; origins a real price
+-- 20. B2B requests keep the same text limits as orders; origins a real price
 do $$
 declare
-  t text; col text; c text; v text; num text;
+  col text; c text; v text; num text;
   val text[];
 begin
-  -- each text column of both tables, one character over its limit
-  foreach t in array array['sample_requests', 'quote_requests'] loop
-    foreach col in array array['company:81', 'contact_name:81', 'phone:25', 'email:121', 'notes:501'] loop
-      c := split_part(col, ':', 1);
-      v := repeat('x', split_part(col, ':', 2)::int);
-      num := case t when 'sample_requests' then 'SR' else 'QR' end || '-2026-L' || upper(left(md5(col), 5));
-      -- company, contact_name, phone, email, notes: valid values except the one under test
-      val := array[case c when 'company' then v else '' end, case c when 'contact_name' then v else 'Sara' end,
-                   case c when 'phone' then v else '1' end, case c when 'email' then v else '' end, case c when 'notes' then v else '' end];
-      begin
-        if t = 'sample_requests' then
-          insert into public.sample_requests (number, business_type, company, contact_name, phone, email, notes, city_id, product_id)
-          values (num, 'cafe', val[1], val[2], val[3], val[4], val[5], 'oujda', 'signature');
-        else
-          insert into public.quote_requests (number, business_type, company, contact_name, phone, email, notes, city_id, lines, weight_kg, indicative_total)
-          values (num, 'cafe', val[1], val[2], val[3], val[4], val[5], 'oujda', '[]', 11, 100);
-        end if;
-        raise exception 'TEST FAILED: %.% accepted % characters', t, c, length(v);
-      exception when check_violation then null;
-      end;
-    end loop;
+  -- each text column, one character over its limit
+  foreach col in array array['company:81', 'contact_name:81', 'phone:25', 'email:121', 'notes:501'] loop
+    c := split_part(col, ':', 1);
+    v := repeat('x', split_part(col, ':', 2)::int);
+    num := 'QR-2026-L' || upper(left(md5(col), 5));
+    -- company, contact_name, phone, email, notes: valid values except the one under test
+    val := array[case c when 'company' then v else '' end, case c when 'contact_name' then v else 'Sara' end,
+                 case c when 'phone' then v else '1' end, case c when 'email' then v else '' end, case c when 'notes' then v else '' end];
+    begin
+      insert into public.quote_requests (number, business_type, company, contact_name, phone, email, notes, city_id, lines, weight_kg, indicative_total)
+      values (num, 'cafe', val[1], val[2], val[3], val[4], val[5], 'oujda', '[]', 11, 100);
+      raise exception 'TEST FAILED: quote_requests.% accepted % characters', c, length(v);
+    exception when check_violation then null;
+    end;
   end loop;
-  insert into public.sample_requests (number, business_type, contact_name, phone, city_id, product_id, notes)
-  values ('SR-2026-OK0001', 'cafe', 'Sara', '+212661000000', 'oujda', 'signature', repeat('x', 500));
+  insert into public.quote_requests (number, business_type, contact_name, phone, city_id, lines, weight_kg, indicative_total, notes)
+  values ('QR-2026-OK0001', 'cafe', 'Sara', '+212661000000', 'oujda', '[]', 11, 100, repeat('x', 500));
   foreach v in array array['0', '0.5', '0.99'] loop
     begin
       update public.origins set price_per_kg = v::numeric where id = 'brazil';
@@ -491,7 +487,7 @@ begin
   update public.origins set price_per_kg = 1 where id = 'brazil';  -- 1 DH is a real price
   update public.origins set price_per_kg = 230 where id = 'brazil';
 end $$;
-select 'ok 20 - sample and B2B requests have the same length limits as orders; origins have a real price' as result;
+select 'ok 20 - B2B requests have the same length limits as orders; origins have a real price' as result;
 
 -- 21. Stock and amounts are real numbers: 'NaN' is a valid numeric that sorts above
 --     every number, so "stock_kg >= 0" alone accepted it (audit H1) ---------------
@@ -596,6 +592,7 @@ begin
     ('weight',           o || '{"weightKg": 0.1}'),
     ('b2b',              pg_temp.test_order('so-brazil', 1000, 11, 'bank_transfer')),  -- 11 kg
     ('b2b',              pg_temp.test_order('so-brazil', 250, 100, 'bank_transfer')),  -- 100 bags is a valid quantity, 25 kg is not a cart
+    ('bulk_only',        pg_temp.test_order('horeca', 1000, 1, 'bank_transfer')),     -- a B2B blend's 1 kg bag is quote-only
     ('phone',            jsonb_set(o, '{customer,phone}', '"DROP TABLE"')),
     ('name',             jsonb_set(o, '{customer,fullName}', '"X"')),
     ('name',             jsonb_set(o, '{customer,fullName}', '"Al"')),
@@ -748,8 +745,11 @@ begin
         from public.orders order by created_at desc, number desc limit 1) is not true then
     raise exception 'TEST FAILED: saved blend line';
   end if;
+  -- the same B2B blend in 250 g and 500 g is a paid sample: an ordinary order
+  perform public.commit_order(pg_temp.test_order('horeca', 250, 1, 'bank_transfer'), '', '', '');
+  perform public.commit_order(pg_temp.test_order('horeca', 500, 2, 'bank_transfer'), '', '', '');
 end $$;
-select 'ok 22 - every figure of an order is checked by the database (price, size, quantity, customer, city, payment, stock, blend rules)' as result;
+select 'ok 22 - every figure of an order is checked by the database (price, size, quantity, customer, city, payment, stock, blend rules, B2B 1 kg bag)' as result;
 
 -- 23. Every reservation ends, and money stays the owner's decision (audit H3, M5) --
 --     Unpaid (48 h) and payment reported but not confirmed (120 h), even once
@@ -857,9 +857,7 @@ select 'ok 23 - every reservation ends (48 h unpaid, 120 h reported); only the o
 --     for a visitor (anon), a signed-in customer who is not on the team, staff and a
 --     manager. 'none' = refused or nothing seen/changed; 'some' = the role's own work.
 insert into auth.users values ('00000000-0000-0000-0000-000000000009');  -- a customer account
--- one of each B2B request, so "sees none" means hidden, not empty
-insert into public.sample_requests (number, business_type, contact_name, phone, city_id, product_id)
-values ('SR-T24', 'cafe', 'Client', '0600000000', 'oujda', 'signature');
+-- a B2B request, so "sees none" means hidden, not empty
 insert into public.quote_requests (number, business_type, contact_name, phone, city_id, lines, weight_kg, indicative_total)
 values ('QR-T24', 'hotel', 'Client', '0600000000', 'oujda', '[]', 20, 4000);
 create temp table t24 (n serial, who text, q text, expect text, sane boolean default true);
@@ -871,12 +869,10 @@ select who, q, 'none' from unnest(array['anon', 'customer']) who, unnest(array[
   'select count(*) from public.order_events',
   'select count(*) from public.stock_movements',
   'select count(*) from public.notification_outbox',
-  'select count(*) from public.sample_requests',
   'select count(*) from public.quote_requests',
   'select count(*) from public.admin_config',
   'select count(*) from public.admin_users',
   $q$insert into public.admin_users values ('00000000-0000-0000-0000-000000000009', 'owner', 'Me') returning 1$q$,
-  $q$insert into public.sample_requests (number, business_type, contact_name, phone, city_id, product_id) values ('X', 'cafe', 'X', '0600000000', 'oujda', 'signature') returning 1$q$,
   $q$insert into public.quote_requests (number, business_type, contact_name, phone, city_id, lines, weight_kg, indicative_total) values ('X', 'cafe', 'X', '0600000000', 'oujda', '[]', 20, 1) returning 1$q$,
   $q$with u as (update public.site_config set content = '{}' returning 1) select count(*) from u$q$,
   $q$with u as (update public.shipping_rates set base_fee = 0 returning 1) select count(*) from u$q$,

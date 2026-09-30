@@ -1,6 +1,6 @@
 /**
  * POST /api/notify — Vercel Function (Node.js runtime).
- * Delivers new orders, payment reports, sample requests and B2B quotes to
+ * Delivers new orders, payment reports and B2B quotes to
  * BOGA CAFÉ on WhatsApp and Gmail. Configuration: docs/09-notifications.md and .env.example.
  */
 import { createTransport, type Transporter } from 'nodemailer';

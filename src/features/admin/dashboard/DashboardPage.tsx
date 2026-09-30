@@ -18,10 +18,8 @@ export function DashboardPage() {
   const low = db.origins.filter(isLowStock);
   const revenue = orders.filter((o) => o.paymentStatus === 'paid').reduce((s, o) => s + o.total, 0);
   const totalStock = db.origins.filter((o) => o.active).reduce((s, o) => s + o.stockKg, 0);
-  const b2b = [
-    ...db.samples.map((s) => ({ id: s.id, at: s.createdAt, ref: s.number, who: s.company || s.contactName, what: '500 g', status: t.admin.b2b.sampleStatus[s.status], isNew: s.status === 'new' })),
-    ...db.quotes.map((q) => ({ id: q.id, at: q.createdAt, ref: q.number, who: q.company || q.contactName, what: formatKg(q.weightKg), status: t.admin.b2b.quoteStatus[q.status], isNew: q.status === 'new' })),
-  ]
+  const b2b = db.quotes
+    .map((q) => ({ id: q.id, at: q.createdAt, ref: q.number, who: q.company || q.contactName, what: formatKg(q.weightKg), status: t.admin.b2b.quoteStatus[q.status], isNew: q.status === 'new' }))
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, 5);
 
@@ -39,11 +37,7 @@ export function DashboardPage() {
           to="/admin/orders"
         />
         <Kpi label={t.admin.dash.completed} value={count((o) => o.status === 'delivered')} tone="ok" to="/admin/orders" />
-        <Kpi
-          label={t.admin.dash.samples}
-          value={db.samples.filter((s) => ['new', 'contacted'].includes(s.status)).length}
-          to="/admin/b2b"
-        />
+        <Kpi label={t.admin.dash.b2bOpen} value={db.quotes.filter((q) => ['new', 'negotiating'].includes(q.status)).length} to="/admin/b2b" />
         <Kpi label={t.admin.dash.toVerify} value={count((o) => o.paymentStatus === 'awaiting_verification')} to={can(role, 'payments') ? '/admin/payments' : '/admin/orders?view=verify'} />
         <Kpi label={t.admin.dash.stock} value={formatKg(totalStock)} to="/admin/stock" tone={low.length ? 'bad' : 'ok'} />
         <Kpi label={t.admin.dash.revenue} value={money(revenue)} />

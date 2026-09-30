@@ -1,5 +1,5 @@
 /**
- * Sends each new order, payment report, sample request and B2B quote to BOGA CAFÉ:
+ * Sends each new order, payment report and B2B quote to BOGA CAFÉ:
  *  - by email, through the Gmail account (SMTP with an App Password),
  *  - on WhatsApp, to the owner's own number through CallMeBot (free, owner-only).
  *
@@ -46,7 +46,7 @@ export interface NotifyDeps {
   now: () => number;
 }
 
-export type NotifyEvent = 'order.created' | 'payment.reported' | 'sample.created' | 'quote.created';
+export type NotifyEvent = 'order.created' | 'payment.reported' | 'quote.created';
 
 export interface NotifyPayload {
   event: NotifyEvent;
@@ -67,11 +67,6 @@ const SHAPE: Record<NotifyEvent, { prefix: string; firstLine: (ref: string) => s
     prefix: 'BC',
     firstLine: (ref) => `Paiement signalé ${ref}`,
     subject: (ref) => `[BOGA CAFÉ] Paiement signalé ${ref} - `,
-  },
-  'sample.created': {
-    prefix: 'SR',
-    firstLine: (ref) => `Demande d'échantillon ${ref}`,
-    subject: (ref) => `[BOGA CAFÉ] Échantillon B2B ${ref} - `,
   },
   'quote.created': {
     prefix: 'QR',

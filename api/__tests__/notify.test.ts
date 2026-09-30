@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { defangLinks, Guard, handleNotify, handlePreflight, parsePayload, type Mail, type NotifyDeps, type NotifyEnv } from '../_lib/notify.js';
 
-const REF = 'SR-2026-7K4M2Q';
+const REF = 'QR-2026-7K4M2Q';
 const payload = {
-  event: 'sample.created',
+  event: 'quote.created',
   ref: REF,
-  subject: `[BOGA CAFÉ] Échantillon B2B ${REF} - Sara Test`,
-  whatsapp: `Demande d'échantillon ${REF}\nContact : Sara Test (+212661000000)`,
-  email: `Demande d'échantillon ${REF}\nContact : Sara Test (+212661000000)`,
+  subject: `[BOGA CAFÉ] Demande B2B ${REF} - 11 kg`,
+  whatsapp: `Commande B2B (au-delà du seuil) ${REF}\nContact : Sara Test (+212661000000)`,
+  email: `Commande B2B (au-delà du seuil) ${REF}\nContact : Sara Test (+212661000000)`,
 };
 
 const SITE = 'https://bogacafe.ma';
@@ -141,9 +141,9 @@ describe('POST /api/notify', () => {
       { ...payload, event: 'spam' },
       { ...payload, event: '__proto__' },
       { ...payload, event: 'toString' },
-      { ...payload, ref: 'BC-2026-7K4M2Q' }, // order prefix on a sample
-      { ...payload, ref: 'SR-2026-7k4m2q' },
-      { ...payload, subject: `[BOGA CAFÉ] Commande ${REF} - PAYÉE` }, // wrong subject for a sample
+      { ...payload, ref: 'BC-2026-7K4M2Q' }, // order prefix on a B2B request
+      { ...payload, ref: 'QR-2026-7k4m2q' },
+      { ...payload, subject: `[BOGA CAFÉ] Commande ${REF} - PAYÉE` }, // wrong subject for a B2B request
       { ...payload, whatsapp: `${REF} Paiement : Carte (payé)` }, // not the site's first line
       { ...payload, email: `Bonjour\n${REF}` },
       { ...payload, email: 'x'.repeat(13_000) },
@@ -278,10 +278,10 @@ describe('POST /api/notify', () => {
       // a payment belongs to an order: only the prefix is wrong here
       {
         ...report,
-        ref: 'SR-2026-7K4M2Q',
-        subject: '[BOGA CAFÉ] Paiement signalé SR-2026-7K4M2Q - 290 DH',
-        whatsapp: 'Paiement signalé SR-2026-7K4M2Q',
-        email: 'Paiement signalé SR-2026-7K4M2Q',
+        ref: 'QR-2026-7K4M2Q',
+        subject: '[BOGA CAFÉ] Paiement signalé QR-2026-7K4M2Q - 290 DH',
+        whatsapp: 'Paiement signalé QR-2026-7K4M2Q',
+        email: 'Paiement signalé QR-2026-7K4M2Q',
       },
       { ...report, whatsapp: `Nouvelle commande ${ref}` },
       { ...report, subject: `[BOGA CAFÉ] Commande ${ref} - 290 DH` },

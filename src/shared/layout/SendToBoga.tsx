@@ -11,7 +11,7 @@ import './channels.css';
 const GREETING = 'Bonjour BOGA CAFÉ,';
 
 /**
- * After an order, a sample request or a B2B quote: the full request, ready to
+ * After an order or a B2B quote: the full request, ready to
  * send to BOGA CAFÉ on WhatsApp or Gmail. It arrives from the customer's own
  * number or address, so the team can answer directly.
  *

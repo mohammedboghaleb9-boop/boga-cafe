@@ -94,7 +94,6 @@ export const seedSettings: Settings = {
   roastLossPercent: 0,
   // no automatic free delivery: the team decides in Admin → Shipping (owner's answer to Q13, 0 = never)
   freeShippingOver: 0,
-  sampleSizeGrams: 500,
   unpaidOrderTimeoutHours: 48,
   // time for the owner to see a reported payment on the account before the stock
   // is freed: a starting value (5 days, a weekend included) for the owner to confirm

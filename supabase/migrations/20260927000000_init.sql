@@ -141,7 +141,6 @@ create table public.admin_config (
 -- ───────────── Orders ─────────────
 
 create sequence public.order_number_seq;
-create sequence public.sample_number_seq;
 create sequence public.quote_number_seq;
 
 create table public.orders (
@@ -198,26 +197,6 @@ create index stock_movements_origin_idx on public.stock_movements (origin_id, at
 
 -- ───────────── B2B ─────────────
 
-create table public.sample_requests (
-  id              uuid primary key default gen_random_uuid(),
-  number          text not null unique,
-  created_at      timestamptz not null default now(),
-  business_type   text not null check (business_type in ('cafe', 'hotel', 'restaurant', 'company', 'individual', 'other')),
-  company         text not null default '' check (char_length(company) <= 80),
-  contact_name    text not null check (char_length(contact_name) between 1 and 80),
-  phone           text not null check (char_length(phone) <= 24),
-  email           text not null default '' check (char_length(email) <= 120),
-  city_id         text not null references public.shipping_rates (id),
-  product_id      text not null references public.products (id),
-  est_monthly_kg  numeric(10, 2) not null default 0 check (est_monthly_kg <> 'NaN'),
-  notes           text not null default '' check (char_length(notes) <= 500),
-  status          text not null default 'new'
-                  check (status in ('new', 'contacted', 'approved', 'shipped', 'closed', 'rejected')),
-  free            boolean,                    -- null = not decided
-  delivery_fee    numeric(10, 2) not null default 0 check (delivery_fee <> 'NaN'),
-  admin_notes     text not null default ''
-);
-
 create table public.quote_requests (
   id               uuid primary key default gen_random_uuid(),
   number           text not null unique,
@@ -245,7 +224,7 @@ create table public.notification_outbox (
   id         bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
   channel    text not null check (channel in ('whatsapp', 'email')),
-  event      text not null check (event in ('order.created', 'payment.reported', 'sample.created', 'quote.created', 'stock.low')),
+  event      text not null check (event in ('order.created', 'payment.reported', 'quote.created', 'stock.low')),
   recipient  text not null,
   subject    text not null default '',
   body       text not null,
@@ -456,6 +435,11 @@ begin
                          then (v_product.prices ->> v_size::integer::text)::numeric end;
       if v_expected is null or v_expected < 1 then
         raise exception 'invalid_order:size_not_offered';
+      end if;
+      -- a B2B blend's 1 kg bag goes only in a cart above the threshold, which is a quote,
+      -- never an order (src/core/cart.ts isBulkOnly); 250 g and 500 g are paid samples
+      if v_product.kind = 'b2b' and v_size = 1000 then
+        raise exception 'invalid_order:bulk_only';
       end if;
       if v_unit <> v_expected then
         raise exception 'invalid_order:price';
@@ -949,7 +933,6 @@ alter table public.admin_config        enable row level security;
 alter table public.orders              enable row level security;
 alter table public.order_events        enable row level security;
 alter table public.stock_movements     enable row level security;
-alter table public.sample_requests     enable row level security;
 alter table public.quote_requests      enable row level security;
 alter table public.notification_outbox enable row level security;
 
@@ -987,7 +970,6 @@ create policy "admins read" on public.orders for select using (public.is_admin()
 create policy "admins read" on public.order_events for select using (public.is_admin());
 create policy "admins read" on public.stock_movements for select using (public.is_admin());
 create policy "admins read" on public.notification_outbox for select using (public.is_admin(array['owner', 'manager']));
-create policy "admins manage" on public.sample_requests for all using (public.is_admin()) with check (public.is_admin());
 create policy "admins manage" on public.quote_requests for all using (public.is_admin()) with check (public.is_admin());
 
 -- Functions: who may call what.

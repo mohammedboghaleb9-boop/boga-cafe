@@ -3,7 +3,7 @@ import { roundKg, roundMoney } from './money';
 import { customBlendPrice, isPrice, productPrice } from './pricing';
 import { composition, type OriginIndex } from './recipe';
 import { findShortages, stockRequirements, type Shortage } from './stock';
-import { PACK_SIZES, type CartItem, type Localized, type OrderLine, type Product, type Settings, type StockDeduction } from './types';
+import { PACK_SIZES, type CartItem, type Localized, type OrderLine, type PackSize, type Product, type Settings, type StockDeduction } from './types';
 
 export interface Catalog {
   products: Product[];
@@ -16,7 +16,15 @@ export const CUSTOM_BLEND_NAME: Localized = {
   en: 'My Custom Blend',
 };
 
-export type LineProblem = 'missing_product' | 'size_not_offered' | 'invalid_blend' | 'blend_paused' | 'invalid_quantity';
+export type LineProblem = 'missing_product' | 'size_not_offered' | 'invalid_blend' | 'blend_paused' | 'invalid_quantity' | 'bulk_only';
+
+/**
+ * Professional (B2B) blends: the 250 g and 500 g bags are paid samples anyone can
+ * buy; the 1 kg bag only goes in a cart above the B2B threshold, which becomes a
+ * quote (owner's decision, 2026-09-30). The database applies the same rule
+ * (check_order: invalid_order:bulk_only).
+ */
+export const isBulkOnly = (product: Pick<Product, 'kind'>, size: PackSize): boolean => product.kind === 'b2b' && size === 1000;
 
 /** Bags of one kind per line. Beyond this the order is a B2B quote anyway. */
 export const MAX_QTY_PER_LINE = 100;
@@ -121,13 +129,19 @@ export function summarizeCart(items: CartItem[], catalog: Catalog, settings: Set
     settings.roastLossPercent,
   );
   const shortages = findShortages(requirements, catalog.origins);
+  const isB2B = weightKg > settings.b2bThresholdKg;
+  // counted in the weight above (it can take the cart past the threshold), refused below it
+  const checked = lines.map((l) => {
+    const product = l.line?.productId ? catalog.products.find((p) => p.id === l.line!.productId) : undefined;
+    return !isB2B && l.line && product && isBulkOnly(product, l.line.size) ? { ...l, problem: 'bulk_only' as const } : l;
+  });
   return {
-    lines,
+    lines: checked,
     subtotal,
     weightKg,
-    isB2B: weightKg > settings.b2bThresholdKg,
+    isB2B,
     requirements,
     shortages,
-    hasProblems: lines.some((l) => l.problem) || shortages.length > 0,
+    hasProblems: checked.some((l) => l.problem) || shortages.length > 0,
   };
 }

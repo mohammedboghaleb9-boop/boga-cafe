@@ -12,7 +12,7 @@
 | صفحة المنتج | `/product/:slug` | `src/features/product` | `ProductPage.tsx` |
 | أحادي المصدر | `/single-origin` | `src/features/single-origin` | |
 | الخلطة الخاصة | `/custom-blend` | `src/features/custom-blend` | `CustomBlendPage.tsx`، `blend-helpers.ts` |
-| المهنيون B2B | `/b2b` | `src/features/b2b` | `SampleRequestForm.tsx`، `QuoteRequestForm.tsx`؛ `index.ts` = ما يُسمح للأقسام الأخرى باستعماله |
+| المهنيون B2B | `/b2b` | `src/features/b2b` | `QuoteRequestForm.tsx`، `RequestFields.tsx`؛ `index.ts` = ما يُسمح للأقسام الأخرى باستعماله |
 | السلة | `/cart` | `src/features/cart` | `CartPage.tsx` |
 | حالة السلة وسطر الطلب | كل المتجر | `src/shared/cart` | `CartProvider.tsx` (حالة السلة، تنظيف ما يُقرأ من المتصفح)، `CartLineView.tsx` (سطر السلة/الطلب) |
 | الدفع وصفحة الطلب | `/checkout`، `/order/:id` | `src/features/checkout` | `CheckoutPage.tsx`، `PaymentPanel.tsx`، `OrderPage.tsx` |
@@ -20,7 +20,7 @@
 | الإدارة | `/admin/...` | `src/features/admin` | مجلد لكل قسم + `permissions.ts` |
 | الرأس والتذييل | كل الصفحات | `src/shared/layout` | `Header.tsx`، `Footer.tsx`، `SocialLinks.tsx` |
 | قنوات التواصل | صفحة الاتصال، الرئيسية، التذييل | `src/shared/layout`، `src/shared/contact.ts` | `ChannelCards.tsx` (الإطارات)، `channels.ts` (القائمة من الإعدادات)، `BrandIcon.tsx` (الشعارات الأصلية) |
-| إرسال الطلبات للإدارة | بعد كل طلب/عيّنة/طلب B2B | `src/shared/layout/SendToBoga.tsx`، `src/services/notifications/deliver.ts`، `api/notify.ts` | بطاقة واتساب/Gmail للزبون + الإرسال الآلي. التفاصيل: `docs/09-notifications.md` |
+| إرسال الطلبات للإدارة | بعد كل طلب/تصريح بالدفع/طلب B2B | `src/shared/layout/SendToBoga.tsx`، `src/services/notifications/deliver.ts`، `api/notify.ts` | بطاقة واتساب/Gmail للزبون + الإرسال الآلي. التفاصيل: `docs/09-notifications.md` |
 | قواعد حالة الطلب والدفع | الإدارة وقاعدة البيانات | `src/core/orderFlow.ts` | خطوة بخطوة، لا إنتاج قبل الدفع، المالك وحده يسجّل الدفع (نفس القواعد في SQL) |
 | الشعار | كل الصفحات | `brand/` | `brand/source/build_logo.py` ثم تُنسخ النسخ تلقائياً إلى `src/assets/brand` |
 | صورة المنتج | المتجر، المنتج، الخلطة الخاصة | `src/shared/ui/ProductVisual.tsx` + `src/shared/sticker.ts` | الكيس الحقيقي + ملصق المنتج المولَّد من البيانات |

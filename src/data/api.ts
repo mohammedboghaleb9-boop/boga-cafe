@@ -17,14 +17,13 @@ import type {
   PaymentStatus,
   Product,
   QuoteRequest,
-  SampleRequest,
   Settings,
   ShippingRate,
   SiteContent,
   StockMovement,
   StockReason,
 } from '@/core/types';
-import { draftsToLogs, lowStockMessage, orderMessage, paymentReportMessage, quoteMessage, sampleMessage } from '@/services/notifications';
+import { draftsToLogs, lowStockMessage, orderMessage, paymentReportMessage, quoteMessage } from '@/services/notifications';
 import { deliver } from '@/services/notifications/deliver';
 import { checkoutContext, storefrontCheckoutContext, templateContext } from './context';
 import { newReference, uid, uniqueSlug } from './ids';
@@ -74,7 +73,7 @@ export interface ContactRequestInput {
   notes: string;
 }
 
-export type RequestError = 'name' | 'phone' | 'email' | 'city' | 'product';
+export type RequestError = 'name' | 'phone' | 'email' | 'city';
 
 function validateContact(input: ContactRequestInput, s: DbState): RequestError[] {
   const errors: RequestError[] = [];
@@ -156,35 +155,6 @@ export const api = {
       notifications: [...draftsToLogs('payment.reported', message, s.settings, at, uid), ...s.notifications],
     }));
     deliver('payment.reported', reported.number, message);
-  },
-
-  async requestSample(input: ContactRequestInput & { productId: string; estMonthlyKg: number }) {
-    await latency();
-    const s = db.get();
-    const errors = validateContact(input, s);
-    if (!s.products.some((p) => p.id === input.productId && p.kind === 'b2b' && p.active)) errors.push('product');
-    if (errors.length) return { ok: false as const, errors };
-    const at = now();
-    const rate = s.shippingRates.find((r) => r.id === input.cityId);
-    const sample: SampleRequest = {
-      ...input,
-      id: uid(),
-      number: newReference('SR', (r) => s.samples.some((x) => x.number === r)),
-      createdAt: at,
-      phone: normalizePhone(input.phone)!,
-      status: 'new',
-      free: null,
-      deliveryFee: rate?.baseFee ?? 0,
-      adminNotes: '',
-    };
-    const message = sampleMessage(sample, templateContext(s));
-    db.update((cur) => ({
-      ...cur,
-      samples: [sample, ...cur.samples],
-      notifications: [...draftsToLogs('sample.created', message, cur.settings, at, uid), ...cur.notifications],
-    }));
-    deliver('sample.created', sample.number, message);
-    return { ok: true as const, sample, message };
   },
 
   /** Cart above the B2B threshold → request handled by the administration. */
@@ -366,10 +336,6 @@ export const api = {
 
   saveContent(content: SiteContent) {
     db.update((s) => ({ ...s, content }));
-  },
-
-  updateSample(id: string, patch: Partial<SampleRequest>) {
-    db.update((s) => ({ ...s, samples: s.samples.map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
   },
 
   updateQuote(id: string, patch: Partial<QuoteRequest>) {

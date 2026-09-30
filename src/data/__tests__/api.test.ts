@@ -22,7 +22,7 @@ describe('real site data (audit H4)', () => {
   it('starts with the catalog only: no example customers, and nowhere to pay until the real account exists', async () => {
     const [{ initialState }, { storefrontCheckoutContext }] = await Promise.all([import('../store'), import('../context')]);
     const s = initialState(false);
-    expect([s.orders, s.samples, s.quotes, s.notifications, s.stockMovements].map((x) => x.length)).toEqual([0, 0, 0, 0, 0]);
+    expect([s.orders, s.quotes, s.notifications, s.stockMovements].map((x) => x.length)).toEqual([0, 0, 0, 0]);
     expect(s.settings.bank).toEqual({ holder: '', bankName: '', rib: '' });
     expect(s.settings.cashplus).toEqual({ beneficiary: '' });
     expect(storefrontCheckoutContext(s).paymentMethods.filter((m) => m.enabled)).toEqual([]);
@@ -138,14 +138,13 @@ describe('after the merge review', () => {
     expect(db.get().notifications.some((n) => n.event === 'stock.low' && n.body.includes(db.get().origins.find((o) => o.id === originId)!.name.fr))).toBe(true);
   });
 
-  it('checks what customers send: B2B sample product and city, a capped payment reference, no card payment on a transfer (audit M2)', async () => {
+  it('checks what customers send: B2B request city, a capped payment reference, no card payment on a transfer (audit M2)', async () => {
     const { api, db } = t;
     const contact = { businessType: 'cafe' as const, company: 'Café Test', contactName: 'Sara Test', phone: '0661000000', email: '', cityId: 'oujda', notes: '' };
     const b2b = db.get().products.find((p) => p.kind === 'b2b' && p.active)!;
-    const retail = firstProduct();
-    expect((await api.requestSample({ ...contact, productId: b2b.id, estMonthlyKg: 20 })).ok).toBe(true);
-    expect(await api.requestSample({ ...contact, productId: retail.id, estMonthlyKg: 20 })).toMatchObject({ ok: false, errors: ['product'] });
-    expect(await api.requestSample({ ...contact, cityId: 'atlantis', productId: b2b.id, estMonthlyKg: 20 })).toMatchObject({ ok: false, errors: ['city'] });
+    const items = [{ id: 'i1', type: 'product' as const, productId: b2b.id, size: 1000 as const, qty: 11 }];
+    expect((await api.requestQuote({ ...contact, items })).ok).toBe(true);
+    expect(await api.requestQuote({ ...contact, cityId: 'atlantis', items })).toMatchObject({ ok: false, errors: ['city'] });
 
     const transfer = order((x) => x.status === 'new' && x.paymentMethod === 'bank_transfer' && x.paymentStatus === 'pending');
     await api.completeCardPayment(transfer.id, true); // a card answer never pays a transfer

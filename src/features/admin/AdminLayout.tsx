@@ -46,7 +46,7 @@ export function AdminLayout() {
 
   const badges: Partial<Record<Section, number>> = {
     orders: db.orders.filter((o) => o.status === 'new').length,
-    b2b: db.samples.filter((s) => s.status === 'new').length + db.quotes.filter((q) => q.status === 'new').length,
+    b2b: db.quotes.filter((q) => q.status === 'new').length,
     stock: db.origins.filter(isLowStock).length,
     payments: db.orders.filter((o) => o.paymentStatus === 'awaiting_verification').length,
   };

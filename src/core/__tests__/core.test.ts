@@ -7,7 +7,7 @@ import { composition, speciesSplit } from '../recipe';
 import { shippingFee } from '../shipping';
 import { applyStock, findShortages, maxBags, stockRequirements } from '../stock';
 import { normalizePhone } from '../validation';
-import type { CartItem, CustomerInfo } from '../types';
+import type { CartItem, CustomerInfo, PackSize } from '../types';
 import { origins, originIndex, product, rate, settings } from './fixtures';
 
 const catalog = { products: [product], origins: originIndex };
@@ -152,6 +152,25 @@ describe('cart and B2B rule', () => {
       settings,
     );
     expect(summary.lines[0].problem).toBe('size_not_offered');
+  });
+
+  it('sells a B2B blend in 250 g and 500 g (paid samples), its 1 kg bag only in a cart above the threshold', () => {
+    const horeca = { ...product, id: 'horeca', kind: 'b2b' as const, prices: { 250: 45, 500: 80, 1000: 150 } };
+    const stocked = { ...originIndex, brazil: { ...originIndex.brazil, stockKg: 100 }, vietnam: { ...originIndex.vietnam, stockKg: 100 } };
+    const big = { products: [product, horeca], origins: stocked };
+    const bag = (size: PackSize, qty: number, productId = 'horeca'): CartItem => ({ id: `${productId}-${size}`, type: 'product', productId, size, qty });
+    expect(summarizeCart([bag(250, 1), bag(500, 2)], big, settings).hasProblems).toBe(false);
+    // one 1 kg bag in an ordinary cart: refused on its own line, still counted in the weight
+    const small = summarizeCart([bag(250, 1), bag(1000, 1)], big, settings);
+    expect(small.lines.map((l) => l.problem)).toEqual([undefined, 'bulk_only']);
+    expect([small.weightKg, small.hasProblems]).toEqual([1.25, true]);
+    // exactly at the threshold the cart is still an order
+    expect(summarizeCart([bag(1000, 10)], big, settings).lines[0].problem).toBe('bulk_only');
+    // above it, the cart is a B2B request and the 1 kg bag is welcome
+    const quote = summarizeCart([bag(1000, 10), bag(250, 1, 'signature')], big, settings);
+    expect([quote.isB2B, quote.hasProblems]).toEqual([true, false]);
+    // other kinds keep their 1 kg bag
+    expect(summarizeCart([bag(1000, 1, 'signature')], big, settings).hasProblems).toBe(false);
   });
 });
 

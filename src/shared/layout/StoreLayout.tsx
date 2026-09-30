@@ -18,7 +18,7 @@ export function StoreLayout() {
   const { settings } = useDb();
   const { t } = useI18n();
 
-  // new page: back to the top, or to the section named in the link (/b2b#sample)
+  // new page: back to the top, or to the section named in the link (/page#section)
   useEffect(() => {
     const target = hash ? document.getElementById(sectionId(hash)) : null;
     if (!target) {

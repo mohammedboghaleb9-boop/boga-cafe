@@ -2,11 +2,12 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-09-30 (owner answers recorded). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-09-30 (paid samples built). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
 a cart above the B2B threshold (`settings.b2bThresholdKg`, 10 kg by default) becomes a quote request.
+B2B blends: 250 g and 500 g are paid samples bought like any bag; the 1 kg bag only in a cart above the threshold.
 Custom Blend (customer sets origin percentages, total must be 100). Stock in kg per origin. Arabic (RTL),
 French, English. Admin roles owner / manager / staff. No cash on delivery: every order is paid before prep.
 
@@ -45,7 +46,8 @@ for WhatsApp). Database target: Supabase (PostgreSQL + RLS), hosting target: Ver
 - **Every stock reservation ends**: 48 h unpaid, 120 h after the customer says "I paid", counted from the order time; no setting turns it off (`reservationDeadline`, `expire_unpaid_orders`).
 - **"I paid" is a claim, not money.** Only the owner marks paid. A paid order ends with a refund, not a plain cancel; a reported payment can be cancelled only by the owner.
 - **Payment methods stay closed until real details exist** (`payeeReady`, `invalid_order:payment_details`). Nothing is invented for the RIB or Cash Plus.
-- **One B2B threshold** in settings; texts read it. **Page titles, skip link, Escape closes the menu** (a11y findings).
+- **One B2B threshold** in settings; texts read it.
+- **Samples are paid bags, not a request form** (owner, 2026-09-30): a B2B blend's 250 g / 500 g bag is an ordinary order (paid before prep, delivery as usual); its 1 kg bag is refused in a cart at or under the threshold (`isBulkOnly` in `src/core/cart.ts`, line problem `bulk_only`; `check_order` raises `invalid_order:bulk_only`, since an order is never above the threshold). Why: no free-sample abuse to police, one payment path, ~26 files of sample flow removed. The 250 g prices (55 / 45 / 65 DH) are examples like the rest of the catalog. **Page titles, skip link, Escape closes the menu** (a11y findings).
 - **Workflow**: branch `fix/*`, independent read-only review, CI green, `merge --no-ff` into main. No pull requests unless asked. No secrets in the repo (Gmail App Password and CallMeBot key go in Vercel settings only).
 - **Audit rule**: a rule counts as tested only if breaking it makes a test fail. The audit's own faults were re-run (code 3 of 58 survive, SQL 3 of 31; `docs/10` section 6).
 
@@ -62,13 +64,13 @@ for WhatsApp). Database target: Supabase (PostgreSQL + RLS), hosting target: Ver
 - Real bank account (holder, bank, RIB) and Cash Plus beneficiary: owner said "not yet time" (2026-09-30), so transfer and Cash Plus stay closed and the real site takes no paid order. `docs/07` Q23-Q25. The repo is **public**: real bank details must be entered from the admin panel after P5, not committed in `seed/config.ts`.
 - Final products and prices (owner: added last), bean photos (owner: will send), delivery courier and price list (owner: researching; current fees are estimates).
 - Gmail App Password and CallMeBot key (Vercel settings only). Domain `bogacafe.ma` (Nindohost ticket #581357, ANRT review). CNDP declaration. CMI contract (card).
-- Owner clarifications (asked 2026-09-30): Q2 roasting in-house or partner (changes the public "our partner roaster" text), Q8/Q9 sample design, Q19 opening hours ("9-22" vs "until 8").
+- Owner clarification still open: Q19 opening hours ("9-22" vs "until 8"). Q2 answered: keep the "partner roaster" text as it is.
 
 ## Owner decisions, 2026-09-30 (answers to `docs/07`, status marks there)
 - **Done in code:** no automatic free delivery (`freeShippingOver` = 0 in the seed; the team decides in Admin → Shipping).
 - **Confirmed, nothing to change:** roasted-coffee stock (Q1, read from "yes"), min 5 % and 4 origins (Q6), prices are TTC (Q4; the word "TTC" is not shown in the UI yet), admin notifications in French (Q17).
 - **Decided, not built:** customer confirmation goes through WhatsApp (Q10). Today the team writes by hand from the "WhatsApp au client" button; automatic WhatsApp to customers needs WhatsApp Business (CallMeBot only reaches the owner's own number). Two admins, Mohammed and Abderrahim, same full access, each with a personal login to see who came in when (Q15, P5: individual Supabase accounts, not a shared code).
-- **Answered but needs a design decision before I touch it:** free samples removed and samples paid; B2B blends sold online as paid 250 g / 500 g, 1 kg only above the B2B threshold (Q8, Q9). The sample flow spans about 26 files (form, SQL table, notifications, admin tab). Proposal: a sample is just a 250 g / 500 g bag of a B2B blend bought at checkout; remove the separate request form.
+- **Built (owner approved the design):** paid samples, Q8/Q9 (see Key decisions). **Q2:** keep the site text on the partner roaster, no change.
 - **Payment timing (Q11):** the owner pasted an analysis proposing weekend-aware counting of the 120 h, receipt-image upload, and WhatsApp reminders at 24 h and 4 h before cancelling. Not built. My view: weekend-aware counting is sound but lengthens how long a fake claim can hold stock (no per-phone limit yet), so do it with the P5 limit. Receipt upload needs storage plus abuse limits (P5). Customer reminders need WhatsApp Business plus a consent basis. The claim that Moroccan interbank transfers take 24-48 working hours is **not verified**.
 
 ## What is next
@@ -77,7 +79,8 @@ for WhatsApp). Database target: Supabase (PostgreSQL + RLS), hosting target: Ver
 3. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch. Estimate 17-28 working days of technical work (**Estimated**, not a promise).
 
 ## Needs verification
-- Q1 answer "yes" was read as agreeing with the default (roasted stock); Q2 "everything is with us, roasting and packaging" may mean in-house roasting; Q19 hours are contradictory.
+- Q1 answer "yes" was read as agreeing with the default (roasted stock); Q19 hours are contradictory.
+- Paid samples: tested in core (3 mutants caught), SQL (2 mutants caught), parity (42 orders, 11 B2B 250/500 g lines) and browser screenshots at 390 px (fr, ar); the `bulk_only` text in English was not seen in a browser.
 - Whether the SQL behaves the same on real Supabase: the tests use a stub for `auth.uid()` (`request.jwt.claim.sub`), real Supabase reads `request.jwt.claims`. Only C.UTF-8 locale tested.
 - Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only.
 - Whether Vercel's free plan is allowed for a commercial site (Q21).

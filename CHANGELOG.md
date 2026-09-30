@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = on `fix/remediation-3-7`, not merged into `main` yet.
 
 ## 2026-09-30
+- 2026-09-30 [branch] Paid samples (owner, Q8/Q9): B2B blends sold online in 250 g and 500 g as ordinary paid orders; their 1 kg bag only in a cart above the B2B threshold (`isBulkOnly`, `invalid_order:bulk_only`); sample request form, `sample_requests` table, `sample.created` message and admin tab removed; site text on the partner roaster kept (Q2); state version 7.
 - 2026-09-30 [branch] Owner answers recorded in `docs/07`; no automatic free delivery by default (`freeShippingOver` 0 in the seed, state version 6).
 - 2026-09-30 [branch] Project memory files: `PROJECT_NOTES.md` and `CHANGELOG.md` (this commit).
 - 2026-09-30 [branch] Working rules in `CLAUDE.md` and a Stop hook that blocks finishing when code changed but `PROJECT_NOTES.md` did not (4118bef).

@@ -142,7 +142,7 @@ export const fr: Dict = {
     ],
     b2bTitle: 'Cafés, hôtels, restaurants',
     b2bText:
-      'Trois blends pensés pour les professionnels, un échantillon de 500 g sur demande, et les commandes de plus de {kg} kg traitées directement par notre équipe.',
+      'Trois blends pensés pour les professionnels, à goûter en 250 g ou 500 g (échantillon payant), et les commandes de plus de {kg} kg traitées directement par notre équipe.',
     b2bCta: 'Découvrir B2B / HORECA',
     followTitle: 'Suivre BOGA CAFÉ',
     followText: 'Les coulisses de la torréfaction, les recettes et les nouvelles origines.',
@@ -162,8 +162,10 @@ export const fr: Dict = {
     chooseSize: 'Choisissez un format',
     notOffered: 'Pas disponible dans ce format',
     grindTip: 'En grains : moulez juste avant l’extraction pour garder tous les arômes.',
-    b2bNote: 'Professionnel ? Demandez un échantillon de 500 g avant de commander en volume.',
-    b2bSample: 'Demander un échantillon',
+    b2bNote: 'Blend professionnel : les formats 250 g et 500 g servent d’échantillon payant. Le sachet de 1 kg se commande seulement au-delà de {kg} kg (demande B2B).',
+    b2bMore: 'Le B2B chez BOGA CAFÉ',
+    sampleBadge: 'Échantillon payant',
+    bulkOnly: 'Le sachet de 1 kg de ce blend se commande seulement au-delà de {kg} kg au total : la commande devient alors une demande B2B.',
     splitLabel: '{a} % Arabica · {r} % Robusta',
     related: 'À découvrir aussi',
   },
@@ -211,7 +213,6 @@ export const fr: Dict = {
   },
 
   b2b: {
-    blendError: 'Choisissez un blend disponible.',
     eyebrow: 'B2B / HORECA',
     title: 'Du café pour les cafés, hôtels et restaurants',
     intro:
@@ -220,12 +221,10 @@ export const fr: Dict = {
     rules: [
       'Toute commande de plus de {kg} kg devient B2B, même pour un particulier.',
       'Notre équipe fixe le prix final selon la quantité, la distance, la ville et les conditions.',
-      'Un échantillon de 500 g peut être demandé pour l’un des trois blends B2B.',
-      'La livraison de l’échantillon est payée par le client. BOGA CAFÉ peut offrir l’échantillon.',
+      'Pour goûter avant de commander en volume : chaque blend B2B se commande en ligne en 250 g ou 500 g, comme échantillon payant.',
+      'Le sachet de 1 kg des blends B2B est réservé aux commandes de plus de {kg} kg : notre équipe fixe alors le prix.',
     ],
     blendsTitle: 'Les 3 blends B2B',
-    sampleTitle: 'Demander un échantillon de 500 g',
-    sampleText: 'Remplissez le formulaire : la demande est rédigée pour notre équipe, et l’étape suivante vous montre comment elle nous parvient. Nous vous rappelons pour confirmer.',
     largeTitle: 'Grosse commande ?',
     largeText: 'Au-delà de {kg} kg, contactez directement l’équipe ou remplissez votre panier et envoyez-le en demande.',
     largeCta: 'Contacter sur WhatsApp',
@@ -242,11 +241,7 @@ export const fr: Dict = {
     contactName: 'Nom du contact',
     city: 'Ville',
     chooseCity: 'Choisissez une ville',
-    blend: 'Blend',
-    monthly: 'Consommation estimée (kg / mois)',
     notes: 'Message',
-    submitSample: 'Envoyer la demande d’échantillon',
-    deliveryFee: 'Livraison vers {city} : {fee}',
   },
 
   cart: {
@@ -264,6 +259,7 @@ export const fr: Dict = {
       missing_product: 'Ce produit n’est plus disponible.',
       size_not_offered: 'Ce format n’est plus proposé.',
       invalid_blend: 'Ce blend ne respecte plus les règles actuelles (origine indisponible, part sous le minimum ou trop d’origines). Recomposez-le dans Custom Blend.',
+      bulk_only: 'Le sachet de 1 kg de ce blend B2B se commande seulement au-delà de {kg} kg (demande B2B). Choisissez 250 g ou 500 g, ou complétez votre commande.',
     },
     shortage: 'Pas assez de {origin} : {need} kg nécessaires, {left} kg restants.',
     b2bTitle: 'Commande de plus de {max} kg : procédure B2B',
@@ -439,7 +435,7 @@ export const fr: Dict = {
     nav: {
       dashboard: 'Tableau de bord',
       orders: 'Commandes',
-      b2b: 'B2B & échantillons',
+      b2b: 'Demandes B2B',
       products: 'Produits & blends',
       stock: 'Stock & origines',
       shipping: 'Livraison',
@@ -452,7 +448,7 @@ export const fr: Dict = {
       newOrders: 'Nouvelles commandes',
       inProgress: 'En cours',
       completed: 'Terminées',
-      samples: 'Demandes d’échantillon',
+      b2bOpen: 'Demandes B2B ouvertes',
       toVerify: 'Paiements à vérifier',
       stock: 'Stock total',
       revenue: 'Chiffre encaissé',
@@ -505,27 +501,11 @@ export const fr: Dict = {
       },
     },
     b2b: {
-      samplesTab: 'Échantillons (500 g)',
       quotesTab: 'Commandes de plus de {kg} kg',
-      requestedBlend: 'Blend demandé',
-      monthly: 'Conso. estimée',
-      decision: 'Décision échantillon',
-      offered: 'Offert',
-      paid: 'Payé par le client',
-      undecided: 'Non décidé',
-      deliveryFee: 'Frais de livraison (payés par le client)',
       adminNotes: 'Notes internes',
       finalPrice: 'Prix final (MAD)',
       indicative: 'Prix site (indicatif)',
       empty: 'Aucune demande.',
-      sampleStatus: {
-        new: 'Nouvelle',
-        contacted: 'Contacté',
-        approved: 'Validée',
-        shipped: 'Expédiée',
-        closed: 'Clôturée',
-        rejected: 'Refusée',
-      },
       quoteStatus: {
         new: 'Nouvelle',
         negotiating: 'En négociation',
@@ -614,7 +594,7 @@ export const fr: Dict = {
     },
     notif: {
       intro:
-        'Pour chaque nouvelle commande, paiement signalé, demande d’échantillon ou demande B2B, l’administration reçoit un message WhatsApp et un email. Dans le prototype, les messages sont simulés et listés ici.',
+        'Pour chaque nouvelle commande, paiement signalé ou demande B2B, l’administration reçoit un message WhatsApp et un email. Dans le prototype, les messages sont simulés et listés ici.',
       adminWhatsapp: 'Numéro WhatsApp de l’admin',
       adminEmail: 'Email de l’admin (Gmail)',
       whatsappOn: 'Notifications WhatsApp',
@@ -624,7 +604,6 @@ export const fr: Dict = {
       events: {
         'order.created': 'Nouvelle commande',
         'payment.reported': 'Paiement signalé',
-        'sample.created': 'Demande d’échantillon',
         'quote.created': 'Demande B2B',
         'stock.low': 'Stock bas',
       },

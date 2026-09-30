@@ -12,6 +12,7 @@
  * (`npx vitest run tests/sql-parity.test.ts -u`).
  */
 import { describe, expect, it } from 'vitest';
+import { isBulkOnly } from '../src/core/cart';
 import { buildOrder, type CheckoutContext } from '../src/core/order';
 import { offeredSizes } from '../src/core/pricing';
 import { indexOrigins } from '../src/core/recipe';
@@ -74,7 +75,9 @@ function orders() {
   };
   const bag = (): CartItem => {
     const product = pick(products);
-    return { id: `p${rnd()}`, type: 'product', productId: product.id, size: pick(offeredSizes(product)), qty: 1 + Math.floor(rnd() * 4) };
+    // a B2B blend's 1 kg bag is never an order (isBulkOnly): only its paid-sample sizes
+    const sizes = offeredSizes(product).filter((s) => !isBulkOnly(product, s));
+    return { id: `p${rnd()}`, type: 'product', productId: product.id, size: pick(sizes), qty: 1 + Math.floor(rnd() * 4) };
   };
 
   const carts: CartItem[][] = [];

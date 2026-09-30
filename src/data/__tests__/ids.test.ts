@@ -9,9 +9,9 @@ describe('references', () => {
   it('gives every new request its own code, without look-alike characters', () => {
     // uniqueness comes from `taken` (random codes alone can repeat, rarely): checked as the app uses it
     const refs = new Set<string>();
-    for (let i = 0; i < 2000; i++) refs.add(newReference('SR', (r) => refs.has(r), 2026));
+    for (let i = 0; i < 2000; i++) refs.add(newReference('QR', (r) => refs.has(r), 2026));
     expect(refs.size).toBe(2000);
-    for (const r of refs) expect(r).toMatch(/^SR-2026-[2-9A-HJKMNP-Z]{6}$/);
+    for (const r of refs) expect(r).toMatch(/^QR-2026-[2-9A-HJKMNP-Z]{6}$/);
   });
 
   it('draws every character of the alphabet about equally', () => {

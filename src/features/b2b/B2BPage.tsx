@@ -4,7 +4,6 @@ import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
 import { Photo } from '@/shared/ui/Photo';
-import { SampleRequestForm } from './SampleRequestForm';
 import './b2b.css';
 import { formatPhone } from '@/shared/contact';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
@@ -54,11 +53,6 @@ export function B2BPage() {
         </section>
 
         <div className="b2b-forms">
-          <section id="sample" className="panel stack">
-            <h2>{t.b2b.sampleTitle}</h2>
-            <p className="muted">{t.b2b.sampleText}</p>
-            <SampleRequestForm />
-          </section>
           <section className="panel stack b2b-large">
             <h2>{t.b2b.largeTitle}</h2>
             <p className="muted">{fmt(t.b2b.largeText, { kg })}</p>

@@ -144,7 +144,7 @@ export const en = {
     ],
     b2bTitle: 'Cafés, hotels, restaurants',
     b2bText:
-      'Three blends designed for professionals, a 500 g sample on request, and orders above {kg} kg handled directly by our team.',
+      'Three blends designed for professionals, to taste in 250 g or 500 g (paid sample), and orders above {kg} kg handled directly by our team.',
     b2bCta: 'Discover B2B / HORECA',
     followTitle: 'Follow BOGA CAFÉ',
     followText: 'Behind the scenes of the roastery, recipes and new origins.',
@@ -164,8 +164,10 @@ export const en = {
     chooseSize: 'Choose a size',
     notOffered: 'Not offered in this size',
     grindTip: 'Whole beans: grind just before brewing for the best aroma.',
-    b2bNote: 'Professional? Ask for a 500 g sample before ordering in volume.',
-    b2bSample: 'Request a sample',
+    b2bNote: 'Professional blend: the 250 g and 500 g bags are paid samples. The 1 kg bag is only for orders above {kg} kg (B2B request).',
+    b2bMore: 'B2B at BOGA CAFÉ',
+    sampleBadge: 'Paid sample',
+    bulkOnly: 'The 1 kg bag of this blend can only be ordered above {kg} kg in total: the order then becomes a B2B request.',
     splitLabel: '{a}% Arabica · {r}% Robusta',
     related: 'You may also like',
   },
@@ -213,7 +215,6 @@ export const en = {
   },
 
   b2b: {
-    blendError: 'Choose an available blend.',
     eyebrow: 'B2B / HORECA',
     title: 'Coffee for cafés, hotels and restaurants',
     intro:
@@ -222,12 +223,10 @@ export const en = {
     rules: [
       'Any order above {kg} kg becomes B2B, even for individuals.',
       'Our team sets the final price according to quantity, distance, city and conditions.',
-      'A 500 g sample can be requested for one of the three B2B blends.',
-      'Delivery of the sample is paid by the customer. BOGA CAFÉ may offer the sample itself.',
+      'To taste before ordering in volume: each B2B blend can be ordered online in 250 g or 500 g as a paid sample.',
+      'The 1 kg bag of the B2B blends is reserved for orders above {kg} kg: our team then sets the price.',
     ],
     blendsTitle: 'The 3 B2B blends',
-    sampleTitle: 'Request a 500 g sample',
-    sampleText: 'Fill in the form: the request is written out for our team, and the next step shows you how it reaches us. We call you back to confirm.',
     largeTitle: 'Large order?',
     largeText: 'Above {kg} kg, contact the team directly or fill your cart and send it as a request.',
     largeCta: 'Contact on WhatsApp',
@@ -244,11 +243,7 @@ export const en = {
     contactName: 'Contact name',
     city: 'City',
     chooseCity: 'Choose a city',
-    blend: 'Blend',
-    monthly: 'Estimated consumption (kg / month)',
     notes: 'Message',
-    submitSample: 'Send the sample request',
-    deliveryFee: 'Delivery to {city}: {fee}',
   },
 
   cart: {
@@ -266,6 +261,7 @@ export const en = {
       missing_product: 'This product is no longer available.',
       size_not_offered: 'This size is no longer offered.',
       invalid_blend: 'This blend no longer meets the current rules (an origin is unavailable, a share is below the minimum, or there are too many origins). Rebuild it in Custom Blend.',
+      bulk_only: 'The 1 kg bag of this B2B blend is only for orders above {kg} kg (B2B request). Choose 250 g or 500 g, or add to your order.',
     },
     shortage: 'Not enough {origin}: {need} kg needed, {left} kg left.',
     b2bTitle: 'Order above {max} kg: B2B process',
@@ -441,7 +437,7 @@ export const en = {
     nav: {
       dashboard: 'Dashboard',
       orders: 'Orders',
-      b2b: 'B2B & samples',
+      b2b: 'B2B requests',
       products: 'Products & blends',
       stock: 'Stock & origins',
       shipping: 'Delivery',
@@ -454,7 +450,7 @@ export const en = {
       newOrders: 'New orders',
       inProgress: 'In progress',
       completed: 'Completed',
-      samples: 'Sample requests',
+      b2bOpen: 'Open B2B requests',
       toVerify: 'Payments to verify',
       stock: 'Total stock',
       revenue: 'Paid revenue',
@@ -507,27 +503,11 @@ export const en = {
       } as Record<string, string>,
     },
     b2b: {
-      samplesTab: 'Samples (500 g)',
       quotesTab: 'Orders above {kg} kg',
-      requestedBlend: 'Requested blend',
-      monthly: 'Est. consumption',
-      decision: 'Sample decision',
-      offered: 'Offered',
-      paid: 'Paid by customer',
-      undecided: 'Not decided',
-      deliveryFee: 'Delivery fee (paid by customer)',
       adminNotes: 'Internal notes',
       finalPrice: 'Final price (MAD)',
       indicative: 'Website price (indicative)',
       empty: 'No request.',
-      sampleStatus: {
-        new: 'New',
-        contacted: 'Contacted',
-        approved: 'Approved',
-        shipped: 'Shipped',
-        closed: 'Closed',
-        rejected: 'Rejected',
-      },
       quoteStatus: {
         new: 'New',
         negotiating: 'Negotiating',
@@ -616,7 +596,7 @@ export const en = {
     },
     notif: {
       intro:
-        'For every new order, reported payment, sample request or B2B request, the administration receives a WhatsApp message and an email. In the prototype, messages are simulated and listed here.',
+        'For every new order, reported payment or B2B request, the administration receives a WhatsApp message and an email. In the prototype, messages are simulated and listed here.',
       adminWhatsapp: 'Admin WhatsApp number',
       adminEmail: 'Admin email (Gmail)',
       whatsappOn: 'WhatsApp notifications',
@@ -626,7 +606,6 @@ export const en = {
       events: {
         'order.created': 'New order',
         'payment.reported': 'Payment reported',
-        'sample.created': 'Sample request',
         'quote.created': 'B2B request',
         'stock.low': 'Low stock',
       },

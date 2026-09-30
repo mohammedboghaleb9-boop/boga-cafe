@@ -167,28 +167,6 @@ export interface Order {
 
 export type BusinessType = 'cafe' | 'hotel' | 'restaurant' | 'company' | 'individual' | 'other';
 
-export type SampleStatus = 'new' | 'contacted' | 'approved' | 'shipped' | 'closed' | 'rejected';
-
-export interface SampleRequest {
-  id: string;
-  number: string;
-  createdAt: string;
-  businessType: BusinessType;
-  company: string;
-  contactName: string;
-  phone: string;
-  email: string;
-  cityId: string;
-  productId: string;
-  estMonthlyKg: number;
-  notes: string;
-  status: SampleStatus;
-  /** Admin decision. null = not decided yet. */
-  free: boolean | null;
-  deliveryFee: number;
-  adminNotes: string;
-}
-
 export type QuoteStatus = 'new' | 'negotiating' | 'confirmed' | 'closed';
 
 /** Orders above the B2B threshold (settings.b2bThresholdKg) go through the administration. */
@@ -226,7 +204,7 @@ export interface StockMovement {
 }
 
 export type NotificationChannel = 'whatsapp' | 'email';
-export type NotificationEvent = 'order.created' | 'payment.reported' | 'sample.created' | 'quote.created' | 'stock.low';
+export type NotificationEvent = 'order.created' | 'payment.reported' | 'quote.created' | 'stock.low';
 
 export interface NotificationLog {
   id: string;
@@ -257,7 +235,6 @@ export interface Settings {
   roastLossPercent: number;
   /** Free delivery above this subtotal (MAD). 0 = never. */
   freeShippingOver: number;
-  sampleSizeGrams: number;
   /**
    * An order holds its coffee until it is paid, for a limited time only
    * (src/core/order.ts reservationDeadline): this many hours after it was placed

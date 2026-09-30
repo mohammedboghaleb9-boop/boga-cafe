@@ -84,7 +84,7 @@ export function CartPage() {
                   <Icon name="trash" size={16} />
                 </button>
               </div>
-              {problem && <p className="notice notice-bad small cart-line-problem">{t.cart.problems[problem]}</p>}
+              {problem && <p className="notice notice-bad small cart-line-problem">{fmt(t.cart.problems[problem], { kg: max })}</p>}
             </li>
           ))}
         </ul>

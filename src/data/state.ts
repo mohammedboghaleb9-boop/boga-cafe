@@ -5,7 +5,6 @@ import type {
   PaymentMethodConfig,
   Product,
   QuoteRequest,
-  SampleRequest,
   Settings,
   ShippingRate,
   SiteContent,
@@ -22,11 +21,10 @@ export interface DbState {
   settings: Settings;
   content: SiteContent;
   orders: Order[];
-  samples: SampleRequest[];
   quotes: QuoteRequest[];
   stockMovements: StockMovement[];
   notifications: NotificationLog[];
 }
 
 /** Bump when the seed changes, so saved demo data in browsers is replaced. */
-export const STATE_VERSION = 6; // 6: no automatic free delivery; 5: payment check deadline, Cash Plus payee, no example data outside the demo
+export const STATE_VERSION = 7; // 7: paid samples (B2B 250 g prices, no sample requests); 6: no automatic free delivery; 5: payment check deadline, Cash Plus payee, no example data outside the demo
