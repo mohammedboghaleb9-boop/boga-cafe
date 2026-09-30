@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>BOGA CAFÉ · Project Status</title>
+<style>
+/* Layout concept: an operations dashboard on top (answers in one minute), then numbered chapters as
+   dense tables, flows and phase cards. Status colours are semantic and never reused for decoration. */
+:root{
+  --bg:#f1f0ee; --surface:#ffffff; --surface2:#f7f6f4; --ink:#1e1b18; --muted:#6a635b; --line:#dcd8d2;
+  --accent:#9a4f24; --accent-soft:#f3e3d8;
+  --done:#1a8f4d; --done-bg:#e2f4ea;
+  --prog:#2160d6; --prog-bg:#e3ecfb;
+  --plan:#b57900; --plan-bg:#fbf0d3;
+  --block:#c9342f; --block-bg:#fbe5e3;
+  --none:#7d776f; --none-bg:#ebe9e6;
+  --part:#0e8a86; --part-bg:#dff3f2;
+  --font:'Segoe UI',Tahoma,'Noto Sans Arabic','Geeza Pro',system-ui,sans-serif;
+  --mono:ui-monospace,Menlo,Consolas,'DejaVu Sans Mono',monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111010; --surface:#1b1918; --surface2:#232120; --ink:#ece8e2; --muted:#a29b92; --line:#38342f;
+  --accent:#e0a06a; --accent-soft:#3a2a1e;
+  --done:#3ccf83; --done-bg:#12301f; --prog:#7aa7ff; --prog-bg:#16244a; --plan:#f0b429; --plan-bg:#3a2f0e;
+  --block:#ff7772; --block-bg:#40191a; --none:#a29b92; --none-bg:#2a2826; --part:#4cd0cb; --part-bg:#0f3130; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111010; --surface:#1b1918; --surface2:#232120; --ink:#ece8e2; --muted:#a29b92; --line:#38342f;
+  --accent:#e0a06a; --accent-soft:#3a2a1e;
+  --done:#3ccf83; --done-bg:#12301f; --prog:#7aa7ff; --prog-bg:#16244a; --plan:#f0b429; --plan-bg:#3a2f0e;
+  --block:#ff7772; --block-bg:#40191a; --none:#a29b92; --none-bg:#2a2826; --part:#4cd0cb; --part-bg:#0f3130; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{direction:rtl}
+body{direction:rtl;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.75;margin:0;padding-inline:clamp(16px,4vw,40px);padding-block:0 64px}
+.wrap{max-width:1180px;margin-inline:auto}
+h1,h2,h3,h4{line-height:1.35;text-wrap:balance;margin:0}
+p{margin:0}
+a{color:var(--accent)}
+.mono{font-family:var(--mono);font-size:.82em;direction:ltr;unicode-bidi:isolate}
+code{font-family:var(--mono);font-size:.82em;background:var(--surface2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;direction:ltr;unicode-bidi:isolate}
+
+/* top bar + nav */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-inline:calc(-1*clamp(16px,4vw,40px));padding-inline:clamp(16px,4vw,40px)}
+.nav{max-width:1180px;margin-inline:auto;display:flex;gap:6px;overflow-x:auto;padding-block:8px;scrollbar-width:thin}
+.nav a{flex:none;text-decoration:none;color:var(--muted);font-size:12.5px;font-weight:500;padding:4px 10px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.nav a:hover,.nav a:focus-visible{color:var(--ink);border-color:var(--line);background:var(--surface);outline:none}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* hero */
+.hero{padding-block:36px 8px;display:grid;gap:22px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.hero h1{font-size:clamp(28px,5vw,44px);font-weight:700;letter-spacing:-.01em}
+.hero h1 small{display:block;font-size:.42em;font-weight:500;color:var(--muted);margin-top:6px;letter-spacing:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:13px}
+.meta b{color:var(--ink);font-weight:600}
+
+/* one-minute answers */
+.answers{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px}
+.ans{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:6px;align-content:start;border-inline-start-width:1px}
+.ans h2{font-size:12px;font-family:var(--mono);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ans p{font-size:14px;line-height:1.65}
+.ans .k{font-weight:700;font-size:18px}
+.ans.a-done .k{color:var(--done)} .ans.a-prog .k{color:var(--prog)} .ans.a-plan .k{color:var(--plan)} .ans.a-block .k{color:var(--block)} .ans.a-none .k{color:var(--ink)}
+
+/* sections */
+section.chap{padding-block:44px 6px;scroll-margin-top:60px}
+.chead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--ink)}
+.chead .no{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600}
+.chead h2{font-size:clamp(21px,3.4vw,28px);font-weight:700;unicode-bidi:isolate}
+.chead .ar{color:var(--muted);font-size:14px}
+.lead{max-width:70ch;margin-bottom:14px;color:var(--muted)}
+.note{background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13.5px;color:var(--muted);margin-block:12px}
+.note b{color:var(--ink)}
+h3.sub{font-size:16px;margin-block:22px 10px}
+h4{font-size:12px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-block:12px 4px}
+
+/* badges */
+.b{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.04em;padding:2px 9px 2px 8px;border-radius:999px;white-space:nowrap;border:1px solid transparent;direction:ltr}
+.b i{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+.b.done{color:var(--done);background:var(--done-bg)} .b.prog{color:var(--prog);background:var(--prog-bg)}
+.b.plan{color:var(--plan);background:var(--plan-bg)} .b.block{color:var(--block);background:var(--block-bg)}
+.b.none{color:var(--none);background:var(--none-bg)}
+.b.part{color:var(--part);background:var(--part-bg)} .b.part i{background:linear-gradient(90deg,var(--part) 50%,transparent 50%);box-shadow:inset 0 0 0 1.5px var(--part)}
+.b.none i{background:transparent;box-shadow:inset 0 0 0 1.5px var(--none)}
+.verify{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--plan);background:var(--plan-bg);border:1px dashed var(--plan);border-radius:5px;padding:0 6px;white-space:nowrap;direction:ltr}
+
+/* dashboard */
+.dash{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+.ring{display:grid;place-items:center;gap:10px;text-align:center}
+.ringv{--p:49;width:172px;height:172px;border-radius:50%;background:conic-gradient(var(--done) calc(var(--p)*1%),var(--none-bg) 0);display:grid;place-items:center;position:relative}
+.ringv::before{content:"";position:absolute;inset:16px;border-radius:50%;background:var(--surface)}
+.ringv b{position:relative;font-family:var(--mono);font-size:38px;font-weight:600}
+.ring small{color:var(--muted);font-size:12.5px;max-width:26ch}
+.counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px}
+.cnt{border-radius:10px;padding:10px 12px;border:1px solid var(--line);background:var(--surface2)}
+.cnt b{display:block;font-family:var(--mono);font-size:28px;font-weight:600;line-height:1.2}
+.cnt span{font-size:12px;color:var(--muted)}
+.cnt.done b{color:var(--done)} .cnt.prog b{color:var(--prog)} .cnt.plan b{color:var(--plan)} .cnt.block b{color:var(--block)}
+.stack{display:flex;height:16px;border-radius:999px;overflow:hidden;background:var(--none-bg);margin-block:6px 4px;direction:ltr}
+.stack span{display:block;height:100%}
+.stack .done{background:var(--done)} .stack .prog{background:var(--prog)} .stack .plan{background:var(--plan)} .stack .block{background:var(--block)}
+.stackleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted)}
+.ws{display:grid;gap:9px;margin-top:6px}
+.wsrow{display:grid;grid-template-columns:minmax(130px,190px) minmax(0,1fr) 44px;gap:10px;align-items:center;font-size:13px}
+.wsrow b{font-family:var(--mono);font-size:12px;direction:ltr;text-align:end}
+.pbar{height:10px;background:var(--none-bg);border-radius:999px;overflow:hidden;direction:ltr}
+.fill{height:100%;border-radius:999px}
+.fill.done{background:var(--done)} .fill.part{background:var(--part)} .fill.prog{background:var(--prog)} .fill.plan{background:var(--plan)} .fill.block{background:var(--block)} .fill.none{background:var(--none)}
+
+/* legend */
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:10px}
+.leg{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px}
+.leg small{display:block;color:var(--muted);font-size:12px}
+.leg .emo{font-size:15px;line-height:1.5}
+
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-block:10px}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:13.5px}
+th{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface2);padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.6}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb,var(--surface2) 60%,transparent)}
+td:first-child{font-weight:600}
+.tbl.tight table{min-width:520px}
+
+/* checklists */
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.ck{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;line-height:1.6}
+.box{flex:none;width:16px;height:16px;border:1.75px solid var(--muted);border-radius:4px;margin-top:4px;position:relative}
+.ck.done .box{background:var(--done);border-color:var(--done)}
+.ck.done .box::after{content:"";position:absolute;inset:2px 4px 3px 4px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(40deg)}
+.ck.part .box{border-color:var(--part);background:linear-gradient(90deg,var(--part) 50%,transparent 50%)}
+.ck.prog .box{border-color:var(--prog);background:radial-gradient(circle,var(--prog) 35%,transparent 40%)}
+.ck.block .box{border-color:var(--block)}
+.ck.block .box::after{content:"";position:absolute;inset:6px 2px auto 2px;height:2px;background:var(--block)}
+
+/* flows */
+.flow{display:grid;gap:0;justify-items:center;margin-block:14px}
+.step{width:min(100%,560px);background:var(--surface);border:1px solid var(--line);border-inline-start:6px solid var(--none);border-radius:10px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;justify-content:space-between}
+.step .t{font-weight:600}
+.step small{color:var(--muted);flex-basis:100%;font-size:12.5px;line-height:1.55}
+.step.done{border-inline-start-color:var(--done)} .step.prog{border-inline-start-color:var(--prog)} .step.plan{border-inline-start-color:var(--plan)}
+.step.block{border-inline-start-color:var(--block)} .step.none{border-inline-start-color:var(--none)} .step.part{border-inline-start-color:var(--part)}
+.arr{width:2px;height:18px;background:var(--line);position:relative}
+.arr::after{content:"";position:absolute;bottom:-1px;inset-inline-start:-4px;border:5px solid transparent;border-top-color:var(--muted);border-bottom:0}
+.flow.wide .step{width:min(100%,760px)}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;align-items:start}
+.branch{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(100%,560px)}
+@media (max-width:520px){.branch{grid-template-columns:1fr}}
+.dec{width:min(100%,560px);text-align:center;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:12px;padding:10px 14px;font-weight:600}
+.dec small{display:block;font-weight:400;color:var(--muted);font-size:12.5px}
+
+/* project journey timeline */
+.tl{position:relative;display:grid;gap:0;margin-block:8px}
+.tli{display:grid;grid-template-columns:22px minmax(0,1fr);gap:14px;padding-bottom:16px;position:relative}
+.tli::before{content:"";position:absolute;inset-block:16px 0;inset-inline-start:10px;width:2px;background:var(--line)}
+.tli:last-child::before{display:none}
+.dot{width:22px;height:22px;border-radius:50%;border:3px solid var(--none);background:var(--surface);margin-top:4px;z-index:1}
+.tli.done .dot{background:var(--done);border-color:var(--done)} .tli.prog .dot{border-color:var(--prog);background:radial-gradient(circle,var(--prog) 40%,var(--surface) 45%)}
+.tli.plan .dot{border-color:var(--plan)} .tli.part .dot{border-color:var(--part);background:linear-gradient(90deg,var(--part) 50%,var(--surface) 50%)}
+.tli.block .dot{border-color:var(--block)} .tli.none .dot{border-color:var(--none)}
+.tlc{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:grid;gap:4px}
+.tlc .row{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between}
+.tlc b{font-weight:600}
+.tlc small{color:var(--muted);font-size:12.5px;line-height:1.6}
+.ev{font-family:var(--mono);font-size:11.5px;color:var(--muted);unicode-bidi:isolate}
+.star{color:var(--accent);font-weight:700}
+
+/* phase cards */
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-block:16px;border-top:5px solid var(--none);display:grid;gap:8px}
+.pcard.done{border-top-color:var(--done)} .pcard.prog{border-top-color:var(--prog)} .pcard.plan{border-top-color:var(--plan)} .pcard.block{border-top-color:var(--block)} .pcard.part{border-top-color:var(--part)}
+.pcard header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:flex-start}
+.pcard h3{font-size:19px;unicode-bidi:isolate;margin-top:2px}
+.pid{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:600;letter-spacing:.1em}
+.obj{font-size:14px}
+.obj b{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-inline-end:8px;direction:ltr;display:inline-block}
+.pgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
+@media (max-width:760px){.pgrid{grid-template-columns:1fr}}
+.pfoot{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px;border-top:1px dashed var(--line);padding-top:6px}
+.pcard p{font-size:13.5px}
+.dur{font-family:var(--font);font-weight:700;font-size:14px !important}
+
+/* gantt */
+.gantt{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:14px;overflow-x:auto}
+.ghead,.grow{display:grid;grid-template-columns:200px minmax(420px,1fr);gap:12px;align-items:center;min-width:660px}
+.grow{padding-block:6px;border-top:1px solid var(--line)}
+.gname{font-size:13px;font-weight:600}
+.gtrack{position:relative;height:28px;background:repeating-linear-gradient(to left,var(--surface2) 0,var(--surface2) calc(19.23% - 1px),var(--line) calc(19.23% - 1px),var(--line) 19.23%);border-radius:6px}
+.gweeks{height:18px;background:none}
+.gweeks span{position:absolute;top:0;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.gweeks em{font-style:normal}
+.gbar{position:absolute;top:3px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-family:var(--mono);font-weight:600;padding-inline:6px;white-space:nowrap;overflow:hidden;min-width:0}
+.gbar span{overflow:hidden;text-overflow:ellipsis}
+.glab{position:absolute;top:5px;font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.gbar.prog{background:var(--prog)} .gbar.plan{background:var(--plan);color:#1a1200} .gbar.block{background:var(--block)}
+.gbar.block{opacity:.9;background-image:repeating-linear-gradient(135deg,transparent 0 8px,rgba(255,255,255,.14) 8px 16px)}
+:root[data-theme="dark"] .gbar.plan{color:#1a1200}
+
+/* dependency + architecture */
+.depgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px;align-items:start}
+.why{display:grid;gap:8px}
+.why li{font-size:13.5px}
+.tree{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;font-family:var(--mono);font-size:13px;line-height:1.85;overflow-x:auto;direction:ltr;text-align:left;white-space:pre}
+.tree .d{color:var(--done)} .tree .p{color:var(--plan)} .tree .n{color:var(--none)} .tree .m{color:var(--muted)}
+.arch{display:grid;gap:10px}
+.layer{display:grid;grid-template-columns:130px minmax(0,1fr);gap:12px;align-items:stretch}
+@media (max-width:640px){.layer{grid-template-columns:1fr}}
+.lname{font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;direction:ltr}
+.lbox{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--surface);border:1px solid var(--line);border-inline-start:5px solid var(--none);border-radius:8px;padding:6px 11px;font-size:13px;display:grid;gap:1px}
+.chip small{color:var(--muted);font-size:11.5px}
+.chip.done{border-inline-start-color:var(--done)} .chip.part{border-inline-start-color:var(--part)} .chip.prog{border-inline-start-color:var(--prog)} .chip.plan{border-inline-start-color:var(--plan)} .chip.block{border-inline-start-color:var(--block)}
+.larr{justify-self:center;color:var(--muted);font-size:14px;line-height:1}
+
+/* screenshots */
+.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+figure img{display:block;width:100%;height:auto}
+figcaption{padding:8px 12px;font-size:12.5px;color:var(--muted)}
+.shots.m{grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),260px));justify-content:start}
+
+/* final map */
+.map{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;counter-reset:m}
+.mcol{background:var(--surface);border:1px solid var(--line);border-top:6px solid var(--none);border-radius:10px;padding:12px;display:grid;gap:6px;align-content:start}
+.mcol.done{border-top-color:var(--done)} .mcol.prog{border-top-color:var(--prog)} .mcol.plan{border-top-color:var(--plan)} .mcol.part{border-top-color:var(--part)} .mcol.none{border-top-color:var(--none)}
+.mcol h3{font-family:var(--mono);font-size:13px;letter-spacing:.06em}
+.mcol ul{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:12.5px;line-height:1.55}
+.mcol li{display:flex;gap:6px}
+.mcol li::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;margin-top:7px;background:var(--none)}
+.mcol li.d::before{background:var(--done)} .mcol li.g::before{background:var(--prog)} .mcol li.p::before{background:var(--plan)} .mcol li.r::before{background:var(--block)} .mcol li.h::before{background:var(--part)}
+.mcol li.s::before{content:"★";background:none;color:var(--accent);width:auto;height:auto;font-size:12px;margin-top:0}
+.mcol .arrow{font-family:var(--mono);color:var(--muted);font-size:12px}
+.mile{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:8px;margin-top:14px}
+.mile div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;display:flex;gap:8px}
+.mile .star{flex:none}
+.mile small{display:block;color:var(--muted);font-size:11.5px;font-family:var(--mono)}
+
+/* Latin labels inside the RTL page keep their own order ("WHAT NOW?", not "?WHAT NOW") */
+.ans h2,h4,th,.eyebrow,.chead h2,.pcard h3,.mcol h3,.lname,.obj b,.pid,.cnt span,.gname,.step .t,.tlc b{unicode-bidi:plaintext}
+footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;display:grid;gap:4px}
+@media (max-width:760px){.dash{grid-template-columns:1fr}.wsrow{grid-template-columns:minmax(0,1fr) 44px}.wsrow .pbar{grid-column:1/-1;order:3}}
+@media (prefers-reduced-motion:no-preference){.fill,.stack span{transition:width .6s ease}}
+</style>
+</head>
+<body>
+<div class="top"><nav class="nav" aria-label="Sections">
+<a href="#s1">1 Overview</a><a href="#s2">2 Journey</a><a href="#s3">3 Status</a><a href="#s4">4 Completed</a><a href="#s5">5 Current</a><a href="#s6">6 Roadmap</a><a href="#s7">7 Phases</a><a href="#s8">8 Time</a><a href="#s9">9 Dependencies</a><a href="#s10">10 Site map</a><a href="#s11">11 Business logic</a><a href="#s12">12 UI/UX</a><a href="#s13">13 Tech</a><a href="#s14">14 QA</a><a href="#s15">15 Launch</a><a href="#s16">16 Post-launch</a><a href="#s17">17 Risks</a><a href="#s18">18 Final map</a>
+</nav></div>
+
+<div class="wrap">
+
+<!-- ═════════════ HERO: PROJECT CONTROL CENTER ═════════════ -->
+<header class="hero">
+  <div class="eyebrow">BOGA CAFÉ · Project Control Center</div>
+  <h1>مركز التحكم بمشروع BOGA CAFÉ<small>Project Roadmap + Status Report + Visual Development Plan</small></h1>
+  <div class="meta">
+    <span>آخر تحديث: <b class="mono">2026-09-30</b></span>
+    <span>النسخة الرئيسية: <b class="mono">main @ b91e7a1</b> · CI ناجح (run 47)</span>
+    <span>قيد العمل: <b class="mono">fix/remediation-3-7 @ 71350f6</b> · CI ناجح · <b>غير مدموج</b></span>
+  </div>
+
+  <div class="answers" aria-label="الإجابات في دقيقة">
+    <div class="ans a-done"><h2>Where are we?</h2><p class="k">حوالي 59٪ <span class="mono">(Estimated)</span></p><p>نموذج كامل ومختبر، وقاعدة البيانات مكتوبة ومختبرة على PostgreSQL. <b>لا شيء منشور</b>، ولا خادم حقيقي موصول: كل البيانات في متصفح كل زائر.</p></div>
+    <div class="ans a-done"><h2>What is finished?</h2><p class="k">25 من 43 بنداً</p><p>منطق البيع والخلطة وB2B والمخزون، الإدارة بثلاثة أدوار، 3 لغات، اختبارات المتصفح في CI (P4)، وقاعدة البيانات تعيد حساب كل طلب بنفسها (تدقيق، البندان 1 و2).</p></div>
+    <div class="ans a-prog"><h2>What now?</h2><p class="k">إصلاحات التدقيق 3–7 على فرع</p><p>مبنية ومختبرة وCI ناجح على <span class="mono">fix/remediation-3-7</span>، <b>تنتظر قرار الدمج في main</b>. بعدها: P5 (Supabase).</p></div>
+    <div class="ans a-plan"><h2>What is left?</h2><p class="k">11 بنداً مخططاً</p><p>الخادم الحقيقي (Supabase: دخول حقيقي، الطلب على الخادم، الإلغاء الآلي المجدول، Turnstile)، SEO، الصفحات القانونية، الفحص النهائي، الإطلاق.</p></div>
+    <div class="ans a-plan"><h2>How long?</h2><p class="k">3.5 إلى 6 أسابيع عمل <span class="mono">(Estimated)</span></p><p>17–28 يوم عمل للأعمال التقنية المتبقية فقط، بدون الانتظارات الخارجية. تقدير وليس وعداً.</p></div>
+    <div class="ans a-block"><h2>What blocks us?</h2><p class="k">6 بنود خارج يدي</p><p>معلومات الحساب البنكي الحقيقي ومستفيد كاش بلوس (بدونها لا دفع)، المنتجات والأسعار النهائية، مفاتيح Gmail وCallMeBot، النطاق (ANRT)، CNDP، CMI للبطاقة.</p></div>
+    <div class="ans a-none"><h2>Ready to launch when?</h2><p class="k">عند تحقق 12 شرطاً</p><p>مذكورة في القسم <a href="#s15">15</a>. أهمها: خادم حقيقي، طريقة دفع حقيقية مفتوحة، SEO، صفحات قانونية، محتوى نهائي، طلب حقيقي تجريبي.</p></div>
+  </div>
+
+  <h2 class="mono" style="font-size:12px;letter-spacing:.1em;color:var(--muted);direction:ltr;text-align:start">LEGEND</h2>
+  <div class="legend">
+    <div class="leg"><span class="b done"><i></i>COMPLETED</span><div>🟢 ما تحقق منه بدليل في المشروع<small>كود + اختبار أو ملف أو commit</small></div></div>
+    <div class="leg"><span class="b part"><i></i>PARTIAL</span><div>◐ يعمل لكن ينقصه جزء معروف<small>أذكر ما ينقص دائماً بجانبه</small></div></div>
+    <div class="leg"><span class="b prog"><i></i>IN PROGRESS</span><div>🔵 يُعمل عليه الآن<small>على فرع، لم يدخل main بعد</small></div></div>
+    <div class="leg"><span class="b plan"><i></i>PLANNED</span><div>🟡 مخطط ولم يبدأ<small>له ترتيب ومدة تقديرية</small></div></div>
+    <div class="leg"><span class="b block"><i></i>BLOCKED</span><div>🔴 معطّل أو ينتظر قراراً<small>يحتاج طرفاً خارجياً أو صاحب المشروع</small></div></div>
+    <div class="leg"><span class="b none"><i></i>NOT STARTED</span><div>⚪ لا شيء منه بعد<small>مرحلة بعد الإطلاق أو غير مطلوب الآن</small></div></div>
+    <div class="leg"><span class="verify">⚠️ Needs Verification</span><div>لم أستطع إثباته من المشروع<small>يُفحص قبل الاعتماد عليه</small></div></div>
+    <div class="leg"><span class="star">★</span><div>Milestone (محطة)<small>نقطة تحقق في الرحلة</small></div></div>
+  </div>
+  <p class="note"><b>قاعدة هذا التقرير:</b> لا يُعدّ شيء مكتملاً بدون دليل من المشروع (ملف، اختبار، commit، تشغيل CI). كُتب بدون أي تعديل على الكود. <b>«يعمل في المتصفح كنموذج»</b> ≠ <b>«يعمل على خادم حقيقي»</b> ≠ <b>«منشور»</b>: اليوم لا شيء من الأخيرين. الأرقام المسماة <span class="mono">Estimated</span> تقدير وطريقة حسابها مكتوبة في القسم 3.</p>
+</header>
+
+<!-- ═════════════ 1 ═════════════ -->
+<section class="chap" id="s1">
+  <div class="chead"><span class="no">01</span><h2>Project Overview</h2><span class="ar">نظرة عامة</span></div>
+  <div class="split">
+    <div class="card">
+      <h4>Project</h4>
+      <p><b>BOGA CAFÉ</b>: علامة قهوة من وجدة (المغرب): محمصة وبيع قهوة حبوب بجودة عالية. لا قهوة مطحونة، الحبوب فقط.</p>
+      <h4>Goal</h4>
+      <p>موقع رسمي + متجر إلكتروني يبيع للأفراد وللشركات، مع نظام <b>Custom Blend</b> (زبون يصنع خلطته بنسب تساوي 100٪)، وإدارة للمخزون بالكيلوغرام وللطلبات.</p>
+      <h4>Type</h4>
+      <p>موقع تجارة إلكترونية + لوحة إدارة (SPA بـ React). حالياً <b>نموذج تشغيلي</b> جاهز للتطوير نحو نسخة حقيقية.</p>
+    </div>
+    <div class="card">
+      <h4>Languages</h4>
+      <p class="mono" style="direction:rtl;font-family:var(--font);font-size:14px">العربية (RTL) · الفرنسية · الإنجليزية</p>
+      <h4>Audience</h4>
+      <ul class="checks">
+        <li class="ck done"><span class="box"></span><span><b>B2C</b>: أفراد. طلب حتى حد B2B في السلة (10 كلغ افتراضياً، قيمة واحدة في الإعدادات)، الدفع Cash Plus أو تحويل بنكي (لا دفع عند التسليم). الطريقتان <b>مغلقتان في الموقع الحقيقي</b> حتى معلومات الحساب الحقيقي.</span></li>
+        <li class="ck done"><span class="box"></span><span><b>B2B / HORECA</b>: أي طلب فوق الحد يتحول إلى «طلب عرض سعر» تتواصل فيه الإدارة، مع إمكانية طلب عيّنة 500 غ.</span></li>
+      </ul>
+      <h4>Brand channels (real)</h4>
+      <p class="mono" style="font-size:12px">WhatsApp +212 6 09 03 63 78 · bogacafe1@gmail.com · IG @boga.cafe1 · TikTok @bogacafe795</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ 2 ═════════════ -->
+<section class="chap" id="s2">
+  <div class="chead"><span class="no">02</span><h2>Project Journey — From Start to Now</h2><span class="ar">من البداية إلى الآن</span></div>
+  <p class="lead">الحالة مبنية على ما هو موجود فعلاً في المستودع (ملفات، اختبارات، commits). تاريخ المشروع في Git يبدأ يوم <span class="mono">2026-09-27</span>؛ ما قبله (فكرة العمل والوثيقة الأصلية) موجود كملفات في <code>docs/source</code>.</p>
+  <div class="tl">
+<div class="tli done"><div class="dot"></div><div class="tlc"><div class="row"><b>IDEA — الفكرة والدراسة</b><span class="b done"><i></i>COMPLETED</span></div><small>وثيقة المشروع الأصلية، التحليل والدراسة السوقية والتقنية.</small><span class="ev">docs/01-analysis.md · docs/02-study.md · docs/source/*.docx</span></div></div><div class="tli part"><div class="dot"></div><div class="tlc"><div class="row"><b>BUSINESS STRUCTURE — قرارات العمل</b><span class="b part"><i></i>PARTIAL</span></div><small>25 سؤالاً لصاحب المشروع: أُجيب على 3، والباقي بافتراضات مكتوبة. ينقص: المنتجات والأسعار، الشكل القانوني، معلومات البنك وكاش بلوس (Q23–Q25).</small><span class="ev">docs/07-open-questions.md</span></div></div><div class="tli part"><div class="dot"></div><div class="tlc"><div class="row"><b>BRAND / IDENTITY — الهوية</b><span class="b part"><i></i>PARTIAL</span></div><small>شعار متجهي، مواد سوشيال، صورة المعاينة، صور التحميص، تصميم داكن. ينقص: صور حبوب كل مصدر.</small><span class="ev">brand/ · src/assets/photos · docs/08</span></div></div><div class="tli done"><div class="dot"></div><div class="tlc"><div class="row"><b>WEBSITE STRUCTURE — بنية الموقع</b><span class="b done"><i></i>COMPLETED</span></div><small>10 صفحات عامة + 404، ولوحة إدارة بـ 10 أقسام (في النسخة التجريبية).</small><span class="ev">src/app/App.tsx · src/features/*</span></div></div><div class="tli done"><div class="dot"></div><div class="tlc"><div class="row"><b>PRODUCT SYSTEM — نظام المنتجات</b><span class="b done"><i></i>COMPLETED</span></div><small>كتالوج 250 غ / 500 غ / 1 كلغ، مصادر وخلطات (بيانات أمثلة)، محرر منتجات.</small><span class="ev">src/data/seed/catalog.ts · features/admin/products</span></div></div><div class="tli done"><div class="dot"></div><div class="tlc"><div class="row"><b>CUSTOM BLENDING — الخلطة الخاصة</b><span class="b done"><i></i>COMPLETED</span></div><small>مجموع 100٪، حد أدنى 5٪، حتى 4 أنواع، السعر محسوب من أسعار المصادر، نفس الحساب في SQL.</small><span class="ev">src/core/blend.ts · check_order · parity.sql</span></div></div><div class="tli done"><div class="dot"></div><div class="tlc"><div class="row"><b>B2B SYSTEM — نظام B2B</b><span class="b done"><i></i>COMPLETED</span></div><small>فوق الحد = طلب عرض سعر، طلب عيّنة، صفحة طلبات B2B. الحد قيمة واحدة في الإعدادات.</small><span class="ev">src/core/cart.ts (isB2B) · settings.b2bThresholdKg</span></div></div><div class="tli done"><div class="dot"></div><div class="tlc"><div class="row"><b>PRICING — التسعير</b><span class="b done"><i></i>COMPLETED</span></div><small>السعر حسب الحجم أو المصادر، لا كيس مجاني، الشحن حسب المدينة. التقريب مطابق بين الموقع وقاعدة البيانات.</small><span class="ev">pricing.ts · money.ts · smoke 22 · parity.sql (42 طلباً)</span></div></div><div class="tli done"><div class="dot"></div><div class="tlc"><div class="row"><b>STOCK — المخزون</b><span class="b done"><i></i>COMPLETED</span></div><small>كيلوغرامات لكل مصدر، حجز عند الطلب، إرجاع مرة واحدة، <b>كل حجز ينتهي</b> (48 ساعة / 120 ساعة بعد «لقد دفعت»).</small><span class="ev">stock.ts · order.ts reservationDeadline · smoke 23 · race.sh</span></div></div><div class="tli part"><div class="dot"></div><div class="tlc"><div class="row"><b>ORDERING — الطلب</b><span class="b part"><i></i>PARTIAL</span></div><small>يعمل في المتصفح. قاعدة البيانات تعيد حساب كل رقم (<code>check_order</code>) لكن لا خادم يستقبل الطلب بعد (P5).</small><span class="ev">src/core/order.ts · supabase/migrations</span></div></div><div class="tli part"><div class="dot"></div><div class="tlc"><div class="row"><b>PAYMENT — الدفع</b><span class="b part"><i></i>PARTIAL</span></div><small>«لقد دفعت» مجرد إعلان؛ المالك وحده يسجّل «مدفوع». التحويل وكاش بلوس مغلقان في الموقع الحقيقي حتى معلومات الحساب. البطاقة تنتظر CMI.</small><span class="ev">orderFlow.ts · smoke 23 · docs/03 §3 (branch)</span></div></div><div class="tli part"><div class="dot"></div><div class="tlc"><div class="row"><b>ADMIN PANEL — لوحة الإدارة</b><span class="b part"><i></i>PARTIAL</span></div><small>مالك/مسيّر/موظف. موجودة في النسخة التجريبية فقط (بكلمة سر تجريبية)؛ الموقع الحقيقي بدونها حتى Supabase Auth.</small><span class="ev">features/admin · check:real-build (branch)</span></div></div><div class="tli done"><div class="dot"></div><div class="tlc"><div class="row"><b>TESTING — الاختبار</b><span class="b done"><i></i>COMPLETED</span></div><small>Vitest + فحوص PostgreSQL + Playwright/axe في CI. طفرات التدقيق أُعيد تشغيلها: الكود 3 من 58 تنجو، قاعدة البيانات 3 من 31.</small><span class="ev">CI main run 47 · branch 71350f6 · docs/10 §6</span></div></div><div class="tli part"><div class="dot"></div><div class="tlc"><div class="row"><b>AUDIT — التدقيق المستقل</b><span class="b part"><i></i>PARTIAL</span></div><small>تدقيق بنموذج آخر وجد 4 نقاط عالية و9 متوسطة. البندان 1 و2 مدموجان؛ 3–7 مصلحة على فرع لم يُدمج.</small><span class="ev">57b6233 · b91e7a1 · fix/remediation-3-7</span></div></div><div class="tli none"><div class="dot"></div><div class="tlc"><div class="row"><b>LAUNCH — الإطلاق</b><span class="b none"><i></i>NOT STARTED</span></div><small>لم يبدأ. لا نشر، لا نطاق مربوط، لا مفاتيح إرسال.</small><span class="ev">—</span></div></div>
+  </div>
+</section>
+
+<!-- ═════════════ 3 ═════════════ -->
+<section class="chap" id="s3">
+  <div class="chead"><span class="no">03</span><h2>Current Project Status</h2><span class="ar">لوحة الحالة</span></div>
+  <div class="dash">
+    <div class="card ring">
+      <div class="ringv" style="--p:59"><b>59%</b></div>
+      <div><span class="verify">Estimated</span></div>
+      <small>(25 مكتمل + نصف بند قيد العمل) ÷ 43 بنداً</small>
+    </div>
+    <div class="card">
+      <div class="counts">
+        <div class="cnt done"><b>25</b><span>Completed</span></div>
+        <div class="cnt prog"><b>1</b><span>In Progress</span></div>
+        <div class="cnt plan"><b>11</b><span>Remaining (planned)</span></div>
+        <div class="cnt block"><b>6</b><span>Blocked / owner</span></div>
+      </div>
+      <div class="stack" role="img" aria-label="25 مكتمل، 1 قيد العمل، 11 مخطط، 6 معطل">
+        <span class="done" style="width:58.14%"></span><span class="prog" style="width:2.33%"></span><span class="plan" style="width:25.58%"></span><span class="block" style="width:13.95%"></span>
+      </div>
+      <div class="stackleg"><span>🟢 25</span><span>🔵 1</span><span>🟡 11</span><span>🔴 6</span><span>المجموع 43 بنداً</span></div>
+    </div>
+  </div>
+
+  <h3 class="sub">التقدم حسب المحور <span class="verify">Estimated</span></h3>
+  <div class="card"><div class="ws">
+<div class="wsrow"><span>Business logic (core)</span><div class="pbar" role="img" aria-label="Business logic (core) 95%"><div class="fill done" style="width:95%"></div></div><b>95%</b></div><div class="wsrow"><span>Storefront UI</span><div class="pbar" role="img" aria-label="Storefront UI 90%"><div class="fill part" style="width:90%"></div></div><b>90%</b></div><div class="wsrow"><span>Admin UI</span><div class="pbar" role="img" aria-label="Admin UI 80%"><div class="fill part" style="width:80%"></div></div><b>80%</b></div><div class="wsrow"><span>Notifications</span><div class="pbar" role="img" aria-label="Notifications 60%"><div class="fill part" style="width:60%"></div></div><b>60%</b></div><div class="wsrow"><span>Payments</span><div class="pbar" role="img" aria-label="Payments 45%"><div class="fill part" style="width:45%"></div></div><b>45%</b></div><div class="wsrow"><span>Testing / QA</span><div class="pbar" role="img" aria-label="Testing / QA 80%"><div class="fill part" style="width:80%"></div></div><b>80%</b></div><div class="wsrow"><span>Security</span><div class="pbar" role="img" aria-label="Security 55%"><div class="fill part" style="width:55%"></div></div><b>55%</b></div><div class="wsrow"><span>Backend / real data</span><div class="pbar" role="img" aria-label="Backend / real data 35%"><div class="fill part" style="width:35%"></div></div><b>35%</b></div><div class="wsrow"><span>Deployment</span><div class="pbar" role="img" aria-label="Deployment 10%"><div class="fill plan" style="width:10%"></div></div><b>10%</b></div><div class="wsrow"><span>SEO</span><div class="pbar" role="img" aria-label="SEO 5%"><div class="fill plan" style="width:5%"></div></div><b>5%</b></div><div class="wsrow"><span>Legal & privacy</span><div class="pbar" role="img" aria-label="Legal & privacy 0%"><div class="fill none" style="width:0%"></div></div><b>0%</b></div>
+  </div></div>
+  <details class="card" style="margin-block:12px"><summary style="cursor:pointer;font-weight:600">دفتر البنود المتبقية (18 بنداً: 1 قيد العمل + 11 مخطط + 6 معطّل). البنود المكتملة الـ 25 في القسم 4.</summary>
+<div class="tbl tight"><table><thead><tr><th>#</th><th>Item</th><th>Phase</th><th>Status</th></tr></thead><tbody><tr><td>26</td><td>إصلاحات التدقيق 3–7 (حجز ينتهي، دفع للمالك، فصل التجريبي، اختبارات، سهولة الاستعمال، حد B2B واحد)</td><td>AUDIT</td><td><span class="b prog"><i></i>IN PROGRESS</span> غير مدموج</td></tr><tr><td>27</td><td>مشروع Supabase مطبَّق عليه المخطط وكل الفحوص</td><td>P5</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>28</td><td>دخول الإدارة الحقيقي + 2FA، والأدوار من admin_users</td><td>P5</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>29</td><td>استقبال الطلب على الخادم (<code>create-order</code>) ثم <code>commit_order</code></td><td>P5</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>30</td><td>رسائل الإدارة من الخادم + جدولة <code>expire_unpaid_orders</code> (pg_cron)</td><td>P5</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>31</td><td>Turnstile + حد دائم للطلبات + حد للطلبات المفتوحة لكل هاتف</td><td>P5</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>32</td><td>رفع صور المنتجات من الإدارة + مزوّد بيانات غير متزامن (docs/03 §4)</td><td>P5</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>33</td><td>SEO: رابط لكل لغة، prerender، وصف لكل صفحة، Schema، sitemap/robots</td><td>P6</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>34</td><td>الأداء ورؤوس الأمان</td><td>P6</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>35</td><td>صفحات قانونية + شريط موافقة + البكسلات</td><td>P7</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>36</td><td>QA وأمن نهائي، Lighthouse، متصفحات متعددة، نسخ احتياطي، مراقبة</td><td>P9</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>37</td><td>النشر على Vercel + طلب حقيقي بكل طريقة دفع</td><td>P10</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>38</td><td>معلومات الحساب البنكي الحقيقي + مستفيد كاش بلوس (Q23–Q25)</td><td>P8</td><td><span class="b block"><i></i>BLOCKED</span></td></tr><tr><td>39</td><td>المنتجات والأسعار والصور النهائية (Q3)</td><td>P8</td><td><span class="b block"><i></i>BLOCKED</span></td></tr><tr><td>40</td><td>مفاتيح Gmail وCallMeBot</td><td>P8</td><td><span class="b block"><i></i>BLOCKED</span></td></tr><tr><td>41</td><td>النطاق bogacafe.ma (اعتماد ANRT)</td><td>P8</td><td><span class="b block"><i></i>BLOCKED</span></td></tr><tr><td>42</td><td>تصريح CNDP</td><td>P8</td><td><span class="b block"><i></i>BLOCKED</span></td></tr><tr><td>43</td><td>الدفع بالبطاقة (CMI)</td><td>P8 / بعد الإطلاق</td><td><span class="b block"><i></i>BLOCKED</span></td></tr></tbody></table></div>
+  </details>
+  <p class="note"><b>كيف حُسبت الأرقام:</b> 43 بنداً يلزم اكتمالها للإطلاق (38 في النسخة السابقة من التقرير + 5 جديدة: البندان 1 و2 من التدقيق، إصلاح تكبير iPhone، البنود 3–7، وفصل معلومات البنك عن باقي المحتوى). المكتمل = 1، قيد العمل = 0.5، الباقي = 0: (25 + 0.5) ÷ 43 ≈ 59٪. النسبة <b>حسب عدد البنود وليست حسب الجهد</b>: أكبر بند متبقٍ (الخادم الحقيقي، P5) لم يبدأ ويأخذ وحده 7–14 يوماً، فالجهد المتبقي أثقل مما توحي به النسبة. نسب المحاور تقديرات مني بناءً على ما في الأقسام 4 و14.</p>
+</section>
+
+<!-- ═════════════ 4 ═════════════ -->
+<section class="chap" id="s4">
+  <div class="chead"><span class="no">04</span><h2>Completed Work</h2><span class="ar">ما تم إنجازه (بدليل)</span></div>
+  <p class="lead">25 بنداً، كلها في <code>main</code>. عمود Evidence يشير إلى ملف أو اختبار أو commit يمكن فتحه. عمود Notes يقول ما إذا كان يحتاج مراجعة.</p>
+<div class="tbl tight"><table><thead><tr><th>#</th><th>Phase</th><th>Task</th><th>Status</th><th>Evidence</th><th>Notes</th></tr></thead><tbody><tr><td>1</td><td>Discovery</td><td>التحليل والدراسة والوثيقة الأصلية</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>docs/01</code> <code>docs/02</code></td><td>وثائق معرفية؛ لا كود.</td></tr><tr><td>2</td><td>Brand</td><td>شعار، مواد سوشيال، صورة معاينة، صور التحميص</td><td><span class="b part"><i></i>PARTIAL</span></td><td><code>brand/</code> <code>public/og-image.png</code></td><td>ينقص صور حبوب كل مصدر.</td></tr><tr><td>3</td><td>Structure</td><td>10 صفحات عامة + 404، و10 أقسام في الإدارة</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>src/app/App.tsx</code></td><td>لا يوجد حساب زبون ولا صفحة «العملاء» (خارج النطاق حالياً).</td></tr><tr><td>4</td><td>Products</td><td>كتالوج + محرر منتجات + إضافة لا تستبدل الموجود</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>api.test.ts</code> (phase 2)</td><td>أسعار وأسماء تجريبية.</td></tr><tr><td>5</td><td>Custom Blend</td><td>قواعد الخلطة والسعر والمخزون</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>blend.ts</code> <code>protection.test.ts</code></td><td>كُسرت القواعد عمداً وثبت أن الاختبار يكتشفها.</td></tr><tr><td>6</td><td>B2B</td><td>فوق 10 كلغ = عرض سعر، عيّنة 500 غ، صفحة الإدارة</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>cart.ts</code> <code>core.test.ts</code></td><td>التواصل مع العميل يدوي (واتساب/بريد).</td></tr><tr><td>7</td><td>Pricing</td><td>سعر الحجم، رسوم الخلطة، الشحن حسب المدينة، حد 1 درهم</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>pricing.ts</code> <code>shipping.ts</code></td><td>جدول شحن تجريبي لـ 20 مدينة (docs/07).</td></tr><tr><td>8</td><td>Stock</td><td>كيلوغرامات لكل مصدر، خصم وإرجاع، سجل حركات</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>stock.ts</code> · SQL 2,3,8,12,16</td><td>الخصم الذري مختبر في SQL، وفي المتصفح فقط كنموذج.</td></tr><tr><td>9</td><td>Cart & Checkout</td><td>السلة، فحص الخلطة، نموذج الدفع، حدود الطول</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>cart.ts</code> <code>order.ts</code> <code>limits.ts</code></td><td>ربط الصفحات يُجرَّب يدوياً في المتصفح فقط.</td></tr><tr><td>10</td><td>Orders</td><td>new → confirmed → in_production → shipped → delivered / cancelled</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>orderFlow.ts</code> · SQL 9,13,16</td><td>لا إنتاج قبل الدفع المؤكد.</td></tr><tr><td>11</td><td>Payments (manual)</td><td>Cash Plus + تحويل + «لقد دفعت» يصل للفريق</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>order-messages.test.ts</code> · SQL 18</td><td>البطاقة معطلة عمداً (مقيّدة بـ CMI).</td></tr><tr><td>12</td><td>Admin & Roles</td><td>مالك/مسيّر/موظف والقواعد المالية</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>permissions.ts</code> · SQL 5,10,14,19</td><td>الدخول الحالي تجريبي. الربط الحقيقي في P5.</td></tr><tr><td>13</td><td>i18n</td><td>AR (RTL) + FR + EN، نسيان ترجمة يمنع البناء</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>src/i18n/dictionaries</code></td><td>أرقام EN بتنسيق فرنسي، و«كلغ/kg» مختلطة في AR (docs/10 §5).</td></tr><tr><td>14</td><td>Notifications (code)</td><td>دالة الإرسال + 4 أنواع رسائل + تعطيل الروابط + حد الطلبات</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>api/notify.ts</code> <code>notify.test.ts</code></td><td>غير منشورة. تنتظر المفاتيح.</td></tr><tr><td>15</td><td>Database</td><td>مخطط Supabase + 22 فحصاً على PostgreSQL 16 (main)</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>supabase/migrations</code> <code>smoke.sql</code></td><td>لم يُطبَّق على مشروع Supabase حقيقي بعد.</td></tr><tr><td>16</td><td>Tests & CI</td><td>129 اختبار Vitest + 32 اختبار متصفح + 22 فحص SQL + فحص تطابق 42 طلباً (main)</td><td><span class="b done"><i></i>COMPLETED</span></td><td>GitHub Actions run 47 ناجح على main (web, e2e, database)</td><td>على الفرع: 139 + 36 + 25 + فحص تزامن.</td></tr><tr><td>17</td><td>Reviews</td><td>جولات مراجعة مستقلة متعددة، ثم تدقيق شامل بنموذج آخر</td><td><span class="b done"><i></i>COMPLETED</span></td><td>main: <code>d1d880b</code> <code>eaa4791</code> · docs/10 §2 و§6</td><td>المراجعون وكلاء Claude، ليس طرفاً خارجياً. <span class="verify">⚠️ Needs Verification</span> لا مراجعة أمنية بشرية.</td></tr><tr><td>19</td><td>Modern base (P3)</td><td>Node 24، React Router 8.4، TypeScript 7، فاحص Oxlint في CI، وإصلاح ما وجده (انهيار محرر المنتج، تسميات جداول الإدارة)</td><td><span class="b done"><i></i>COMPLETED</span></td><td>main: <code>ba49f09</code> · CI run 30</td><td>مراجعتان مستقلتان: SAFE TO MERGE.</td></tr><tr><td>20</td><td>Phones & accessibility (P4)</td><td>لا تجاوز أفقي عند 320/390، الكلافيي وقارئ الشاشة في الإدارة</td><td><span class="b done"><i></i>COMPLETED</span></td><td>main: <code>01d6772</code> · <code>e2e/mobile.spec.ts</code></td><td>عرض اللوح 768 غير مفحوص.</td></tr><tr><td>21</td><td>Browser tests in CI (P4)</td><td>Playwright على البناء + فحص axe لقواعد WCAG 2.2 A/AA بالعربية والفرنسية</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>e2e/</code> · job e2e في CI</td><td>Chromium فقط، الإنجليزية غير مختبرة في المتصفح. الفحص الآلي لا يعني مطابقة كاملة.</td></tr><tr><td>22</td><td>P4 small fixes</td><td>h1 في «طلب غير موجود»، رسالة الخلطة، روابط اللوحة، وثائق قديمة</td><td><span class="b done"><i></i>COMPLETED</span></td><td>main: <code>01d6772</code></td><td></td></tr><tr><td>23</td><td>Audit 1: no NaN stock</td><td>NaN وInfinity مرفوضان في كل عمود رقمي وفي <code>adjust_stock</code> و<code>commit_order</code></td><td><span class="b done"><i></i>COMPLETED</span></td><td>main: <code>57b6233</code> · smoke 21</td><td></td></tr><tr><td>24</td><td>Audit 2: DB checks every order</td><td><code>check_order</code> يعيد حساب الأسعار والوزن والتوصيل والمخزون ويحفظ ما أعاد بناءه</td><td><span class="b done"><i></i>COMPLETED</span></td><td>main: <code>b91e7a1</code> · smoke 22 · <code>parity.sql</code></td><td>لا خادم يستدعيه بعد (P5).</td></tr><tr><td>25</td><td>iPhone zoom fix</td><td>الحقول بحجم 16px: لا تكبير مفاجئ أثناء الكتابة</td><td><span class="b done"><i></i>COMPLETED</span></td><td>main: <code>b506dc8</code> · e2e mobile</td><td></td></tr><tr><td>18</td><td>Admin data protection</td><td>لا كيس مجاني، فصل الإضافة عن التعديل، الموظف لا يغيّر الأسعار (SQL)</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>protection.test.ts</code> · SQL 19,20</td><td>اختبار حدود الأقسام يعمل كحارس للبنية.</td></tr></tbody></table></div>
+</section>
+
+<!-- ═════════════ 5 ═════════════ -->
+<section class="chap" id="s5">
+  <div class="chead"><span class="no">05</span><h2>Current Work</h2><span class="ar">قيد العمل الآن</span></div>
+  <article class="pcard prog">
+    <header><div><span class="pid">JUST FINISHED · NOT MERGED</span><h3>Audit fixes 3–7 (branch fix/remediation-3-7)</h3></div><span class="b prog"><i></i>IN PROGRESS</span></header>
+    <div class="pgrid">
+      <div>
+        <h4>Result</h4><p>3 commits على <code>fix/remediation-3-7</code> (<code>71350f6</code>)، CI ناجح (web، e2e، database). <b>لم يُدمج في main</b>: ينتظر قرارك.</p>
+        <h4>What was done</h4>
+        <ul class="checks"><li class="ck done"><span class="box"></span><span>كل حجز للمخزون ينتهي: 48 ساعة بدون دفع، 120 ساعة بعد «لقد دفعت»، ولا إعداد يوقفه (smoke 23)</span></li><li class="ck done"><span class="box"></span><span>«لقد دفعت» إعلان فقط؛ المالك وحده يسجّل الدفع، والطلب المدفوع لا يُلغى إلا بالاسترجاع</span></li><li class="ck done"><span class="box"></span><span>الموقع الحقيقي بدون أمثلة ولا لوحة إدارة ولا RIB وهمي؛ فحص CI يمنع رجوعها</span></li><li class="ck done"><span class="box"></span><span>مصفوفة صلاحيات (51 حالة) + فحص جلستين متزامنتين؛ طفرات التدقيق: 3 من 58 و3 من 31 تنجو</span></li><li class="ck done"><span class="box"></span><span>عنوان لكل صفحة، رابط «تجاوز إلى المحتوى»، Escape يغلق القائمة</span></li><li class="ck done"><span class="box"></span><span>حد B2B قيمة واحدة في الإعدادات تظهر في كل النصوص</span></li></ul>
+      </div>
+      <div>
+        <h4>Next task</h4><p>1) قرارك بدمج الفرع في <code>main</code>. 2) <b>P5 · Real Backend (Supabase)</b>: لم يبدأ.</p>
+        <h4>Evidence</h4><p class="mono" style="font-size:12px">CI run 36655811964 · docs/10 §6 · supabase/tests/race.sh · scripts/check-real-build.mjs</p>
+        <h4>Estimated time · Priority</h4><p class="dur">الدمج: نصف يوم · HIGH</p>
+      </div>
+    </div>
+  </article>
+  <article class="pcard block">
+    <header><div><span class="pid">PARALLEL · OWNER SIDE</span><h3>Waiting on the owner and outside parties</h3></div><span class="b block"><i></i>BLOCKED</span></header>
+    <div class="pgrid">
+      <div><h4>What is already done</h4><p>النطاق <span class="mono">bogacafe.ma</span> مسجّل باسم صاحب المشروع (تذكرة Nindohost #581357). ملف الأسئلة المتبقية أُرسل (21 سؤالاً بافتراضاتها).</p><h4>What remains</h4>
+        <ul class="checks"><li class="ck block"><span class="box"></span><span>معلومات الحساب البنكي الحقيقي ومستفيد كاش بلوس (Q23–Q25): بدونها لا طريقة دفع مفتوحة</span></li><li class="ck block"><span class="box"></span><span>المنتجات والأسعار والصور النهائية (Q3)</span></li><li class="ck block"><span class="box"></span><span>كلمة مرور تطبيق Gmail + مفتاح CallMeBot (توضع في Vercel فقط)</span></li><li class="ck block"><span class="box"></span><span>مراجعة ANRT للبطاقة الوطنية (النطاق)</span></li><li class="ck block"><span class="box"></span><span>تصريح CNDP، وطلب CMI للبطاقة</span></li></ul></div>
+      <div><h4>Dependencies</h4><p>تعطل: فتح الدفع، الإرسال الآلي الحقيقي، SEO النهائي، اختبار طلب حقيقي، الإطلاق.</p><h4>Estimated time · Priority</h4><p class="dur">External · CRITICAL</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ═════════════ 6 ═════════════ -->
+<section class="chap" id="s6">
+  <div class="chead"><span class="no">06</span><h2>Remaining Roadmap</h2><span class="ar">الطريق إلى الإطلاق</span></div>
+  <p class="lead">كل مرحلة تعمل وحدها وتفيد فوراً، ولا تنتظر التي بعدها إلا عند اعتماد مذكور في القسم 9.</p>
+  <div class="flow wide">
+<div class="step done"><span class="t">P3 · Modern Base</span><span class="b done"><i></i>COMPLETED</span><small>Node 24 · React Router 8 · TypeScript 7 · Oxlint (main ba49f09)</small></div><div class="arr"></div><div class="step done"><span class="t">P4 · Mobile, Accessibility & E2E</span><span class="b done"><i></i>COMPLETED</span><small>Playwright + axe في CI (main 01d6772)</small></div><div class="arr"></div><div class="step done"><span class="t">AUDIT 1–2 · NaN + DB checks every order</span><span class="b done"><i></i>COMPLETED</span><small>main 57b6233 · b91e7a1</small></div><div class="arr"></div><div class="step prog"><span class="t">AUDIT 3–7 · Reservations, payment, demo split, tests, a11y</span><span class="b prog"><i></i>IN PROGRESS</span><small>fix/remediation-3-7 · CI ناجح · ينتظر الدمج</small></div><div class="arr"></div><div class="step plan"><span class="t">P5 · Real Backend (Supabase)</span><span class="b plan"><i></i>PLANNED</span><small>دخول حقيقي + 2FA، الطلب على الخادم، الإلغاء الآلي المجدول، Turnstile، حد لكل هاتف</small></div><div class="arr"></div><div class="step plan"><span class="t">P6 · SEO Foundation</span><span class="b plan"><i></i>PLANNED</span><small>رابط لكل لغة، prerender، Schema.org، sitemap، الأداء، رؤوس الأمان</small></div><div class="arr"></div><div class="step plan"><span class="t">P7 · Legal, Consent & Ads</span><span class="b plan"><i></i>PLANNED</span><small>خصوصية، شروط البيع، شريط الموافقة، البكسلات</small></div><div class="arr"></div><div class="step block"><span class="t">P8 · Owner content & decisions (parallel)</span><span class="b block"><i></i>BLOCKED</span><small>حساب بنكي وكاش بلوس، منتجات وأسعار، صور، مفاتيح، CNDP، النطاق</small></div><div class="arr"></div><div class="step plan"><span class="t">P9 · QA & Security Review</span><span class="b plan"><i></i>PLANNED</span><small>متصفحات متعددة، Lighthouse، اختبار على Supabase الحقيقي، مراجعة نهائية</small></div><div class="arr"></div><div class="step plan"><span class="t">P10 · Launch</span><span class="b plan"><i></i>PLANNED</span><small>Vercel، النطاق، مفاتيح الإرسال، طلب حقيقي بكل طريقة دفع</small></div><div class="arr"></div><div class="step none"><span class="t">POST-LAUNCH</span><span class="b none"><i></i>NOT STARTED</span><small>مراقبة، تأكيد للزبون، فواتير، بطاقة CMI، حسابات الزبائن</small></div>
+  </div>
+</section>
+
+<!-- ═════════════ 7 ═════════════ -->
+<section class="chap" id="s7">
+  <div class="chead"><span class="no">07</span><h2>Detailed Phase Plan</h2><span class="ar">بطاقة لكل مرحلة</span></div>
+
+<article class="pcard done" id="p3">
+  <header><div><span class="pid">P3</span><h3>Modern Base</h3></div><span class="b done"><i></i>COMPLETED</span></header>
+  <p class="obj"><b>Objective</b> أساس حديث ونظيف قبل بناء أي شيء فوقه.</p>
+  
+  <div class="pgrid">
+    <div><h4>Tasks</h4><ul class="checks"><li class="ck done"><span class="box"></span><span>ترقية Node وReact Router وTypeScript</span></li><li class="ck done"><span class="box"></span><span>إضافة Oxlint في CI</span></li><li class="ck done"><span class="box"></span><span>إعادة إضافات unicorn/oxc للفاحص</span></li><li class="ck done"><span class="box"></span><span>إصلاح تسمية مفتاح «فارغ» + <code>.node-version</code></span></li><li class="ck done"><span class="box"></span><span>CI أخضر ثم الدمج (<code>ba49f09</code>)</span></li></ul></div>
+    <div>
+      <h4>Expected modifications</h4><p><code>.oxlintrc.json</code>, <code>StockPage.tsx</code>, <code>ui.tsx</code>, ملف جديد <code>.node-version</code>.</p>
+      <h4>Dependencies</h4><p>لا شيء.</p>
+      <h4>Estimated duration</h4><p class="dur">0.5–1 يوم</p>
+    </div>
+  </div>
+  <div class="pfoot"><div><h4>Deliverable</h4><p>main على Node 24 مع فاحص كود يعمل.</p></div><div><h4>Definition of Done</h4><p>CI أخضر على main، الفاحص يفشل عند خطأ حقيقي مزروع.</p></div></div>
+</article>
+<article class="pcard done" id="p4">
+  <header><div><span class="pid">P4</span><h3>Mobile, Accessibility & E2E</h3></div><span class="b done"><i></i>COMPLETED</span></header>
+  <p class="obj"><b>Objective</b> الموقع يعمل جيداً على الهاتف ولمن يستعمل الكلافيي أو قارئ الشاشة، ويجرّبه روبوت في كل تعديل.</p>
+  <p class="note"><b>غير مغطى:</b> عرض اللوح 768، Firefox وWebKit، الإنجليزية في المتصفح. الفحص الآلي بـ axe لا يعني مطابقة كاملة لـ WCAG.</p>
+  <div class="pgrid">
+    <div><h4>Tasks</h4><ul class="checks"><li class="ck done"><span class="box"></span><span>لا تجاوز أفقي ولا نص مقطوع عند 320 و390 بكسل، بالعربية والفرنسية</span></li><li class="ck done"><span class="box"></span><span>الصفوف القابلة للنقر تفتح بالكلافيي، وتسميات لكل حقول الإدارة</span></li><li class="ck done"><span class="box"></span><span>Playwright: الطلب بالتحويل و«لقد دفعت»، الخلطة، B2B، الأدوار، الهاتف</span></li><li class="ck done"><span class="box"></span><span>فحص axe (WCAG 2.2 A/AA) في CI</span></li><li class="ck done"><span class="box"></span><span>h1 في «طلب غير موجود»، رسالة الخلطة، روابط اللوحة، تحديث الوثائق</span></li></ul></div>
+    <div>
+      <h4>Expected modifications</h4><p><code>e2e/</code>, <code>playwright.config.ts</code>, <code>ci.yml</code>, صفحات الإدارة.</p>
+      <h4>Dependencies</h4><p>P3.</p>
+      <h4>Estimated duration</h4><p class="dur">تمّ</p>
+    </div>
+  </div>
+  <div class="pfoot"><div><h4>Deliverable</h4><p>main <code>01d6772</code>: 28 اختبار متصفح في CI.</p></div><div><h4>Definition of Done</h4><p>CI أخضر بثلاث مهام (web، e2e، database).</p></div></div>
+</article>
+<article class="pcard prog" id="audit">
+  <header><div><span class="pid">AUDIT</span><h3>Independent Audit — findings 1–7</h3></div><span class="b prog"><i></i>IN PROGRESS</span></header>
+  <p class="obj"><b>Objective</b> إصلاح ما وجده تدقيق شامل بنموذج آخر، بدليل من الاختبارات وليس بالكلام.</p>
+  <p class="note"><b>النتيجة المقاسة (docs/10 §6):</b> طفرات الكود: 26 من 52 كانت تنجو، الآن 3 من 58 (بلا أثر على السلوك). قاعدة البيانات: 20 من 28، الآن 3 من 31 (<code>FOR UPDATE</code> يكشفه <code>race.sh</code>، و<code>skip locked</code> غير مختبر).</p>
+  <div class="pgrid">
+    <div><h4>Tasks</h4><ul class="checks"><li class="ck done"><span class="box"></span><span>1 · لا مخزون NaN (main <code>57b6233</code>)</span></li><li class="ck done"><span class="box"></span><span>2 · قاعدة البيانات تعيد حساب كل طلب وتحفظ ما أعادت بناءه (main <code>b91e7a1</code>)</span></li><li class="ck prog"><span class="box"></span><span>3 · كل حجز ينتهي، حتى بعد «لقد دفعت»</span></li><li class="ck prog"><span class="box"></span><span>4 · فصل التجريبي عن الحقيقي، RIB فارغ، الوثائق تقول الواقع</span></li><li class="ck prog"><span class="box"></span><span>5 · اختبارات تفشل عند كسر القاعدة: إعادة طفرات التدقيق نفسها</span></li><li class="ck prog"><span class="box"></span><span>6 · دورة الدفع: الإعلان ≠ التحقق، المالك وحده</span></li><li class="ck prog"><span class="box"></span><span>7 · عنوان لكل صفحة، رابط التجاوز، Escape</span></li></ul></div>
+    <div>
+      <h4>Expected modifications</h4><p><code>src/core</code>, <code>src/data</code>, <code>supabase/*</code>, الوثائق، <code>e2e/</code>، <code>scripts/check-real-build.mjs</code>.</p>
+      <h4>Dependencies</h4><p>لا شيء. 3–7 تنتظر قرار الدمج.</p>
+      <h4>Estimated duration</h4><p class="dur">الدمج: نصف يوم</p>
+    </div>
+  </div>
+  <div class="pfoot"><div><h4>Deliverable</h4><p>الفرع <code>fix/remediation-3-7</code> مدموج في main.</p></div><div><h4>Definition of Done</h4><p>CI أخضر على main بعد الدمج، و<code>check:real-build</code> نقي.</p></div></div>
+</article>
+<article class="pcard plan" id="p5">
+  <header><div><span class="pid">P5</span><h3>Real Backend (Supabase)</h3></div><span class="b plan"><i></i>PLANNED</span></header>
+  <p class="obj"><b>Objective</b> حفظ حقيقي، حماية حقيقية: لا يثق الموقع بالمتصفح.</p>
+  
+  <div class="pgrid">
+    <div><h4>Tasks</h4><ul class="checks"><li class="ck todo"><span class="box"></span><span>إنشاء مشروع Supabase (منطقة أوروبا) <b>بموافقة صاحب المشروع</b></span></li><li class="ck todo"><span class="box"></span><span>تطبيق المخطط وتشغيل كل الفحوص على المشروع الحقيقي (<code>auth.uid()</code> الحقيقي بدل المحاكاة)</span></li><li class="ck todo"><span class="box"></span><span>دخول الإدارة بـ Supabase Auth + تحقق بخطوتين، والأدوار من <code>admin_users</code></span></li><li class="ck todo"><span class="box"></span><span>استقبال الطلب على الخادم (<code>create-order</code>) بنفس <code>buildOrder</code> ثم <code>commit_order</code> (قاعدة البيانات تعيد الحساب)</span></li><li class="ck todo"><span class="box"></span><span>رسائل الإدارة تُكتب على الخادم من بيانات الطلب</span></li><li class="ck todo"><span class="box"></span><span>جدولة <code>expire_unpaid_orders</code> كل 15 دقيقة (pg_cron): 48 ساعة / 120 ساعة</span></li><li class="ck todo"><span class="box"></span><span>Cloudflare Turnstile + حد دائم للطلبات + حد للطلبات المفتوحة لكل هاتف</span></li><li class="ck todo"><span class="box"></span><span>رفع صور المنتجات من الإدارة (Storage)</span></li><li class="ck todo"><span class="box"></span><span>مزوّد بيانات غير متزامن بدل <code>src/data/api.ts</code> وتعديل الصفحات التي تقرأ كل البيانات (docs/03 §4)</span></li></ul></div>
+    <div>
+      <h4>Expected modifications</h4><p><code>src/data/*</code> (مزوّد جديد)، صفحات تستعمل <code>useDb()</code>، <code>api/*</code>, <code>supabase/*</code>, <code>features/admin/session.ts</code>.</p>
+      <h4>Dependencies</h4><p>دمج إصلاحات التدقيق 3–7. موافقة على إنشاء المشروع. حساب Cloudflare لـ Turnstile.</p>
+      <h4>Estimated duration</h4><p class="dur">7–14 يوماً (أكبر مرحلة)</p>
+    </div>
+  </div>
+  <div class="pfoot"><div><h4>Deliverable</h4><p>متجر يحفظ الطلبات والمخزون على خادم، بدخول إدارة حقيقي.</p></div><div><h4>Definition of Done</h4><p>طلب من المتصفح يُنشأ على الخادم بسعر يُعاد حسابه هناك، الموظف لا يستطيع تغيير سعر بحساب حقيقي، فحوص RLS خضراء على المشروع الحقيقي.</p></div></div>
+</article>
+<article class="pcard plan" id="p6">
+  <header><div><span class="pid">P6</span><h3>SEO Foundation</h3></div><span class="b plan"><i></i>PLANNED</span></header>
+  <p class="obj"><b>Objective</b> أن يجد Google الموقع ويفهمه بثلاث لغات، خاصة بحثاً محلياً في وجدة.</p>
+  
+  <div class="pgrid">
+    <div><h4>Tasks</h4><ul class="checks"><li class="ck todo"><span class="box"></span><span>رابط لكل لغة <code>/ar</code> <code>/fr</code> <code>/en</code> مع hreflang و lang/dir صحيحين</span></li><li class="ck todo"><span class="box"></span><span>prerender: HTML كامل لكل صفحة عامة عند البناء</span></li><li class="ck todo"><span class="box"></span><span>title و description خاصان بكل صفحة ولغة</span></li><li class="ck todo"><span class="box"></span><span>Schema.org: Organization, LocalBusiness, Product+Offer (درهم)، BreadcrumbList</span></li><li class="ck todo"><span class="box"></span><span>og:image برابط كامل + twitter:card</span></li><li class="ck todo"><span class="box"></span><span>sitemap.xml و robots.txt، ولوحة الإدارة noindex</span></li><li class="ck todo"><span class="box"></span><span>الأداء: صور srcset، تحميل مسبق للخطوط والصورة الرئيسية، فصل القواميس</span></li><li class="ck todo"><span class="box"></span><span>رؤوس الأمان (CSP, HSTS, X-Content-Type-Options)</span></li><li class="ck todo"><span class="box"></span><span>Search Console + Google Business Profile (صاحب المشروع)</span></li></ul></div>
+    <div>
+      <h4>Expected modifications</h4><p><code>index.html</code>, <code>vite.config.ts</code>, <code>src/app/App.tsx</code> (مسارات اللغة)، <code>vercel.json</code>، ملفات مولّدة.</p>
+      <h4>Dependencies</h4><p>اسم النطاق النهائي (لـ canonical/sitemap؛ يعمل بمتغير بيئة حتى ذلك الحين). محتوى نهائي.</p>
+      <h4>Estimated duration</h4><p class="dur">4–5 أيام</p>
+    </div>
+  </div>
+  <div class="pfoot"><div><h4>Deliverable</h4><p>كل صفحة عامة تظهر كاملة في «عرض المصدر» بكل لغة.</p></div><div><h4>Definition of Done</h4><p>اختبار Rich Results ناجح، Lighthouse SEO ≥ 90، صفحات اللغات الثلاث في sitemap.</p></div></div>
+</article>
+<article class="pcard plan" id="p7">
+  <header><div><span class="pid">P7</span><h3>Legal, Consent & Ads</h3></div><span class="b plan"><i></i>PLANNED</span></header>
+  <p class="obj"><b>Objective</b> الامتثال للقانون المغربي 09-08 وتشغيل الإعلانات بدون تتبع قبل الموافقة.</p>
+  <p class="note"><b>ملاحظة:</b> الموقع اليوم لا يستعمل أي كوكيز ولا تتبع، لذلك لا يحتاج شريطاً الآن. الشريط ضروري فقط عند إضافة الإعلانات.</p>
+  <div class="pgrid">
+    <div><h4>Tasks</h4><ul class="checks"><li class="ck todo"><span class="box"></span><span>صفحة الخصوصية (ما يُجمع، لماذا، من يعالجه: Vercel، Supabase، Gmail، CallMeBot، CMI)</span></li><li class="ck todo"><span class="box"></span><span>شروط البيع (CGV)، الإشعارات القانونية، سياسة التوصيل والإرجاع</span></li><li class="ck todo"><span class="box"></span><span>شريط موافقة خاص: «رفض» بنفس سهولة «قبول»</span></li><li class="ck todo"><span class="box"></span><span>Google Consent Mode v2 (الافتراضي denied)</span></li><li class="ck todo"><span class="box"></span><span>Meta Pixel و TikTok Pixel (holdConsent) و Google Ads: لا شيء يُحمَّل قبل الموافقة</span></li><li class="ck todo"><span class="box"></span><span>قياس بدون كوكيز (Plausible/Umami) كبديل موصى به</span></li><li class="ck todo"><span class="box"></span><span>تصريح CNDP (صاحب المشروع)</span></li></ul></div>
+    <div>
+      <h4>Expected modifications</h4><p>صفحات جديدة في <code>src/features/legal</code>، مكوّن شريط الموافقة، خدمة <code>src/services/consent</code>، القاموس الثلاثي.</p>
+      <h4>Dependencies</h4><p>نصوص قانونية تحتاج معطيات صاحب المشروع (الشكل القانوني، العنوان). معرفات Pixel.</p>
+      <h4>Estimated duration</h4><p class="dur">2–3 أيام (+ CNDP خارجي)</p>
+    </div>
+  </div>
+  <div class="pfoot"><div><h4>Deliverable</h4><p>موقع لا يتتبع أحداً بدون موافقة، مع صفحات قانونية كاملة.</p></div><div><h4>Definition of Done</h4><p>عند الرفض لا يظهر أي طلب لأدوات الإعلانات في تبويب الشبكة، والموافقة قابلة للسحب.</p></div></div>
+</article>
+<article class="pcard block" id="p8">
+  <header><div><span class="pid">P8</span><h3>Owner Content & Decisions</h3></div><span class="b block"><i></i>BLOCKED</span></header>
+  <p class="obj"><b>Objective</b> أشياء لا أستطيع اختراعها: بيانات العمل الحقيقية.</p>
+  
+  <div class="pgrid">
+    <div><h4>Tasks</h4><ul class="checks"><li class="ck block"><span class="box"></span><span>معلومات الحساب البنكي الحقيقي (صاحب الحساب، البنك، RIB) ومستفيد كاش بلوس (Q23–Q25): بدونها التحويل وكاش بلوس مغلقان</span></li><li class="ck block"><span class="box"></span><span>هل يمكن سحب التحويل بعد وصوله؟ هل ننتظر قبل الإنتاج؟ (Q23، مع البنك)</span></li><li class="ck block"><span class="box"></span><span>قائمة المنتجات والأسعار النهائية (الموقع يعرض أمثلة، Q3)</span></li><li class="ck block"><span class="box"></span><span>صور حبوب كل مصدر</span></li><li class="ck block"><span class="box"></span><span>ساعات الرد على واتساب والبريد</span></li><li class="ck block"><span class="box"></span><span>الشكل القانوني (لتصريح CNDP وطلب CMI)</span></li><li class="ck block"><span class="box"></span><span>مفاتيح Gmail وCallMeBot (توضع في Vercel فقط)</span></li><li class="ck block"><span class="box"></span><span>تأكيد المدة 120 ساعة للتحقق من الدفع (Q11)</span></li></ul></div>
+    <div>
+      <h4>Expected modifications</h4><p>ملفات البيانات (<code>src/data/seed</code>) ثم بيانات الإنتاج في قاعدة البيانات.</p>
+      <h4>Dependencies</h4><p>لا شيء تقنياً؛ يعطل P6 (المحتوى)، P9، P10.</p>
+      <h4>Estimated duration</h4><p class="dur">يجري بالتوازي</p>
+    </div>
+  </div>
+  <div class="pfoot"><div><h4>Deliverable</h4><p>كل معطيات العمل الحقيقية بين يدي.</p></div><div><h4>Definition of Done</h4><p>لا يبقى نص أو سعر أو صورة تجريبية في الموقع.</p></div></div>
+</article>
+<article class="pcard plan" id="p9">
+  <header><div><span class="pid">P9</span><h3>QA & Security Review</h3></div><span class="b plan"><i></i>PLANNED</span></header>
+  <p class="obj"><b>Objective</b> الاطمئنان قبل الإطلاق.</p>
+  
+  <div class="pgrid">
+    <div><h4>Tasks</h4><ul class="checks"><li class="ck todo"><span class="box"></span><span>كل اختبارات Playwright في CI على Chromium وFirefox وWebKit، وبالإنجليزية أيضاً</span></li><li class="ck todo"><span class="box"></span><span>تشغيل كل فحوص SQL على Supabase الحقيقي، واختبار <code>skip locked</code> تحت التزامن</span></li><li class="ck todo"><span class="box"></span><span>فحص التبعيات (npm audit) ومراجعة الرؤوس وحدود الطلبات</span></li><li class="ck todo"><span class="box"></span><span>اختبار RLS بحسابات حقيقية لكل دور</span></li><li class="ck todo"><span class="box"></span><span>Lighthouse ≥ 90 (أداء، إتاحة، SEO، أفضل الممارسات) على الهاتف</span></li><li class="ck todo"><span class="box"></span><span>نسخ احتياطي واستعادة تجريبية لقاعدة البيانات</span></li><li class="ck todo"><span class="box"></span><span>مراقبة الأخطاء</span></li><li class="ck todo"><span class="box"></span><span>مراجعة مستقلة نهائية لكل المشروع</span></li></ul></div>
+    <div>
+      <h4>Expected modifications</h4><p>إعدادات CI، تقارير، إصلاحات ما يظهر.</p>
+      <h4>Dependencies</h4><p>P5 و P6 و P7 و P8 (المحتوى).</p>
+      <h4>Estimated duration</h4><p class="dur">2–3 أيام</p>
+    </div>
+  </div>
+  <div class="pfoot"><div><h4>Deliverable</h4><p>تقرير جودة وأمان بلا ملاحظة عالية مفتوحة.</p></div><div><h4>Definition of Done</h4><p>CI أخضر بالكامل، صفر مشكلة عالية مفتوحة، استعادة النسخة الاحتياطية مجرّبة.</p></div></div>
+</article>
+<article class="pcard plan" id="p10">
+  <header><div><span class="pid">P10</span><h3>Launch</h3></div><span class="b plan"><i></i>PLANNED</span></header>
+  <p class="obj"><b>Objective</b> من نسخة تجريبية إلى موقع حي على bogacafe.ma.</p>
+  
+  <div class="pgrid">
+    <div><h4>Tasks</h4><ul class="checks"><li class="ck todo"><span class="box"></span><span>مشروع Vercel، المتغيرات (المفاتيح في الإعدادات فقط، لا في Git)</span></li><li class="ck todo"><span class="box"></span><span>فتح طريقة دفع بإدخال معلومات الحساب الحقيقي في الإدارة</span></li><li class="ck todo"><span class="box"></span><span>ربط النطاق bogacafe.ma وDNS وSSL (يلزم اعتماد ANRT)</span></li><li class="ck todo"><span class="box"></span><span>طلب حقيقي بكل طريقة دفع (Cash Plus، تحويل) يصل إلى واتساب وGmail</span></li><li class="ck todo"><span class="box"></span><span>مراجعة نهائية من صاحب المشروع</span></li><li class="ck todo"><span class="box"></span><span>Search Console + Google Business Profile</span></li><li class="ck todo"><span class="box"></span><span>إطلاق</span></li></ul></div>
+    <div>
+      <h4>Expected modifications</h4><p>إعدادات النشر فقط.</p>
+      <h4>Dependencies</h4><p>كل ما قبله. اعتماد النطاق. المفاتيح.</p>
+      <h4>Estimated duration</h4><p class="dur">2–3 أيام (+ انتظار خارجي)</p>
+    </div>
+  </div>
+  <div class="pfoot"><div><h4>Deliverable</h4><p>موقع حي ومراقب.</p></div><div><h4>Definition of Done</h4><p>الشروط الـ 12 في القسم 15 كلها بدليل.</p></div></div>
+</article>
+</section>
+
+<!-- ═════════════ 8 ═════════════ -->
+<section class="chap" id="s8">
+  <div class="chead"><span class="no">08</span><h2>Development Time Estimate</h2><span class="ar">المدة التقديرية</span></div>
+  <p class="note"><b>تقدير وليس وعداً.</b> أيام عمل، تتغير مع ما يظهر أثناء الطريق (خاصة P5). لا تشمل الانتظارات الخارجية: ANRT، CNDP، CMI، رد صاحب المشروع.</p>
+<div class="tbl tight"><table><thead><tr><th>Phase</th><th>Estimated Duration</th><th>Dependencies</th><th>Priority</th><th>Status</th></tr></thead><tbody><tr><td>P3 Modern Base</td><td>انتهت</td><td>—</td><td>HIGH</td><td><span class="b done"><i></i>COMPLETED</span></td></tr><tr><td>P4 Mobile, Accessibility, E2E</td><td>انتهت</td><td>—</td><td>HIGH</td><td><span class="b done"><i></i>COMPLETED</span></td></tr><tr><td>Audit fixes 1–2</td><td>انتهت</td><td>—</td><td>CRITICAL</td><td><span class="b done"><i></i>COMPLETED</span></td></tr><tr><td>Audit fixes 3–7: merge</td><td>نصف يوم</td><td>قرار صاحب المشروع</td><td>HIGH</td><td><span class="b prog"><i></i>IN PROGRESS</span></td></tr><tr><td>P5 Real Backend (Supabase)</td><td>7–14 يوماً</td><td>دمج 3–7 + موافقة صاحب المشروع</td><td>CRITICAL</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>P6 SEO Foundation</td><td>4–5 أيام</td><td>P3 (لا يحتاج P5)، محتوى، نطاق</td><td>HIGH</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>P7 Legal, Consent, Ads</td><td>2–3 أيام</td><td>معطيات قانونية من صاحب المشروع</td><td>HIGH</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>P8 Owner content & decisions</td><td>بالتوازي</td><td>صاحب المشروع / أطراف خارجية</td><td>CRITICAL</td><td><span class="b block"><i></i>BLOCKED</span></td></tr><tr><td>P9 QA & Security Review</td><td>2–3 أيام</td><td>P5–P8</td><td>HIGH</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td>P10 Launch</td><td>2–3 أيام</td><td>P9 + النطاق + المفاتيح</td><td>CRITICAL</td><td><span class="b plan"><i></i>PLANNED</span></td></tr><tr><td><b>Total (technical)</b></td><td><b>17–28 يوم عمل ≈ 3.5–6 أسابيع</b> (المتبقي)</td><td>½ + (7–14) + (4–5) + (2–3) + (2–3) + (2–3)</td><td></td><td></td></tr></tbody></table></div>
+  <h3 class="sub">Timeline (الوسط التقديري لكل مرحلة، بالأسابيع W)</h3>
+<div class="gantt"><div class="ghead"><div class="gname"></div><div class="gtrack gweeks"><span style="inset-inline-start:0.00%"><em>W0</em></span><span style="inset-inline-start:19.23%"><em>W1</em></span><span style="inset-inline-start:38.46%"><em>W2</em></span><span style="inset-inline-start:57.69%"><em>W3</em></span><span style="inset-inline-start:76.92%"><em>W4</em></span><span style="inset-inline-start:96.15%"><em>W5</em></span></div></div><div class="grow"><div class="gname">Merge audit fixes 3–7</div><div class="gtrack"><div class="gbar prog" style="inset-inline-start:0.00%;width:2.20%"></div><span class="glab" style="inset-inline-start:calc(2.20% + 8px)">نصف يوم</span></div></div><div class="grow"><div class="gname">P5 Real Backend (Supabase)</div><div class="gtrack"><div class="gbar plan" style="inset-inline-start:1.92%;width:40.38%"><span>7–14 يوماً</span></div></div></div><div class="grow"><div class="gname">P6 SEO Foundation</div><div class="gtrack"><div class="gbar plan" style="inset-inline-start:42.31%;width:17.31%"><span>4–5 أيام</span></div></div></div><div class="grow"><div class="gname">P7 Legal, Consent, Ads</div><div class="gtrack"><div class="gbar plan" style="inset-inline-start:59.62%;width:9.62%"></div><span class="glab" style="inset-inline-start:calc(69.23% + 8px)">2–3 أيام</span></div></div><div class="grow"><div class="gname">P9 QA & Security Review</div><div class="gtrack"><div class="gbar plan" style="inset-inline-start:69.23%;width:9.62%"></div><span class="glab" style="inset-inline-start:calc(78.85% + 8px)">2–3 أيام</span></div></div><div class="grow"><div class="gname">P10 Launch</div><div class="gtrack"><div class="gbar plan" style="inset-inline-start:78.85%;width:9.62%"></div><span class="glab" style="inset-inline-start:calc(88.46% + 8px)">2–3 أيام</span></div></div><div class="grow"><div class="gname">P8 Owner content &amp; decisions (parallel)</div>
+        <div class="gtrack"><div class="gbar block" style="inset-inline-start:0%;width:100%"><span>يجري بالتوازي: أشياء من صاحب المشروع + انتظارات خارجية</span></div></div></div></div>
+  <p class="note">الشريط يمثل منتصف المجال. الزمن يجري من اليمين إلى اليسار. المراحل متتابعة في الرسم للتبسيط، ويمكن تشغيل P6 بالتوازي مع P5 إن توفر من يعمل عليهما، فتقصر المدة الكلية.</p>
+</section>
+
+<!-- ═════════════ 9 ═════════════ -->
+<section class="chap" id="s9">
+  <div class="chead"><span class="no">09</span><h2>Dependencies</h2><span class="ar">ما يعتمد على ماذا</span></div>
+  <div class="depgrid">
+    <div>
+      <h3 class="sub" style="margin-top:0">A · سلسلة الطلب (Order chain)</h3>
+      <div class="flow">
+<div class="step done"><span class="t">Product Database</span><span class="b done"><i></i>COMPLETED</span><small>كتالوج ومصادر (بيانات تجريبية)</small></div><div class="arr"></div><div class="step done"><span class="t">Pricing Engine</span><span class="b done"><i></i>COMPLETED</span><small>pricing.ts / blend.ts / shipping.ts</small></div><div class="arr"></div><div class="step done"><span class="t">Cart</span><span class="b done"><i></i>COMPLETED</span><small>cart.ts: فحص الخلطة والعتبة 10 كلغ</small></div><div class="arr"></div><div class="step done"><span class="t">Checkout</span><span class="b done"><i></i>COMPLETED</span><small>نموذج، حدود الطول، طرق الدفع</small></div><div class="arr"></div><div class="step part"><span class="t">Order System</span><span class="b part"><i></i>PARTIAL</span><small>buildOrder في المتصفح + check_order في قاعدة البيانات. لا خادم يستقبل بعد (P5)</small></div><div class="arr"></div><div class="step block"><span class="t">Payment</span><span class="b block"><i></i>BLOCKED</span><small>التحويل وكاش بلوس مبنيان ومغلقان حتى الحساب الحقيقي. البطاقة تنتظر CMI</small></div><div class="arr"></div><div class="step part"><span class="t">Admin Dashboard</span><span class="b part"><i></i>PARTIAL</span><small>في النسخة التجريبية فقط. الدخول الحقيقي في P5</small></div>
+      </div>
+    </div>
+    <div>
+      <h3 class="sub" style="margin-top:0">B · سلسلة الإطلاق (Launch chain)</h3>
+      <div class="flow">
+<div class="step done"><span class="t">P3 + P4</span><span class="b done"><i></i>COMPLETED</span><small>أساس حديث + اختبارات المتصفح في CI ✔</small></div><div class="arr"></div><div class="step prog"><span class="t">Audit fixes 3–7</span><span class="b prog"><i></i>IN PROGRESS</span><small>على فرع، تنتظر الدمج</small></div><div class="arr"></div><div class="step plan"><span class="t">P5 Supabase</span><span class="b plan"><i></i>PLANNED</span><small>يحتاج موافقة على المشروع</small></div><div class="arr"></div><div class="step plan"><span class="t">P6 SEO + P7 Legal</span><span class="b plan"><i></i>PLANNED</span><small>الرابط النهائي والمحتوى النهائي</small></div><div class="arr"></div><div class="step plan"><span class="t">P9 QA & Security</span><span class="b plan"><i></i>PLANNED</span><small>يحتاج كل ما سبق</small></div><div class="arr"></div><div class="step block"><span class="t">Domain + Keys</span><span class="b block"><i></i>BLOCKED</span><small>ANRT · Gmail · CallMeBot</small></div><div class="arr"></div><div class="step plan"><span class="t">P10 Launch</span><span class="b plan"><i></i>PLANNED</span><small></small></div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="sub">لماذا لا نقفز؟ (Why order matters)</h3>
+  <div class="tbl tight"><table><thead><tr><th>Blocked item</th><th>Because</th><th>Blocked by</th></tr></thead><tbody>
+    <tr><td>الإطلاق</td><td>البيانات الآن في متصفح كل زائر: لا لوحة إدارة في الموقع الحقيقي، والحالة التي يغيّرها الفريق لا تصل إلى الزبون.</td><td><span class="b plan"><i></i>P5</span></td></tr>
+    <tr><td>إعلانات Meta / TikTok / Google</td><td>القانون يفرض شريط موافقة وصفحة خصوصية قبل أي بكسل. البكسل يحتاج رابطاً نهائياً.</td><td>P7 + النطاق</td></tr>
+    <tr><td>SEO النهائي (sitemap، canonical، hreflang)</td><td>هذه الملفات تحمل الرابط الكامل، ولا معنى لها على رابط مؤقت.</td><td><span class="b block"><i></i>النطاق</span></td></tr>
+    <tr><td>Rich results للمنتجات</td><td>تحتاج أسعاراً وصوراً نهائية وليست أمثلة.</td><td><span class="b block"><i></i>P8</span></td></tr>
+    <tr><td>الإرسال الآلي الحقيقي</td><td>الدالة جاهزة، وتحتاج مفتاحين لا يجوز أن يمرا عبري أو عبر Git.</td><td><span class="b block"><i></i>مفاتيح</span></td></tr>
+    <tr><td>الدفع بالبطاقة</td><td>يحتاج عقد CMI، الذي يحتاج شكلاً قانونياً وبنكاً.</td><td><span class="b block"><i></i>CMI</span></td></tr>
+    <tr><td>P5 قبل دمج 3–7؟ لا</td><td>P5 يبني على قواعد الحجز والدفع والفصل بين التجريبي والحقيقي الموجودة في الفرع. البدء بدونها يعني العمل على كود سيتغير.</td><td><span class="b prog"><i></i>دمج 3–7</span></td></tr>
+    <tr><td>فتح الدفع في الموقع الحقيقي</td><td>لا RIB ولا مستفيد كاش بلوس حقيقيين؛ الموقع وقاعدة البيانات يرفضان الطلب بهما حتى إدخالهما، ولا يُخترع حساب.</td><td><span class="b block"><i></i>Q23–Q25</span></td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- ═════════════ 10 ═════════════ -->
+<section class="chap" id="s10">
+  <div class="chead"><span class="no">10</span><h2>Website Architecture</h2><span class="ar">بنية الموقع الفعلية</span></div>
+  <p class="lead">مأخوذة من <code>src/app/App.tsx</code> و<code>AdminApp.tsx</code>. لا صفحات «حساب» ولا «عملاء»: هي خارج النطاق حالياً.</p>
+  <div class="tree"><span class="d">BOGA CAFÉ</span>
+│
+├── <span class="d">/  Home</span>                 <span class="m">الواجهة، الخلطات، عن BOGA</span>
+├── <span class="d">/shop  Shop</span>             <span class="m">مرشحات: الكل · Signature · Single Origin · B2B</span>
+├── <span class="d">/product/:slug</span>          <span class="m">أحجام 250 غ / 500 غ / 1 كلغ</span>
+├── <span class="d">/single-origin</span>
+├── <span class="d">/custom-blend</span>           <span class="m">بناء خلطة، مجموع 100٪</span>
+├── <span class="d">/b2b</span>                    <span class="m">طلب عرض سعر + طلب عيّنة</span>
+├── <span class="d">/cart</span>  →  <span class="d">/checkout</span>  →  <span class="d">/order/:id</span>
+├── <span class="d">/contact</span>
+├── <span class="d">*  404</span>
+│
+├── <span class="n">Account / Customers</span>       <span class="m">غير موجود (بعد الإطلاق)</span>
+├── <span class="p">/ar  /fr  /en  URL لكل لغة</span>   <span class="m">مخطط (P6): اللغة الآن تتبدل داخل نفس الرابط</span>
+├── <span class="p">Privacy · CGV · Legal</span>       <span class="m">مخطط (P7)</span>
+│
+└── <span class="p">/admin</span>  <span class="m">(owner · manager · staff) · النسخة التجريبية فقط؛ الموقع الحقيقي: «غير متوفرة» حتى P5</span>
+    ├── Dashboard
+    ├── Orders  → Order detail
+    ├── B2B requests
+    ├── Products → Product editor
+    ├── Stock
+    ├── Shipping
+    ├── Payments        <span class="m">owner فقط</span>
+    ├── Notifications
+    ├── Content
+    └── Settings        <span class="m">owner فقط</span></div>
+  <h3 class="sub">الأدوار والأقسام (من permissions.ts)</h3>
+<div class="tbl tight"><table><thead><tr><th>Role</th><th>Dashboard</th><th>Orders</th><th>B2B</th><th>Products</th><th>Stock</th><th>Shipping</th><th>Payments</th><th>Notif.</th><th>Content</th><th>Settings</th></tr></thead><tbody><tr><td>owner</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td></tr><tr><td>manager</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>—</td><td>●</td><td>●</td><td>—</td></tr><tr><td>staff</td><td>●</td><td>●</td><td>●</td><td>—</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr></tbody></table></div>
+  <p class="note">المسيّر يعدّل الأسعار وحد الشحن المجاني لكن لا يغيّر أرقام الاتصال ولا مستقبلي الإشعارات. الموظف يحرّك المخزون ولا يغيّر الأسعار. تسجيل الدفع للمالك فقط. هذه القواعد مطبقة في الكود وفي قاعدة البيانات (فحوص 5، 10، 14، 19، ومصفوفة 24: 51 حالة). <b>جديد (فرع):</b> الموظف والمسيّر لا يلغيان طلباً أعلن الزبون دفعه، ولا أحد يلغي طلباً مدفوعاً إلا بالاسترجاع.</p>
+</section>
+
+<!-- ═════════════ 11 ═════════════ -->
+<section class="chap" id="s11">
+  <div class="chead"><span class="no">11</span><h2>Business Logic</h2><span class="ar">القواعد كما يطبقها الكود</span></div>
+  <div class="split">
+    <div>
+      <h3 class="sub" style="margin-top:0">1 · B2C أم B2B؟</h3>
+      <div class="flow">
+        <div class="step done"><span class="t">Customer adds bags</span><small>أحجام 250 غ / 500 غ / 1 كلغ</small></div><div class="arr"></div>
+        <div class="dec">الوزن الكلي؟<small><code>weightKg &gt; settings.b2bThresholdKg</code> (10 افتراضياً، نفس القيمة في كل النصوص)</small></div><div class="arr"></div>
+        <div class="branch"><div class="step done"><span class="t">≤ الحد</span><small>زبون عادي: Checkout</small></div><div class="step done"><span class="t">&gt; الحد</span><small>خطأ <code>b2b_required</code>: طلب عرض سعر B2B</small></div></div>
+      </div>
+      <h3 class="sub">2 · السعر</h3>
+      <ul class="checks why">
+        <li class="ck done"><span class="box"></span><span><b>منتج جاهز:</b> سعر لكل حجم؛ الحجم الذي سعره أقل من 1 درهم غير معروض ولا يُباع.</span></li>
+        <li class="ck done"><span class="box"></span><span><b>Custom Blend:</b> Σ (سعر الكلغ للمصدر × غرامات المصدر ÷ 1000) + رسوم الكيس <code>10/15/20</code> حسب الحجم. لا يقل عن 1 درهم.</span></li>
+        <li class="ck done"><span class="box"></span><span>المجاميع تُقرَّب إلى الدرهم، والنصف إلى الأعلى مثل <code>round()</code> في PostgreSQL: قاعدة البيانات تقبل فقط أرقاماً مطابقة لحسابها بالضبط.</span></li>
+      </ul>
+      <h3 class="sub">3 · الشحن</h3>
+      <ul class="checks why">
+        <li class="ck done"><span class="box"></span><span>رسم المدينة الأساسي يغطي عدداً من الكيلوغرامات (<code>includedKg</code>)، ثم <code>extraPerKg</code> لكل كلغ بدأ فوقه.</span></li>
+        <li class="ck done"><span class="box"></span><span>شحن مجاني إذا تجاوز المجموع <code>600</code> درهم (0 يلغي الميزة).</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="sub" style="margin-top:0">4 · الخلطة الخاصة</h3>
+      <div class="flow">
+        <div class="step done"><span class="t">اختيار الأنواع</span><small>حتى 4 أنواع، كل نوع متاح ومفعّل ولسعره قيمة حقيقية</small></div><div class="arr"></div>
+        <div class="dec">النسب؟<small>المجموع = 100٪ وكل نوع ≥ 5٪</small></div><div class="arr"></div>
+        <div class="step done"><span class="t">فحص المخزون لكل نوع</span><small>غرامات المصدر × الكمية ≤ المتوفر</small></div><div class="arr"></div>
+        <div class="step done"><span class="t">Cart ✓</span><small>وإلا: <code>invalid_blend</code></small></div>
+      </div>
+      <h3 class="sub">5 · حالة الدفع والطلب</h3>
+      <div class="flow">
+        <div class="step done"><span class="t">Order created</span><small>المخزون يُحجز فوراً (ذرياً في SQL، مختبر بجلستين متزامنتين)</small></div><div class="arr"></div>
+        <div class="dec">طريقة الدفع<small>Cash Plus · تحويل (لا دفع عند التسليم). مغلقتان في الموقع الحقيقي حتى الحساب الحقيقي</small></div><div class="arr"></div>
+        <div class="step part"><span class="t">«لقد دفعت» + المرجع</span><small>awaiting_verification: <b>إعلان وليس دفعاً</b>. رسالة للفريق. يمكن إعادته بعد رفض (failed)</small></div><div class="arr"></div>
+        <div class="step part"><span class="t">المالك وحده يرى المبلغ في الحساب ← paid</span><small>الإنتاج والشحن مرفوضان قبل paid. الطلب المدفوع لا يُلغى إلا بالاسترجاع</small></div><div class="arr"></div>
+        <div class="step part"><span class="t">كل حجز ينتهي</span><small>غير مدفوع بعد 48 ساعة، أو معلن دون تأكيد بعد 120 ساعة من وقت الطلب: يُلغى ويعود المخزون مرة واحدة</small></div>
+      </div>
+    </div>
+  </div>
+  <h3 class="sub">6 · الرسائل والإدارة</h3>
+<div class="tbl tight"><table><thead><tr><th>Event</th><th>Goes to</th><th>Where it is</th><th>Status</th></tr></thead><tbody><tr><td><code>order.created</code></td><td>WhatsApp + Gmail إلى BOGA</td><td>templates.ts · api/notify.ts</td><td><span class="b part"><i></i>PARTIAL</span></td></tr><tr><td><code>payment.reported</code></td><td>WhatsApp + Gmail</td><td>orders «لقد دفعت»</td><td><span class="b part"><i></i>PARTIAL</span></td></tr><tr><td><code>sample.created</code> · <code>quote.created</code></td><td>WhatsApp + Gmail</td><td>نماذج B2B</td><td><span class="b part"><i></i>PARTIAL</span></td></tr><tr><td>Customer hand-off</td><td>الزبون يرسل الطلب بنفسه (واتساب/Gmail) كخطة احتياطية</td><td>SendToBoga.tsx</td><td><span class="b done"><i></i>COMPLETED</span></td></tr><tr><td>Customer confirmation</td><td>رسالة تأكيد للزبون</td><td>غير موجودة (بعد الإطلاق)</td><td><span class="b none"><i></i>NOT STARTED</span></td></tr></tbody></table></div>
+  <p class="note">«part» لأن الكود مكتمل ومختبر، لكن الدالة غير منشورة والمفاتيح غير موجودة. خطوات الدفع الثلاث الأخيرة «part» لأنها على الفرع ولم تُدمج بعد. «الاستقرار النهائي» للتحويل (هل يُسحب بعد وصوله؟) قرار مفتوح (Q23): لا يُخترع قانون بنكي.</p>
+</section>
+
+<!-- ═════════════ 12 ═════════════ -->
+<section class="chap" id="s12">
+  <div class="chead"><span class="no">12</span><h2>UI / UX Progress</h2><span class="ar">تقدم الواجهة</span></div>
+<div class="tbl tight"><table><thead><tr><th>Area</th><th>Status</th><th>Evidence / Notes</th></tr></thead><tbody><tr><td>Pages: Home, Shop, Product, Single-origin, Custom Blend, B2B, Cart, Checkout, Order, Contact, 404</td><td><span class="b done"><i></i>COMPLETED</span></td><td>مجرّبة آلياً في CI (Playwright).</td></tr><tr><td>Pages: Privacy, CGV, Legal</td><td><span class="b plan"><i></i>PLANNED</span></td><td>P7.</td></tr><tr><td>Pages: Account / Customers</td><td><span class="b none"><i></i>NOT STARTED</span></td><td>بعد الإطلاق.</td></tr><tr><td>Admin UI (10 sections)</td><td><span class="b part"><i></i>PARTIAL</span></td><td>تعمل عند 320/390 (P4). موجودة في النسخة التجريبية فقط.</td></tr><tr><td>Arabic RTL</td><td><span class="b done"><i></i>COMPLETED</span></td><td>e2e + axe بالعربية على الهاتف والحاسوب.</td></tr><tr><td>French</td><td><span class="b done"><i></i>COMPLETED</span></td><td>e2e + axe.</td></tr><tr><td>English</td><td><span class="b part"><i></i>PARTIAL</span></td><td>النصوص كاملة (يفرضها TypeScript)، غير مختبرة في المتصفح.</td></tr><tr><td>Mobile (320 / 390px)</td><td><span class="b done"><i></i>COMPLETED</span></td><td><code>e2e/mobile.spec.ts</code>: لا تجاوز أفقي ولا نص مقطوع. الحقول 16px (لا تكبير على iPhone).</td></tr><tr><td>Tablet (768px)</td><td><span class="b none"><i></i>NOT STARTED</span></td><td><span class="verify">⚠️ Needs Verification</span> لم يُفحص.</td></tr><tr><td>Desktop (1280px)</td><td><span class="b done"><i></i>COMPLETED</span></td><td>e2e desktop.</td></tr><tr><td>Keyboard & screen readers</td><td><span class="b part"><i></i>PARTIAL</span></td><td>axe في CI؛ على الفرع: عنوان لكل صفحة، رابط «تجاوز إلى المحتوى»، Escape يغلق القائمة ويعيد التركيز.</td></tr><tr><td>Checkout</td><td><span class="b part"><i></i>PARTIAL</span></td><td>البطاقة «قريباً». في الموقع الحقيقي لا طريقة دفع مفتوحة (رسالة «يفتح قريباً») حتى معلومات الحساب.</td></tr></tbody></table></div>
+  <p class="note">لا لقطات شاشة في هذا الملف: اللقطات السابقة (2026-09-29) قديمة بعد P4، والملف يبقى خفيفاً في المستودع. الواجهة مجرّبة آلياً في CI بدلاً منها.</p>
+</section>
+
+<!-- ═════════════ 13 ═════════════ -->
+<section class="chap" id="s13">
+  <div class="chead"><span class="no">13</span><h2>Technical Architecture</h2><span class="ar">البنية التقنية الحقيقية</span></div>
+  <div class="arch">
+    <div class="layer"><div class="lname">Frontend</div><div class="lbox">
+      <div class="chip done">React 19 · TypeScript · Vite 8<small>SPA، بناءان: حقيقي وdemo (ملف واحد)</small></div>
+      <div class="chip done">React Router 8 · TS 7 · Node 24<small>على main منذ P3 · فاحص Oxlint في CI</small></div>
+      <div class="chip done">i18n AR/FR/EN + RTL<small>قواميس TypeScript</small></div></div></div>
+    <div class="larr">▼</div>
+    <div class="layer"><div class="lname">Business core</div><div class="lbox">
+      <div class="chip done">src/core<small>TypeScript خالص: pricing, blend, cart, order, orderFlow, stock, shipping</small></div>
+      <div class="chip done">نفس القواعد في SQL<small>check_order + parity.sql: 42 طلباً متطابقاً</small></div></div></div>
+    <div class="larr">▼</div>
+    <div class="layer"><div class="lname">Data layer</div><div class="lbox">
+      <div class="chip part">Browser store (localStorage)<small>كل زائر يرى نسخته فقط. أمثلة في النسخة التجريبية فقط (<span class="mono">VITE_DATA_MODE=demo</span>)</small></div>
+      <div class="chip plan">Supabase adapter<small>P5</small></div></div></div>
+    <div class="larr">▼</div>
+    <div class="layer"><div class="lname">Backend</div><div class="lbox">
+      <div class="chip part">Postgres schema + RLS<small>22 فحصاً على main، 25 + تزامن على الفرع. لم يُطبَّق على مشروع حقيقي</small></div>
+      <div class="chip plan">Auth + 2FA<small>P5</small></div>
+      <div class="chip plan">Storage (صور)<small>P5</small></div>
+      <div class="chip plan">Edge Functions · pg_cron<small>P5</small></div></div></div>
+    <div class="larr">▼</div>
+    <div class="layer"><div class="lname">Notifications</div><div class="lbox">
+      <div class="chip part">api/notify.ts (Vercel function)<small>Gmail عبر nodemailer + WhatsApp عبر CallMeBot</small></div>
+      <div class="chip block">المفاتيح<small>من صاحب المشروع</small></div></div></div>
+    <div class="larr">▼</div>
+    <div class="layer"><div class="lname">Payments</div><div class="lbox">
+      <div class="chip block">Cash Plus · Bank transfer<small>مبنيان، مغلقان حتى الحساب الحقيقي</small></div>
+      <div class="chip block">Card (CMI)<small>معطلة في النسخة الحقيقية</small></div></div></div>
+    <div class="larr">▼</div>
+    <div class="layer"><div class="lname">Delivery</div><div class="lbox">
+      <div class="chip done">GitHub Actions CI<small>web + e2e + database</small></div>
+      <div class="chip plan">Vercel hosting<small>vercel.json جاهز، لا نشر</small></div>
+      <div class="chip block">bogacafe.ma<small>ينتظر ANRT</small></div></div></div>
+  </div>
+  <p class="note">ليس فيه شيء غير موجود فعلاً: Supabase Auth/Storage/Edge Functions مخططة وليست مبنية. حسابا Supabase وVercel مربوطان بهذه الجلسة ولم أُنشئ فيهما شيئاً.</p>
+</section>
+
+<!-- ═════════════ 14 ═════════════ -->
+<section class="chap" id="s14">
+  <div class="chead"><span class="no">14</span><h2>Testing &amp; QA</h2><span class="ar">الاختبار والجودة</span></div>
+<div class="tbl tight"><table><thead><tr><th>Check</th><th>Status</th><th>Notes</th><th>Remaining work</th></tr></thead><tbody><tr><td>Unit tests (Vitest)</td><td><span class="b done"><i></i>COMPLETED</span></td><td>main: 129 · الفرع: 139</td><td>—</td></tr><tr><td>Browser tests (Playwright + axe)</td><td><span class="b done"><i></i>COMPLETED</span></td><td>main: 32 · الفرع: 36 (عناوين، تجاوز، Escape، دورة «لقد دفعت»)</td><td>Firefox وWebKit (P9)</td></tr><tr><td>Database checks (PostgreSQL 16)</td><td><span class="b done"><i></i>COMPLETED</span></td><td>main: 22 + تطابق 42 طلباً · الفرع: 25 + تطابق + جلستان متزامنتان</td><td>على Supabase الحقيقي (P5/P9)</td></tr><tr><td>Mutation evidence</td><td><span class="b done"><i></i>COMPLETED</span></td><td>طفرات التدقيق نفسها: الكود 3 من 58 تنجو (كانت 26 من 52)، SQL 3 من 31 (كانت 20 من 28)</td><td><code>skip locked</code> غير مختبر</td></tr><tr><td>Responsive / Mobile</td><td><span class="b part"><i></i>PARTIAL</span></td><td>320 و390 و1280 آلياً</td><td>اللوح 768، جهاز حقيقي</td></tr><tr><td>Arabic / French / English</td><td><span class="b part"><i></i>PARTIAL</span></td><td>AR وFR في e2e؛ EN بالنوع فقط</td><td>EN في e2e</td></tr><tr><td>Cart · Pricing · B2B · Stock · Orders</td><td><span class="b done"><i></i>COMPLETED</span></td><td>core + SQL + parity</td><td>—</td></tr><tr><td>Payment testing</td><td><span class="b part"><i></i>PARTIAL</span></td><td>دورة الإعلان/التحقق مختبرة في SQL وTS والمتصفح. لا مال حقيقي</td><td>طلب حقيقي في P10؛ البطاقة بعد CMI</td></tr><tr><td>Security testing</td><td><span class="b part"><i></i>PARTIAL</span></td><td>مصفوفة صلاحيات 51 حالة، RLS، defang، حد الطلبات، الموقع الحقيقي بلا كلمة سر</td><td>دخول حقيقي، رؤوس، Turnstile، حد لكل هاتف، مراجعة نهائية</td></tr><tr><td>Performance testing</td><td><span class="b none"><i></i>NOT STARTED</span></td><td>لم يُشغَّل Lighthouse. JS الرئيسي ≈ 150 KB gzip (من البناء). <span class="verify">⚠️ Needs Verification</span></td><td>Lighthouse ≥ 90 (P6, P9)</td></tr></tbody></table></div>
+</section>
+
+<!-- ═════════════ 15 ═════════════ -->
+<section class="chap" id="s15">
+  <div class="chead"><span class="no">15</span><h2>🚀 FINAL LAUNCH CHECKLIST</h2><span class="ar">قائمة الإطلاق</span></div>
+  <p class="lead">لا يُعلَّم أي عنصر مكتملاً إلا بدليل واضح. اليوم: <b>لا عنصر مكتمل</b> من عناصر النشر، لأن لا شيء نُشر.</p>
+  <div class="split">
+    <div class="card"><ul class="checks"><li class="ck block"><span class="box"></span><span><b>Domain</b> bogacafe.ma: ينتظر ANRT</span></li><li class="ck todo"><span class="box"></span><span><b>Hosting</b>: Vercel (ملف vercel.json جاهز، لا نشر بعد)</span></li><li class="ck todo"><span class="box"></span><span><b>SSL</b>: تلقائي عند الربط</span></li><li class="ck todo"><span class="box"></span><span><b>Database</b>: مخطط جاهز، لم يُطبَّق (P5)</span></li><li class="ck todo"><span class="box"></span><span><b>Production environment</b>: متغيرات البيئة</span></li><li class="ck block"><span class="box"></span><span><b>Email</b>: كلمة مرور تطبيق Gmail</span></li><li class="ck block"><span class="box"></span><span><b>WhatsApp</b>: مفتاح CallMeBot</span></li><li class="ck block"><span class="box"></span><span><b>Payment</b>: التحويل وكاش بلوس مغلقان حتى الحساب الحقيقي ومستفيد كاش بلوس (Q23–Q25). البطاقة: CMI</span></li><li class="ck todo"><span class="box"></span><span><b>SEO</b> (P6)</span></li><li class="ck todo"><span class="box"></span><span><b>Analytics</b>: قياس بدون كوكيز أو Pixel بموافقة (P7)</span></li></ul></div>
+    <div class="card"><ul class="checks"><li class="ck todo"><span class="box"></span><span><b>Legal pages</b> (P7)</span></li><li class="ck todo"><span class="box"></span><span><b>Privacy</b> + تصريح CNDP</span></li><li class="ck todo"><span class="box"></span><span><b>Terms</b> (CGV)</span></li><li class="ck todo"><span class="box"></span><span><b>Backup</b>: نسخ واستعادة مجرّبة (P9)</span></li><li class="ck todo"><span class="box"></span><span><b>Security</b>: مراجعة نهائية (P9)</span></li><li class="ck todo"><span class="box"></span><span><b>Performance</b>: Lighthouse ≥ 90</span></li><li class="ck todo"><span class="box"></span><span><b>Final testing</b>: كل E2E خضراء في CI</span></li><li class="ck todo"><span class="box"></span><span><b>Mobile testing</b> على جهاز حقيقي</span></li><li class="ck todo"><span class="box"></span><span><b>Final client review</b>: صاحب المشروع</span></li><li class="ck todo"><span class="box"></span><span><b>Launch</b></span></li></ul></div>
+  </div>
+  <h3 class="sub">متى نعتبر الموقع «جاهزاً للإطلاق»؟</h3>
+  <p class="lead">عندما تتحقق الشروط الـ 12 كلها، كل واحد بدليل:</p>
+  <div class="card"><ul class="checks"><li class="ck todo"><span class="box"></span><span>إصلاحات التدقيق 3–7 مدموجة في main (الفرع جاهز، CI ناجح)</span></li><li class="ck todo"><span class="box"></span><span>الطلبات تُنشأ وتُحسب على خادم حقيقي، والدخول للإدارة حقيقي مع 2FA، والإلغاء الآلي مجدول (P5)</span></li><li class="ck todo"><span class="box"></span><span>كل اختبارات E2E والوحدة وSQL خضراء في CI (P4, P9)</span></li><li class="ck todo"><span class="box"></span><span>لا ملاحظة عالية أو متوسطة مفتوحة في المراجعة المستقلة النهائية (P9)</span></li><li class="ck todo"><span class="box"></span><span>المنتجات والأسعار والصور حقيقية، وطريقة دفع واحدة على الأقل مفتوحة بمعلومات حساب حقيقية (P8)</span></li><li class="ck todo"><span class="box"></span><span>SEO: صفحة مكتملة بكل لغة في «عرض المصدر»، sitemap، Schema (P6)</span></li><li class="ck todo"><span class="box"></span><span>الخصوصية وCGV والإشعارات القانونية منشورة، وشريط الموافقة يعمل (P7)</span></li><li class="ck todo"><span class="box"></span><span>Lighthouse ≥ 90 على الهاتف للصفحات الرئيسية</span></li><li class="ck todo"><span class="box"></span><span>مفاتيح Gmail وCallMeBot في Vercel، ورسالة حقيقية وصلت لواتساب وGmail</span></li><li class="ck todo"><span class="box"></span><span>طلب حقيقي بكل طريقة دفع متاحة من الطلب حتى استلام الإدارة</span></li><li class="ck todo"><span class="box"></span><span>النطاق bogacafe.ma يعمل مع SSL</span></li><li class="ck todo"><span class="box"></span><span>نسخة احتياطية مجرّبة، ومراقبة أخطاء تعمل</span></li></ul></div>
+</section>
+
+<!-- ═════════════ 16 ═════════════ -->
+<section class="chap" id="s16">
+  <div class="chead"><span class="no">16</span><h2>Post-Launch</h2><span class="ar">بعد الإطلاق</span></div>
+<div class="tbl tight"><table><thead><tr><th>Area</th><th>What will happen</th><th>Status</th></tr></thead><tbody><tr><td>Monitoring</td><td>مراقبة توفر الموقع وأخطاء الدالة والواجهة</td><td><span class="b none"><i></i>NOT STARTED</span></td></tr><tr><td>Bug fixes</td><td>قناة واضحة لتبليغ الأخطاء وإصلاحها بنفس دورة المراجعة</td><td><span class="b none"><i></i>NOT STARTED</span></td></tr><tr><td>Performance monitoring</td><td>Core Web Vitals شهرياً من Search Console</td><td><span class="b none"><i></i>NOT STARTED</span></td></tr><tr><td>Orders monitoring</td><td>الطلبات غير المدفوعة، رسائل الإرسال الفاشلة</td><td><span class="b none"><i></i>NOT STARTED</span></td></tr><tr><td>Stock monitoring</td><td>تنبيه انخفاض المخزون موجود في القاعدة (SQL 6)</td><td><span class="b part"><i></i>PARTIAL</span></td></tr><tr><td>Customer feedback</td><td>قناة تعليقات، تحسينات على الطلب والخلطة</td><td><span class="b none"><i></i>NOT STARTED</span></td></tr><tr><td>Future features</td><td>بطاقة CMI، تأكيد الطلب للزبون بالبريد/واتساب، فواتير PDF، تتبع الشحن، كتالوج WhatsApp Business وInstagram Shop، حسابات الزبائن، WhatsApp Cloud API</td><td><span class="b none"><i></i>NOT STARTED</span></td></tr><tr><td>Maintenance</td><td>تحديث التبعيات شهرياً، تجديد المفاتيح، مراجعة أمنية دورية</td><td><span class="b none"><i></i>NOT STARTED</span></td></tr></tbody></table></div>
+</section>
+
+<!-- ═════════════ 17 ═════════════ -->
+<section class="chap" id="s17">
+  <div class="chead"><span class="no">17</span><h2>Risks &amp; Issues</h2><span class="ar">المخاطر والمشاكل المفتوحة</span></div>
+<div class="tbl tight"><table><thead><tr><th>Risk / Issue</th><th>Impact</th><th>Status</th><th>Solution</th><th>Priority</th></tr></thead><tbody><tr><td>البيانات في متصفح كل زائر (لا خادم)</td><td>الفريق لا يرى الطلبات إلا عبر الإشعارات، والحالة لا تصل للزبون؛ لا يصلح للإطلاق</td><td><span class="b block"><i></i>OPEN</span></td><td>P5 Supabase</td><td>CRITICAL</td></tr><tr><td>لا معلومات حساب بنكي ولا مستفيد كاش بلوس</td><td>الموقع الحقيقي لا يقبل أي طلب مدفوع</td><td><span class="b block"><i></i>OWNER</span></td><td>Q23–Q25؛ الإدخال في «المدفوعات» بدون تغيير الكود</td><td>CRITICAL</td></tr><tr><td>إصلاحات 3–7 غير مدموجة</td><td>main ما زال يسمح بحجز دائم بعد «لقد دفعت»، ويحمل الأمثلة وكلمة السر التجريبية في البناء الحقيقي</td><td><span class="b prog"><i></i>BRANCH</span></td><td>دمج <code>fix/remediation-3-7</code> (CI ناجح)</td><td>HIGH</td></tr><tr><td>لا حد للطلبات المفتوحة لكل هاتف</td><td>زائر مصمم يحجز المخزون حتى 48 ساعة بطلبات كثيرة</td><td><span class="b plan"><i></i>OPEN</span></td><td>Turnstile + حد لكل هاتف (P5)</td><td>HIGH</td></tr><tr><td>لم يُجرَّب شيء على Supabase الحقيقي</td><td><code>auth.uid()</code> محاكى في الاختبارات؛ قد يختلف السلوك</td><td><span class="b plan"><i></i>OPEN</span></td><td>تشغيل كل الفحوص على المشروع الحقيقي (P5)</td><td>HIGH</td></tr><tr><td>رسائل الإدارة يكتبها المتصفح والخادم يتحقق من الشكل فقط</td><td>يمكن لطرف خبيث إرسال نص للفريق</td><td><span class="b block"><i></i>OPEN</span></td><td>كتابة الرسالة على الخادم + Turnstile (P5)</td><td>HIGH</td></tr><tr><td>حد الطلبات في ذاكرة كل نسخة من دالة الإرسال</td><td>لا يصمد عند نمو الزيارات</td><td><span class="b plan"><i></i>OPEN</span></td><td>Vercel Firewall أو KV</td><td>MEDIUM</td></tr><tr><td>CallMeBot خدمة مجانية من طرف ثالث</td><td>قد تتوقف أو تتأخر</td><td><span class="b part"><i></i>ACCEPTED</span></td><td>WhatsApp Cloud API لاحقاً + ذكرها في الخصوصية</td><td>MEDIUM</td></tr><tr><td>النطاق ينتظر مراجعة ANRT</td><td>لا نشر على الاسم النهائي، SEO مؤجل</td><td><span class="b block"><i></i>EXTERNAL</span></td><td>التذكرة #581357؛ العمل على رابط Vercel مؤقتاً</td><td>HIGH</td></tr><tr><td>البطاقة تحتاج CMI (شكل قانوني + بنك)</td><td>لا دفع بالبطاقة عند الإطلاق</td><td><span class="b block"><i></i>EXTERNAL</span></td><td>الإطلاق بالتحويل وكاش بلوس</td><td>MEDIUM</td></tr><tr><td>المنتجات والأسعار والصور غير نهائية</td><td>الموقع يعرض أمثلة</td><td><span class="b block"><i></i>OWNER</span></td><td>P8 (Q3)</td><td>HIGH</td></tr><tr><td>لا صفحات خصوصية/شروط، ولا تصريح CNDP</td><td>مخالفة للقانون 09-08 عند جمع بيانات الزبائن</td><td><span class="b plan"><i></i>OPEN</span></td><td>P7 + تصريح صاحب المشروع</td><td>HIGH</td></tr><tr><td>SPA: الزاحف يرى صفحة شبه فارغة</td><td>ظهور ضعيف على Google</td><td><span class="b plan"><i></i>OPEN</span></td><td>P6: prerender + URL لكل لغة</td><td>HIGH</td></tr><tr><td>سحب التحويل بعد وصوله غير معروف</td><td>مال قد يُسحب بعد بدء التحضير</td><td><span class="b block"><i></i>DECISION</span></td><td>Q23 مع البنك؛ اليوم «مدفوع» = المبلغ ظاهر في الحساب</td><td>MEDIUM</td></tr><tr><td>خطة Vercel المجانية لغير التجاري</td><td>قد لا تصلح لموقع تجاري <span class="verify">⚠️ Needs Verification</span></td><td><span class="b plan"><i></i>DECISION</span></td><td>قرار الخطة قبل الإطلاق (Q21)</td><td>MEDIUM</td></tr><tr><td>لا مراجعة أمنية من طرف خارجي</td><td>المراجعات وكلاء Claude فقط</td><td><span class="b plan"><i></i>DECISION</span></td><td>اختياري: مراجعة بشرية قبل الإطلاق</td><td>LOW</td></tr></tbody></table></div>
+  <h3 class="sub">Technical Debt &amp; Refactoring</h3>
+<div class="tbl tight"><table><thead><tr><th>Item</th><th>Why it matters</th><th>When</th></tr></thead><tbody><tr><td><code>src/data/api.ts</code> يحاكي الخادم (تأخير مصطنع، localStorage)</td><td>يجب استبداله بمهايئ حقيقي مع الحفاظ على نفس العقد</td><td>P5</td></tr><tr><td>بناءان (حقيقي / demo) بمتغيرات بيئة</td><td>خطر الخلط بينهما؛ حارس في vite.config يرفض بطاقة demo في الحقيقي</td><td>مستمر</td></tr><tr><td>كل قواميس اللغات تُحمَّل معاً</td><td>وزن الصفحة الأولى</td><td>P6</td></tr><tr><td>أرقام EN بتنسيق فرنسي، «كلغ/kg» مختلطة في AR <span class="verify">⚠️ Needs Verification</span></td><td>اتساق اللغة</td><td>P6</td></tr><tr><td>اختبار حدود الأقسام يحلل الكود بتعابير منتظمة</td><td>حارس بنية وليس حارساً أمنياً؛ ثغراته الصغيرة أُغلقت لكنه ليس محلل لغة كاملاً</td><td>مراقبة</td></tr><tr><td>صفحات تقرأ كل البيانات دفعة واحدة (<code>useDb()</code>) واستدعاءات متزامنة</td><td>الانتقال إلى Supabase ليس تغيير <code>src/data</code> فقط (docs/03 §4)</td><td>P5</td></tr><tr><td><code>skip locked</code> في الإلغاء الآلي غير مختبر</td><td>سلوك تحت التزامن فقط</td><td>P9</td></tr></tbody></table></div>
+</section>
+
+<!-- ═════════════ 18 ═════════════ -->
+<section class="chap" id="s18">
+  <div class="chead"><span class="no">18</span><h2>Final Project Map</h2><span class="ar">الخريطة النهائية: افتحها بعد شهر وستفهم كل شيء</span></div>
+  <div class="map">
+    <div class="mcol done"><h3>START</h3><span class="b done"><i></i>COMPLETED</span><ul><li class="d">فكرة ووثيقة أصلية</li><li class="s">2026-09-27: أول commit</li></ul><span class="arrow">→</span></div>
+    <div class="mcol done"><h3>IDEA</h3><span class="b done"><i></i>COMPLETED</span><ul><li class="d">تحليل ودراسة</li><li class="h">25 سؤالاً: 3 أُجيبت</li></ul><span class="arrow">→</span></div>
+    <div class="mcol part"><h3>DESIGN</h3><span class="b part"><i></i>PARTIAL</span><ul><li class="d">شعار وهوية ومتجر داكن</li><li class="d">3 لغات + RTL</li><li class="h">ينقص: صور حبوب كل مصدر</li></ul><span class="arrow">→</span></div>
+    <div class="mcol part"><h3>DEVELOPMENT</h3><span class="b part"><i></i>PARTIAL</span><ul><li class="d">10 صفحات + إدارة</li><li class="d">P3 أساس حديث</li><li class="d">P4 هاتف + E2E</li><li class="g">تدقيق 3–7 (فرع)</li><li class="p">P5 Supabase</li><li class="s">M9: خادم موصول</li></ul><span class="arrow">→</span></div>
+    <div class="mcol done"><h3>BUSINESS LOGIC</h3><span class="b done"><i></i>COMPLETED</span><ul><li class="d">خلطة خاصة</li><li class="d">B2B فوق الحد</li><li class="d">مخزون بالكلغ</li><li class="d">تسعير وشحن، مطابق في SQL</li><li class="g">حجز ينتهي، دفع للمالك (فرع)</li></ul><span class="arrow">→</span></div>
+    <div class="mcol part"><h3>TESTING</h3><span class="b part"><i></i>PARTIAL</span><ul><li class="d">Vitest + SQL + Playwright في CI</li><li class="d">طفرات التدقيق: 3/58 و3/31</li><li class="r">Chromium فقط</li><li class="r">لا Supabase حقيقي</li></ul><span class="arrow">→</span></div>
+    <div class="mcol part"><h3>SECURITY</h3><span class="b part"><i></i>PARTIAL</span><ul><li class="d">قواعد وأدوار في SQL (51 حالة)</li><li class="d">قاعدة البيانات تعيد حساب الطلب</li><li class="g">لا كلمة سر في البناء الحقيقي (فرع)</li><li class="p">Turnstile، رؤوس، 2FA، حد لكل هاتف</li></ul><span class="arrow">→</span></div>
+    <div class="mcol plan"><h3>DEPLOYMENT</h3><span class="b plan"><i></i>PLANNED</span><ul><li class="d">CI + vercel.json</li><li class="p">Vercel</li><li class="r">ANRT: النطاق</li><li class="r">مفاتيح Gmail/CallMeBot</li></ul><span class="arrow">→</span></div>
+    <div class="mcol plan"><h3>LAUNCH</h3><span class="b plan"><i></i>PLANNED</span><ul><li class="p">SEO + قانوني + موافقة</li><li class="p">QA نهائي</li><li class="r">حساب بنكي + محتوى من المالك</li><li class="s">M12: جاهز للإطلاق</li><li class="s">M13: الموقع حي</li></ul><span class="arrow">→</span></div>
+    <div class="mcol none"><h3>POST-LAUNCH</h3><span class="b none"><i></i>NOT STARTED</span><ul><li>مراقبة وصيانة</li><li>بطاقة CMI</li><li>تأكيد للزبون، فواتير</li><li>حسابات الزبائن</li></ul></div>
+  </div>
+  <h3 class="sub">Milestones</h3>
+  <div class="mile">
+<div><span class="star">★</span><span>M1 · نموذج كامل<small>2026-09-27 ✔</small></span></div><div><span class="star">★</span><span>M2 · هوية + اتصالات حقيقية + إرسال الطلب<small>2026-09-28 ✔ (main 1286622)</small></span></div><div><span class="star">★</span><span>M3 · إصلاحات ما قبل النشر (الدفعة 1)<small>2026-09-29 ✔ (d1d880b)</small></span></div><div><span class="star">★</span><span>M4 · حماية بيانات الإدارة (المرحلة 2)<small>2026-09-29 ✔ (eaa4791)</small></span></div><div><span class="star">★</span><span>M5 · أساس حديث (P3)<small>2026-09-29 ✔ (ba49f09)</small></span></div><div><span class="star">★</span><span>M6 · الهاتف + اختبارات المتصفح (P4)<small>2026-09-29 ✔ (01d6772)</small></span></div><div><span class="star">★</span><span>M7 · تدقيق 1–2: لا NaN، القاعدة تعيد الحساب<small>2026-09-29 ✔ (57b6233 · b91e7a1)</small></span></div><div><span class="star">★</span><span>M8 · تدقيق 3–7<small>2026-09-30 · على فرع، CI ناجح، غير مدموج</small></span></div><div><span class="star">★</span><span>M9 · خادم حقيقي موصول (P5)<small>مخطط</small></span></div><div><span class="star">★</span><span>M10 · SEO جاهز (P6)<small>مخطط</small></span></div><div><span class="star">★</span><span>M11 · قانوني + موافقة (P7)<small>مخطط</small></span></div><div><span class="star">★</span><span>M12 · جاهز للإطلاق (P9)<small>مخطط</small></span></div><div><span class="star">★</span><span>M13 · الموقع حي (P10)<small>مخطط · ينتظر النطاق والحساب البنكي</small></span></div>
+  </div>
+  <p class="note" style="margin-top:14px"><b>القراءة السريعة:</b> الأخضر خلفنا (المنطق، النموذج، الاختبارات، P3، P4، التدقيق 1–2)، الأزرق ينتظر قرار الدمج (التدقيق 3–7)، الأصفر هو الطريق (الخادم الحقيقي، SEO، القانوني)، والأحمر ما لا يحلّه الكود: الحساب البنكي والمحتوى الحقيقي والمفاتيح والنطاق والبطاقة.</p>
+</section>
+
+<footer>
+  <span>BOGA CAFÉ Project Status · <span class="mono">2026-09-30</span></span>
+  <span>مصدر الأدلة: مستودع <span class="mono">mohammedboghaleb9-boop/boga-cafe</span>: main على <span class="mono">b91e7a1</span> (CI run 47)، والفرع <span class="mono">fix/remediation-3-7</span> على <span class="mono">71350f6</span> (CI run 36655811964). لم يُعدَّل أي كود لإعداد هذا التقرير. يُولَّد من سكربت ويُحدَّث عند كل تغيّر مرحلة.</span>
+  <span>المدد تقديرية وليست التزاماً بموعد. عندما يتغير شيء، تُحدَّث هذه الصفحة بنفس الأدلة.</span>
+</footer>
+</div>
+</body>
+</html>
