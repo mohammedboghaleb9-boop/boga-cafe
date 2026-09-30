@@ -18,6 +18,19 @@ beforeEach(async () => {
 const order = (where: (o: ReturnType<typeof t.db.get>['orders'][number]) => boolean) => t.db.get().orders.find(where)!;
 const stockOf = (id: string) => t.db.get().origins.find((o) => o.id === id)!.stockKg;
 
+describe('real site data (audit H4)', () => {
+  it('starts with the catalog only: no example customers, and nowhere to pay until the real account exists', async () => {
+    const [{ initialState }, { storefrontCheckoutContext }] = await Promise.all([import('../store'), import('../context')]);
+    const s = initialState(false);
+    expect([s.orders, s.samples, s.quotes, s.notifications, s.stockMovements].map((x) => x.length)).toEqual([0, 0, 0, 0, 0]);
+    expect(s.settings.bank).toEqual({ holder: '', bankName: '', rib: '' });
+    expect(s.settings.cashplus).toEqual({ beneficiary: '' });
+    expect(storefrontCheckoutContext(s).paymentMethods.filter((m) => m.enabled)).toEqual([]);
+    // the demo store, by contrast, can take the tests' orders
+    expect(storefrontCheckoutContext(initialState(true)).paymentMethods.filter((m) => m.enabled).map((m) => m.id).sort()).toEqual(['bank_transfer', 'cashplus']);
+  });
+});
+
 describe('demo data layer', () => {
   it('keeps contact and recipients for the owner, free shipping for managers, nothing for staff', () => {
     const { api, db } = t;

@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Browser tests on the real build (browser router, card payment off), served by
- * `vite preview`. In CI the browser comes from `npx playwright install`; locally,
+ * Browser tests on `npm run build:e2e`: the real site's settings (browser router,
+ * card payment off) with the demo data (.env.e2e), served by `vite preview`. In CI the browser comes from `npx playwright install`; locally,
  * PW_CHROMIUM can point to an already installed Chromium.
  */
 const executablePath = process.env.PW_CHROMIUM || undefined;

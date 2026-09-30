@@ -17,7 +17,6 @@ import { HomePage } from '@/features/home/HomePage';
 import { ProductPage } from '@/features/product/ProductPage';
 import { ShopPage } from '@/features/shop/ShopPage';
 import { SingleOriginPage } from '@/features/single-origin/SingleOriginPage';
-import { DEMO_DATA } from '@/data/mode';
 import { AdminUnavailable } from './AdminUnavailable';
 import { NotFound } from './NotFound';
 
@@ -40,7 +39,9 @@ const Router = pickRouter();
 
 // The Admin Panel is loaded only when someone opens /admin, and exists only in the
 // demo build (src/data/mode.ts): the real site gets it with Supabase Auth, phase 2.
-const AdminApp = DEMO_DATA ? lazy(() => import('@/features/admin/AdminApp').then((m) => ({ default: m.AdminApp }))) : null;
+// The test is written out here (not DEMO_DATA) so the real build drops the admin
+// code and its demo password entirely (scripts/check-real-build.mjs checks it).
+const AdminApp = import.meta.env.VITE_DATA_MODE === 'demo' ? lazy(() => import('@/features/admin/AdminApp').then((m) => ({ default: m.AdminApp }))) : null;
 
 export function App() {
   return (

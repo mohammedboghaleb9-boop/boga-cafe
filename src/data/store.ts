@@ -36,7 +36,8 @@ export function initialState(demo: boolean = DEMO_DATA): DbState {
     stockMovements: [],
     notifications: [],
   };
-  if (!demo) return base;
+  // written out (not only DEMO_DATA) so the real build drops the example data entirely
+  if (import.meta.env.VITE_DATA_MODE !== 'demo' || !demo) return base;
   const s = buildDemoActivity({ ...base, settings: { ...base.settings, ...DEMO_PAYEE } });
   const ctx = templateContext(s);
   const notifications = [
