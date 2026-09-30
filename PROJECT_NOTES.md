@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-09-30 (paid samples, reply hours). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-09-30 (fix/remediation-3-7 merged into main). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -12,10 +12,10 @@ Custom Blend (customer sets origin percentages, total must be 100). Stock in kg 
 French, English. Admin roles owner / manager / staff. No cash on delivery: every order is paid before prep.
 
 ## Status (from PROJECT_STATUS.html, 2026-09-30)
-- **Estimated** 59 % by item count: (25 done + 0.5 in progress) / 43. Effort left is heavier than this
+- **Estimated** 60 % by item count: 26 done / 43. Effort left is heavier than this
   suggests: the biggest item (real backend, P5) has not started.
-- `main` = `b91e7a1`, CI green (run 47). Branch `fix/remediation-3-7` = audit fixes 3-7 plus report and rules,
-  CI green on every commit (runs 48-50), **not merged into main, waiting for the owner's decision**.
+- `main` = `901c8af` (merge of `fix/remediation-3-7`, owner approved 2026-09-30), CI green (run 56). It carries
+  audit fixes 1-7, the status report, working rules, the owner's answers, paid samples and the reply hours.
 - Nothing is deployed. No real server: all data lives in each visitor's browser (localStorage).
 - The Postgres schema (`supabase/`) is written and tested on a local PostgreSQL 16 only.
 
@@ -75,9 +75,8 @@ for WhatsApp). Database target: Supabase (PostgreSQL + RLS), hosting target: Ver
 - **Payment timing (Q11):** the owner pasted an analysis proposing weekend-aware counting of the 120 h, receipt-image upload, and WhatsApp reminders at 24 h and 4 h before cancelling. Not built. My view: weekend-aware counting is sound but lengthens how long a fake claim can hold stock (no per-phone limit yet), so do it with the P5 limit. Receipt upload needs storage plus abuse limits (P5). Customer reminders need WhatsApp Business plus a consent basis. The claim that Moroccan interbank transfers take 24-48 working hours is **not verified**.
 
 ## What is next
-1. Owner decides whether to merge `fix/remediation-3-7` into `main` (CI green).
-2. P5 real backend: Supabase project (needs owner approval), real sign-in + 2FA, `create-order` server function, scheduled expiry (pg_cron), Turnstile, async data provider.
-3. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch. Estimate 17-28 working days of technical work (**Estimated**, not a promise).
+1. P5 real backend: Supabase project (needs owner approval), real sign-in + 2FA, `create-order` server function, scheduled expiry (pg_cron), Turnstile, async data provider.
+2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch. Estimate 17-28 working days of technical work (**Estimated**, not a promise).
 
 ## Needs verification
 - Q1 answer "yes" was read as agreeing with the default (roasted stock).

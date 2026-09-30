@@ -2,9 +2,10 @@
 
 One dated line per meaningful change, newest first. Built from `git log`. Hashes are the commit (or the
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
-`[branch]` = on `fix/remediation-3-7`, not merged into `main` yet.
+`[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-09-30
+- 2026-09-30 `fix/remediation-3-7` merged into `main` on the owner's approval; CI green on `main` (run 56); status report updated (901c8af).
 - 2026-09-30 [branch] Reply hours on the contact page: every day 8:00-22:00 (owner, Q19/Q22), editable by the owner in Admin → Content; state version 8.
 - 2026-09-30 [branch] Paid samples (owner, Q8/Q9): B2B blends sold online in 250 g and 500 g as ordinary paid orders; their 1 kg bag only in a cart above the B2B threshold (`isBulkOnly`, `invalid_order:bulk_only`); sample request form, `sample_requests` table, `sample.created` message and admin tab removed; site text on the partner roaster kept (Q2); state version 7.
 - 2026-09-30 [branch] Owner answers recorded in `docs/07`; no automatic free delivery by default (`freeShippingOver` 0 in the seed, state version 6).
