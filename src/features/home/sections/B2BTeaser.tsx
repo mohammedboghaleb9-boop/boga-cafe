@@ -1,12 +1,13 @@
 import { Link } from 'react-router';
-import { useCatalog } from '@/data/hooks';
-import { useI18n } from '@/i18n';
+import { useCatalog, useSettings } from '@/data/hooks';
+import { fmt, useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { Photo } from '@/shared/ui/Photo';
 
 export function B2BTeaser() {
   const { t, l } = useI18n();
   const { products } = useCatalog();
+  const kg = useSettings().b2bThresholdKg;
   const b2b = products.filter((p) => p.active && p.kind === 'b2b');
   return (
     <section className="b2b-band">
@@ -16,7 +17,7 @@ export function B2BTeaser() {
         <div className="stack b2b-band-text reveal">
           <span className="eyebrow">B2B / HORECA</span>
           <h2>{t.home.b2bTitle}</h2>
-          <p>{t.home.b2bText}</p>
+          <p>{fmt(t.home.b2bText, { kg })}</p>
           <Link to="/b2b" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
             {t.home.b2bCta}
           </Link>

@@ -3,7 +3,7 @@ import { formatKg, formatSize } from '@/core/format';
 import type { QuoteRequest, QuoteStatus, SampleRequest, SampleStatus } from '@/core/types';
 import { api } from '@/data/api';
 import { useDb } from '@/data/hooks';
-import { useI18n } from '@/i18n';
+import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
 import { TableWrap, Tabs } from '../ui';
@@ -13,7 +13,7 @@ const QUOTE_STATUSES: QuoteStatus[] = ['new', 'negotiating', 'confirmed', 'close
 
 export function B2BRequestsPage() {
   const { t } = useI18n();
-  const { samples, quotes } = useDb();
+  const { samples, quotes, settings } = useDb();
   const [tab, setTab] = useState<'samples' | 'quotes'>('samples');
   return (
     <>
@@ -25,7 +25,7 @@ export function B2BRequestsPage() {
         onChange={setTab}
         items={[
           { id: 'samples', label: t.admin.b2b.samplesTab, count: samples.length },
-          { id: 'quotes', label: t.admin.b2b.quotesTab, count: quotes.length },
+          { id: 'quotes', label: fmt(t.admin.b2b.quotesTab, { kg: settings.b2bThresholdKg }), count: quotes.length },
         ]}
       />
       <div className="stack" style={{ ['--gap' as string]: '14px' }}>

@@ -852,3 +852,131 @@ begin
   update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"OWNER-RIB"');
 end $$;
 select 'ok 23 - every reservation ends (48 h unpaid, 120 h reported); only the owner cancels paid or reported orders; no transfer without a RIB' as result;
+
+-- 24. Who can read and change what (audit M1): each sensitive table and function,
+--     for a visitor (anon), a signed-in customer who is not on the team, staff and a
+--     manager. 'none' = refused or nothing seen/changed; 'some' = the role's own work.
+insert into auth.users values ('00000000-0000-0000-0000-000000000009');  -- a customer account
+-- one of each B2B request, so "sees none" means hidden, not empty
+insert into public.sample_requests (number, business_type, contact_name, phone, city_id, product_id)
+values ('SR-T24', 'cafe', 'Client', '0600000000', 'oujda', 'signature');
+insert into public.quote_requests (number, business_type, contact_name, phone, city_id, lines, weight_kg, indicative_total)
+values ('QR-T24', 'hotel', 'Client', '0600000000', 'oujda', '[]', 20, 4000);
+create temp table t24 (n serial, who text, q text, expect text, sane boolean default true);
+grant all on t24 to anon, authenticated;
+grant all on sequence t24_n_seq to anon, authenticated;
+insert into t24 (who, q, expect)
+select who, q, 'none' from unnest(array['anon', 'customer']) who, unnest(array[
+  'select count(*) from public.orders',
+  'select count(*) from public.order_events',
+  'select count(*) from public.stock_movements',
+  'select count(*) from public.notification_outbox',
+  'select count(*) from public.sample_requests',
+  'select count(*) from public.quote_requests',
+  'select count(*) from public.admin_config',
+  'select count(*) from public.admin_users',
+  $q$insert into public.admin_users values ('00000000-0000-0000-0000-000000000009', 'owner', 'Me') returning 1$q$,
+  $q$insert into public.sample_requests (number, business_type, contact_name, phone, city_id, product_id) values ('X', 'cafe', 'X', '0600000000', 'oujda', 'signature') returning 1$q$,
+  $q$insert into public.quote_requests (number, business_type, contact_name, phone, city_id, lines, weight_kg, indicative_total) values ('X', 'cafe', 'X', '0600000000', 'oujda', '[]', 20, 1) returning 1$q$,
+  $q$with u as (update public.site_config set content = '{}' returning 1) select count(*) from u$q$,
+  $q$with u as (update public.shipping_rates set base_fee = 0 returning 1) select count(*) from u$q$,
+  $q$with u as (update public.payment_methods set enabled = true returning 1) select count(*) from u$q$,
+  $q$select public.adjust_stock('brazil', 100, 'restock')::int$q$,
+  $q$select 1 from public.set_order_status((select id from t23 where k = 'paid'), 'in_production')$q$,
+  $q$select 1 from public.set_payment_status((select id from t23 where k = 'unpaid'), 'refunded')$q$,
+  $q$select count(*) from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '')$q$
+]) q;
+insert into t24 (who, q, expect, sane) values
+  -- staff: the orders, yes; the owner's configuration, the team, delivery prices and money, no
+  ('staff',   'select count(*) from public.orders', 'some', true),
+  ('staff',   'select count(*) from public.notification_outbox', 'none', true),
+  ('staff',   'select count(*) from public.admin_config', 'none', true),
+  ('staff',   $q$with u as (update public.admin_users set role = 'owner' where user_id = auth.uid() returning 1) select count(*) from u$q$, 'none', true),
+  ('staff',   $q$insert into public.admin_users values ('00000000-0000-0000-0000-000000000009', 'owner', 'Friend') returning 1$q$, 'none', true),
+  ('staff',   $q$with u as (update public.site_config set content = '{}' returning 1) select count(*) from u$q$, 'none', true),
+  ('staff',   $q$with u as (update public.shipping_rates set base_fee = 0 returning 1) select count(*) from u$q$, 'none', true),
+  ('staff',   $q$insert into public.shipping_rates (id, city, base_fee) values ('x', '{}', 0) returning 1$q$, 'none', true),
+  ('staff',   $q$select 1 from public.set_payment_status((select id from t23 where k = 'unpaid'), 'refunded')$q$, 'none', true),
+  -- manager: the outbox, yes; who receives it, the team and the payment methods, no
+  ('manager', 'select count(*) from public.notification_outbox', 'some', true),
+  ('manager', 'select count(*) from public.admin_config', 'none', true),
+  ('manager', $q$with u as (update public.admin_users set role = 'owner' where user_id = auth.uid() returning 1) select count(*) from u$q$, 'none', true),
+  ('manager', $q$with u as (update public.payment_methods set enabled = true returning 1) select count(*) from u$q$, 'none', true),
+  -- the customer's order page shows the order, never the phone or the address
+  ('anon', format($q$select count(*) from public.get_order_public(%L) g where row(g.*)::text like %L or row(g.*)::text like %L$q$,
+                  (select id from public.orders where phone <> '' order by created_at limit 1),
+                  '%' || (select right(phone, 8) from public.orders where phone <> '' order by created_at limit 1) || '%',
+                  '%' || (select address from public.orders where phone <> '' order by created_at limit 1) || '%'), 'none', false),
+  ('anon', format('select count(*) from public.get_order_public(%L)', (select id from public.orders order by created_at limit 1)), 'some', false);
+do $$
+declare c record; got bigint; outcome text;
+begin
+  -- each refused case must be a query that works for the owner: a typo or a missing
+  -- row would otherwise pass as "refused"
+  for c in select * from t24 where sane order by n loop
+    perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+    begin
+      execute c.q into got;
+      outcome := case when coalesce(got, 0) > 0 then 'some' else 'none' end;
+      raise exception 'undo';
+    exception when others then
+      if sqlerrm <> 'undo' then outcome := 'error: ' || sqlerrm; end if;
+    end;
+    if outcome <> 'some' then raise exception 'TEST BROKEN: "%" does nothing even for the owner (%)', c.q, outcome; end if;
+  end loop;
+  for c in select * from t24 order by n loop
+    perform set_config('request.jwt.claim.sub', case c.who when 'staff' then '00000000-0000-0000-0000-000000000002'
+      when 'manager' then '00000000-0000-0000-0000-000000000003' when 'customer' then '00000000-0000-0000-0000-000000000009' else '' end, true);
+    execute case when c.who = 'anon' then 'set local role anon' else 'set local role authenticated' end;
+    begin
+      execute c.q into got;
+      outcome := case when coalesce(got, 0) > 0 then 'some' else 'none' end;
+      raise exception 'undo';  -- whatever it did is rolled back
+    exception when others then
+      if sqlerrm <> 'undo' then outcome := 'none'; end if;
+    end;
+    execute 'reset role';
+    if outcome <> c.expect then
+      raise exception 'TEST FAILED: % could do "%" (%, expected %)', c.who, c.q, outcome, c.expect;
+    end if;
+  end loop;
+end $$;
+-- a switched-off channel gets nothing (Admin → Notifications)
+do $$
+declare wa bigint := (select count(*) from public.notification_outbox where channel = 'whatsapp');
+begin
+  update public.admin_config set whatsapp_on = false;
+  perform public.queue_notification('order.created', 's', 'w', 'e');
+  update public.admin_config set whatsapp_on = true;
+  if (select count(*) from public.notification_outbox where channel = 'whatsapp') <> wa then raise exception 'TEST FAILED: WhatsApp switched off still queued'; end if;
+end $$;
+select 'ok 24 - anon, customers, staff and managers only reach what their role allows (' || (select count(*) from t24) || ' cases)' as result;
+
+-- 25. The table rules hold whoever writes: a recipe line is 1 to 100 %, and a
+--     switched-off origin is never sold, even inside an active product -----------
+do $$
+declare p int;
+begin
+  foreach p in array array[0, 101] loop
+    begin
+      insert into public.product_recipes values ('retired', 'vietnam', p);
+      raise exception 'TEST FAILED: recipe line of % %% accepted', p;
+    exception when check_violation then null;
+    end;
+  end loop;
+  perform set_config('boga.stock_write', 'on', true);
+  update public.origins set active = false where id = 'brazil';
+  begin
+    perform public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '');
+    raise exception 'TEST FAILED: switched-off origin sold';
+  exception when others then if sqlerrm <> 'out_of_stock:brazil' then raise; end if;
+  end;
+  update public.origins set active = true where id = 'brazil';
+  -- even a write that goes past the functions (stock gate open) cannot store negative stock
+  begin
+    update public.origins set stock_kg = -0.001 where id = 'vietnam';
+    raise exception 'TEST FAILED: negative stock stored';
+  exception when check_violation then null;
+  end;
+end $$;
+select 'ok 25 - recipe lines 1 to 100 %; a switched-off origin is never sold; stock never below 0' as result;

@@ -15,6 +15,7 @@ import { Icon, type IconName } from '@/shared/ui/Icon';
 import { Field } from '@/shared/ui/bits';
 import './checkout.css';
 import { TEXT_MAX } from '@/core/limits';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 const methodIcon: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
 
@@ -51,6 +52,7 @@ function focusField(error: CheckoutError | undefined) {
 
 export function CheckoutPage() {
   const { t, l, money, locale } = useI18n();
+  usePageTitle(t.checkout.title);
   const cart = useCart();
   const navigate = useNavigate();
   const { products, originIndex } = useCatalog();

@@ -7,6 +7,7 @@ import { whatsappLink } from '@/services/notifications';
 import { Icon } from '../ui/Icon';
 import { Footer } from './Footer';
 import { Header } from './Header';
+import { SkipLink } from './SkipLink';
 import { sectionId } from './sectionId';
 import './layout.css';
 import { api } from '@/data/api';
@@ -50,8 +51,9 @@ export function StoreLayout() {
 
   return (
     <div className="store">
+      <SkipLink />
       <Header />
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         <Outlet />
       </main>
       <Footer />

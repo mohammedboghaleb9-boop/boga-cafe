@@ -75,7 +75,7 @@ const SHAPE: Record<NotifyEvent, { prefix: string; firstLine: (ref: string) => s
   },
   'quote.created': {
     prefix: 'QR',
-    firstLine: (ref) => `Commande B2B (+10 kg) ${ref}`,
+    firstLine: (ref) => `Commande B2B (au-delà du seuil) ${ref}`,
     subject: (ref) => `[BOGA CAFÉ] Demande B2B ${ref} - `,
   },
 };

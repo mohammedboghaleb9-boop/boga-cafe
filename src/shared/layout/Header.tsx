@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import type { Locale } from '@/core/types';
 import { useDb } from '@/data/hooks';
@@ -32,6 +32,18 @@ export function Header() {
   const { count } = useCart();
   const { content } = useDb();
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  // Escape closes the open menu and gives the focus back to its button
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      menuButton.current?.focus();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
   const location = useLocation();
   const [lastPath, setLastPath] = useState(location.pathname);
   if (lastPath !== location.pathname) {
@@ -79,6 +91,7 @@ export function Header() {
               {count > 0 && <span className="cart-count num">{count}</span>}
             </Link>
             <button
+              ref={menuButton}
               type="button"
               className="menu-btn btn-icon btn"
               aria-expanded={open}

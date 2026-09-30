@@ -7,7 +7,7 @@ import { useI18n } from '@/i18n';
 import { Field } from '@/shared/ui/bits';
 import { RequestFields, emptyRequest, focusFirstError } from './RequestFields';
 
-/** Sends a cart above 10 kg to the administration, which sets the final price. */
+/** Sends a cart above the B2B threshold (settings.b2bThresholdKg) to the administration, which sets the final price. */
 export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent: (ref: string, message: MessageDraft) => void }) {
   const { t } = useI18n();
   const [contact, setContact] = useState(emptyRequest);

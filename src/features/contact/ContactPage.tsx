@@ -4,9 +4,11 @@ import { ChannelCards } from '@/shared/layout/ChannelCards';
 import { Monogram } from '@/shared/layout/Monogram';
 import { Icon } from '@/shared/ui/Icon';
 import './contact.css';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 export function ContactPage() {
   const { t, l } = useI18n();
+  usePageTitle(t.nav.contact);
   const { settings } = useDb();
   return (
     <div className="container page">

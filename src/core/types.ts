@@ -191,7 +191,7 @@ export interface SampleRequest {
 
 export type QuoteStatus = 'new' | 'negotiating' | 'confirmed' | 'closed';
 
-/** Orders above the B2B threshold (10 kg) go through the administration. */
+/** Orders above the B2B threshold (settings.b2bThresholdKg) go through the administration. */
 export interface QuoteRequest {
   id: string;
   number: string;

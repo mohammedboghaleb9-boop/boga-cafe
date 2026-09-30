@@ -171,7 +171,8 @@ export function sampleMessage(s: SampleRequest, ctx: TemplateContext): MessageDr
 
 export function quoteMessage(q: QuoteRequest, ctx: TemplateContext): MessageDraft {
   const body = [
-    `Commande B2B (+10 kg) ${q.number}`,
+    // no kg figure in this fixed line: the threshold is a setting (the weight follows below)
+    `Commande B2B (au-delà du seuil) ${q.number}`,
     `Établissement : ${establishment(q.company, q.businessType)}`,
     `Contact : ${q.contactName} (${q.phone})`,
     q.email ? `Email : ${q.email}` : '',

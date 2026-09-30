@@ -12,9 +12,11 @@ import { QtyStepper } from '@/shared/ui/bits';
 import { useCart } from '@/shared/cart/CartProvider';
 import { LineDetails } from '@/shared/cart/CartLineView';
 import './cart.css';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 export function CartPage() {
   const { t, l, money, date } = useI18n();
+  usePageTitle(t.cart.title);
   const cart = useCart();
   const { products, originIndex } = useCatalog();
   const settings = useSettings();

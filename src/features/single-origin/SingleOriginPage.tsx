@@ -4,9 +4,11 @@ import { fmt, useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
 import { Photo } from '@/shared/ui/Photo';
 import './single-origin.css';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 export function SingleOriginPage() {
   const { t, l, date } = useI18n();
+  usePageTitle(t.nav.singleOrigin);
   const { products, origins } = useCatalog();
   const singles = products.filter((p) => p.active && p.kind === 'single-origin');
 

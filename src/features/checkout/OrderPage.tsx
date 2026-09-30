@@ -12,6 +12,7 @@ import { SendToBoga } from '@/shared/layout/SendToBoga';
 import { CopyButton } from '@/shared/ui/bits';
 import { PaymentPanel } from './PaymentPanel';
 import './checkout.css';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 const FLOW: OrderStatus[] = ['new', 'confirmed', 'in_production', 'shipped', 'delivered'];
 
@@ -21,6 +22,7 @@ export function OrderPage() {
   const db = useDb();
   const { orders, shippingRates } = db;
   const order = orders.find((o) => o.id === id);
+  usePageTitle(order ? order.number : t.order.notFound);
   // the payment was reported during this visit: bring the new message into view
   const [statusOnArrival] = useState(order?.paymentStatus);
 

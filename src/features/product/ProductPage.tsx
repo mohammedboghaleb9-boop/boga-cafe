@@ -17,6 +17,7 @@ import { Icon } from '@/shared/ui/Icon';
 import { Availability, QtyStepper, SpeciesBar } from '@/shared/ui/bits';
 import './product.css';
 import { RoastScale } from '@/shared/ui/Roast';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 /** Keyed by slug: moving to another product starts from its own size and quantity. */
 export function ProductPage() {
@@ -35,6 +36,7 @@ function ProductDetails({ slug }: { slug?: string }) {
   // a size that stops being offered while the page is open (price removed in the admin) is never kept
   const size = chosen && sizes.includes(chosen) ? chosen : sizes.includes(1000) ? 1000 : sizes[0];
   const [qty, setQty] = useState(1);
+  usePageTitle(product && size ? l(product.name) : t.common.notFound);
 
   if (!product || !size) return <NotFound />;
 

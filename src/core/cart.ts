@@ -97,7 +97,7 @@ export interface CartSummary {
   lines: { item: CartItem; line?: OrderLine; problem?: LineProblem }[];
   subtotal: number;
   weightKg: number;
-  /** true when the total weight goes above the B2B threshold (10 kg). */
+  /** true when the total weight goes above the B2B threshold (settings.b2bThresholdKg, 10 kg by default). */
   isB2B: boolean;
   requirements: StockDeduction[];
   shortages: Shortage[];

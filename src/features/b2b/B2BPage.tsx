@@ -1,17 +1,21 @@
 import { useCatalog, useDb } from '@/data/hooks';
 import { ProductCard } from '@/shared/product/ProductCard';
-import { useI18n } from '@/i18n';
+import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
 import { Photo } from '@/shared/ui/Photo';
 import { SampleRequestForm } from './SampleRequestForm';
 import './b2b.css';
 import { formatPhone } from '@/shared/contact';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 export function B2BPage() {
   const { t } = useI18n();
+  usePageTitle(t.b2b.title);
   const { products } = useCatalog();
   const { settings } = useDb();
+  // one business value, Admin → Settings (10 kg by default), in every text
+  const kg = settings.b2bThresholdKg;
   const blends = products.filter((p) => p.active && p.kind === 'b2b');
 
 
@@ -23,7 +27,7 @@ export function B2BPage() {
         <div className="container b2b-hero-inner">
           <span className="eyebrow">{t.b2b.eyebrow}</span>
           <h1>{t.b2b.title}</h1>
-          <p className="lead">{t.b2b.intro}</p>
+          <p className="lead">{fmt(t.b2b.intro, { kg })}</p>
         </div>
       </section>
 
@@ -34,7 +38,7 @@ export function B2BPage() {
             {t.b2b.rules.map((rule) => (
               <li key={rule}>
                 <Icon name="check" size={18} />
-                <span>{rule}</span>
+                <span>{fmt(rule, { kg })}</span>
               </li>
             ))}
           </ul>
@@ -57,7 +61,7 @@ export function B2BPage() {
           </section>
           <section className="panel stack b2b-large">
             <h2>{t.b2b.largeTitle}</h2>
-            <p className="muted">{t.b2b.largeText}</p>
+            <p className="muted">{fmt(t.b2b.largeText, { kg })}</p>
             <a
               className="btn btn-primary"
               href={whatsappLink(settings.contact.whatsapp, `${t.contact.whatsappText} B2B / HORECA`)}

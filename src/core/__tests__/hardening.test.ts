@@ -264,3 +264,39 @@ describe('what the customer sees after a refund (review)', () => {
     expect(orderPhase(o('new', 'awaiting_verification'))).toBe('awaiting_payment');
   });
 });
+
+describe('business limits, at the exact limit (audit M2)', () => {
+  it('holds each boundary the way the database and the texts state it', async () => {
+    const [{ shippingFee }, cart, { findShortages, isLowStock }, { validateBlend }, { statusChangeRefusal }, f] = await Promise.all([
+      import('../shipping'),
+      import('../cart'),
+      import('../stock'),
+      import('../blend'),
+      import('../orderFlow'),
+      import('./fixtures'),
+    ]);
+    // free delivery from the threshold itself
+    expect(shippingFee(f.rate, 1, 600, { freeShippingOver: 600 })).toBe(0);
+    expect(shippingFee(f.rate, 1, 599, { freeShippingOver: 600 })).toBeGreaterThan(0);
+    // 100 bags per line, as the database (check_order) and the docs say — a literal on purpose
+    expect([cart.isValidQty(100), cart.isValidQty(101), cart.isValidQty(0), cart.isValidQty(1.5)]).toEqual([true, false, false, false]);
+    // the last kilo can be bought; a switched-off origin has nothing to sell
+    expect(findShortages([{ originId: 'vietnam', kg: 1 }], f.originIndex)).toEqual([]);
+    expect(findShortages([{ originId: 'vietnam', kg: 1.001 }], f.originIndex)).toHaveLength(1);
+    const off = { ...f.originIndex, brazil: { ...f.originIndex.brazil, active: false } };
+    expect(findShortages([{ originId: 'brazil', kg: 0.1 }], off)).toHaveLength(1);
+    // low stock includes the threshold itself
+    expect(isLowStock({ ...f.origins[0], stockKg: 5, lowStockKg: 5 })).toBe(true);
+    expect(isLowStock({ ...f.origins[0], stockKg: 5.001, lowStockKg: 5 })).toBe(false);
+    // blend rules: one origin twice, too many origins, a switched-off origin
+    const codes = (lines: { originId: string; percent: number }[], index = f.originIndex) =>
+      validateBlend({ size: 250, lines }, index, f.settings).map((i) => i.code);
+    expect(codes([{ originId: 'brazil', percent: 50 }, { originId: 'brazil', percent: 50 }])).toContain('duplicate');
+    expect(codes(['brazil', 'colombia', 'vietnam', 'ethiopia', 'x'].map((originId) => ({ originId, percent: 20 })))).toContain('too_many');
+    expect(codes([{ originId: 'brazil', percent: 50 }, { originId: 'colombia', percent: 50 }], off)).toContain('unavailable');
+    // a stored blend with a fractional percent is dropped before pricing
+    expect(cart.isWellFormedItem({ id: 'x', type: 'custom', qty: 1, blend: { size: 250, lines: [{ originId: 'brazil', percent: 33.5 }] } })).toBe(false);
+    // nothing ships before payment, not only nothing produced
+    expect(statusChangeRefusal({ status: 'in_production', paymentStatus: 'pending' }, 'shipped', 'owner')).toBe('needs_payment');
+  });
+});

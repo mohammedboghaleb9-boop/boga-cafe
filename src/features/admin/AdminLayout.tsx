@@ -10,6 +10,8 @@ import { isLowStock } from '@/core/stock';
 import { PERMISSIONS, type Section } from './permissions';
 import { adminSession, useAdminRole } from './session';
 import { ConfirmButton } from './ui';
+import { SkipLink } from '@/shared/layout/SkipLink';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 const icons: Record<Section, IconName> = {
   dashboard: 'chart',
@@ -29,6 +31,8 @@ export function AdminLayout() {
   const role = useAdminRole()!;
   const db = useDb();
   const { pathname } = useLocation();
+  const current = pathname.split('/')[2] as Section | undefined;
+  usePageTitle(`${(current && t.admin.nav[current]) || t.admin.nav.dashboard} · ${t.nav.admin}`);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -49,6 +53,7 @@ export function AdminLayout() {
 
   return (
     <div className="admin">
+      <SkipLink />
       <aside className="admin-side">
         <div className="admin-brand">
           <Logo to="/admin" />
@@ -79,7 +84,7 @@ export function AdminLayout() {
           />
         </div>
       </aside>
-      <main className="admin-main">
+      <main className="admin-main" id="main" tabIndex={-1}>
         <Outlet />
       </main>
     </div>

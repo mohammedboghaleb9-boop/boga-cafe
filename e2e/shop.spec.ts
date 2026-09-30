@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addSignatureBag, fillCheckout, watchErrors } from './helpers';
+import { addSignatureBag, fillCheckout, signIn, watchErrors } from './helpers';
 
 test.describe('customer', () => {
   test('orders by bank transfer, then reports the payment', async ({ page }) => {
@@ -17,6 +17,34 @@ test.describe('customer', () => {
     await expect.poll(message).toMatch(/Paiement signalé BC-/);
     expect(await message()).toContain('CP-778812');
     errors.check();
+  });
+
+  test('a reported payment is only a claim: staff cannot cancel it, the owner checks it, the customer can send it again', async ({ page, context }) => {
+    await addSignatureBag(page);
+    await fillCheckout(page, 'bank_transfer');
+    const orderUrl = page.url();
+    const id = orderUrl.split('/order/')[1];
+    await page.fill('#pay-ref', 'CP-1');
+    await page.locator('form.report button[type=submit]').click();
+    await expect(page.locator('form.report')).toHaveCount(0);
+
+    // each tab has its own admin session (sessionStorage), the data is shared
+    const staff = await context.newPage();
+    await signIn(staff, 'staff');
+    await staff.goto(`/admin/orders/${id}`);
+    await expect(staff.getByText(/seul le propriétaire annule/)).toBeVisible();
+    await expect(staff.getByRole('button', { name: 'Annuler la commande' })).toHaveCount(0);
+
+    const owner = await context.newPage();
+    await signIn(owner, 'owner');
+    await owner.goto(`/admin/orders/${id}`);
+    await owner.getByRole('button', { name: 'Marquer échoué' }).click();
+
+    await page.goto(orderUrl);
+    await expect(page.getByText(/Nous n’avons pas trouvé ce paiement/)).toBeVisible();
+    await page.fill('#pay-ref', 'CP-2');
+    await page.locator('form.report button[type=submit]').click();
+    await expect(page.locator('form.report')).toHaveCount(0);
   });
 
   test('cannot pay by card while no gateway is connected', async ({ page }) => {

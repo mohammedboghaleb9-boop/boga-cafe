@@ -124,6 +124,44 @@ describe('after the merge review', () => {
     expect((await demo.api.placeOrder({ items: [item], customer, paymentMethod: 'card', locale: 'fr' })).ok).toBe(true);
   });
 
+  it('an order takes its coffee from stock in the history, and warns the team when an origin runs low (audit M2)', async () => {
+    const { api, db } = t;
+    const product = firstProduct();
+    const originId = product.recipe[0].originId;
+    // just above the alert threshold: one bag crosses it
+    db.update((s) => ({ ...s, origins: s.origins.map((o) => (o.id === originId ? { ...o, stockKg: o.lowStockKg + 0.1 } : o)) }));
+    const placed = await api.placeOrder({ items: [{ id: 'i1', type: 'product', productId: product.id, size: 250, qty: 1 }], customer, paymentMethod: 'bank_transfer', locale: 'fr' });
+    if (!placed.ok) throw new Error(placed.errors.join());
+    const moves = db.get().stockMovements.filter((m) => m.ref === placed.order.number);
+    expect(moves.length).toBe(placed.order.stockDeductions.length);
+    for (const m of moves) expect(m.deltaKg).toBeLessThan(0);
+    expect(db.get().notifications.some((n) => n.event === 'stock.low' && n.body.includes(db.get().origins.find((o) => o.id === originId)!.name.fr))).toBe(true);
+  });
+
+  it('checks what customers send: B2B sample product and city, a capped payment reference, no card payment on a transfer (audit M2)', async () => {
+    const { api, db } = t;
+    const contact = { businessType: 'cafe' as const, company: 'Café Test', contactName: 'Sara Test', phone: '0661000000', email: '', cityId: 'oujda', notes: '' };
+    const b2b = db.get().products.find((p) => p.kind === 'b2b' && p.active)!;
+    const retail = firstProduct();
+    expect((await api.requestSample({ ...contact, productId: b2b.id, estMonthlyKg: 20 })).ok).toBe(true);
+    expect(await api.requestSample({ ...contact, productId: retail.id, estMonthlyKg: 20 })).toMatchObject({ ok: false, errors: ['product'] });
+    expect(await api.requestSample({ ...contact, cityId: 'atlantis', productId: b2b.id, estMonthlyKg: 20 })).toMatchObject({ ok: false, errors: ['city'] });
+
+    const transfer = order((x) => x.status === 'new' && x.paymentMethod === 'bank_transfer' && x.paymentStatus === 'pending');
+    await api.completeCardPayment(transfer.id, true); // a card answer never pays a transfer
+    expect(order((x) => x.id === transfer.id).paymentStatus).toBe('pending');
+    await api.reportOfflinePayment(transfer.id, `REF-${'9'.repeat(200)}`);
+    expect(order((x) => x.id === transfer.id).paymentRef).toHaveLength(80);
+  });
+
+  it('forgets browser data saved by an older version of the site', async () => {
+    const saved = new Map([['boga-cafe-demo-db', JSON.stringify({ version: 1, orders: [{ id: 'stale' }] })]]);
+    vi.stubGlobal('localStorage', { getItem: (k: string) => saved.get(k) ?? null, setItem: (k: string, v: string) => saved.set(k, v), removeItem: () => {} });
+    const { db } = await fresh();
+    expect(db.get().orders.some((o) => o.id === 'stale')).toBe(false);
+    expect(db.get().version).toBeGreaterThan(1);
+  });
+
   it('tells the team when a customer reports a Cash Plus / transfer payment', async () => {
     const posts: { event: string; ref: string; whatsapp: string }[] = [];
     vi.stubEnv('VITE_NOTIFY_URL', '/api/notify');

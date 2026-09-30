@@ -20,6 +20,7 @@ import { whatsappLink } from '@/services/notifications';
 import { addLine, issueText, removeLine } from './blend-helpers';
 import './custom-blend.css';
 import { RoastChip } from '@/shared/ui/Roast';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 /** Starts from the concept's example so the builder opens in a working state. */
 const EXAMPLE: RecipeLine[] = [
@@ -30,6 +31,7 @@ const EXAMPLE: RecipeLine[] = [
 
 export function CustomBlendPage() {
   const { t, l, money, date } = useI18n();
+  usePageTitle(t.nav.customBlend);
   const { origins, originIndex } = useCatalog();
   const settings = useSettings();
   const cart = useCart();

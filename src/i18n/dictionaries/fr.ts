@@ -142,7 +142,7 @@ export const fr: Dict = {
     ],
     b2bTitle: 'Cafés, hôtels, restaurants',
     b2bText:
-      'Trois blends pensés pour les professionnels, un échantillon de 500 g sur demande, et les commandes de plus de 10 kg traitées directement par notre équipe.',
+      'Trois blends pensés pour les professionnels, un échantillon de 500 g sur demande, et les commandes de plus de {kg} kg traitées directement par notre équipe.',
     b2bCta: 'Découvrir B2B / HORECA',
     followTitle: 'Suivre BOGA CAFÉ',
     followText: 'Les coulisses de la torréfaction, les recettes et les nouvelles origines.',
@@ -215,10 +215,10 @@ export const fr: Dict = {
     eyebrow: 'B2B / HORECA',
     title: 'Du café pour les cafés, hôtels et restaurants',
     intro:
-      'Trois blends conçus pour un usage professionnel. Ils sont visibles par tous et se commandent en ligne jusqu’à 10 kg.',
+      'Trois blends conçus pour un usage professionnel. Ils sont visibles par tous et se commandent en ligne jusqu’à {kg} kg.',
     rulesTitle: 'Comment fonctionne le B2B',
     rules: [
-      'Toute commande de plus de 10 kg devient B2B, même pour un particulier.',
+      'Toute commande de plus de {kg} kg devient B2B, même pour un particulier.',
       'Notre équipe fixe le prix final selon la quantité, la distance, la ville et les conditions.',
       'Un échantillon de 500 g peut être demandé pour l’un des trois blends B2B.',
       'La livraison de l’échantillon est payée par le client. BOGA CAFÉ peut offrir l’échantillon.',
@@ -227,7 +227,7 @@ export const fr: Dict = {
     sampleTitle: 'Demander un échantillon de 500 g',
     sampleText: 'Remplissez le formulaire : la demande est rédigée pour notre équipe, et l’étape suivante vous montre comment elle nous parvient. Nous vous rappelons pour confirmer.',
     largeTitle: 'Grosse commande ?',
-    largeText: 'Au-delà de 10 kg, contactez directement l’équipe ou remplissez votre panier et envoyez-le en demande.',
+    largeText: 'Au-delà de {kg} kg, contactez directement l’équipe ou remplissez votre panier et envoyez-le en demande.',
     largeCta: 'Contacter sur WhatsApp',
     businessType: 'Type d’activité',
     types: {
@@ -398,6 +398,7 @@ export const fr: Dict = {
   },
 
   a11y: {
+    skipToContent: 'Aller au contenu',
     mainNav: 'Menu principal',
     mobileNav: 'Menu',
     breadcrumb: 'Vous êtes ici',
@@ -505,7 +506,7 @@ export const fr: Dict = {
     },
     b2b: {
       samplesTab: 'Échantillons (500 g)',
-      quotesTab: 'Commandes de plus de 10 kg',
+      quotesTab: 'Commandes de plus de {kg} kg',
       requestedBlend: 'Blend demandé',
       monthly: 'Conso. estimée',
       decision: 'Décision échantillon',

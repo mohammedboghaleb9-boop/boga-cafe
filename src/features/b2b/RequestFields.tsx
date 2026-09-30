@@ -1,4 +1,4 @@
-/** Contact fields shared by the sample request and the +10 kg request. */
+/** Contact fields shared by the sample request and the request above the B2B threshold. */
 import { TEXT_MAX } from '@/core/limits';
 import type { BusinessType } from '@/core/types';
 import type { ContactRequestInput, RequestError } from '@/data/api';

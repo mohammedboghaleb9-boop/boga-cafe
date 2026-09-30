@@ -222,6 +222,30 @@ describe('POST /api/notify', () => {
     expect(results).toEqual(['ok', 'ok', 'ok', 'rate']);
   });
 
+  it('keeps its protections at their real values (audit M2)', async () => {
+    // 60 messages in total per window by default: the Gmail quota is protected
+    const g = new Guard();
+    const answers = Array.from({ length: 61 }, (_, i) => g.allow(`10.0.${i >> 8}.${i & 255}`, `k${i}`, 0));
+    expect(answers.filter((a) => a === 'ok')).toHaveLength(60);
+    expect(answers[60]).toBe('rate');
+    // the address Vercel sets wins over a forwarded-for header the caller writes itself
+    const { deps, guard } = setup();
+    const statuses: number[] = [];
+    for (let i = 0; i < 7; i++) {
+      const w = `${payload.whatsapp}\nNote : ${i}`;
+      statuses.push((await handleNotify(post({ ...payload, whatsapp: w, email: w }, { 'x-forwarded-for': `203.0.113.${i}` }), env, deps, guard)).status);
+    }
+    expect(statuses.at(-1)).toBe(429);
+    // no header injection through the subject
+    const mailSetup = setup();
+    await handleNotify(post({ ...payload, subject: `${payload.subject}\r\nBcc: evil@example.com` }), env, mailSetup.deps, mailSetup.guard);
+    expect(mailSetup.mails[0].subject).not.toMatch(/[\r\n]/);
+    // nothing configured is a server problem the site must see (503), not a success
+    const bare = setup();
+    const res = await handleNotify(post(payload), { ALLOWED_ORIGIN: SITE }, bare.deps, bare.guard);
+    expect(res.status).toBe(503);
+  });
+
   it('forgets old entries, so memory stays bounded', () => {
     const g = new Guard(6, 60, 1_000, 5_000);
     for (let i = 0; i < 50; i++) {

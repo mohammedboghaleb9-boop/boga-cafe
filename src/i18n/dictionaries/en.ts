@@ -144,7 +144,7 @@ export const en = {
     ],
     b2bTitle: 'Cafés, hotels, restaurants',
     b2bText:
-      'Three blends designed for professionals, a 500 g sample on request, and orders above 10 kg handled directly by our team.',
+      'Three blends designed for professionals, a 500 g sample on request, and orders above {kg} kg handled directly by our team.',
     b2bCta: 'Discover B2B / HORECA',
     followTitle: 'Follow BOGA CAFÉ',
     followText: 'Behind the scenes of the roastery, recipes and new origins.',
@@ -217,10 +217,10 @@ export const en = {
     eyebrow: 'B2B / HORECA',
     title: 'Coffee for cafés, hotels and restaurants',
     intro:
-      'Three blends built for professional use. They are visible to everyone and can be ordered online up to 10 kg.',
+      'Three blends built for professional use. They are visible to everyone and can be ordered online up to {kg} kg.',
     rulesTitle: 'How B2B works',
     rules: [
-      'Any order above 10 kg becomes B2B, even for individuals.',
+      'Any order above {kg} kg becomes B2B, even for individuals.',
       'Our team sets the final price according to quantity, distance, city and conditions.',
       'A 500 g sample can be requested for one of the three B2B blends.',
       'Delivery of the sample is paid by the customer. BOGA CAFÉ may offer the sample itself.',
@@ -229,7 +229,7 @@ export const en = {
     sampleTitle: 'Request a 500 g sample',
     sampleText: 'Fill in the form: the request is written out for our team, and the next step shows you how it reaches us. We call you back to confirm.',
     largeTitle: 'Large order?',
-    largeText: 'Above 10 kg, contact the team directly or fill your cart and send it as a request.',
+    largeText: 'Above {kg} kg, contact the team directly or fill your cart and send it as a request.',
     largeCta: 'Contact on WhatsApp',
     businessType: 'Business type',
     types: {
@@ -400,6 +400,7 @@ export const en = {
   },
 
   a11y: {
+    skipToContent: 'Skip to content',
     mainNav: 'Main menu',
     mobileNav: 'Menu',
     breadcrumb: 'You are here',
@@ -507,7 +508,7 @@ export const en = {
     },
     b2b: {
       samplesTab: 'Samples (500 g)',
-      quotesTab: 'Orders above 10 kg',
+      quotesTab: 'Orders above {kg} kg',
       requestedBlend: 'Requested blend',
       monthly: 'Est. consumption',
       decision: 'Sample decision',

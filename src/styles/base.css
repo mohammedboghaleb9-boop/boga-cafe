@@ -777,3 +777,24 @@ textarea {
 :root[dir='rtl'] .flip-rtl {
   transform: scaleX(-1);
 }
+
+/* keyboard: the first Tab shows "skip to content" (SkipLink.tsx), hidden otherwise */
+.skip-link {
+  position: absolute;
+  inset-inline-start: 12px;
+  top: 8px;
+  z-index: 100;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}
+/* the page content receives the focus from the skip link: no frame around all of it */
+main[tabindex='-1']:focus {
+  outline: none;
+}
