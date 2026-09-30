@@ -7,6 +7,7 @@ import { useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, useSavedFlash } from '../ui';
 import type { Role } from '../permissions';
+import { payeeReady } from '@/core/orderFlow';
 import { methodAvailable } from '@/services/payments';
 import { useAdminRole } from '../session';
 
@@ -68,7 +69,7 @@ export function PaymentsPage() {
         <h2 className="admin-card-title">{t.admin.payments.methods}</h2>
         <div className="stack" style={{ ['--gap' as string]: '14px' }}>
           {paymentMethods.map((m) => (
-            <MethodEditor key={m.id} method={m} />
+            <MethodEditor key={m.id} method={m} settings={settings} />
           ))}
         </div>
       </section>
@@ -78,7 +79,7 @@ export function PaymentsPage() {
   );
 }
 
-function MethodEditor({ method }: { method: PaymentMethodConfig }) {
+function MethodEditor({ method, settings }: { method: PaymentMethodConfig; settings: Settings }) {
   const { t, l } = useI18n();
   const [m, setM] = useState(method);
   const [saved, flash] = useSavedFlash();
@@ -103,7 +104,8 @@ function MethodEditor({ method }: { method: PaymentMethodConfig }) {
           </button>
         </div>
       </div>
-      {m.id === 'card' && !methodAvailable({ id: 'card', enabled: true }) && <p className="notice small">{t.admin.payments.cardOff}</p>}
+      {m.id === 'card' && !methodAvailable({ id: 'card', enabled: true }, settings) && <p className="notice small">{t.admin.payments.cardOff}</p>}
+      {m.id !== 'card' && !payeeReady(m.id, settings) && <p className="notice small">{t.admin.payments.payeeMissing}</p>}
       <div className="detail-grid">
         <LocalizedInput id={`pm-${m.id}-label`} label={t.admin.payments.label} value={m.label} onChange={(v) => setM({ ...m, label: v })} />
         <LocalizedInput
@@ -121,6 +123,7 @@ function MethodEditor({ method }: { method: PaymentMethodConfig }) {
 function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
   const { t } = useI18n();
   const [bank, setBank] = useState(settings.bank);
+  const [cashplus, setCashplus] = useState(settings.cashplus);
   const [saved, flash] = useSavedFlash();
   return (
     <section className="panel stack">
@@ -132,7 +135,7 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
             type="button"
             className="btn btn-primary btn-sm"
             onClick={() => {
-              api.saveSettings({ ...settings, bank }, role);
+              api.saveSettings({ ...settings, bank, cashplus }, role);
               flash();
             }}
           >
@@ -153,7 +156,12 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
           <span className="label">{t.admin.payments.rib}</span>
           <input className="input num" dir="ltr" value={bank.rib} onChange={(e) => setBank({ ...bank, rib: e.target.value })} />
         </label>
+        <label className="field span-all">
+          <span className="label">{t.admin.payments.cashplusBeneficiary}</span>
+          <input className="input" value={cashplus.beneficiary} onChange={(e) => setCashplus({ beneficiary: e.target.value })} />
+        </label>
       </div>
+      <p className="small muted">{t.admin.payments.payeeHelp}</p>
     </section>
   );
 }

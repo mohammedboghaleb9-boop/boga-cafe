@@ -58,7 +58,7 @@ export function CheckoutPage() {
   const [customer, setCustomer] = useState<CustomerInfo>(emptyCustomer);
   // the card stays listed as "soon" while no gateway is connected (services/payments)
   const methods = paymentMethods.filter((m) => m.enabled);
-  const [method, setMethod] = useState<PaymentMethodId | ''>(methods.find((m) => methodAvailable(m))?.id ?? '');
+  const [method, setMethod] = useState<PaymentMethodId | ''>(methods.find((m) => methodAvailable(m, settings))?.id ?? '');
   const [errors, setErrors] = useState<CheckoutError[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -203,7 +203,7 @@ export function CheckoutPage() {
             </h2>
             <div className="pay-options" role="radiogroup" aria-label={t.checkout.paymentTitle}>
               {methods.map((m) => {
-                const available = methodAvailable(m);
+                const available = methodAvailable(m, settings);
                 return (
                   <label key={m.id} className="pay-option" data-checked={method === m.id} data-disabled={!available || undefined}>
                     <input
@@ -219,12 +219,15 @@ export function CheckoutPage() {
                       <strong>
                         {l(m.label)} {!available && <span className="pill">{t.checkout.cardSoon}</span>}
                       </strong>
-                      <span className="small muted">{available ? l(m.instructions) : t.checkout.cardSoonText}</span>
+                      <span className="small muted">
+                        {available ? l(m.instructions) : m.id === 'card' ? t.checkout.cardSoonText : t.checkout.methodSoonText}
+                      </span>
                     </span>
                   </label>
                 );
               })}
             </div>
+            {!methods.some((m) => methodAvailable(m, settings)) && <p className="notice small">{t.checkout.noMethodYet}</p>}
             {err('payment_method') && <span className="field-error">{err('payment_method')}</span>}
             <p className="small muted icon-line">
               <Icon name="lock" size={16} /> {t.checkout.noCod}

@@ -41,10 +41,28 @@ describe('demo data layer', () => {
     expect(db.get().stockMovements[0]).toMatchObject({ originId: id, deltaKg: -before, note: 'casse' });
   });
 
+  it('frees the stock of a reported payment nobody confirmed, never of a paid order (audit H3)', async () => {
+    const { api, db } = t;
+    const claim = order((x) => x.status === 'new' && x.paymentMethod !== 'card' && x.paymentStatus === 'pending');
+    await api.reportOfflinePayment(claim.id, 'REF-1');
+    const paid = order((x) => x.paymentStatus === 'paid' && x.status === 'confirmed');
+    const old = new Date(Date.now() - 121 * 3_600_000).toISOString();
+    db.update((s) => ({ ...s, orders: s.orders.map((o) => (o.id === claim.id || o.id === paid.id ? { ...o, createdAt: old } : o)) }));
+    const before = new Map(claim.stockDeductions.map((d) => [d.originId, stockOf(d.originId)]));
+    expect(api.expireUnpaidOrders()).toBeGreaterThanOrEqual(1);
+    expect(order((x) => x.id === claim.id).status).toBe('cancelled');
+    expect(order((x) => x.id === paid.id).status).toBe('confirmed');
+    for (const d of claim.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
+    expect(api.expireUnpaidOrders()).toBe(0); // given back once
+    // staff cannot cancel the paid one either: the owner refunds it
+    expect(api.setOrderStatus(paid.id, 'cancelled', 'staff')).toBe('refund_instead');
+    expect(order((x) => x.id === paid.id).status).toBe('confirmed');
+  });
+
   it('ignores a payment report on a cancelled order', async () => {
     const { api } = t;
     const o = order((x) => x.status === 'new' && x.paymentMethod !== 'card' && x.paymentStatus === 'pending');
-    expect(api.setOrderStatus(o.id, 'cancelled')).toBeNull();
+    expect(api.setOrderStatus(o.id, 'cancelled', 'staff')).toBeNull();
     await api.reportOfflinePayment(o.id, 'LATE-REF');
     expect(order((x) => x.id === o.id).paymentStatus).toBe('pending');
   });
@@ -163,10 +181,10 @@ describe('admin protection (phase 2)', () => {
     const { api, db } = t;
     const o = db.get().orders.find((x) => x.status === 'new')!;
     const before = new Map(o.stockDeductions.map((d) => [d.originId, stockOf(d.originId)]));
-    expect(api.setOrderStatus(o.id, 'cancelled')).toBeNull();
+    expect(api.setOrderStatus(o.id, 'cancelled', 'staff')).toBeNull();
     for (const d of o.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
     expect(db.get().stockMovements.filter((m) => m.ref === o.number && m.reason === 'order_cancelled')).toHaveLength(o.stockDeductions.length);
-    expect(api.setOrderStatus(o.id, 'cancelled')).toBe('closed');
+    expect(api.setOrderStatus(o.id, 'cancelled', 'staff')).toBe('closed');
     for (const d of o.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
   });
 

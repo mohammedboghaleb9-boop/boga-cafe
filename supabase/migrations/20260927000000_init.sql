@@ -563,6 +563,15 @@ begin
   if not exists (select 1 from public.payment_methods where id = p_order ->> 'paymentMethod' and enabled) then
     raise exception 'invalid_order:payment_method';
   end if;
+  -- transfer and Cash Plus only once the owner entered the real details, so no
+  -- customer is sent to pay nowhere (src/core/orderFlow.ts payeeReady)
+  if (p_order ->> 'paymentMethod' = 'bank_transfer'
+      and exists (select 1 from unnest(array[s #>> '{bank,holder}', s #>> '{bank,bankName}', s #>> '{bank,rib}']) v
+                   where regexp_replace(coalesce(v, ''), v_trim, '', 'g') = ''))
+     or (p_order ->> 'paymentMethod' = 'cashplus'
+      and regexp_replace(coalesce(s #>> '{cashplus,beneficiary}', ''), v_trim, '', 'g') = '') then
+    raise exception 'invalid_order:payment_details';
+  end if;
 
   -- the stock to deduct is computed here; the browser's figures must be the same
   if jsonb_typeof(p_order -> 'stockDeductions') is distinct from 'array'
@@ -684,6 +693,14 @@ begin
     if v_order.status not in ('new', 'confirmed') then
       raise exception 'too_late_to_cancel';
     end if;
+    -- money is the owner's: a paid order ends with a refund (set_payment_status),
+    -- one the customer says is paid waits for the owner to check the account
+    if v_order.payment_status = 'paid' then
+      raise exception 'refund_instead';
+    end if;
+    if v_order.payment_status = 'awaiting_verification' and not public.is_admin(array['owner']) then
+      raise exception 'owner_only';
+    end if;
   else
     if p_status is distinct from (case v_order.status
           when 'new' then 'confirmed' when 'confirmed' then 'in_production'
@@ -784,30 +801,37 @@ begin
   return v_stock;
 end $$;
 
--- Unpaid orders past the limit set in Admin → Settings (unpaidOrderTimeoutHours)
--- are cancelled and give their coffee back, so an abandoned transfer cannot
--- hold the stock. Same rule as src/core/order.ts expiredUnpaidOrders().
+-- Orders not paid by their deadline are cancelled and give their coffee back, so no
+-- order holds stock for ever (src/core/order.ts reservationDeadline, same rule):
+-- new or confirmed, not paid, placed more than unpaidOrderTimeoutHours ago, or
+-- paymentCheckTimeoutHours when the customer reported a payment (a claim is not
+-- money: it only leaves the owner time to check the account). A missing or
+-- non-positive setting means the default (48 h, 120 h), never "no limit".
 -- Schedule it every 15 minutes (Supabase → Database → Cron, pg_cron):
 --   select cron.schedule('expire-unpaid-orders', '*/15 * * * *', 'select public.expire_unpaid_orders()');
 create or replace function public.expire_unpaid_orders()
 returns integer
 language plpgsql security definer set search_path = public as $$
 declare
+  s       jsonb := (select settings from public.site_config where id = 1);
   v_hours numeric;
+  v_check numeric;
   v_order public.orders;
   d       jsonb;
   n       integer := 0;
 begin
-  select coalesce((settings ->> 'unpaidOrderTimeoutHours')::numeric, 0) into v_hours
-    from public.site_config where id = 1;
-  if coalesce(v_hours, 0) <= 0 then
-    return 0;
-  end if;
+  v_hours := case when jsonb_typeof(s -> 'unpaidOrderTimeoutHours') = 'number'
+                   and (s ->> 'unpaidOrderTimeoutHours')::numeric >= 1
+                  then (s ->> 'unpaidOrderTimeoutHours')::numeric else 48 end;
+  v_check := greatest(v_hours, case when jsonb_typeof(s -> 'paymentCheckTimeoutHours') = 'number'
+                                     and (s ->> 'paymentCheckTimeoutHours')::numeric >= 1
+                                    then (s ->> 'paymentCheckTimeoutHours')::numeric else 120 end);
   perform set_config('boga.stock_write', 'on', true);
   for v_order in
     select * from public.orders
-     where status = 'new' and payment_status in ('pending', 'failed')
-       and created_at < now() - make_interval(secs => v_hours * 3600)
+     where status in ('new', 'confirmed')
+       and ((payment_status in ('pending', 'failed') and created_at < now() - make_interval(secs => v_hours * 3600))
+         or (payment_status = 'awaiting_verification' and created_at < now() - make_interval(secs => v_check * 3600)))
      order by created_at
      for update skip locked
   loop
@@ -839,6 +863,16 @@ begin
      and not public.is_admin(array['owner']) then
     raise exception 'owner_only';
   end if;
+  -- an order's stock is freed after these hours: a real limit, never "off"
+  -- (src/core/order.ts reservationDeadline)
+  if (new.settings -> 'unpaidOrderTimeoutHours' is distinct from old.settings -> 'unpaidOrderTimeoutHours'
+      and not coalesce(jsonb_typeof(new.settings -> 'unpaidOrderTimeoutHours') = 'number'
+                       and (new.settings ->> 'unpaidOrderTimeoutHours')::numeric >= 1, false))
+     or (new.settings -> 'paymentCheckTimeoutHours' is distinct from old.settings -> 'paymentCheckTimeoutHours'
+      and not coalesce(jsonb_typeof(new.settings -> 'paymentCheckTimeoutHours') = 'number'
+                       and (new.settings ->> 'paymentCheckTimeoutHours')::numeric >= 1, false)) then
+    raise exception 'invalid_settings';
+  end if;
   -- the storefront computes every delivery fee with it: a number, 0 or more
   if new.settings -> 'freeShippingOver' is distinct from old.settings -> 'freeShippingOver'
      and not (case when jsonb_typeof(new.settings -> 'freeShippingOver') = 'number'
@@ -866,7 +900,10 @@ language sql stable security definer set search_path = public as $$
    where o.id = p_order_id
 $$;
 
--- Customer reports a Cash Plus / transfer payment (only while it is pending).
+-- Customer reports a Cash Plus / transfer payment: while it is pending, or again after
+-- the owner found nothing (failed). It only asks the owner to check the account: the
+-- order stays unpaid, and keeps the deadline counted from when it was placed
+-- (src/core/orderFlow.ts canReportPayment).
 create or replace function public.report_offline_payment(p_order_id uuid, p_ref text)
 returns void
 language plpgsql security definer set search_path = public as $$
@@ -877,7 +914,8 @@ declare
 begin
   update public.orders
      set payment_status = 'awaiting_verification', payment_ref = left(p_ref, 80)
-   where id = p_order_id and payment_status = 'pending' and payment_method <> 'card' and status <> 'cancelled'
+   where id = p_order_id and payment_status in ('pending', 'failed') and payment_method <> 'card'
+     and status in ('new', 'confirmed')
   returning * into v_order;
   if not found then
     return;

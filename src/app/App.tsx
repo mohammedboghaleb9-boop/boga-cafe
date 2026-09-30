@@ -17,6 +17,8 @@ import { HomePage } from '@/features/home/HomePage';
 import { ProductPage } from '@/features/product/ProductPage';
 import { ShopPage } from '@/features/shop/ShopPage';
 import { SingleOriginPage } from '@/features/single-origin/SingleOriginPage';
+import { DEMO_DATA } from '@/data/mode';
+import { AdminUnavailable } from './AdminUnavailable';
 import { NotFound } from './NotFound';
 
 /**
@@ -36,8 +38,9 @@ function pickRouter() {
 
 const Router = pickRouter();
 
-// The Admin Panel is loaded only when someone opens /admin.
-const AdminApp = lazy(() => import('@/features/admin/AdminApp').then((m) => ({ default: m.AdminApp })));
+// The Admin Panel is loaded only when someone opens /admin, and exists only in the
+// demo build (src/data/mode.ts): the real site gets it with Supabase Auth, phase 2.
+const AdminApp = DEMO_DATA ? lazy(() => import('@/features/admin/AdminApp').then((m) => ({ default: m.AdminApp }))) : null;
 
 export function App() {
   return (
@@ -61,9 +64,13 @@ export function App() {
             <Route
               path="admin/*"
               element={
-                <Suspense fallback={null}>
-                  <AdminApp />
-                </Suspense>
+                AdminApp ? (
+                  <Suspense fallback={null}>
+                    <AdminApp />
+                  </Suspense>
+                ) : (
+                  <AdminUnavailable />
+                )
               }
             />
           </Routes>

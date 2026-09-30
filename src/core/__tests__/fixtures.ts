@@ -54,9 +54,11 @@ export const settings: Settings = {
   freeShippingOver: 0,
   sampleSizeGrams: 500,
   unpaidOrderTimeoutHours: 48,
+  paymentCheckTimeoutHours: 120,
   contact: { whatsapp: '', email: '', instagram: '', tiktok: '', facebook: '', address: L('') },
   notifications: { adminWhatsapp: '', adminEmail: '', whatsappEnabled: true, emailEnabled: true },
   bank: { holder: '', bankName: '', rib: '' },
+  cashplus: { beneficiary: '' },
 };
 
 export const rate: ShippingRate = {

@@ -1,8 +1,8 @@
 /**
- * Prototype database: the whole state lives in memory and is saved in the
- * browser (localStorage). It is the only file that knows where data is kept.
- * In production it is replaced by Supabase (see docs/03-architecture.md);
- * pages and components do not change because they only use `api` and hooks.
+ * Browser database: the whole state lives in memory and is saved in this
+ * browser (localStorage), so each visitor only ever sees their own copy. It is
+ * the only file that knows where data is kept. Phase 2 replaces it with
+ * Supabase (docs/03-architecture.md, docs/05-roadmap.md).
  */
 import {
   draftsToLogs,
@@ -12,14 +12,16 @@ import {
 } from '@/services/notifications';
 import { templateContext } from './context';
 import { uid } from './ids';
-import { buildDemoActivity } from './seed/activity';
+import { DEMO_DATA } from './mode';
+import { buildDemoActivity, DEMO_PAYEE } from './seed/activity';
 import { seedOrigins, seedProducts } from './seed/catalog';
 import { seedContent, seedPaymentMethods, seedSettings, seedShippingRates } from './seed/config';
 import { STATE_VERSION, type DbState } from './state';
 
 const STORAGE_KEY = 'boga-cafe-demo-db';
 
-function initialState(): DbState {
+/** The catalog and rules; with the demo, example activity and payment details marked DÉMO. */
+export function initialState(demo: boolean = DEMO_DATA): DbState {
   const base: DbState = {
     version: STATE_VERSION,
     origins: seedOrigins,
@@ -34,7 +36,8 @@ function initialState(): DbState {
     stockMovements: [],
     notifications: [],
   };
-  const s = buildDemoActivity(base);
+  if (!demo) return base;
+  const s = buildDemoActivity({ ...base, settings: { ...base.settings, ...DEMO_PAYEE } });
   const ctx = templateContext(s);
   const notifications = [
     ...s.orders.flatMap((o) => draftsToLogs('order.created', orderMessage(o, ctx), s.settings, o.createdAt, uid)),

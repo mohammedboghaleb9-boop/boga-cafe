@@ -22,7 +22,15 @@ import { seedPaymentMethods, seedSettings, seedShippingRates } from '../src/data
 // the seed catalog, with plenty of stock, stock counted in green coffee (16 % roast
 // loss: deductions are no longer round numbers, and 1/84 never ends in decimals) and free delivery above 1500 DH, so
 // most orders pay delivery, extra kg included
-const settings = { ...seedSettings, roastLossPercent: 16, freeShippingOver: 1500, customBlend: { ...seedSettings.customBlend, enabled: true } };
+// (payment details: test values, the real ones are empty until the owner's account exists)
+const settings = {
+  ...seedSettings,
+  roastLossPercent: 16,
+  freeShippingOver: 1500,
+  customBlend: { ...seedSettings.customBlend, enabled: true },
+  bank: { holder: 'Test', bankName: 'Test', rib: 'TEST' },
+  cashplus: { beneficiary: 'Test' },
+};
 const origins = seedOrigins.map((o) => ({ ...o, stockKg: 5000 }));
 const ctx: CheckoutContext = {
   catalog: { products: seedProducts, origins: indexOrigins(origins) },

@@ -15,6 +15,7 @@ import type {
   PaymentStatus,
   QuoteRequest,
   SampleRequest,
+  Settings,
   StockMovement,
 } from '@/core/types';
 import { checkoutContext } from '../context';
@@ -147,6 +148,15 @@ const demoOrders: DemoOrder[] = [
     history: ['payment.paid'],
   },
 ];
+
+/**
+ * Payment details of the demo build only (src/data/mode.ts), marked DÉMO so no one
+ * can take them for a real account. The real site starts with none.
+ */
+export const DEMO_PAYEE: Pick<Settings, 'bank' | 'cashplus'> = {
+  bank: { holder: 'BOGA CAFÉ (DÉMO)', bankName: 'Banque fictive (démo)', rib: 'DEMO 000 0000000000000000 00' },
+  cashplus: { beneficiary: 'Bénéficiaire fictif (démo)' },
+};
 
 export function buildDemoActivity(base: DbState): DbState {
   const ctx = checkoutContext(base);

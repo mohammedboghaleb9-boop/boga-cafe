@@ -91,23 +91,40 @@ describe('balance button', () => {
   });
 });
 
-describe('unpaid orders', () => {
-  const base = { status: 'new', paymentStatus: 'pending', createdAt: '2026-09-25T10:00:00Z' };
-  const o = (over: object) => ({ ...base, ...over }) as never;
-  const now = new Date('2026-09-27T12:00:00Z'); // 50 h later
+describe('stock reservations always end (audit H3)', () => {
+  const placed = '2026-09-25T10:00:00Z';
+  const o = (over: object) => ({ id: 'x', status: 'new', paymentStatus: 'pending', createdAt: placed, ...over }) as never;
+  const limits = { unpaidOrderTimeoutHours: 48, paymentCheckTimeoutHours: 120 };
+  const at = (hours: number) => new Date(Date.parse(placed) + hours * 3_600_000);
 
-  it('cancels only new orders nobody paid or reported, after the time limit', async () => {
+  it('frees unpaid orders after 48 h and reported payments after 120 h, confirmed or not', async () => {
     const { expiredUnpaidOrders } = await import('../order');
+    const expiredAt = (hours: number, orders: object[]) => expiredUnpaidOrders(orders as never, limits, at(hours)).map((x: { id: string }) => x.id);
     const orders = [
-      o({ id: 'late' }),
-      o({ id: 'failed-card', paymentStatus: 'failed' }),
+      o({ id: 'unpaid' }),
+      o({ id: 'refused', paymentStatus: 'failed' }),
+      o({ id: 'confirmed-unpaid', status: 'confirmed' }),
       o({ id: 'reported', paymentStatus: 'awaiting_verification' }),
       o({ id: 'paid', paymentStatus: 'paid' }),
-      o({ id: 'confirmed', status: 'confirmed' }),
-      o({ id: 'recent', createdAt: '2026-09-26T10:00:00Z' }),
+      o({ id: 'producing', status: 'in_production', paymentStatus: 'paid' }),
+      o({ id: 'cancelled', status: 'cancelled' }),
     ];
-    expect(expiredUnpaidOrders(orders, 48, now).map((x: { id: string }) => x.id)).toEqual(['late', 'failed-card']);
-    expect(expiredUnpaidOrders(orders, 0, now)).toEqual([]);
+    expect(expiredAt(48, orders)).toEqual([]); // the limit itself is still in time
+    expect(expiredAt(48.01, orders)).toEqual(['unpaid', 'refused', 'confirmed-unpaid']);
+    expect(expiredAt(120, orders)).toEqual(['unpaid', 'refused', 'confirmed-unpaid']);
+    expect(expiredAt(120.01, orders)).toEqual(['unpaid', 'refused', 'confirmed-unpaid', 'reported']);
+    expect(expiredAt(100_000, orders)).not.toContain('paid');
+  });
+
+  it('never lets a setting turn the deadline off', async () => {
+    const { reservationDeadline } = await import('../order');
+    for (const bad of [0, -5, Number.NaN, Number.POSITIVE_INFINITY, undefined]) {
+      const d = reservationDeadline(o({}), { unpaidOrderTimeoutHours: bad as never, paymentCheckTimeoutHours: bad as never });
+      expect(d).toBe(at(48).getTime());
+      expect(reservationDeadline(o({ paymentStatus: 'awaiting_verification' }), { unpaidOrderTimeoutHours: 48, paymentCheckTimeoutHours: bad as never })).toBe(at(120).getTime());
+    }
+    // a claim never shortens the time a customer had to pay
+    expect(reservationDeadline(o({ paymentStatus: 'awaiting_verification' }), { unpaidOrderTimeoutHours: 72, paymentCheckTimeoutHours: 24 })).toBe(at(72).getTime());
   });
 });
 
@@ -115,21 +132,32 @@ describe('order status rules', () => {
   it('follows the steps, and nothing is produced or shipped before payment', async () => {
     const { statusChangeRefusal } = await import('../orderFlow');
     const o = (status: string, paymentStatus = 'pending') => ({ status, paymentStatus }) as never;
-    expect(statusChangeRefusal(o('new'), 'confirmed')).toBeNull();
-    expect(statusChangeRefusal(o('confirmed'), 'in_production')).toBe('needs_payment');
-    expect(statusChangeRefusal(o('confirmed', 'paid'), 'in_production')).toBeNull();
-    expect(statusChangeRefusal(o('new', 'paid'), 'shipped')).toBe('not_next');
-    expect(statusChangeRefusal(o('shipped', 'paid'), 'delivered')).toBeNull();
+    expect(statusChangeRefusal(o('new'), 'confirmed', 'staff')).toBeNull();
+    expect(statusChangeRefusal(o('confirmed'), 'in_production', 'owner')).toBe('needs_payment');
+    expect(statusChangeRefusal(o('confirmed', 'awaiting_verification'), 'in_production', 'owner')).toBe('needs_payment'); // a claim is not money
+    expect(statusChangeRefusal(o('confirmed', 'paid'), 'in_production', 'staff')).toBeNull();
+    expect(statusChangeRefusal(o('new', 'paid'), 'shipped', 'owner')).toBe('not_next');
+    expect(statusChangeRefusal(o('shipped', 'paid'), 'delivered', 'staff')).toBeNull();
   });
 
   it('cancels only before production, never a closed order', async () => {
     const { statusChangeRefusal } = await import('../orderFlow');
-    const o = (status: string) => ({ status, paymentStatus: 'paid' }) as never;
-    expect(statusChangeRefusal(o('new'), 'cancelled')).toBeNull();
-    expect(statusChangeRefusal(o('confirmed'), 'cancelled')).toBeNull();
-    expect(statusChangeRefusal(o('in_production'), 'cancelled')).toBe('too_late_to_cancel');
-    expect(statusChangeRefusal(o('delivered'), 'cancelled')).toBe('closed');
-    expect(statusChangeRefusal(o('cancelled'), 'new')).toBe('closed');
+    const o = (status: string) => ({ status, paymentStatus: 'pending' }) as never;
+    expect(statusChangeRefusal(o('new'), 'cancelled', 'staff')).toBeNull();
+    expect(statusChangeRefusal(o('confirmed'), 'cancelled', 'staff')).toBeNull();
+    expect(statusChangeRefusal(o('in_production'), 'cancelled', 'owner')).toBe('too_late_to_cancel');
+    expect(statusChangeRefusal(o('delivered'), 'cancelled', 'owner')).toBe('closed');
+    expect(statusChangeRefusal(o('cancelled'), 'new', 'owner')).toBe('closed');
+  });
+
+  it('leaves money to the owner: a paid order ends with a refund, a reported one waits for the owner (audit M5)', async () => {
+    const { statusChangeRefusal } = await import('../orderFlow');
+    const o = (paymentStatus: string, status = 'confirmed') => ({ status, paymentStatus }) as never;
+    for (const role of ['owner', 'manager', 'staff'] as const) expect(statusChangeRefusal(o('paid'), 'cancelled', role)).toBe('refund_instead');
+    expect(statusChangeRefusal(o('awaiting_verification'), 'cancelled', 'staff')).toBe('owner_only');
+    expect(statusChangeRefusal(o('awaiting_verification', 'new'), 'cancelled', 'manager')).toBe('owner_only');
+    expect(statusChangeRefusal(o('awaiting_verification'), 'cancelled', 'owner')).toBeNull();
+    expect(statusChangeRefusal(o('failed'), 'cancelled', 'staff')).toBeNull();
   });
 
   it('lets only the owner record payments, in a sensible order', async () => {
@@ -152,7 +180,7 @@ describe('refunds never leave an order stuck (review NEW-2, NEW-4)', () => {
     for (const s of ['new', 'confirmed', 'cancelled', 'delivered']) expect(canSetPayment(o(s), 'refunded', 'owner')).toBe(true);
     for (const s of ['in_production', 'shipped']) expect(canSetPayment(o(s), 'refunded', 'owner')).toBe(false);
     // refunded before production: the order can still be cancelled
-    expect(statusChangeRefusal(o('confirmed', 'refunded'), 'cancelled')).toBeNull();
+    expect(statusChangeRefusal(o('confirmed', 'refunded'), 'cancelled', 'owner')).toBeNull();
   });
 
   it('records money that arrives after an automatic cancellation', async () => {

@@ -9,7 +9,8 @@
  *                   the admin marks the order as paid.
  * - bank_transfer → offline: same flow with the bank RIB.
  */
-import type { Order, PaymentMethodConfig, PaymentMethodId } from '@/core/types';
+import { payeeReady } from '@/core/orderFlow';
+import type { Order, PaymentMethodConfig, PaymentMethodId, Settings } from '@/core/types';
 
 export type PaymentNextStep =
   /** Production: auto-submitted form to the CMI gateway (fields signed by the server). */
@@ -29,9 +30,16 @@ export type PaymentNextStep =
 export type CardGateway = 'demo' | 'off';
 export const cardGateway: CardGateway = import.meta.env.VITE_CARD_GATEWAY === 'demo' ? 'demo' : 'off';
 
-/** A method the customer can choose now: switched on in the admin, and for the card, a gateway behind it. */
-export const methodAvailable = (m: Pick<PaymentMethodConfig, 'id' | 'enabled'>, gateway: CardGateway = cardGateway): boolean =>
-  m.enabled && (m.id !== 'card' || gateway !== 'off');
+/**
+ * A method the customer can choose now: switched on in the admin, and something
+ * real behind it: a gateway for the card, the owner's real account details for
+ * transfer and Cash Plus (core/orderFlow payeeReady).
+ */
+export const methodAvailable = (
+  m: Pick<PaymentMethodConfig, 'id' | 'enabled'>,
+  settings: Pick<Settings, 'bank' | 'cashplus'>,
+  gateway: CardGateway = cardGateway,
+): boolean => m.enabled && (m.id === 'card' ? gateway !== 'off' : payeeReady(m.id, settings));
 
 export interface PaymentAdapter {
   id: PaymentMethodId;

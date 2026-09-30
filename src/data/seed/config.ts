@@ -1,8 +1,10 @@
 /**
- * Business configuration for the prototype: delivery fees, payment methods,
- * settings and site texts. All of it is editable from the Admin Panel.
- * Contact details are the real BOGA CAFÉ accounts; bank details and fees are
- * placeholders until confirmed.
+ * Business configuration: delivery fees, payment methods, settings and site
+ * texts, editable from the Admin Panel. Contact details are the real BOGA CAFÉ
+ * accounts. Delivery fees are estimates until the courier's price list is
+ * confirmed. Payment details are empty: nothing is invented for them, so bank
+ * transfer and Cash Plus stay closed until the owner enters the real account
+ * (the demo build fills in values marked DÉMO, see seed/activity.ts).
  */
 import type { PaymentMethodConfig, Settings, ShippingRate, SiteContent } from '@/core/types';
 
@@ -93,6 +95,9 @@ export const seedSettings: Settings = {
   freeShippingOver: 600,
   sampleSizeGrams: 500,
   unpaidOrderTimeoutHours: 48,
+  // time for the owner to see a reported payment on the account before the stock
+  // is freed: a starting value (5 days, a weekend included) for the owner to confirm
+  paymentCheckTimeoutHours: 120,
   contact: {
     whatsapp: '+212609036378',
     email: 'bogacafe1@gmail.com',
@@ -107,11 +112,8 @@ export const seedSettings: Settings = {
     whatsappEnabled: true,
     emailEnabled: true,
   },
-  bank: {
-    holder: 'BOGA CAFE',
-    bankName: '— à définir —',
-    rib: '000 000 0000000000000000 00',
-  },
+  bank: { holder: '', bankName: '', rib: '' },
+  cashplus: { beneficiary: '' },
 };
 
 export const seedContent: SiteContent = {

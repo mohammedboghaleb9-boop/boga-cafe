@@ -10,7 +10,7 @@ insert into public.admin_users values
   ('00000000-0000-0000-0000-000000000002', 'staff', 'Staff'),
   ('00000000-0000-0000-0000-000000000003', 'manager', 'Manager');
 insert into public.admin_config values (1, '+212600000000', 'admin@example.com', true, true);
-insert into public.site_config values (1, '{"b2bThresholdKg": 10, "unpaidOrderTimeoutHours": 48, "bank": {"rib": "OWNER-RIB"}}', '{}');
+insert into public.site_config values (1, '{"b2bThresholdKg": 10, "unpaidOrderTimeoutHours": 48, "paymentCheckTimeoutHours": 120, "bank": {"holder": "Test holder", "bankName": "Test bank", "rib": "OWNER-RIB"}, "cashplus": {"beneficiary": ""}}', '{}');
 insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg) values
   ('brazil',  '{"fr": "Brésil"}',  'BR', 'arabica', 'medium', 10, 2, 220),
   ('vietnam', '{"fr": "Viêt Nam"}', 'VN', 'robusta', 'dark',   1, 0.5, 150);
@@ -750,3 +750,105 @@ begin
   end if;
 end $$;
 select 'ok 22 - every figure of an order is checked by the database (price, size, quantity, customer, city, payment, stock, blend rules)' as result;
+
+-- 23. Every reservation ends, and money stays the owner's decision (audit H3, M5) --
+--     Unpaid (48 h) and payment reported but not confirmed (120 h), even once
+--     confirmed; paid orders never expire; nobody but the owner cancels a paid
+--     or reported order; a claim never becomes "paid" by itself.
+create temp table t23 (k text primary key, id uuid);
+grant all on t23 to anon, authenticated;
+insert into t23 select k, (select id from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer', 'Client ' || k), '', '', ''))
+  from unnest(array['unpaid', 'reported', 'confirmed', 'paid', 'refused']) k;
+set role anon;  -- the customer, from the order page
+do $$ begin
+  perform public.report_offline_payment((select id from t23 where k = 'reported'), 'REF-1');
+  perform public.report_offline_payment((select id from t23 where k = 'refused'), 'REF-2');
+end $$;
+reset role;
+set role authenticated;
+do $$
+declare r text;
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true); -- staff
+  perform public.set_order_status((select id from t23 where k = 'confirmed'), 'confirmed');
+  -- staff cannot record money, nor cancel an order the customer says is paid
+  begin perform public.set_payment_status((select id from t23 where k = 'reported'), 'paid'); r := 'accepted';
+  exception when others then r := sqlerrm; end;
+  if r <> 'forbidden' then raise exception 'TEST FAILED: staff recorded a payment (%)', r; end if;
+  begin perform public.set_order_status((select id from t23 where k = 'reported'), 'cancelled'); r := 'accepted';
+  exception when others then r := sqlerrm; end;
+  if r <> 'owner_only' then raise exception 'TEST FAILED: staff cancelled a reported payment (%)', r; end if;
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true); -- owner
+  perform public.set_payment_status((select id from t23 where k = 'paid'), 'paid');
+  perform public.set_payment_status((select id from t23 where k = 'refused'), 'failed');  -- found nothing on the account
+  -- even the owner ends a paid order with a refund, not a plain cancel
+  begin perform public.set_order_status((select id from t23 where k = 'paid'), 'cancelled'); r := 'accepted';
+  exception when others then r := sqlerrm; end;
+  if r <> 'refund_instead' then raise exception 'TEST FAILED: paid order cancelled without refund (%)', r; end if;
+  -- the deadlines are limits, never "off"
+  foreach r in array array['0', '-1', '"48"', 'null'] loop
+    begin
+      update public.site_config set settings = jsonb_set(settings, '{unpaidOrderTimeoutHours}', r::jsonb);
+      raise exception 'TEST FAILED: deadline % accepted', r;
+    exception when others then if sqlerrm <> 'invalid_settings' then raise; end if;
+    end;
+  end loop;
+  begin
+    update public.site_config set settings = jsonb_set(settings, '{paymentCheckTimeoutHours}', '0');
+    raise exception 'TEST FAILED: check deadline 0 accepted';
+  exception when others then if sqlerrm <> 'invalid_settings' then raise; end if;
+  end;
+end $$;
+reset role;
+set role anon;
+do $$ begin
+  -- a paid order cannot be turned back into a claim; a refused claim can be sent again
+  perform public.report_offline_payment((select id from t23 where k = 'paid'), 'FAKE');
+  perform public.report_offline_payment((select id from t23 where k = 'refused'), 'REF-2b');
+end $$;
+reset role;
+do $$
+declare
+  st numeric := (select stock_kg from public.origins where id = 'brazil');
+  ids uuid[] := array(select id from t23 order by k);
+  got text;
+begin
+  select string_agg(k || '=' || o.payment_status, ',' order by k) into got from t23 join public.orders o using (id);
+  if got <> 'confirmed=pending,paid=paid,refused=awaiting_verification,reported=awaiting_verification,unpaid=pending' then
+    raise exception 'TEST FAILED: payment states %', got;
+  end if;
+  update public.orders set created_at = now() - interval '47 hours' where id = any(ids);
+  if public.expire_unpaid_orders() <> 0 then raise exception 'TEST FAILED: expired before 48 h'; end if;
+  update public.orders set created_at = now() - interval '49 hours' where id = any(ids);
+  if public.expire_unpaid_orders() <> 2 then raise exception 'TEST FAILED: unpaid and confirmed-unpaid not expired at 49 h'; end if;
+  if (select stock_kg from public.origins where id = 'brazil') <> st + 0.5 then raise exception 'TEST FAILED: stock at 49 h'; end if;
+  update public.orders set created_at = now() - interval '121 hours' where id = any(ids);
+  if public.expire_unpaid_orders() <> 2 then raise exception 'TEST FAILED: reported claims not expired at 121 h'; end if;
+  update public.orders set created_at = now() - interval '5000 hours' where id = any(ids);
+  if public.expire_unpaid_orders() <> 0 then raise exception 'TEST FAILED: expired twice, or a paid order'; end if;
+  if (select stock_kg from public.origins where id = 'brazil') <> st + 1 then raise exception 'TEST FAILED: stock returned % times', (select stock_kg from public.origins where id = 'brazil') - st; end if;
+  select string_agg(k || '=' || o.status, ',' order by k) into got from t23 join public.orders o using (id);
+  if got <> 'confirmed=cancelled,paid=confirmed,refused=cancelled,reported=cancelled,unpaid=cancelled' then
+    raise exception 'TEST FAILED: statuses %', got;
+  end if;
+  -- a missing or broken setting (a row written before the guard existed) falls back
+  -- to 48 h instead of turning expiry off
+  alter table public.site_config disable trigger site_config_guard_settings;
+  update public.site_config set settings = settings || '{"unpaidOrderTimeoutHours": 0}';
+  alter table public.site_config enable trigger site_config_guard_settings;
+  insert into t23 select 'late', (select id from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', ''));
+  update public.orders set created_at = now() - interval '49 hours' where id = (select id from t23 where k = 'late');
+  if public.expire_unpaid_orders() <> 1 then raise exception 'TEST FAILED: no setting = no expiry'; end if;
+  alter table public.site_config disable trigger site_config_guard_settings;
+  update public.site_config set settings = settings || '{"unpaidOrderTimeoutHours": 48}';
+  alter table public.site_config enable trigger site_config_guard_settings;
+  -- no payment details, no order to pay into nowhere
+  update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"  "');
+  begin
+    perform public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '');
+    raise exception 'TEST FAILED: transfer order without a RIB';
+  exception when others then if sqlerrm <> 'invalid_order:payment_details' then raise; end if;
+  end;
+  update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"OWNER-RIB"');
+end $$;
+select 'ok 23 - every reservation ends (48 h unpaid, 120 h reported); only the owner cancels paid or reported orders; no transfer without a RIB' as result;

@@ -9,8 +9,13 @@ import { fileURLToPath, URL } from 'node:url';
 export default defineConfig(({ command, mode }) => {
   const demo = mode === 'demo';
   // the simulated card page must never reach real customers (docs/09, .env.example)
-  if (command === 'build' && !demo && { ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env }.VITE_CARD_GATEWAY === 'demo') {
+  const env = { ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env };
+  if (command === 'build' && !demo && env.VITE_CARD_GATEWAY === 'demo') {
     throw new Error('VITE_CARD_GATEWAY=demo is for the prototype only (npm run build:demo). Leave it empty until CMI is connected.');
+  }
+  // no Supabase data layer exists yet: never let a build believe it runs on one
+  if (env.VITE_DATA_MODE === 'supabase') {
+    throw new Error('VITE_DATA_MODE=supabase: the Supabase data layer is not written yet (phase 2). Leave it empty for the real site, or "demo".');
   }
   return {
     base: demo ? './' : '/',
@@ -24,6 +29,8 @@ export default defineConfig(({ command, mode }) => {
     },
     test: {
       include: ['src/**/*.test.ts', 'api/**/*.test.ts', 'tests/**/*.test.ts'],
+      // the data-layer tests drive the demo store (example orders, DÉMO payment details)
+      env: { VITE_DATA_MODE: 'demo' },
     },
   };
 });

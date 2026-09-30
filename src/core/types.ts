@@ -258,8 +258,14 @@ export interface Settings {
   /** Free delivery above this subtotal (MAD). 0 = never. */
   freeShippingOver: number;
   sampleSizeGrams: number;
-  /** Unpaid transfer / Cash Plus orders are cancelled after this many hours. */
+  /**
+   * An order holds its coffee until it is paid, for a limited time only
+   * (src/core/order.ts reservationDeadline): this many hours after it was placed
+   * while nothing is paid (or the payment was refused)…
+   */
   unpaidOrderTimeoutHours: number;
+  /** …and this many hours when the customer says they paid (transfer, Cash Plus) and the owner has to check the account. */
+  paymentCheckTimeoutHours: number;
   contact: {
     whatsapp: string;
     email: string;
@@ -274,10 +280,15 @@ export interface Settings {
     whatsappEnabled: boolean;
     emailEnabled: boolean;
   };
+  /** Where transfers go. Empty until the dedicated account exists: bank transfer is then not offered. */
   bank: {
     holder: string;
     bankName: string;
     rib: string;
+  };
+  /** Who receives Cash Plus payments. Empty until known: Cash Plus is then not offered. */
+  cashplus: {
+    beneficiary: string;
   };
 }
 

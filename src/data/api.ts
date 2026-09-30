@@ -30,7 +30,7 @@ import { checkoutContext, storefrontCheckoutContext, templateContext } from './c
 import { newReference, uid, uniqueSlug } from './ids';
 import type { DbState } from './state';
 import { db } from './store';
-import { awaitsPayment, canSetPayment, refundCancelsOrder, settingsChangeRefused, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
+import { awaitsPayment, canReportPayment, canSetPayment, refundCancelsOrder, settingsChangeRefused, statusChangeRefusal, type AdminRole, type StatusRefusal } from '@/core/orderFlow';
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
 const RESERVED_PRODUCT_IDS = ['new'];
@@ -139,8 +139,8 @@ export const api = {
   async reportOfflinePayment(orderId: string, paymentRef: string) {
     await latency();
     const o = db.get().orders.find((x) => x.id === orderId);
-    // Cash Plus / transfer only, and never over a payment already confirmed
-    if (!o || o.paymentMethod === 'card' || o.status === 'cancelled' || o.paymentStatus !== 'pending') return;
+    // Cash Plus / transfer only, and never over a payment already confirmed (core/orderFlow)
+    if (!o || !canReportPayment(o)) return;
     const at = now();
     const reported: Order = {
       ...o,
@@ -225,11 +225,11 @@ export const api = {
 
   /* ───────── Admin ───────── */
 
-  /** Returns why the change is refused (core/orderFlow), or null once done. */
-  setOrderStatus(orderId: string, status: OrderStatus): StatusRefusal | null {
+  /** Returns why the change is refused for this role (core/orderFlow), or null once done. */
+  setOrderStatus(orderId: string, status: OrderStatus, role: AdminRole): StatusRefusal | null {
     const current = db.get().orders.find((o) => o.id === orderId);
     if (!current) return 'closed';
-    const refusal = statusChangeRefusal(current, status);
+    const refusal = statusChangeRefusal(current, status, role);
     if (refusal) return refusal;
     const at = now();
     patchOrder(
@@ -242,13 +242,13 @@ export const api = {
   },
 
   /**
-   * Cancels the orders nobody paid in time and gives their coffee back to
-   * stock (rule in core: expiredUnpaidOrders). Runs when the shop or the admin
+   * Cancels the orders not paid by their deadline and gives their coffee back to
+   * stock (rule in core: reservationDeadline). Runs when the shop or the admin
    * opens; a scheduled job does it on the server in phase 2.
    */
   expireUnpaidOrders(): number {
     const s = db.get();
-    const expired = new Set(expiredUnpaidOrders(s.orders, s.settings.unpaidOrderTimeoutHours, new Date()).map((o) => o.id));
+    const expired = new Set(expiredUnpaidOrders(s.orders, s.settings, new Date()).map((o) => o.id));
     if (!expired.size) return 0;
     const at = now();
     db.update((cur) => {

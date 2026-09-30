@@ -108,20 +108,47 @@ export function buildOrder(
   };
 }
 
+/** Used when a setting is missing or not a real limit: a reservation never lasts forever. */
+export const DEFAULT_UNPAID_TIMEOUT_HOURS = 48;
+export const DEFAULT_PAYMENT_CHECK_TIMEOUT_HOURS = 120;
+
+const limitHours = (value: unknown, fallback: number) =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 1 ? value : fallback;
+
 /**
- * Orders to cancel because nobody paid in time (Admin → Settings "cancel
- * unpaid after … hours"): still "new", payment not received nor reported, and
- * older than the limit. Cancelling gives their coffee back to stock, so an
- * abandoned bank transfer cannot hold the stock forever. 0 hours = off.
- * The same rule runs on the server in phase 2 (scheduled job).
+ * Stock life of an order (database: commit_order, set_order_status, expire_unpaid_orders):
+ * - placed: its coffee is taken from stock at once (reserved), so two customers
+ *   never buy the same last kilo;
+ * - reserved while new or confirmed and not paid. "I have paid" is only the
+ *   customer's word: it gives the owner time to check the account, not more;
+ * - committed once the owner has recorded the money (paid): only then can it go
+ *   into production, after which it is never given back;
+ * - given back when it is cancelled, refunded before production, or not paid by
+ *   this deadline (hours after it was placed, so reporting a payment late or
+ *   again never extends it). Null: nothing reserved can expire.
  */
-export function expiredUnpaidOrders(orders: Order[], timeoutHours: number, now: Date): Order[] {
-  if (!(timeoutHours > 0)) return [];
-  const limit = now.getTime() - timeoutHours * 3_600_000;
-  return orders.filter(
-    (o) =>
-      o.status === 'new' &&
-      (o.paymentStatus === 'pending' || o.paymentStatus === 'failed') &&
-      new Date(o.createdAt).getTime() < limit,
-  );
+export function reservationDeadline(
+  order: Pick<Order, 'status' | 'paymentStatus' | 'createdAt'>,
+  settings: Pick<Settings, 'unpaidOrderTimeoutHours' | 'paymentCheckTimeoutHours'>,
+): number | null {
+  if (order.status !== 'new' && order.status !== 'confirmed') return null;
+  if (order.paymentStatus !== 'pending' && order.paymentStatus !== 'failed' && order.paymentStatus !== 'awaiting_verification') return null;
+  const unpaid = limitHours(settings.unpaidOrderTimeoutHours, DEFAULT_UNPAID_TIMEOUT_HOURS);
+  const hours =
+    order.paymentStatus === 'awaiting_verification'
+      ? Math.max(unpaid, limitHours(settings.paymentCheckTimeoutHours, DEFAULT_PAYMENT_CHECK_TIMEOUT_HOURS))
+      : unpaid;
+  return new Date(order.createdAt).getTime() + hours * 3_600_000;
+}
+
+/** Orders past their deadline: cancelled, their coffee back in stock (a scheduled job on the server). */
+export function expiredUnpaidOrders(
+  orders: Order[],
+  settings: Pick<Settings, 'unpaidOrderTimeoutHours' | 'paymentCheckTimeoutHours'>,
+  now: Date,
+): Order[] {
+  return orders.filter((o) => {
+    const deadline = reservationDeadline(o, settings);
+    return deadline !== null && deadline < now.getTime();
+  });
 }
