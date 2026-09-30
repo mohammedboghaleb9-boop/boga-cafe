@@ -29,4 +29,4 @@ export interface DbState {
 }
 
 /** Bump when the seed changes, so saved demo data in browsers is replaced. */
-export const STATE_VERSION = 5; // 5: payment check deadline, Cash Plus payee, no example data outside the demo
+export const STATE_VERSION = 6; // 6: no automatic free delivery; 5: payment check deadline, Cash Plus payee, no example data outside the demo

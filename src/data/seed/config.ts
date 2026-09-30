@@ -92,7 +92,8 @@ export const seedSettings: Settings = {
     feeBySize: { 250: 10, 500: 15, 1000: 20 },
   },
   roastLossPercent: 0,
-  freeShippingOver: 600,
+  // no automatic free delivery: the team decides in Admin → Shipping (owner's answer to Q13, 0 = never)
+  freeShippingOver: 0,
   sampleSizeGrams: 500,
   unpaidOrderTimeoutHours: 48,
   // time for the owner to see a reported payment on the account before the stock

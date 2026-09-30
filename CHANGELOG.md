@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = on `fix/remediation-3-7`, not merged into `main` yet.
 
 ## 2026-09-30
+- 2026-09-30 [branch] Owner answers recorded in `docs/07`; no automatic free delivery by default (`freeShippingOver` 0 in the seed, state version 6).
 - 2026-09-30 [branch] Project memory files: `PROJECT_NOTES.md` and `CHANGELOG.md` (this commit).
 - 2026-09-30 [branch] Working rules in `CLAUDE.md` and a Stop hook that blocks finishing when code changed but `PROJECT_NOTES.md` did not (4118bef).
 - 2026-09-30 [branch] `PROJECT_STATUS.html`: project status report with evidence for every completed item (c79c1a1).
