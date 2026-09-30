@@ -18,6 +18,19 @@ beforeEach(async () => {
 const order = (where: (o: ReturnType<typeof t.db.get>['orders'][number]) => boolean) => t.db.get().orders.find(where)!;
 const stockOf = (id: string) => t.db.get().origins.find((o) => o.id === id)!.stockKg;
 
+describe('real site data (audit H4)', () => {
+  it('starts with the catalog only: no example customers, and nowhere to pay until the real account exists', async () => {
+    const [{ initialState }, { storefrontCheckoutContext }] = await Promise.all([import('../store'), import('../context')]);
+    const s = initialState(false);
+    expect([s.orders, s.quotes, s.notifications, s.stockMovements].map((x) => x.length)).toEqual([0, 0, 0, 0]);
+    expect(s.settings.bank).toEqual({ holder: '', bankName: '', rib: '' });
+    expect(s.settings.cashplus).toEqual({ beneficiary: '' });
+    expect(storefrontCheckoutContext(s).paymentMethods.filter((m) => m.enabled)).toEqual([]);
+    // the demo store, by contrast, can take the tests' orders
+    expect(storefrontCheckoutContext(initialState(true)).paymentMethods.filter((m) => m.enabled).map((m) => m.id).sort()).toEqual(['bank_transfer', 'cashplus']);
+  });
+});
+
 describe('demo data layer', () => {
   it('keeps contact and recipients for the owner, free shipping for managers, nothing for staff', () => {
     const { api, db } = t;
@@ -41,10 +54,28 @@ describe('demo data layer', () => {
     expect(db.get().stockMovements[0]).toMatchObject({ originId: id, deltaKg: -before, note: 'casse' });
   });
 
+  it('frees the stock of a reported payment nobody confirmed, never of a paid order (audit H3)', async () => {
+    const { api, db } = t;
+    const claim = order((x) => x.status === 'new' && x.paymentMethod !== 'card' && x.paymentStatus === 'pending');
+    await api.reportOfflinePayment(claim.id, 'REF-1');
+    const paid = order((x) => x.paymentStatus === 'paid' && x.status === 'confirmed');
+    const old = new Date(Date.now() - 121 * 3_600_000).toISOString();
+    db.update((s) => ({ ...s, orders: s.orders.map((o) => (o.id === claim.id || o.id === paid.id ? { ...o, createdAt: old } : o)) }));
+    const before = new Map(claim.stockDeductions.map((d) => [d.originId, stockOf(d.originId)]));
+    expect(api.expireUnpaidOrders()).toBeGreaterThanOrEqual(1);
+    expect(order((x) => x.id === claim.id).status).toBe('cancelled');
+    expect(order((x) => x.id === paid.id).status).toBe('confirmed');
+    for (const d of claim.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
+    expect(api.expireUnpaidOrders()).toBe(0); // given back once
+    // staff cannot cancel the paid one either: the owner refunds it
+    expect(api.setOrderStatus(paid.id, 'cancelled', 'staff')).toBe('refund_instead');
+    expect(order((x) => x.id === paid.id).status).toBe('confirmed');
+  });
+
   it('ignores a payment report on a cancelled order', async () => {
     const { api } = t;
     const o = order((x) => x.status === 'new' && x.paymentMethod !== 'card' && x.paymentStatus === 'pending');
-    expect(api.setOrderStatus(o.id, 'cancelled')).toBeNull();
+    expect(api.setOrderStatus(o.id, 'cancelled', 'staff')).toBeNull();
     await api.reportOfflinePayment(o.id, 'LATE-REF');
     expect(order((x) => x.id === o.id).paymentStatus).toBe('pending');
   });
@@ -91,6 +122,43 @@ describe('after the merge review', () => {
     vi.stubEnv('VITE_CARD_GATEWAY', 'demo');
     const demo = await fresh();
     expect((await demo.api.placeOrder({ items: [item], customer, paymentMethod: 'card', locale: 'fr' })).ok).toBe(true);
+  });
+
+  it('an order takes its coffee from stock in the history, and warns the team when an origin runs low (audit M2)', async () => {
+    const { api, db } = t;
+    const product = firstProduct();
+    const originId = product.recipe[0].originId;
+    // just above the alert threshold: one bag crosses it
+    db.update((s) => ({ ...s, origins: s.origins.map((o) => (o.id === originId ? { ...o, stockKg: o.lowStockKg + 0.1 } : o)) }));
+    const placed = await api.placeOrder({ items: [{ id: 'i1', type: 'product', productId: product.id, size: 250, qty: 1 }], customer, paymentMethod: 'bank_transfer', locale: 'fr' });
+    if (!placed.ok) throw new Error(placed.errors.join());
+    const moves = db.get().stockMovements.filter((m) => m.ref === placed.order.number);
+    expect(moves.length).toBe(placed.order.stockDeductions.length);
+    for (const m of moves) expect(m.deltaKg).toBeLessThan(0);
+    expect(db.get().notifications.some((n) => n.event === 'stock.low' && n.body.includes(db.get().origins.find((o) => o.id === originId)!.name.fr))).toBe(true);
+  });
+
+  it('checks what customers send: B2B request city, a capped payment reference, no card payment on a transfer (audit M2)', async () => {
+    const { api, db } = t;
+    const contact = { businessType: 'cafe' as const, company: 'Café Test', contactName: 'Sara Test', phone: '0661000000', email: '', cityId: 'oujda', notes: '' };
+    const b2b = db.get().products.find((p) => p.kind === 'b2b' && p.active)!;
+    const items = [{ id: 'i1', type: 'product' as const, productId: b2b.id, size: 1000 as const, qty: 11 }];
+    expect((await api.requestQuote({ ...contact, items })).ok).toBe(true);
+    expect(await api.requestQuote({ ...contact, cityId: 'atlantis', items })).toMatchObject({ ok: false, errors: ['city'] });
+
+    const transfer = order((x) => x.status === 'new' && x.paymentMethod === 'bank_transfer' && x.paymentStatus === 'pending');
+    await api.completeCardPayment(transfer.id, true); // a card answer never pays a transfer
+    expect(order((x) => x.id === transfer.id).paymentStatus).toBe('pending');
+    await api.reportOfflinePayment(transfer.id, `REF-${'9'.repeat(200)}`);
+    expect(order((x) => x.id === transfer.id).paymentRef).toHaveLength(80);
+  });
+
+  it('forgets browser data saved by an older version of the site', async () => {
+    const saved = new Map([['boga-cafe-demo-db', JSON.stringify({ version: 1, orders: [{ id: 'stale' }] })]]);
+    vi.stubGlobal('localStorage', { getItem: (k: string) => saved.get(k) ?? null, setItem: (k: string, v: string) => saved.set(k, v), removeItem: () => {} });
+    const { db } = await fresh();
+    expect(db.get().orders.some((o) => o.id === 'stale')).toBe(false);
+    expect(db.get().version).toBeGreaterThan(1);
   });
 
   it('tells the team when a customer reports a Cash Plus / transfer payment', async () => {
@@ -163,10 +231,10 @@ describe('admin protection (phase 2)', () => {
     const { api, db } = t;
     const o = db.get().orders.find((x) => x.status === 'new')!;
     const before = new Map(o.stockDeductions.map((d) => [d.originId, stockOf(d.originId)]));
-    expect(api.setOrderStatus(o.id, 'cancelled')).toBeNull();
+    expect(api.setOrderStatus(o.id, 'cancelled', 'staff')).toBeNull();
     for (const d of o.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
     expect(db.get().stockMovements.filter((m) => m.ref === o.number && m.reason === 'order_cancelled')).toHaveLength(o.stockDeductions.length);
-    expect(api.setOrderStatus(o.id, 'cancelled')).toBe('closed');
+    expect(api.setOrderStatus(o.id, 'cancelled', 'staff')).toBe('closed');
     for (const d of o.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
   });
 

@@ -6,9 +6,11 @@ import { Logo } from '@/shared/layout/Logo';
 import { Field } from '@/shared/ui/bits';
 import { ROLES, type Role } from './permissions';
 import { DEMO_PASSWORD, adminSession } from './session';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 export function AdminLogin() {
   const { t } = useI18n();
+  usePageTitle(t.admin.loginTitle);
   const [role, setRole] = useState<Role>('owner');
   const [password, setPassword] = useState(DEMO_PASSWORD);
   const [error, setError] = useState(false);
@@ -20,7 +22,7 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="admin-login">
+    <main className="admin-login">
       <form className="panel stack admin-login-card" onSubmit={submit}>
         <div className="spread">
           <Logo to="/" />
@@ -57,6 +59,6 @@ export function AdminLogin() {
           <span className="dir-arrow" aria-hidden="true">←</span> {t.admin.viewSite}
         </Link>
       </form>
-    </div>
+    </main>
   );
 }

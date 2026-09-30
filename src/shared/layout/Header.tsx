@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import type { Locale } from '@/core/types';
 import { useDb } from '@/data/hooks';
+import { DEMO_DATA } from '@/data/mode';
 import { useCart } from '@/shared/cart/CartProvider';
 import { LOCALES, useI18n } from '@/i18n';
 import { ar } from '@/i18n/dictionaries/ar';
@@ -11,7 +12,7 @@ import { Icon } from '../ui/Icon';
 import { Logo } from './Logo';
 
 const labels: Record<Locale, string> = { ar: ar.meta.label, fr: fr.meta.label, en: en.meta.label };
-const DEMO = import.meta.env.VITE_DATA_MODE !== 'supabase';
+
 
 export function LanguageSwitcher() {
   const { locale, setLocale, t } = useI18n();
@@ -31,6 +32,18 @@ export function Header() {
   const { count } = useCart();
   const { content } = useDb();
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  // Escape closes the open menu and gives the focus back to its button
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      menuButton.current?.focus();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
   const location = useLocation();
   const [lastPath, setLastPath] = useState(location.pathname);
   if (lastPath !== location.pathname) {
@@ -51,7 +64,7 @@ export function Header() {
       <div className="announce">
         <div className="container">{l(content.announcement)}</div>
       </div>
-      {DEMO && (
+      {DEMO_DATA && (
         <div className="demo-bar">
           <div className="container spread">
             <span>{t.demo.banner}</span>
@@ -78,6 +91,7 @@ export function Header() {
               {count > 0 && <span className="cart-count num">{count}</span>}
             </Link>
             <button
+              ref={menuButton}
               type="button"
               className="menu-btn btn-icon btn"
               aria-expanded={open}

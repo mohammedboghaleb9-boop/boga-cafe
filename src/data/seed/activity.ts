@@ -1,6 +1,6 @@
 /**
  * Example activity so the Admin Panel opens with realistic data:
- * a few orders in different states, B2B sample requests and one +10 kg request.
+ * a few orders in different states and one request above the B2B threshold.
  * Orders are built with the real `buildOrder` rules, so totals are consistent.
  * Seed stock figures are "after" these orders, so they are not deducted again.
  */
@@ -14,7 +14,7 @@ import type {
   PaymentMethodId,
   PaymentStatus,
   QuoteRequest,
-  SampleRequest,
+  Settings,
   StockMovement,
 } from '@/core/types';
 import { checkoutContext } from '../context';
@@ -117,7 +117,7 @@ const demoOrders: DemoOrder[] = [
   {
     at: ago('2026-09-26T11:48:00Z'),
     customer: customer('Karim Ouazzani', '0655001205', 'nador', 'Boulevard Al Massira, Nador'),
-    items: [p('horeca-espresso-bar', 1000, 5)],
+    items: [p('horeca-espresso-bar', 500, 2)], // a café tasting a B2B blend: paid samples
     payment: 'bank_transfer',
     paymentStatus: 'pending',
     status: 'new',
@@ -147,6 +147,15 @@ const demoOrders: DemoOrder[] = [
     history: ['payment.paid'],
   },
 ];
+
+/**
+ * Payment details of the demo build only (src/data/mode.ts), marked DÉMO so no one
+ * can take them for a real account. The real site starts with none.
+ */
+export const DEMO_PAYEE: Pick<Settings, 'bank' | 'cashplus'> = {
+  bank: { holder: 'BOGA CAFÉ (DÉMO)', bankName: 'Banque fictive (démo)', rib: 'DEMO 000 0000000000000000 00' },
+  cashplus: { beneficiary: 'Bénéficiaire fictif (démo)' },
+};
 
 export function buildDemoActivity(base: DbState): DbState {
   const ctx = checkoutContext(base);
@@ -186,60 +195,6 @@ export function buildDemoActivity(base: DbState): DbState {
     { id: uid(), at: ago('2026-09-26T08:05:00Z'), originId: 'colombia', deltaKg: -0.4, reason: 'correction', ref: '', note: 'Inventaire physique' },
   );
 
-  const samples: SampleRequest[] = [
-    {
-      id: uid(),
-      ...dated('SR', 1, '2026-09-22T13:30:00Z'),
-      businessType: 'hotel',
-      company: 'Hôtel Les Orangers',
-      contactName: 'Nadia Berrada',
-      phone: '+212661440011',
-      email: '',
-      cityId: 'berkane',
-      productId: 'horeca-premium-arabica',
-      estMonthlyKg: 25,
-      notes: 'Petit-déjeuner buffet + bar du lobby.',
-      status: 'approved',
-      free: true,
-      deliveryFee: 25,
-      adminNotes: 'Échantillon offert, livraison payée par le client.',
-    },
-    {
-      id: uid(),
-      ...dated('SR', 2, '2026-09-25T10:10:00Z'),
-      businessType: 'restaurant',
-      company: 'Restaurant Al Bahr',
-      contactName: 'Omar Haddou',
-      phone: '+212670223344',
-      email: '',
-      cityId: 'nador',
-      productId: 'horeca-crema-forte',
-      estMonthlyKg: 15,
-      notes: '',
-      status: 'contacted',
-      free: null,
-      deliveryFee: 30,
-      adminNotes: 'Rappeler lundi.',
-    },
-    {
-      id: uid(),
-      ...dated('SR', 3, '2026-09-27T07:55:00Z'),
-      businessType: 'cafe',
-      company: 'Café Zellige',
-      contactName: 'Rachid Benali',
-      phone: '+212662778899',
-      email: '',
-      cityId: 'oujda',
-      productId: 'horeca-espresso-bar',
-      estMonthlyKg: 40,
-      notes: 'Machine 2 groupes, environ 250 tasses / jour.',
-      status: 'new',
-      free: null,
-      deliveryFee: 20,
-      adminNotes: '',
-    },
-  ];
-
   const quoteCart = summarizeCart([p('boga-signature', 1000, 15), p('horeca-espresso-bar', 1000, 10)], ctx.catalog, base.settings);
   const quotes: QuoteRequest[] = [
     {
@@ -264,7 +219,6 @@ export function buildDemoActivity(base: DbState): DbState {
   return {
     ...base,
     orders,
-    samples: samples.reverse(),
     quotes,
     stockMovements: movements,
   };

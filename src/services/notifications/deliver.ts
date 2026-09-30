@@ -2,8 +2,8 @@
  * Real delivery of the administration messages (WhatsApp + Gmail).
  *
  * When the site is deployed with the notification function (api/notify.ts),
- * VITE_NOTIFY_URL points to it and every new order, payment report, sample
- * request and B2B quote is sent automatically, whatever the customer does next.
+ * VITE_NOTIFY_URL points to it and every new order, payment report and B2B
+ * quote is sent automatically, whatever the customer does next.
  * Without it (the clickable prototype), nothing leaves the browser and the
  * customer's "send on WhatsApp / Gmail" step is the delivery.
  *
@@ -20,7 +20,7 @@
 import type { NotificationEvent } from '@/core/types';
 import type { MessageDraft } from './templates';
 
-export type DeliverableEvent = Extract<NotificationEvent, 'order.created' | 'payment.reported' | 'sample.created' | 'quote.created'>;
+export type DeliverableEvent = Extract<NotificationEvent, 'order.created' | 'payment.reported' | 'quote.created'>;
 export type DeliveryStatus = 'off' | 'pending' | 'slow' | 'sent' | 'failed';
 
 export const notifyUrl: string = import.meta.env.VITE_NOTIFY_URL ?? '';

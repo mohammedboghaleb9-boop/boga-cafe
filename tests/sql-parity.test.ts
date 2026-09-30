@@ -12,6 +12,7 @@
  * (`npx vitest run tests/sql-parity.test.ts -u`).
  */
 import { describe, expect, it } from 'vitest';
+import { isBulkOnly } from '../src/core/cart';
 import { buildOrder, type CheckoutContext } from '../src/core/order';
 import { offeredSizes } from '../src/core/pricing';
 import { indexOrigins } from '../src/core/recipe';
@@ -22,7 +23,15 @@ import { seedPaymentMethods, seedSettings, seedShippingRates } from '../src/data
 // the seed catalog, with plenty of stock, stock counted in green coffee (16 % roast
 // loss: deductions are no longer round numbers, and 1/84 never ends in decimals) and free delivery above 1500 DH, so
 // most orders pay delivery, extra kg included
-const settings = { ...seedSettings, roastLossPercent: 16, freeShippingOver: 1500, customBlend: { ...seedSettings.customBlend, enabled: true } };
+// (payment details: test values, the real ones are empty until the owner's account exists)
+const settings = {
+  ...seedSettings,
+  roastLossPercent: 16,
+  freeShippingOver: 1500,
+  customBlend: { ...seedSettings.customBlend, enabled: true },
+  bank: { holder: 'Test', bankName: 'Test', rib: 'TEST' },
+  cashplus: { beneficiary: 'Test' },
+};
 const origins = seedOrigins.map((o) => ({ ...o, stockKg: 5000 }));
 const ctx: CheckoutContext = {
   catalog: { products: seedProducts, origins: indexOrigins(origins) },
@@ -66,7 +75,9 @@ function orders() {
   };
   const bag = (): CartItem => {
     const product = pick(products);
-    return { id: `p${rnd()}`, type: 'product', productId: product.id, size: pick(offeredSizes(product)), qty: 1 + Math.floor(rnd() * 4) };
+    // a B2B blend's 1 kg bag is never an order (isBulkOnly): only its paid-sample sizes
+    const sizes = offeredSizes(product).filter((s) => !isBulkOnly(product, s));
+    return { id: `p${rnd()}`, type: 'product', productId: product.id, size: pick(sizes), qty: 1 + Math.floor(rnd() * 4) };
   };
 
   const carts: CartItem[][] = [];

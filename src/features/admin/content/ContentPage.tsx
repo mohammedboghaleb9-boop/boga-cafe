@@ -92,6 +92,7 @@ export function ContentPage() {
               </label>
             </div>
             <LocalizedInput id="c-addr" label={t.admin.content.address} value={contact.address} onChange={(v) => setK('address', v)} />
+            <LocalizedInput id="c-hours" label={t.admin.content.hours} value={contact.hours ?? { ar: '', fr: '', en: '' }} onChange={(v) => setK('hours', v)} />
           </fieldset>
         </section>
       </div>

@@ -10,10 +10,12 @@ import { Follow } from './sections/Follow';
 import { Hero } from './sections/Hero';
 import { OriginsBand } from './sections/OriginsBand';
 import './home.css';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 const sections = [Hero, Featured, BlendTeaser, OriginsBand, B2BTeaser, BrandStory, Follow];
 
 export function HomePage() {
+  usePageTitle();
   return (
     <>
       {sections.map((Section, i) => (

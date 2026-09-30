@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-status-report.py\" 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-status-report.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

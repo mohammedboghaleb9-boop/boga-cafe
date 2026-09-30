@@ -3,7 +3,7 @@
  * The admin panel, the demo data layer and the database (set_order_status /
  * set_payment_status in supabase/migrations) apply these same rules.
  */
-import type { Order, OrderStatus, PaymentStatus, Settings } from './types';
+import type { Order, OrderStatus, PaymentMethodId, PaymentStatus, Settings } from './types';
 
 export type AdminRole = 'owner' | 'manager' | 'staff';
 
@@ -20,13 +20,19 @@ export const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
 /** No payment on delivery: nothing is produced or shipped before the order is paid. */
 const NEEDS_PAYMENT: OrderStatus[] = ['in_production', 'shipped', 'delivered'];
 
-export type StatusRefusal = 'not_next' | 'needs_payment' | 'too_late_to_cancel' | 'closed';
+export type StatusRefusal = 'not_next' | 'needs_payment' | 'too_late_to_cancel' | 'closed' | 'refund_instead' | 'owner_only';
 
-export function statusChangeRefusal(order: Pick<Order, 'status' | 'paymentStatus'>, next: OrderStatus): StatusRefusal | null {
+export function statusChangeRefusal(order: Pick<Order, 'status' | 'paymentStatus'>, next: OrderStatus, role: AdminRole): StatusRefusal | null {
   if (order.status === 'cancelled' || order.status === 'delivered') return 'closed';
   if (next === 'cancelled') {
     // once roasting/packing started, the coffee cannot simply go back to stock
-    return order.status === 'new' || order.status === 'confirmed' ? null : 'too_late_to_cancel';
+    if (order.status !== 'new' && order.status !== 'confirmed') return 'too_late_to_cancel';
+    // money is the owner's: a paid order ends with a refund (which cancels it and
+    // gives the coffee back), and one the customer says is paid waits for the
+    // owner to check the account before anyone cancels it
+    if (order.paymentStatus === 'paid') return 'refund_instead';
+    if (order.paymentStatus === 'awaiting_verification' && role !== 'owner') return 'owner_only';
+    return null;
   }
   if (NEXT_STATUS[order.status] !== next) return 'not_next';
   if (NEEDS_PAYMENT.includes(next) && order.paymentStatus !== 'paid') return 'needs_payment';
@@ -62,6 +68,30 @@ export function canSetPayment(order: Pick<Order, 'paymentStatus' | 'status'>, ne
   if (order.status === 'cancelled') return false;
   return PAYMENT_FROM[next].includes(order.paymentStatus);
 }
+
+/**
+ * Transfer and Cash Plus tell the customer where to send the money: until the
+ * owner has entered the real details (Admin → Payments), the method is not
+ * offered and the database refuses orders with it (check_order). Nothing is
+ * filled in for them: no example account a customer could pay into by mistake.
+ */
+export function payeeReady(id: PaymentMethodId, settings: Pick<Settings, 'bank' | 'cashplus'>): boolean {
+  const filled = (v: string | undefined) => typeof v === 'string' && v.trim() !== '';
+  if (id === 'bank_transfer') return filled(settings.bank?.holder) && filled(settings.bank?.bankName) && filled(settings.bank?.rib);
+  if (id === 'cashplus') return filled(settings.cashplus?.beneficiary);
+  return true;
+}
+
+/**
+ * The customer says they paid by transfer or Cash Plus and gives the reference:
+ * while the order waits for its payment, or again after the owner found nothing
+ * (failed). It only asks the owner to check: it never marks anything paid, and the
+ * order keeps the deadline counted from when it was placed (reservationDeadline).
+ */
+export const canReportPayment = (order: Pick<Order, 'status' | 'paymentStatus' | 'paymentMethod'>): boolean =>
+  order.paymentMethod !== 'card' &&
+  (order.status === 'new' || order.status === 'confirmed') &&
+  (order.paymentStatus === 'pending' || order.paymentStatus === 'failed');
 
 /** The customer still has a payment to make: only then does the order page show the payment steps. */
 export const awaitsPayment = (order: Pick<Order, 'status' | 'paymentStatus'>): boolean =>

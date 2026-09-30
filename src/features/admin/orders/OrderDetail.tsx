@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router';
 import { formatKg, formatNumber, formatSize } from '@/core/format';
+import { reservationDeadline } from '@/core/order';
 import { canSetPayment, NEXT_STATUS, refundCancelsOrder, statusChangeRefusal } from '@/core/orderFlow';
 import type { PaymentStatus } from '@/core/types';
 import { api } from '@/data/api';
@@ -14,7 +15,7 @@ import { ConfirmButton, OrderStatusPill, PaymentPill, TableWrap } from '../ui';
 export function OrderDetail() {
   const { id } = useParams();
   const { t, l, money, date } = useI18n();
-  const { orders, origins, shippingRates, paymentMethods } = useDb();
+  const { orders, origins, shippingRates, paymentMethods, settings } = useDb();
   const role = useAdminRole()!;
   const order = orders.find((o) => o.id === id);
   if (!order) return <p className="muted">{t.order.notFound}</p>;
@@ -23,8 +24,10 @@ export function OrderDetail() {
   const city = shippingRates.find((r) => r.id === order.customer.cityId);
   const method = paymentMethods.find((m) => m.id === order.paymentMethod);
   const next = NEXT_STATUS[order.status];
-  const nextRefusal = next ? statusChangeRefusal(order, next) : 'closed';
-  const canCancel = statusChangeRefusal(order, 'cancelled') === null;
+  const nextRefusal = next ? statusChangeRefusal(order, next, role) : 'closed';
+  const cancelRefusal = statusChangeRefusal(order, 'cancelled', role);
+  const canCancel = cancelRefusal === null;
+  const deadline = reservationDeadline(order, settings);
   const pay = (status: PaymentStatus) => canSetPayment(order, status, role);
   const c = order.customer;
 
@@ -47,7 +50,7 @@ export function OrderDetail() {
               className="btn btn-primary btn-sm"
               disabled={nextRefusal !== null}
               aria-describedby={nextRefusal === 'needs_payment' ? 'next-hint' : undefined}
-              onClick={() => api.setOrderStatus(order.id, next)}
+              onClick={() => api.setOrderStatus(order.id, next, role)}
             >
               {fmt(t.admin.orders.next, { status: t.orderStatus[next] })}
             </button>
@@ -61,8 +64,11 @@ export function OrderDetail() {
             <ConfirmButton
               label={t.admin.orders.cancel}
               confirmLabel={t.admin.orders.cancelConfirm}
-              onConfirm={() => api.setOrderStatus(order.id, 'cancelled')}
+              onConfirm={() => api.setOrderStatus(order.id, 'cancelled', role)}
             />
+          )}
+          {(cancelRefusal === 'refund_instead' || cancelRefusal === 'owner_only') && (
+            <span className="small muted">{cancelRefusal === 'refund_instead' ? t.admin.orders.cancelPaid : t.admin.orders.cancelOwnerOnly}</span>
           )}
         </div>
       </div>
@@ -232,6 +238,8 @@ export function OrderDetail() {
               )}
               {role !== 'owner' && <span className="small muted">{t.admin.orders.ownerPayments}</span>}
             </div>
+            {pay('paid') && <p className="small muted">{t.admin.orders.paidMeans}</p>}
+            {deadline !== null && <p className="small muted">{fmt(t.admin.orders.reservedUntil, { date: date(new Date(deadline).toISOString(), true) })}</p>}
           </section>
 
           <section className="panel stack">

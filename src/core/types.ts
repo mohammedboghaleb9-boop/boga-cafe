@@ -167,31 +167,9 @@ export interface Order {
 
 export type BusinessType = 'cafe' | 'hotel' | 'restaurant' | 'company' | 'individual' | 'other';
 
-export type SampleStatus = 'new' | 'contacted' | 'approved' | 'shipped' | 'closed' | 'rejected';
-
-export interface SampleRequest {
-  id: string;
-  number: string;
-  createdAt: string;
-  businessType: BusinessType;
-  company: string;
-  contactName: string;
-  phone: string;
-  email: string;
-  cityId: string;
-  productId: string;
-  estMonthlyKg: number;
-  notes: string;
-  status: SampleStatus;
-  /** Admin decision. null = not decided yet. */
-  free: boolean | null;
-  deliveryFee: number;
-  adminNotes: string;
-}
-
 export type QuoteStatus = 'new' | 'negotiating' | 'confirmed' | 'closed';
 
-/** Orders above the B2B threshold (10 kg) go through the administration. */
+/** Orders above the B2B threshold (settings.b2bThresholdKg) go through the administration. */
 export interface QuoteRequest {
   id: string;
   number: string;
@@ -226,7 +204,7 @@ export interface StockMovement {
 }
 
 export type NotificationChannel = 'whatsapp' | 'email';
-export type NotificationEvent = 'order.created' | 'payment.reported' | 'sample.created' | 'quote.created' | 'stock.low';
+export type NotificationEvent = 'order.created' | 'payment.reported' | 'quote.created' | 'stock.low';
 
 export interface NotificationLog {
   id: string;
@@ -257,9 +235,14 @@ export interface Settings {
   roastLossPercent: number;
   /** Free delivery above this subtotal (MAD). 0 = never. */
   freeShippingOver: number;
-  sampleSizeGrams: number;
-  /** Unpaid transfer / Cash Plus orders are cancelled after this many hours. */
+  /**
+   * An order holds its coffee until it is paid, for a limited time only
+   * (src/core/order.ts reservationDeadline): this many hours after it was placed
+   * while nothing is paid (or the payment was refused)…
+   */
   unpaidOrderTimeoutHours: number;
+  /** …and this many hours when the customer says they paid (transfer, Cash Plus) and the owner has to check the account. */
+  paymentCheckTimeoutHours: number;
   contact: {
     whatsapp: string;
     email: string;
@@ -267,6 +250,8 @@ export interface Settings {
     tiktok: string;
     facebook: string;
     address: Localized;
+    /** When the team answers on WhatsApp and email, shown on the contact page. Empty = not shown. */
+    hours: Localized;
   };
   notifications: {
     adminWhatsapp: string;
@@ -274,10 +259,15 @@ export interface Settings {
     whatsappEnabled: boolean;
     emailEnabled: boolean;
   };
+  /** Where transfers go. Empty until the dedicated account exists: bank transfer is then not offered. */
   bank: {
     holder: string;
     bankName: string;
     rib: string;
+  };
+  /** Who receives Cash Plus payments. Empty until known: Cash Plus is then not offered. */
+  cashplus: {
+    beneficiary: string;
   };
 }
 

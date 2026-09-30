@@ -52,11 +52,12 @@ export const settings: Settings = {
   customBlend: { enabled: true, minPercent: 5, maxOrigins: 4, feeBySize: { 250: 10, 500: 15, 1000: 20 } },
   roastLossPercent: 0,
   freeShippingOver: 0,
-  sampleSizeGrams: 500,
   unpaidOrderTimeoutHours: 48,
-  contact: { whatsapp: '', email: '', instagram: '', tiktok: '', facebook: '', address: L('') },
+  paymentCheckTimeoutHours: 120,
+  contact: { whatsapp: '', email: '', instagram: '', tiktok: '', facebook: '', address: L(''), hours: L('') },
   notifications: { adminWhatsapp: '', adminEmail: '', whatsappEnabled: true, emailEnabled: true },
   bank: { holder: '', bankName: '', rib: '' },
+  cashplus: { beneficiary: '' },
 };
 
 export const rate: ShippingRate = {

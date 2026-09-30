@@ -7,6 +7,7 @@ import { whatsappLink } from '@/services/notifications';
 import { Icon } from '../ui/Icon';
 import { Footer } from './Footer';
 import { Header } from './Header';
+import { SkipLink } from './SkipLink';
 import { sectionId } from './sectionId';
 import './layout.css';
 import { api } from '@/data/api';
@@ -17,7 +18,7 @@ export function StoreLayout() {
   const { settings } = useDb();
   const { t } = useI18n();
 
-  // new page: back to the top, or to the section named in the link (/b2b#sample)
+  // new page: back to the top, or to the section named in the link (/page#section)
   useEffect(() => {
     const target = hash ? document.getElementById(sectionId(hash)) : null;
     if (!target) {
@@ -50,8 +51,9 @@ export function StoreLayout() {
 
   return (
     <div className="store">
+      <SkipLink />
       <Header />
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         <Outlet />
       </main>
       <Footer />

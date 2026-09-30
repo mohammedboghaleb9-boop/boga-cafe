@@ -14,7 +14,7 @@ export const checkoutContext = (s: DbState): CheckoutContext => ({
 /** What a customer can use right now: the storefront checkout (the card needs a gateway). */
 export const storefrontCheckoutContext = (s: DbState): CheckoutContext => ({
   ...checkoutContext(s),
-  paymentMethods: s.paymentMethods.map((m) => ({ ...m, enabled: methodAvailable(m) })),
+  paymentMethods: s.paymentMethods.map((m) => ({ ...m, enabled: methodAvailable(m, s.settings) })),
 });
 
 export const templateContext = (s: DbState): TemplateContext => ({

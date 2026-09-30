@@ -10,6 +10,8 @@ import { isLowStock } from '@/core/stock';
 import { PERMISSIONS, type Section } from './permissions';
 import { adminSession, useAdminRole } from './session';
 import { ConfirmButton } from './ui';
+import { SkipLink } from '@/shared/layout/SkipLink';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 const icons: Record<Section, IconName> = {
   dashboard: 'chart',
@@ -29,6 +31,8 @@ export function AdminLayout() {
   const role = useAdminRole()!;
   const db = useDb();
   const { pathname } = useLocation();
+  const current = pathname.split('/')[2] as Section | undefined;
+  usePageTitle(`${(current && t.admin.nav[current]) || t.admin.nav.dashboard} · ${t.nav.admin}`);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -42,13 +46,14 @@ export function AdminLayout() {
 
   const badges: Partial<Record<Section, number>> = {
     orders: db.orders.filter((o) => o.status === 'new').length,
-    b2b: db.samples.filter((s) => s.status === 'new').length + db.quotes.filter((q) => q.status === 'new').length,
+    b2b: db.quotes.filter((q) => q.status === 'new').length,
     stock: db.origins.filter(isLowStock).length,
     payments: db.orders.filter((o) => o.paymentStatus === 'awaiting_verification').length,
   };
 
   return (
     <div className="admin">
+      <SkipLink />
       <aside className="admin-side">
         <div className="admin-brand">
           <Logo to="/admin" />
@@ -79,7 +84,7 @@ export function AdminLayout() {
           />
         </div>
       </aside>
-      <main className="admin-main">
+      <main className="admin-main" id="main" tabIndex={-1}>
         <Outlet />
       </main>
     </div>

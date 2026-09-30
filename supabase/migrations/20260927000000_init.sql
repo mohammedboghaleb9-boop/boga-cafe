@@ -141,7 +141,6 @@ create table public.admin_config (
 -- ───────────── Orders ─────────────
 
 create sequence public.order_number_seq;
-create sequence public.sample_number_seq;
 create sequence public.quote_number_seq;
 
 create table public.orders (
@@ -198,26 +197,6 @@ create index stock_movements_origin_idx on public.stock_movements (origin_id, at
 
 -- ───────────── B2B ─────────────
 
-create table public.sample_requests (
-  id              uuid primary key default gen_random_uuid(),
-  number          text not null unique,
-  created_at      timestamptz not null default now(),
-  business_type   text not null check (business_type in ('cafe', 'hotel', 'restaurant', 'company', 'individual', 'other')),
-  company         text not null default '' check (char_length(company) <= 80),
-  contact_name    text not null check (char_length(contact_name) between 1 and 80),
-  phone           text not null check (char_length(phone) <= 24),
-  email           text not null default '' check (char_length(email) <= 120),
-  city_id         text not null references public.shipping_rates (id),
-  product_id      text not null references public.products (id),
-  est_monthly_kg  numeric(10, 2) not null default 0 check (est_monthly_kg <> 'NaN'),
-  notes           text not null default '' check (char_length(notes) <= 500),
-  status          text not null default 'new'
-                  check (status in ('new', 'contacted', 'approved', 'shipped', 'closed', 'rejected')),
-  free            boolean,                    -- null = not decided
-  delivery_fee    numeric(10, 2) not null default 0 check (delivery_fee <> 'NaN'),
-  admin_notes     text not null default ''
-);
-
 create table public.quote_requests (
   id               uuid primary key default gen_random_uuid(),
   number           text not null unique,
@@ -245,7 +224,7 @@ create table public.notification_outbox (
   id         bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
   channel    text not null check (channel in ('whatsapp', 'email')),
-  event      text not null check (event in ('order.created', 'payment.reported', 'sample.created', 'quote.created', 'stock.low')),
+  event      text not null check (event in ('order.created', 'payment.reported', 'quote.created', 'stock.low')),
   recipient  text not null,
   subject    text not null default '',
   body       text not null,
@@ -457,6 +436,11 @@ begin
       if v_expected is null or v_expected < 1 then
         raise exception 'invalid_order:size_not_offered';
       end if;
+      -- a B2B blend's 1 kg bag goes only in a cart above the threshold, which is a quote,
+      -- never an order (src/core/cart.ts isBulkOnly); 250 g and 500 g are paid samples
+      if v_product.kind = 'b2b' and v_size = 1000 then
+        raise exception 'invalid_order:bulk_only';
+      end if;
       if v_unit <> v_expected then
         raise exception 'invalid_order:price';
       end if;
@@ -562,6 +546,15 @@ begin
   end if;
   if not exists (select 1 from public.payment_methods where id = p_order ->> 'paymentMethod' and enabled) then
     raise exception 'invalid_order:payment_method';
+  end if;
+  -- transfer and Cash Plus only once the owner entered the real details, so no
+  -- customer is sent to pay nowhere (src/core/orderFlow.ts payeeReady)
+  if (p_order ->> 'paymentMethod' = 'bank_transfer'
+      and exists (select 1 from unnest(array[s #>> '{bank,holder}', s #>> '{bank,bankName}', s #>> '{bank,rib}']) v
+                   where regexp_replace(coalesce(v, ''), v_trim, '', 'g') = ''))
+     or (p_order ->> 'paymentMethod' = 'cashplus'
+      and regexp_replace(coalesce(s #>> '{cashplus,beneficiary}', ''), v_trim, '', 'g') = '') then
+    raise exception 'invalid_order:payment_details';
   end if;
 
   -- the stock to deduct is computed here; the browser's figures must be the same
@@ -684,6 +677,14 @@ begin
     if v_order.status not in ('new', 'confirmed') then
       raise exception 'too_late_to_cancel';
     end if;
+    -- money is the owner's: a paid order ends with a refund (set_payment_status),
+    -- one the customer says is paid waits for the owner to check the account
+    if v_order.payment_status = 'paid' then
+      raise exception 'refund_instead';
+    end if;
+    if v_order.payment_status = 'awaiting_verification' and not public.is_admin(array['owner']) then
+      raise exception 'owner_only';
+    end if;
   else
     if p_status is distinct from (case v_order.status
           when 'new' then 'confirmed' when 'confirmed' then 'in_production'
@@ -784,30 +785,37 @@ begin
   return v_stock;
 end $$;
 
--- Unpaid orders past the limit set in Admin → Settings (unpaidOrderTimeoutHours)
--- are cancelled and give their coffee back, so an abandoned transfer cannot
--- hold the stock. Same rule as src/core/order.ts expiredUnpaidOrders().
+-- Orders not paid by their deadline are cancelled and give their coffee back, so no
+-- order holds stock for ever (src/core/order.ts reservationDeadline, same rule):
+-- new or confirmed, not paid, placed more than unpaidOrderTimeoutHours ago, or
+-- paymentCheckTimeoutHours when the customer reported a payment (a claim is not
+-- money: it only leaves the owner time to check the account). A missing or
+-- non-positive setting means the default (48 h, 120 h), never "no limit".
 -- Schedule it every 15 minutes (Supabase → Database → Cron, pg_cron):
 --   select cron.schedule('expire-unpaid-orders', '*/15 * * * *', 'select public.expire_unpaid_orders()');
 create or replace function public.expire_unpaid_orders()
 returns integer
 language plpgsql security definer set search_path = public as $$
 declare
+  s       jsonb := (select settings from public.site_config where id = 1);
   v_hours numeric;
+  v_check numeric;
   v_order public.orders;
   d       jsonb;
   n       integer := 0;
 begin
-  select coalesce((settings ->> 'unpaidOrderTimeoutHours')::numeric, 0) into v_hours
-    from public.site_config where id = 1;
-  if coalesce(v_hours, 0) <= 0 then
-    return 0;
-  end if;
+  v_hours := case when jsonb_typeof(s -> 'unpaidOrderTimeoutHours') = 'number'
+                   and (s ->> 'unpaidOrderTimeoutHours')::numeric >= 1
+                  then (s ->> 'unpaidOrderTimeoutHours')::numeric else 48 end;
+  v_check := greatest(v_hours, case when jsonb_typeof(s -> 'paymentCheckTimeoutHours') = 'number'
+                                     and (s ->> 'paymentCheckTimeoutHours')::numeric >= 1
+                                    then (s ->> 'paymentCheckTimeoutHours')::numeric else 120 end);
   perform set_config('boga.stock_write', 'on', true);
   for v_order in
     select * from public.orders
-     where status = 'new' and payment_status in ('pending', 'failed')
-       and created_at < now() - make_interval(secs => v_hours * 3600)
+     where status in ('new', 'confirmed')
+       and ((payment_status in ('pending', 'failed') and created_at < now() - make_interval(secs => v_hours * 3600))
+         or (payment_status = 'awaiting_verification' and created_at < now() - make_interval(secs => v_check * 3600)))
      order by created_at
      for update skip locked
   loop
@@ -839,6 +847,16 @@ begin
      and not public.is_admin(array['owner']) then
     raise exception 'owner_only';
   end if;
+  -- an order's stock is freed after these hours: a real limit, never "off"
+  -- (src/core/order.ts reservationDeadline)
+  if (new.settings -> 'unpaidOrderTimeoutHours' is distinct from old.settings -> 'unpaidOrderTimeoutHours'
+      and not coalesce(jsonb_typeof(new.settings -> 'unpaidOrderTimeoutHours') = 'number'
+                       and (new.settings ->> 'unpaidOrderTimeoutHours')::numeric >= 1, false))
+     or (new.settings -> 'paymentCheckTimeoutHours' is distinct from old.settings -> 'paymentCheckTimeoutHours'
+      and not coalesce(jsonb_typeof(new.settings -> 'paymentCheckTimeoutHours') = 'number'
+                       and (new.settings ->> 'paymentCheckTimeoutHours')::numeric >= 1, false)) then
+    raise exception 'invalid_settings';
+  end if;
   -- the storefront computes every delivery fee with it: a number, 0 or more
   if new.settings -> 'freeShippingOver' is distinct from old.settings -> 'freeShippingOver'
      and not (case when jsonb_typeof(new.settings -> 'freeShippingOver') = 'number'
@@ -866,7 +884,10 @@ language sql stable security definer set search_path = public as $$
    where o.id = p_order_id
 $$;
 
--- Customer reports a Cash Plus / transfer payment (only while it is pending).
+-- Customer reports a Cash Plus / transfer payment: while it is pending, or again after
+-- the owner found nothing (failed). It only asks the owner to check the account: the
+-- order stays unpaid, and keeps the deadline counted from when it was placed
+-- (src/core/orderFlow.ts canReportPayment).
 create or replace function public.report_offline_payment(p_order_id uuid, p_ref text)
 returns void
 language plpgsql security definer set search_path = public as $$
@@ -877,7 +898,8 @@ declare
 begin
   update public.orders
      set payment_status = 'awaiting_verification', payment_ref = left(p_ref, 80)
-   where id = p_order_id and payment_status = 'pending' and payment_method <> 'card' and status <> 'cancelled'
+   where id = p_order_id and payment_status in ('pending', 'failed') and payment_method <> 'card'
+     and status in ('new', 'confirmed')
   returning * into v_order;
   if not found then
     return;
@@ -911,7 +933,6 @@ alter table public.admin_config        enable row level security;
 alter table public.orders              enable row level security;
 alter table public.order_events        enable row level security;
 alter table public.stock_movements     enable row level security;
-alter table public.sample_requests     enable row level security;
 alter table public.quote_requests      enable row level security;
 alter table public.notification_outbox enable row level security;
 
@@ -949,7 +970,6 @@ create policy "admins read" on public.orders for select using (public.is_admin()
 create policy "admins read" on public.order_events for select using (public.is_admin());
 create policy "admins read" on public.stock_movements for select using (public.is_admin());
 create policy "admins read" on public.notification_outbox for select using (public.is_admin(array['owner', 'manager']));
-create policy "admins manage" on public.sample_requests for all using (public.is_admin()) with check (public.is_admin());
 create policy "admins manage" on public.quote_requests for all using (public.is_admin()) with check (public.is_admin());
 
 -- Functions: who may call what.

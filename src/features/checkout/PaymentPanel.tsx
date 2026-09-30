@@ -4,7 +4,7 @@
  * Cash Plus / transfer: instructions, reference, and "I have paid".
  */
 import { useState, type FormEvent } from 'react';
-import { awaitsPayment } from '@/core/orderFlow';
+import { awaitsPayment, payeeReady } from '@/core/orderFlow';
 import type { Order } from '@/core/types';
 import { api } from '@/data/api';
 import { useDb } from '@/data/hooks';
@@ -36,6 +36,10 @@ export function PaymentPanel({ order }: { order: Order }) {
   const step = paymentAdapter(order.paymentMethod).start(order);
 
   if (step.type === 'demo-gateway') return <DemoGateway order={order} />;
+  // the account details were removed since the order was placed: never show empty ones
+  if (step.type === 'instructions' && !payeeReady(step.method, settings)) {
+    return <p className="notice">{t.payment.detailsUnavailable}</p>;
+  }
   if (step.type === 'unavailable') {
     return (
       <p className="notice row">
@@ -59,11 +63,12 @@ export function PaymentPanel({ order }: { order: Order }) {
       <h2 className="checkout-h2">
         <Icon name={step.method === 'cashplus' ? 'cash' : 'bank'} /> {method && l(method.label)}
       </h2>
+      {order.paymentStatus === 'failed' && <p className="notice notice-bad small">{t.payment.claimNotFound}</p>}
       <p>{method && l(method.instructions)}</p>
       <dl className="pay-details">
         <div>
           <dt>{t.payment.beneficiary}</dt>
-          <dd>{settings.bank.holder}</dd>
+          <dd>{step.method === 'cashplus' ? settings.cashplus.beneficiary : settings.bank.holder}</dd>
         </div>
         {step.method === 'bank_transfer' && (
           <>

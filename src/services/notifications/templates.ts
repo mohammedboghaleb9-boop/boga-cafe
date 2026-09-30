@@ -4,7 +4,7 @@
  * Admin messages are written in French; change the wording here only.
  */
 import { formatKg, formatNumber, formatSize } from '@/core/format';
-import type { BusinessType, Order, OrderLine, Origin, PaymentStatus, QuoteRequest, SampleRequest, ShippingRate, Product } from '@/core/types';
+import type { BusinessType, Order, OrderLine, Origin, PaymentStatus, QuoteRequest, ShippingRate, Product } from '@/core/types';
 
 export interface TemplateContext {
   origins: Origin[];
@@ -150,28 +150,10 @@ export function orderHandoff(
     : { event: 'order.created', draft: orderMessage(order, ctx) };
 }
 
-export function sampleMessage(s: SampleRequest, ctx: TemplateContext): MessageDraft {
-  const product = ctx.products.find((p) => p.id === s.productId)?.name.fr ?? s.productId;
-  const body = [
-    `Demande d'échantillon ${s.number}`,
-    `Établissement : ${establishment(s.company, s.businessType)}`,
-    `Contact : ${s.contactName} (${s.phone})`,
-    s.email ? `Email : ${s.email}` : '',
-    `Ville : ${cityName(ctx, s.cityId)}`,
-    `Blend : ${product} - 500 g`,
-    `Consommation estimée : ${s.estMonthlyKg} kg / mois`,
-    s.notes ? `Note : ${s.notes}` : '',
-  ].filter(Boolean);
-  return plain({
-    subject: `[BOGA CAFÉ] Échantillon B2B ${s.number} - ${s.company.trim() || s.contactName}`,
-    whatsapp: body.join('\n'),
-    email: body.join('\n'),
-  });
-}
-
 export function quoteMessage(q: QuoteRequest, ctx: TemplateContext): MessageDraft {
   const body = [
-    `Commande B2B (+10 kg) ${q.number}`,
+    // no kg figure in this fixed line: the threshold is a setting (the weight follows below)
+    `Commande B2B (au-delà du seuil) ${q.number}`,
     `Établissement : ${establishment(q.company, q.businessType)}`,
     `Contact : ${q.contactName} (${q.phone})`,
     q.email ? `Email : ${q.email}` : '',

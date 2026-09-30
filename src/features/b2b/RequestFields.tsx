@@ -1,4 +1,4 @@
-/** Contact fields shared by the sample request and the +10 kg request. */
+/** Contact fields of the request sent for a cart above the B2B threshold. */
 import { TEXT_MAX } from '@/core/limits';
 import type { BusinessType } from '@/core/types';
 import type { ContactRequestInput, RequestError } from '@/data/api';
@@ -32,7 +32,7 @@ export function RequestFields({
   const { t, l } = useI18n();
   const { shippingRates } = useDb();
   const set = <K extends keyof ContactRequestInput>(k: K, v: ContactRequestInput[K]) => onChange({ ...value, [k]: v });
-  const err = (k: RequestError) => (errors.includes(k) ? t.checkout.errors[k === 'product' ? 'cart_problem' : k] : undefined);
+  const err = (k: RequestError) => (errors.includes(k) ? t.checkout.errors[k] : undefined);
 
   return (
     <>
@@ -111,12 +111,11 @@ export function RequestFields({
   );
 }
 
-const ERROR_ORDER: RequestError[] = ['name', 'phone', 'email', 'city', 'product'];
+const ERROR_ORDER: RequestError[] = ['name', 'phone', 'email', 'city'];
 
 /** Moves keyboard focus (and the screen) to the first field the customer must fix. */
-export function focusFirstError(idPrefix: string, errors: RequestError[], productFieldId?: string) {
+export function focusFirstError(idPrefix: string, errors: RequestError[]) {
   const first = ERROR_ORDER.find((e) => errors.includes(e));
   if (!first) return;
-  const id = first === 'product' ? productFieldId : `${idPrefix}-${first}`;
-  requestAnimationFrame(() => document.getElementById(id ?? '')?.focus());
+  requestAnimationFrame(() => document.getElementById(`${idPrefix}-${first}`)?.focus());
 }

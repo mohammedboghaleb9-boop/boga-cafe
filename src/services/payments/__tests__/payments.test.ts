@@ -27,14 +27,19 @@ describe('card payments', () => {
     expect(demo.paymentAdapter('card').start(order)).toEqual({ type: 'demo-gateway', orderId: 'o1' });
   });
 
-  it('never block Cash Plus or bank transfer, and respect the admin switch', async () => {
+  it('offers transfer and Cash Plus only with the owner\'s real details, and respects the admin switch', async () => {
     const { methodAvailable } = await build(undefined);
-    expect(methodAvailable({ id: 'card', enabled: true }, 'off')).toBe(false);
-    expect(methodAvailable({ id: 'card', enabled: true }, 'demo')).toBe(true);
-    expect(methodAvailable({ id: 'card', enabled: false }, 'demo')).toBe(false);
+    const empty = { bank: { holder: '', bankName: '', rib: '' }, cashplus: { beneficiary: '' } };
+    const filled = { bank: { holder: 'H', bankName: 'B', rib: 'R' }, cashplus: { beneficiary: 'N' } };
+    expect(methodAvailable({ id: 'card', enabled: true }, filled, 'off')).toBe(false);
+    expect(methodAvailable({ id: 'card', enabled: true }, empty, 'demo')).toBe(true);
+    expect(methodAvailable({ id: 'card', enabled: false }, filled, 'demo')).toBe(false);
     for (const id of ['cashplus', 'bank_transfer'] as const) {
-      expect(methodAvailable({ id, enabled: true }, 'off')).toBe(true);
-      expect(methodAvailable({ id, enabled: false }, 'off')).toBe(false);
+      expect(methodAvailable({ id, enabled: true }, filled, 'off')).toBe(true);
+      expect(methodAvailable({ id, enabled: false }, filled, 'off')).toBe(false);
+      expect(methodAvailable({ id, enabled: true }, empty, 'off')).toBe(false); // nowhere to pay yet
     }
+    // one missing detail is enough to keep the transfer closed (whitespace is not a detail)
+    expect(methodAvailable({ id: 'bank_transfer', enabled: true }, { ...filled, bank: { ...filled.bank, rib: '  ' } }, 'off')).toBe(false);
   });
 });

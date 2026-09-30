@@ -3,11 +3,13 @@ dist
 dist-demo
 *.local
 # Local settings and secrets (Gmail App Password, CallMeBot key…) never go to git.
-# Defaults live in the code; examples in .env.example; the demo build uses .env.demo.
+# Defaults live in the code; examples in .env.example; the demo build uses .env.demo,
+# the browser-test build .env.e2e.
 .env
 .env.*
 !.env.example
 !.env.demo
+!.env.e2e
 .DS_Store
 coverage
 
@@ -17,3 +19,4 @@ __pycache__/
 # Playwright
 test-results/
 playwright-report/
+*.tsbuildinfo

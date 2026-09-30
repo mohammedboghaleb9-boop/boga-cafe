@@ -4,11 +4,13 @@ import { useCatalog } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { ProductCard } from '@/shared/product/ProductCard';
 import './shop.css';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 type Filter = 'all' | ProductKind;
 
 export function ShopPage() {
   const { t } = useI18n();
+  usePageTitle(t.nav.shop);
   const { products } = useCatalog();
   const [params, setParams] = useSearchParams();
   const filter = (params.get('kind') as Filter) || 'all';

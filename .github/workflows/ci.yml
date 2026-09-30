@@ -18,9 +18,11 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # the real site ships no demo: no admin password, example customers or DÉMO payment details
+      - run: npm run check:real-build
       - run: npm run build:demo
 
-  # the real build in a browser: shop, checkout, admin roles, phone widths, WCAG 2.2 AA (axe)
+  # the site in a browser (real settings, demo data): shop, checkout, admin roles, phone widths, axe
   e2e:
     runs-on: ubuntu-latest
     steps:
@@ -31,7 +33,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run build
+      - run: npm run build:e2e
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v7
         if: failure()

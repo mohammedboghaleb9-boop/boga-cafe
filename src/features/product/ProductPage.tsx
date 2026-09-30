@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { formatSize } from '@/core/format';
+import { isBulkOnly } from '@/core/cart';
 import { offeredSizes, productPrice } from '@/core/pricing';
 import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type PackSize } from '@/core/types';
@@ -17,6 +18,7 @@ import { Icon } from '@/shared/ui/Icon';
 import { Availability, QtyStepper, SpeciesBar } from '@/shared/ui/bits';
 import './product.css';
 import { RoastScale } from '@/shared/ui/Roast';
+import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 /** Keyed by slug: moving to another product starts from its own size and quantity. */
 export function ProductPage() {
@@ -31,10 +33,13 @@ function ProductDetails({ slug }: { slug?: string }) {
   const cart = useCart();
   const product = products.find((p) => p.slug === slug && p.active);
   const sizes = product ? offeredSizes(product) : [];
-  const [chosen, setSize] = useState<PackSize | undefined>(sizes.includes(1000) ? 1000 : sizes[0]);
+  // B2B blends open on their smallest bag (the paid sample); the others on 1 kg
+  const start = product?.kind !== 'b2b' && sizes.includes(1000) ? 1000 : sizes[0];
+  const [chosen, setSize] = useState<PackSize | undefined>(start);
   // a size that stops being offered while the page is open (price removed in the admin) is never kept
-  const size = chosen && sizes.includes(chosen) ? chosen : sizes.includes(1000) ? 1000 : sizes[0];
+  const size = chosen && sizes.includes(chosen) ? chosen : start;
   const [qty, setQty] = useState(1);
+  usePageTitle(product && size ? l(product.name) : t.common.notFound);
 
   if (!product || !size) return <NotFound />;
 
@@ -129,6 +134,11 @@ function ProductDetails({ slug }: { slug?: string }) {
                 </button>
               ))}
             </div>
+            {product.kind === 'b2b' && (
+              <p className={isBulkOnly(product, size) ? 'notice small' : 'small muted'}>
+                {isBulkOnly(product, size) ? fmt(t.product.bulkOnly, { kg: settings.b2bThresholdKg }) : t.product.sampleBadge}
+              </p>
+            )}
             <div className="spread">
               <QtyStepper value={qty} onChange={setQty} max={Math.max(1, available)} label={t.common.qty} />
               <Availability
@@ -156,8 +166,8 @@ function ProductDetails({ slug }: { slug?: string }) {
 
           {product.kind === 'b2b' && (
             <div className="notice">
-              {t.product.b2bNote} <Link to="/b2b#sample">
-                {t.product.b2bSample} <span className="dir-arrow" aria-hidden="true">→</span>
+              {fmt(t.product.b2bNote, { kg: settings.b2bThresholdKg })} <Link to="/b2b">
+                {t.product.b2bMore} <span className="dir-arrow" aria-hidden="true">→</span>
               </Link>
             </div>
           )}

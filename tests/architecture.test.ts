@@ -104,7 +104,7 @@ describe('the boundary checks cannot be sidestepped', () => {
 
   it('read every way of writing an import', () => {
     const source = [
-      `import { SampleRequestForm } from '../b2b/SampleRequestForm';`,
+      `import { RequestFields } from '../b2b/RequestFields';`,
       `import AdminApp from "@/features/admin/AdminApp";`,
       `const Shop = lazy(() => import('../../features/shop/ShopPage'));`,
       `export { db } from '../../data/store';`,
@@ -117,7 +117,7 @@ describe('the boundary checks cannot be sidestepped', () => {
       `const end = '*/';`,
     ].join('\n');
     expect(importsOf(source, 'features/cart/CartPage.tsx')).toEqual([
-      '@/features/b2b/SampleRequestForm',
+      '@/features/b2b/RequestFields',
       '@/features/admin/AdminApp',
       '@/features/shop/ShopPage',
       '@/data/store',
@@ -147,7 +147,7 @@ describe('the boundary checks cannot be sidestepped', () => {
       planted('core/cart.ts', [`import { db } from "../data/store";`, `import { roundKg } from './money';`]),
       planted('shared/layout/Footer.tsx', [`const Shop = () => import('../../features/shop/ShopPage');`, `import { Icon } from '../ui/Icon';`]),
       planted('features/cart/CartPage.tsx', [
-        `import { SampleRequestForm } from '../b2b/SampleRequestForm';`,
+        `import { RequestFields } from '../b2b/RequestFields';`,
         `import { QuoteForm } from '../b2b';`,
         `import { x } from '@/features/b2b/index';`,
         `const a = () => import(/* @vite-ignore */ '../admin/AdminApp');`,
@@ -163,7 +163,7 @@ describe('the boundary checks cannot be sidestepped', () => {
       core: ['core/cart.ts → @/data/store'],
       sharedOnFeature: ['shared/layout/Footer.tsx → @/features/shop/ShopPage', 'shared/ui/Icon.tsx → @/features/shop/ShopPage'],
       featureInternals: [
-        'features/cart/CartPage.tsx → @/features/b2b/SampleRequestForm',
+        'features/cart/CartPage.tsx → @/features/b2b/RequestFields',
         'features/cart/CartPage.tsx → @/features/admin/AdminApp',
         'features/shop/ShopPage.tsx → @/features/admin/*.tsx',
         'features/b2b/B2BPage.tsx → @/features/admin/AdminApp',

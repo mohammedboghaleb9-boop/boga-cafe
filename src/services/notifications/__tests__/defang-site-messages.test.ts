@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { defangLinks } from '../../../../api/_lib/notify';
 
 describe('link blocking and the site messages', () => {
-  it('leaves every demo order, sample and B2B message unchanged', async () => {
+  it('leaves every demo order and B2B message unchanged', async () => {
     vi.resetModules();
     const { db } = await import('@/data/store');
     const logs = db.get().notifications;

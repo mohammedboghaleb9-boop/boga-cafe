@@ -28,7 +28,7 @@ export function SettingsPage() {
             type="button"
             className="btn btn-primary btn-sm"
             onClick={() => {
-              api.saveSettings({ ...db.settings, ...s, bank: db.settings.bank, contact: db.settings.contact, notifications: db.settings.notifications }, role);
+              api.saveSettings({ ...db.settings, ...s, bank: db.settings.bank, cashplus: db.settings.cashplus, contact: db.settings.contact, notifications: db.settings.notifications }, role);
               flash();
             }}
           >
@@ -62,7 +62,17 @@ export function SettingsPage() {
               type="number"
               min={1}
               value={s.unpaidOrderTimeoutHours}
-              onChange={(e) => setS({ ...s, unpaidOrderTimeoutHours: num(e.target.value) })}
+              onChange={(e) => setS({ ...s, unpaidOrderTimeoutHours: Math.max(1, num(e.target.value)) })}
+            />
+          </label>
+          <label className="field">
+            <span className="label">{t.admin.settings.paymentCheckTimeout}</span>
+            <input
+              className="input num"
+              type="number"
+              min={1}
+              value={s.paymentCheckTimeoutHours}
+              onChange={(e) => setS({ ...s, paymentCheckTimeoutHours: Math.max(1, num(e.target.value)) })}
             />
           </label>
         </section>
