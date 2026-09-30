@@ -79,6 +79,11 @@ test.describe('customer', () => {
 
 });
 
+test('the contact page gives the reply hours (owner: every day, 8 to 22)', async ({ page }) => {
+  await page.goto('/contact');
+  await expect(page.locator('.contact-hours')).toContainText(/Tous les jours, de 8\s+h à 22\s+h/);
+});
+
 test.describe('Arabic', () => {
   test.use({ locale: 'ar-MA' });
   test('pages are right-to-left, and an unknown order still has a heading', async ({ page }) => {

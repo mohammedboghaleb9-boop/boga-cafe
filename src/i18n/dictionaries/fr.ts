@@ -363,6 +363,7 @@ export const fr: Dict = {
     title: 'Contact',
     intro: 'Pour une commande, une torréfaction particulière ou une demande B2B, l’équipe répond sur WhatsApp et par email.',
     address: 'Adresse',
+    hours: 'Horaires',
     whatsappText: 'Bonjour BOGA CAFÉ,',
     channels: 'Nos canaux',
     channelsText: 'Choisissez celui qui vous convient : commandes et reçus de paiement passent plus vite sur WhatsApp.',
@@ -622,6 +623,7 @@ export const fr: Dict = {
       tiktok: 'Lien TikTok',
       facebook: 'Lien Facebook',
       address: 'Adresse',
+      hours: 'Horaires de réponse (WhatsApp et email)',
     },
     settings: {
       rules: 'Règles commerciales',

@@ -10,6 +10,8 @@ export function ContactPage() {
   const { t, l } = useI18n();
   usePageTitle(t.nav.contact);
   const { settings } = useDb();
+  // saved before the hours existed: nothing to show
+  const hours = settings.contact.hours ? l(settings.contact.hours).trim() : '';
   return (
     <div className="container page">
       <div className="page-head">
@@ -32,6 +34,11 @@ export function ContactPage() {
             <Icon name="pin" size={18} /> {t.contact.address}
           </span>
           <strong className="contact-city">{l(settings.contact.address)}</strong>
+          {hours && (
+            <p className="row contact-hours">
+              <Icon name="clock" size={18} /> <span className="label">{t.contact.hours}</span> <span>{hours}</span>
+            </p>
+          )}
           <p className="muted small">{t.footer.tagline}</p>
         </div>
       </section>

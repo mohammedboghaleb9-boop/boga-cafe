@@ -37,3 +37,11 @@
   font-size: 1.5rem;
   letter-spacing: 0.02em;
 }
+.contact-hours {
+  margin: 0;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.contact-hours .label {
+  margin: 0;
+}

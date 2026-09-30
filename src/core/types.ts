@@ -250,6 +250,8 @@ export interface Settings {
     tiktok: string;
     facebook: string;
     address: Localized;
+    /** When the team answers on WhatsApp and email, shown on the contact page. Empty = not shown. */
+    hours: Localized;
   };
   notifications: {
     adminWhatsapp: string;

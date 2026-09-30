@@ -359,6 +359,7 @@ export const ar: Dict = {
     title: 'اتصل بنا',
     intro: 'لطلب، أو تحميص خاص، أو طلب للمهنيين، يجيبك الفريق عبر واتساب والبريد الإلكتروني.',
     address: 'العنوان',
+    hours: 'ساعات الرد',
     whatsappText: 'مرحباً BOGA CAFÉ،',
     channels: 'قنواتنا',
     channelsText: 'اختر ما يناسبك: الطلبات ووصولات الدفع أسرع عبر واتساب.',
@@ -617,6 +618,7 @@ export const ar: Dict = {
       tiktok: 'رابط تيك توك',
       facebook: 'رابط فيسبوك',
       address: 'العنوان',
+      hours: 'ساعات الرد (واتساب والبريد)',
     },
     settings: {
       rules: 'القواعد التجارية',

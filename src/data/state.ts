@@ -27,4 +27,4 @@ export interface DbState {
 }
 
 /** Bump when the seed changes, so saved demo data in browsers is replaced. */
-export const STATE_VERSION = 7; // 7: paid samples (B2B 250 g prices, no sample requests); 6: no automatic free delivery; 5: payment check deadline, Cash Plus payee, no example data outside the demo
+export const STATE_VERSION = 8; // 8: reply hours on the contact page; 7: paid samples (B2B 250 g prices, no sample requests); 6: no automatic free delivery; 5: payment check deadline, Cash Plus payee, no example data outside the demo

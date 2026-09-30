@@ -365,6 +365,7 @@ export const en = {
     title: 'Contact',
     intro: 'For an order, a custom roast or a B2B request, the team answers on WhatsApp and by email.',
     address: 'Address',
+    hours: 'Reply hours',
     whatsappText: 'Hello BOGA CAFÉ,',
     channels: 'Our channels',
     channelsText: 'Choose the one that suits you: orders and payment receipts go fastest on WhatsApp.',
@@ -624,6 +625,7 @@ export const en = {
       tiktok: 'TikTok link',
       facebook: 'Facebook link',
       address: 'Address',
+      hours: 'Reply hours (WhatsApp and email)',
     },
     settings: {
       rules: 'Business rules',

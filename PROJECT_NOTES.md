@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-09-30 (paid samples built). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-09-30 (paid samples, reply hours). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -64,12 +64,13 @@ for WhatsApp). Database target: Supabase (PostgreSQL + RLS), hosting target: Ver
 - Real bank account (holder, bank, RIB) and Cash Plus beneficiary: owner said "not yet time" (2026-09-30), so transfer and Cash Plus stay closed and the real site takes no paid order. `docs/07` Q23-Q25. The repo is **public**: real bank details must be entered from the admin panel after P5, not committed in `seed/config.ts`.
 - Final products and prices (owner: added last), bean photos (owner: will send), delivery courier and price list (owner: researching; current fees are estimates).
 - Gmail App Password and CallMeBot key (Vercel settings only). Domain `bogacafe.ma` (Nindohost ticket #581357, ANRT review). CNDP declaration. CMI contract (card).
-- Owner clarification still open: Q19 opening hours ("9-22" vs "until 8"). Q2 answered: keep the "partner roaster" text as it is.
+- No owner clarification open on docs/07 wording. Q2: keep the "partner roaster" text. Q19: reply hours every day 8:00-22:00, no day off.
 
 ## Owner decisions, 2026-09-30 (answers to `docs/07`, status marks there)
 - **Done in code:** no automatic free delivery (`freeShippingOver` = 0 in the seed; the team decides in Admin → Shipping).
 - **Confirmed, nothing to change:** roasted-coffee stock (Q1, read from "yes"), min 5 % and 4 origins (Q6), prices are TTC (Q4; the word "TTC" is not shown in the UI yet), admin notifications in French (Q17).
 - **Decided, not built:** customer confirmation goes through WhatsApp (Q10). Today the team writes by hand from the "WhatsApp au client" button; automatic WhatsApp to customers needs WhatsApp Business (CallMeBot only reaches the owner's own number). Two admins, Mohammed and Abderrahim, same full access, each with a personal login to see who came in when (Q15, P5: individual Supabase accounts, not a shared code).
+- **Built:** reply hours on the contact page, every day 8:00-22:00 (Q19/Q22; `settings.contact.hours`, owner edits it in Admin → Content).
 - **Built (owner approved the design):** paid samples, Q8/Q9 (see Key decisions). **Q2:** keep the site text on the partner roaster, no change.
 - **Payment timing (Q11):** the owner pasted an analysis proposing weekend-aware counting of the 120 h, receipt-image upload, and WhatsApp reminders at 24 h and 4 h before cancelling. Not built. My view: weekend-aware counting is sound but lengthens how long a fake claim can hold stock (no per-phone limit yet), so do it with the P5 limit. Receipt upload needs storage plus abuse limits (P5). Customer reminders need WhatsApp Business plus a consent basis. The claim that Moroccan interbank transfers take 24-48 working hours is **not verified**.
 
@@ -79,7 +80,7 @@ for WhatsApp). Database target: Supabase (PostgreSQL + RLS), hosting target: Ver
 3. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch. Estimate 17-28 working days of technical work (**Estimated**, not a promise).
 
 ## Needs verification
-- Q1 answer "yes" was read as agreeing with the default (roasted stock); Q19 hours are contradictory.
+- Q1 answer "yes" was read as agreeing with the default (roasted stock).
 - Paid samples: tested in core (3 mutants caught), SQL (2 mutants caught), parity (42 orders, 11 B2B 250/500 g lines) and browser screenshots at 390 px (fr, ar); the `bulk_only` text in English was not seen in a browser.
 - Whether the SQL behaves the same on real Supabase: the tests use a stub for `auth.uid()` (`request.jwt.claim.sub`), real Supabase reads `request.jwt.claims`. Only C.UTF-8 locale tested.
 - Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only.
