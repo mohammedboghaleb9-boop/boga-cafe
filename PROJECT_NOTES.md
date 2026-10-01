@@ -21,7 +21,7 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
   no admin panel, no payment method open. It does not use Supabase yet.
 - **Live Supabase project** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): all migrations of
   `supabase/migrations` applied (file names = versions recorded on the server), catalog loaded from `supabase/seed.sql`,
-  two owner accounts (bogacafe1@gmail.com, mohammedboghaleb9@gmail.com, sign-up turned off), Edge Function
+  two owner accounts (the owner knows which; not listed here, the repo is public; sign-up turned off), Edge Function
   `storefront` deployed and checked over HTTP. The site is not connected to it yet (P5 step 3).
 
 ## Stack
@@ -65,11 +65,17 @@ functions bundled with `rolldown`). Hosting: the owner deployed on Cloudflare Wo
   numbers and queues the messages in one transaction. B2B request building lives in `src/core/requests.ts` so the site
   and the server build the same thing. Answers: 400 for bodies the forms never send (texts over `TEXT_MAX` included),
   200 `{ok:false, errors}` for what the customer can fix, `too_many`, `captcha`.
-- **Limits against fake orders** (an unpaid order holds stock 48 h): per phone and per connection (IP hashed), only
-  after every check passed: order 5/h per phone, 30/h per IP; B2B request 3/day per phone, 20/day per IP
-  (`src/server/guard.ts`). One row per bucket (`rate_limits`), the upsert locks it: 20 parallel calls with limit 5
-  let exactly 5 through. Why not one row per hit with an advisory lock: the tool that applies SQL to the live project
-  refused that function's text, and one row per bucket is simpler anyway.
+- **Limits against fake orders** (an unpaid order holds stock 48 h, `src/server/guard.ts`): a per-connection
+  budget of 120 requests/h before the catalog is read; once an order passes every check, 5/h per phone, 10/h and
+  20/day per connection, and at most 2 unpaid orders per phone (B2B requests: 3/day per phone, 20/day per connection).
+  What it does not stop: someone with many phone numbers and many connections. Turnstile is the real defence, so its
+  keys must be set before the site takes orders; the 48 h expiry bounds the damage meanwhile (independent review).
+  The visitor IP is Cloudflare's `cf-connecting-ip`, else the last `x-forwarded-for` entry; checked on the live
+  project: a forged `x-forwarded-for` lands in the same bucket, a forged `cf-connecting-ip` is refused by Cloudflare
+  (403). Buckets carry an HMAC of the IP keyed with the server secret, never the IP. One row per bucket
+  (`rate_limits`), the upsert locks it: 20 parallel calls with limit 5 let exactly 5 through (`race.sh`, in CI).
+  Why not one row per hit with an advisory lock: the tool that applies SQL to the live project refused that
+  function's text, and one row per bucket is simpler anyway.
 - **Card stored off in the live database** until the CMI callback exists, so `check_order` itself refuses a card
   order nobody could pay; the server also never offers it. Turnstile is ready but off until both keys exist.
 - **Starting data = the examples the site already shows** (products, prices, stock are examples; payment details
@@ -88,12 +94,16 @@ functions bundled with `rolldown`). Hosting: the owner deployed on Cloudflare Wo
   from the SQL editor; until then the first real numbers are BC-2026-0002 and QR-2026-0002.
 - The tool that applies SQL to the live project times out on some statements (any DELETE, some function texts).
   Workaround used: smaller migrations, UPDATE instead of DELETE, checks through `pg_net`.
+- pg_net (in `public`, Supabase advisor warning): Supabase grants its `net.*` functions to PUBLIC as
+  `supabase_admin`; `postgres` cannot revoke that (migration `pg_net_private` had no effect, its file says so). The
+  `net` schema is not exposed through the API. Moving the extension to schema `extensions` needs a DROP, which the
+  tool here cannot run: the owner can toggle pg_net off and on in Dashboard → Database → Extensions.
 - Old Edge Function `create-order` (from the earlier test repo, answers 410) is still deployed: delete it from the
   dashboard. Supabase advisor: turn on leaked password protection (Auth settings).
 - `skip locked` in `expire_unpaid_orders` is not tested under concurrency.
 - The site's `VITE_DATA_MODE=supabase` layer is not written yet. Pages read the whole database with `useDb()` and call `api` synchronously: moving to Supabase is **not** "swap `src/data`" (`docs/03` section 4).
 - `api/notify` rate limit is in memory per instance. Messages are written by the browser; the server checks shape only.
-- A lone surrogate or NUL in a customer text fails at the jsonb parse before `check_order` runs (reported by the independent reviewer, not reproduced by me).
+- A lone surrogate or NUL in a customer text: the storefront function refuses it (400, `src/server/parse.ts`, tested); the browser-only demo build does not check it.
 - The status hook treats edits to `CLAUDE.md`, `README.md`, `docs/*` as code: a docs-only session gets blocked until this file changes.
 - Browser tests run on Chromium only; English is not tested in a browser; tablet width (768) never checked.
 
