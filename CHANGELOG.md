@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-01
+- 2026-10-01 [fix/supabase-live] Second review: no cap on open orders per phone (it let anyone lock a customer out), IP from Cloudflare's header only, IPv6 counted by /64, body read no further than 64 KB; storefront version 4 deployed and checked.
 - 2026-10-01 [fix/supabase-live] Fixes from the independent review: at most 2 unpaid orders per phone, per-connection limits by hour and day and a request budget, IP from Cloudflare's header (spoofing checked on the live project) with a keyed hash, B2B requests only above the threshold and for active cities, NUL and lone surrogates refused, HTTP edge tested (4c06a48).
 - 2026-10-01 [fix/supabase-live] Storefront Edge Function on the live project: orders and B2B requests rebuilt from the database with `src/core`, limits per phone and per connection, Turnstile ready (off), card never offered before CMI; B2B request building moved to `src/core/requests.ts`; checked over HTTP (06a28df).
 - 2026-10-01 [fix/supabase-live] Live database loaded with the catalog, delivery fees and texts the site shows (`supabase/seed.sql` from `scripts/seed-sql.mjs`), no payment details, card off (6dfd758).

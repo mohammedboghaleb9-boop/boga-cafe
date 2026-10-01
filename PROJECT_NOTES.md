@@ -67,15 +67,18 @@ functions bundled with `rolldown`). Hosting: the owner deployed on Cloudflare Wo
   200 `{ok:false, errors}` for what the customer can fix, `too_many`, `captcha`.
 - **Limits against fake orders** (an unpaid order holds stock 48 h, `src/server/guard.ts`): a per-connection
   budget of 120 requests/h before the catalog is read; once an order passes every check, 5/h per phone, 10/h and
-  20/day per connection, and at most 2 unpaid orders per phone (B2B requests: 3/day per phone, 20/day per connection).
-  What it does not stop: someone with many phone numbers and many connections. Turnstile is the real defence, so its
-  keys must be set before the site takes orders; the 48 h expiry bounds the damage meanwhile (independent review).
-  The visitor IP is Cloudflare's `cf-connecting-ip`, else the last `x-forwarded-for` entry; checked on the live
-  project: a forged `x-forwarded-for` lands in the same bucket, a forged `cf-connecting-ip` is refused by Cloudflare
-  (403). Buckets carry an HMAC of the IP keyed with the server secret, never the IP. One row per bucket
-  (`rate_limits`), the upsert locks it: 20 parallel calls with limit 5 let exactly 5 through (`race.sh`, in CI).
-  Why not one row per hit with an advisory lock: the tool that applies SQL to the live project refused that
-  function's text, and one row per bucket is simpler anyway.
+  20/day per connection (B2B requests: 3/day per phone, 20/day per connection). An IPv6 visitor counts by its /64.
+  No cap on open unpaid orders per phone (tried, then removed after the second review): phones are not verified, so
+  two cheap orders would lock a real customer out for 48 h, unseen; a fake order is visible and the owner frees its
+  stock by cancelling it. What this does not stop: many phones and many connections. Turnstile is the real defence,
+  so its keys must be set before the site takes orders; the 48 h expiry bounds the damage meanwhile.
+  The visitor IP is Cloudflare's `cf-connecting-ip` only (no header = no per-connection limit, logged); checked on the
+  live project: requests land in one bucket with or without a forged `x-forwarded-for`, and a forged
+  `cf-connecting-ip` is refused by Cloudflare (403). Buckets carry an HMAC of the IP keyed with the server secret key
+  (rotating that key resets the buckets; a separate secret would need the owner to add it in the dashboard).
+  One row per bucket (`rate_limits`), the upsert locks it: 20 parallel calls with limit 5 let exactly 5 through
+  (`race.sh`, in CI). Why not one row per hit with an advisory lock: the tool that applies SQL to the live project
+  refused that function's text, and one row per bucket is simpler anyway.
 - **Card stored off in the live database** until the CMI callback exists, so `check_order` itself refuses a card
   order nobody could pay; the server also never offers it. Turnstile is ready but off until both keys exist.
 - **Starting data = the examples the site already shows** (products, prices, stock are examples; payment details

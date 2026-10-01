@@ -49,13 +49,9 @@ describe('storefront http: who may call, and with what', () => {
 describe('storefront http: the visitor IP', () => {
   const h = (init: Record<string, string>) => new Headers(init);
 
-  it("uses Cloudflare's header first", () => {
+  it("uses Cloudflare's header only: x-forwarded-for can be written by the client or be a shared proxy", () => {
     expect(visitorIp(h({ 'cf-connecting-ip': '196.1.1.1', 'x-forwarded-for': '6.6.6.6, 196.1.1.1' }))).toBe('196.1.1.1');
-  });
-
-  it('otherwise the entry the last proxy appended, never what the client wrote first', () => {
-    expect(visitorIp(h({ 'x-forwarded-for': '6.6.6.6, 7.7.7.7, 196.2.2.2' }))).toBe('196.2.2.2');
-    expect(visitorIp(h({ 'x-real-ip': '196.3.3.3' }))).toBe('196.3.3.3');
+    expect(visitorIp(h({ 'x-forwarded-for': '6.6.6.6, 7.7.7.7, 196.2.2.2', 'x-real-ip': '196.3.3.3' }))).toBeNull();
     expect(visitorIp(h({}))).toBeNull();
   });
 

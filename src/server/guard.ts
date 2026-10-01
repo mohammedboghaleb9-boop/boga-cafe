@@ -4,13 +4,16 @@
  *  - every request that reaches the server costs from a per-connection budget,
  *    before the catalog is even read;
  *  - accepted requests are counted per phone number and per connection, by the
- *    hour and by the day (rate_limit_hit), and a phone holds at most
- *    MAX_OPEN_ORDERS unpaid orders at a time;
+ *    hour and by the day (rate_limit_hit);
  *  - Cloudflare Turnstile, when TURNSTILE_SECRET_KEY is set on the server.
  * What it does not do: stop someone with many phone numbers and many connections.
  * Turnstile is what makes that expensive, so set its keys before the site takes
  * orders; the 48 h expiry bounds the damage meanwhile.
- * The IP is never stored: buckets carry a keyed hash of it (HMAC with a server secret).
+ * No cap on open unpaid orders per phone: phone numbers are not verified, so a cap
+ * would let anyone lock a real customer out for 48 h with two cheap orders, unseen;
+ * a fake order is visible and the owner frees its stock by cancelling it.
+ * The IP is never stored: buckets carry a keyed hash of it (HMAC with a server secret),
+ * an IPv6 address counted by its /64 network (what one host can use freely).
  */
 import type { Client } from '@/data/supabase/client';
 
@@ -24,13 +27,24 @@ export const LIMITS: Record<Route, { phone: Limit[]; ip: Limit[] }> = {
 };
 /** Any request that parses, accepted or not: it costs a catalog read. */
 export const REQUEST_BUDGET: Limit = [120, 3600];
-/** Unpaid orders (not cancelled) one phone may hold at once. */
-export const MAX_OPEN_ORDERS = 2;
 
-/** Same IP → same text; without the key the text says nothing about the IP. */
+/**
+ * What one visitor controls: an IPv4 address, or the /64 network of an IPv6 address
+ * (a single host gets a whole /64 and can rotate through it).
+ */
+export function ipBucket(ip: string): string {
+  if (!ip.includes(':')) return ip;
+  const [head, tail = ''] = ip.toLowerCase().split('::');
+  const left = head ? head.split(':') : [];
+  const right = tail ? tail.split(':') : [];
+  const groups = ip.includes('::') ? [...left, ...Array(8 - left.length - right.length).fill('0'), ...right] : left;
+  return `${groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '')).join(':')}::/64`;
+}
+
+/** Same visitor → same text; without the key the text says nothing about the IP. */
 export async function hashIp(ip: string, key: string): Promise<string> {
   const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(`boga-cafe:${key}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const mac = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(ip));
+  const mac = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(ipBucket(ip)));
   return [...new Uint8Array(mac)].slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
@@ -54,18 +68,6 @@ export async function withinLimits(db: Client, route: Route, phone: string, ip: 
   }
   for (const [bucket, limit] of buckets) if (!(await hit(db, bucket, limit))) return false;
   return true;
-}
-
-/** Unpaid, not cancelled orders of this phone (normalized +212…). */
-export async function openOrders(db: Client, phone: string): Promise<number> {
-  const { count, error } = await db
-    .from('orders')
-    .select('id', { count: 'exact', head: true })
-    .eq('phone', phone)
-    .in('status', ['new', 'confirmed'])
-    .in('payment_status', ['pending', 'failed', 'awaiting_verification']);
-  if (error) throw error;
-  return count ?? 0;
 }
 
 /** Cloudflare's answer for a widget token. Fails closed: no answer in 5 s = not verified. */

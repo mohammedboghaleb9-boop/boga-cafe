@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TEXT_MAX } from '@/core/limits';
 import type { Client } from '@/data/supabase/client';
-import { hashIp, MAX_OPEN_ORDERS, verifyTurnstile } from '../guard';
+import { hashIp, ipBucket, verifyTurnstile } from '../guard';
 import { parseCheckoutInput, parseQuoteInput } from '../parse';
 import { NUMBER_PLACEHOLDER } from '../prepare';
 import { handleStorefront, type Deps } from '../storefront';
@@ -123,7 +123,8 @@ describe('storefront: request bodies', () => {
     ['notes longer than the form allows', orderBody({ customer: { ...customer, notes: 'x'.repeat(TEXT_MAX.notes + 1) } })],
     ['a company longer than the form allows', orderBody({ customer: { ...customer, company: 'x'.repeat(TEXT_MAX.company + 1) } })],
     ['a NUL character (PostgreSQL cannot store it)', orderBody({ customer: { ...customer, notes: 'a\u0000b' } })],
-    ['a lone surrogate (not valid in jsonb)', orderBody({ customer: { ...customer, fullName: 'Salma \uD800' } })],
+    ['a lone high surrogate (not valid in jsonb)', orderBody({ customer: { ...customer, fullName: 'Salma \uD800' } })],
+    ['a lone low surrogate (not valid in jsonb)', orderBody({ customer: { ...customer, fullName: 'Salma \uDC00x' } })],
     ['an unknown payment method', orderBody({ paymentMethod: 'cod' })],
   ])('refuses an order with %s', (_, raw) => {
     expect(parseCheckoutInput(raw)).toBeNull();
@@ -179,18 +180,24 @@ describe('storefront: order', () => {
     expect(await hashIp('196.200.1.1', 'another-key')).not.toBe(h);
   });
 
+  it('counts an IPv6 visitor by its /64 network, which one host can rotate through', async () => {
+    expect(ipBucket('2a02:4780:1:2:aaaa::1')).toBe('2a02:4780:1:2::/64');
+    expect(ipBucket('2a02:4780:0001:0002:ffff:1:2:3')).toBe('2a02:4780:1:2::/64');
+    expect(ipBucket('2a02:4780::5')).toBe('2a02:4780:0:0::/64');
+    expect(ipBucket('196.200.1.1')).toBe('196.200.1.1');
+    expect(await hashIp('2a02:4780:1:2:aaaa::1', IP_KEY)).toBe(await hashIp('2a02:4780:1:2:bbbb:cccc:dddd:eeee', IP_KEY));
+    expect(await hashIp('2a02:4780:1:2::1', IP_KEY)).not.toBe(await hashIp('2a02:4780:1:3::1', IP_KEY));
+  });
+
   it('stops a phone above its limit before anything is saved', async () => {
     const { db, calls } = fakeDb({ limit: 0, limitPrefix: 'order:phone:' });
     expect((await handleStorefront('order', orderBody(), deps(db))).body).toEqual({ ok: false, errors: ['too_many'] });
     expect(committed(calls)).toBe(false);
   });
 
-  it(`lets a phone hold at most ${MAX_OPEN_ORDERS} unpaid orders`, async () => {
-    const full = fakeDb({ openOrders: MAX_OPEN_ORDERS });
-    expect((await handleStorefront('order', orderBody(), deps(full.db))).body).toEqual({ ok: false, errors: ['too_many'] });
-    expect(committed(full.calls)).toBe(false);
-    const room = fakeDb({ openOrders: MAX_OPEN_ORDERS - 1 });
-    expect(((await handleStorefront('order', orderBody(), deps(room.db))).body as { ok: boolean }).ok).toBe(true);
+  it('does not lock a phone out for its unpaid orders (phones are not verified: anyone could block a customer)', async () => {
+    const { db } = fakeDb({ openOrders: 5 });
+    expect(((await handleStorefront('order', orderBody(), deps(db))).body as { ok: boolean }).ok).toBe(true);
   });
 
   it('stops a connection that sends too many requests before reading the catalog', async () => {

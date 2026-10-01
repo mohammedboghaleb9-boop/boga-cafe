@@ -16,7 +16,7 @@ import type { RequestError } from '@/core/requests';
 import type { Order, QuoteRequest } from '@/core/types';
 import { loadCatalog } from '@/data/supabase/catalog';
 import type { Client } from '@/data/supabase/client';
-import { MAX_OPEN_ORDERS, openOrders, verifyTurnstile, withinBudget, withinLimits, type Route } from './guard';
+import { verifyTurnstile, withinBudget, withinLimits, type Route } from './guard';
 import { captchaToken, parseCheckoutInput, parseQuoteInput } from './parse';
 import { prepareOrder, prepareQuote } from './prepare';
 
@@ -73,7 +73,6 @@ async function order(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
   if (!(await captchaOk(raw, deps))) return refuse('captcha');
   const p = prepareOrder(input, await loadCatalog(deps.db), now);
   if (!p.ok) return refuse(...p.errors);
-  if ((await openOrders(deps.db, p.phone)) >= MAX_OPEN_ORDERS) return refuse('too_many');
   if (!(await withinLimits(deps.db, 'order', p.phone, deps.ip, deps.ipKey))) return refuse('too_many');
   const r = await deps.db.rpc('commit_order', p.args);
   // someone bought the last kilos between our check and the commit

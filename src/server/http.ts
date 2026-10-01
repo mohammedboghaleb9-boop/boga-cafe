@@ -21,15 +21,34 @@ export function keysOf(json: string): string[] {
 }
 
 /**
- * The visitor's address as the platform saw it. Supabase runs behind Cloudflare,
- * which sets cf-connecting-ip itself. Otherwise the last x-forwarded-for entry,
- * the one the last proxy appended: the first entries are whatever the client sent.
+ * The visitor's address as Cloudflare saw it: Supabase runs behind Cloudflare, which
+ * sets cf-connecting-ip itself and refuses a request that already carries one
+ * (checked on the live project). Nothing else is trusted: x-forwarded-for entries can
+ * be written by the client or be a proxy shared by every visitor. Without it the
+ * per-connection limits are off for that request, and the log says so.
  */
 export function visitorIp(headers: Headers): string | null {
   const cf = headers.get('cf-connecting-ip')?.trim();
   if (cf) return cf;
-  const chain = headers.get('x-forwarded-for')?.split(',').map((x) => x.trim()).filter(Boolean) ?? [];
-  return chain.at(-1) || headers.get('x-real-ip')?.trim() || null;
+  console.warn('storefront: no cf-connecting-ip, per-connection limits skipped');
+  return null;
+}
+
+/** The body as text, read no further than MAX_BODY_CHARS (a chunked body has no length header). */
+async function readBody(req: Request): Promise<string | null> {
+  if (!req.body) return '';
+  const reader = req.body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return text + decoder.decode();
+    text += decoder.decode(value, { stream: true });
+    if (text.length > MAX_BODY_CHARS) {
+      await reader.cancel();
+      return null;
+    }
+  }
 }
 
 const reply = (body: unknown, status = 200) =>
@@ -48,9 +67,8 @@ export async function handleHttp(req: Request, deps: HttpDeps): Promise<Response
   const key = req.headers.get('apikey') ?? '';
   if (!key || !deps.publicKeys.includes(key)) return reply({ error: 'unauthorized' }, 401);
   if (Number(req.headers.get('content-length') ?? 0) > MAX_BODY_CHARS) return reply({ error: 'too_large' }, 413);
-  // a chunked body has no length header: measure what arrived
-  const text = await req.text();
-  if (text.length > MAX_BODY_CHARS) return reply({ error: 'too_large' }, 413);
+  const text = await readBody(req);
+  if (text === null) return reply({ error: 'too_large' }, 413);
   let raw: unknown;
   try {
     raw = JSON.parse(text);
