@@ -976,3 +976,76 @@ begin
   end;
 end $$;
 select 'ok 25 - recipe lines 1 to 100 %; a switched-off origin is never sold; stock never below 0' as result;
+
+-- 26. Live server step: internal helpers closed to the API; B2B requests and rate
+--     limits are server-only; the low-stock trigger still fires --------------------
+set role anon;
+do $$ begin
+  begin
+    perform public.admin_role();
+    raise exception 'TEST FAILED: anon called admin_role';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.commit_quote_request('{}', '', '', '');
+    raise exception 'TEST FAILED: anon saved a B2B request';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.rate_limit_hit('x', 1, 60);
+    raise exception 'TEST FAILED: anon used the rate limiter';
+  exception when insufficient_privilege then null;
+  end;
+  if (select count(*) from public.rate_limits) <> 0 then raise exception 'TEST FAILED: anon reads rate limits'; end if;
+end $$;
+reset role;
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001'; -- owner
+do $$ begin
+  begin
+    perform public.admin_role();
+    raise exception 'TEST FAILED: owner called admin_role through the API';
+  exception when insufficient_privilege then null;
+  end;
+  if not public.is_admin(array['owner']) then raise exception 'TEST FAILED: owner not recognised'; end if;
+  -- a low-stock alert still comes from the trigger when stock moves through a function
+  perform public.adjust_stock('brazil', -1000, 'correction', 'test 26');
+end $$;
+reset role;
+set role service_role;
+do $$
+declare q record; n bigint;
+begin
+  select count(*) into n from public.notification_outbox where event = 'quote.created';
+  select * into q from public.commit_quote_request(
+    '{"businessType": "hotel", "contactName": "Sara", "phone": "+212612345679", "cityId": "oujda",
+      "lines": [{"kind": "product", "productId": "horeca", "size": 1000, "qty": 12}], "weightKg": 12, "indicativeTotal": 1800}',
+    'B2B {number}', 'B2B {number}', '[BOGA CAFÉ] B2B {number}');
+  if q.number !~ '^QR-\d{4}-\d{4,}$' then raise exception 'TEST FAILED: quote number %', q.number; end if;
+  if (select count(*) from public.notification_outbox where event = 'quote.created') <> n + 2 then raise exception 'TEST FAILED: quote notifications'; end if;
+  if not exists (select 1 from public.notification_outbox where subject = '[BOGA CAFÉ] B2B ' || q.number) then raise exception 'TEST FAILED: number in subject'; end if;
+  begin
+    perform public.commit_quote_request('{"businessType": "hotel", "contactName": "Sara", "phone": "+212612345679", "cityId": "oujda", "lines": [], "weightKg": 0, "indicativeTotal": 0}', '', '', '');
+    raise exception 'TEST FAILED: empty B2B request saved';
+  exception when others then if sqlerrm <> 'invalid_quote:lines' then raise; end if;
+  end;
+  if not public.rate_limit_hit('t26:phone', 2, 3600) then raise exception 'TEST FAILED: first hit refused'; end if;
+  if not public.rate_limit_hit('t26:phone', 2, 3600) then raise exception 'TEST FAILED: second hit refused'; end if;
+  if public.rate_limit_hit('t26:phone', 2, 3600) then raise exception 'TEST FAILED: third hit allowed'; end if;
+  if not public.rate_limit_hit('t26:other', 2, 3600) then raise exception 'TEST FAILED: buckets are not separate'; end if;
+end $$;
+reset role;
+update public.rate_limits set window_start = now() - interval '61 minutes' where bucket = 't26:phone';
+set role service_role;
+do $$ begin
+  if not public.rate_limit_hit('t26:phone', 2, 3600) then raise exception 'TEST FAILED: window did not restart'; end if;
+  if not public.rate_limit_hit('t26:phone', 2, 3600) then raise exception 'TEST FAILED: second hit of the new window refused'; end if;
+  if public.rate_limit_hit('t26:phone', 2, 3600) then raise exception 'TEST FAILED: third hit of the new window allowed'; end if;
+end $$;
+reset role;
+do $$ begin
+  if not exists (select 1 from public.notification_outbox where event = 'stock.low' and body like 'Stock bas : Brésil - 0%') then
+    raise exception 'TEST FAILED: low-stock trigger after revoking its EXECUTE';
+  end if;
+end $$;
+select 'ok 26 - internal helpers closed to the API; B2B requests and rate limits server-only; low-stock trigger still fires' as result;
