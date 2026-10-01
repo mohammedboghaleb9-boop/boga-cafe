@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-09-30
+- 2026-09-30 Status report published as one live page for the owner (https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH), republished on every change; the old "BOGA CAFÉ Control Center" page was deleted at the owner's request.
 - 2026-09-30 `fix/remediation-3-7` merged into `main` on the owner's approval; CI green on `main` (run 56); status report updated (901c8af).
 - 2026-09-30 [branch] Reply hours on the contact page: every day 8:00-22:00 (owner, Q19/Q22), editable by the owner in Admin → Content; state version 8.
 - 2026-09-30 [branch] Paid samples (owner, Q8/Q9): B2B blends sold online in 250 g and 500 g as ordinary paid orders; their 1 kg bag only in a cart above the B2B threshold (`isBulkOnly`, `invalid_order:bulk_only`); sample request form, `sample_requests` table, `sample.created` message and admin tab removed; site text on the partner roaster kept (Q2); state version 7.

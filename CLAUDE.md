@@ -45,6 +45,8 @@
 - Evidence rule: nothing is marked COMPLETED without evidence (file, test, commit). No evidence = mark it "Needs Verification".
 - Numbers that are estimates are labeled "Estimated" and the way they were computed is written next to them.
 - Never fake progress. If something is blocked or weak, say so in red.
+- Live page for me: https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH ("BOGA CAFÉ Project Status"). Every time `PROJECT_STATUS.html` changes, republish it to that same link with the Artifact tool (from a new conversation: read that link first, then publish with it as `url`). Never create a second status page.
+  The Artifact tool adds the document wrapper itself, so publish a copy without `<!doctype html>`, the `<html>` and `<head>` tags and the charset/viewport metas, with `<body>` … `</body></html>` replaced by `<div lang="ar" dir="rtl">` … `</div>`.
 
 ## Code organization (so I can fix things later)
 - Always keep a clean, professional structure: split by responsibility (for example components, pages, services, utils, styles, config, tests). No giant files.
