@@ -1,7 +1,7 @@
 # PROJECT_NOTES.md: BOGA CAFÉ
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
-(status), `git log` (history), the code. Anything I could not check is under "Needs verification".
+(status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
 Last updated: 2026-09-30 (fix/remediation-3-7 merged into main). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
