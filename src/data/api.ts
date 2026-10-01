@@ -2,14 +2,11 @@
  * The only way pages change data. Each function maps to one server call in
  * production (Supabase RPC / Edge Function) — same inputs, same results.
  */
-import { summarizeCart } from '@/core/cart';
 import { buildOrder, expiredUnpaidOrders, type CheckoutError, type CheckoutInput } from '@/core/order';
+import { buildQuoteRequest, type QuoteInput } from '@/core/requests';
 import { isPrice } from '@/core/pricing';
 import { adjustOriginStock, applyStock, isLowStock } from '@/core/stock';
-import { normalizePhone, isEmail } from '@/core/validation';
 import type {
-  BusinessType,
-  CartItem,
   Order,
   OrderStatus,
   Origin,
@@ -63,26 +60,7 @@ function patchOrder(id: string, patch: (o: Order, s: DbState) => Partial<Order>,
   });
 }
 
-export interface ContactRequestInput {
-  businessType: BusinessType;
-  company: string;
-  contactName: string;
-  phone: string;
-  email: string;
-  cityId: string;
-  notes: string;
-}
-
-export type RequestError = 'name' | 'phone' | 'email' | 'city';
-
-function validateContact(input: ContactRequestInput, s: DbState): RequestError[] {
-  const errors: RequestError[] = [];
-  if (input.contactName.trim().length < 3) errors.push('name');
-  if (!normalizePhone(input.phone)) errors.push('phone');
-  if (input.email.trim() && !isEmail(input.email)) errors.push('email');
-  if (!s.shippingRates.some((r) => r.id === input.cityId)) errors.push('city');
-  return errors;
-}
+export type { ContactRequestInput, RequestError } from '@/core/requests';
 
 export const api = {
   /* ───────── Storefront ───────── */
@@ -158,31 +136,14 @@ export const api = {
   },
 
   /** Cart above the B2B threshold → request handled by the administration. */
-  async requestQuote(input: ContactRequestInput & { items: CartItem[] }) {
+  async requestQuote(input: QuoteInput) {
     await latency();
     const s = db.get();
-    const errors = validateContact(input, s);
-    if (errors.length) return { ok: false as const, errors };
-    const cart = summarizeCart(input.items, checkoutContext(s).catalog, s.settings);
     const at = now();
-    const quote: QuoteRequest = {
-      id: uid(),
-      number: newReference('QR', (r) => s.quotes.some((q) => q.number === r)),
-      createdAt: at,
-      businessType: input.businessType,
-      company: input.company,
-      contactName: input.contactName,
-      phone: normalizePhone(input.phone)!,
-      email: input.email,
-      cityId: input.cityId,
-      lines: cart.lines.flatMap((l) => (l.line ? [l.line] : [])),
-      weightKg: cart.weightKg,
-      indicativeTotal: cart.subtotal,
-      notes: input.notes,
-      status: 'new',
-      finalPrice: null,
-      adminNotes: '',
-    };
+    const number = newReference('QR', (r) => s.quotes.some((q) => q.number === r));
+    const result = buildQuoteRequest(input, checkoutContext(s), { id: uid(), number, now: at });
+    if (!result.ok) return result;
+    const quote = result.quote;
     const message = quoteMessage(quote, templateContext(s));
     db.update((cur) => ({
       ...cur,

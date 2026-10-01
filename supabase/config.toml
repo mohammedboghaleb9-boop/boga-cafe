@@ -1,0 +1,9 @@
+# Supabase CLI settings: only what differs from the defaults.
+project_id = "boga-cafe"
+
+[functions.storefront]
+# Visitors call it with the publishable key, which is not a JWT:
+# the function checks the apikey header itself.
+verify_jwt = false
+# The function imports src/, so it is bundled first: npm run build:functions
+entrypoint = "./functions/storefront/dist/index.js"
