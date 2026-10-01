@@ -10,7 +10,23 @@ import type { ContactRequestInput, QuoteInput } from '@/core/requests';
 import { PACK_SIZES, type BusinessType, type CartItem, type PackSize, type PaymentMethodId, type RecipeLine } from '@/core/types';
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-const isText = (v: unknown, max: number): v is string => typeof v === 'string' && [...v].length <= max;
+/**
+ * NUL and a lone surrogate are valid in a JavaScript string but not in PostgreSQL
+ * text/jsonb. Checked by code unit (no \u escapes: the bundle stays plain ASCII).
+ */
+function storable(v: string): boolean {
+  for (let i = 0; i < v.length; i++) {
+    const c = v.charCodeAt(i);
+    if (c === 0) return false;
+    if (c >= 0xd800 && c <= 0xdbff) {
+      const next = v.charCodeAt(i + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
+      i++; // a valid pair (an emoji, for example)
+    } else if (c >= 0xdc00 && c <= 0xdfff) return false;
+  }
+  return true;
+}
+const isText = (v: unknown, max: number): v is string => typeof v === 'string' && [...v].length <= max && storable(v);
 const isSize = (v: unknown): v is PackSize => PACK_SIZES.includes(v as PackSize);
 
 const PAYMENT_METHODS: PaymentMethodId[] = ['card', 'cashplus', 'bank_transfer'];

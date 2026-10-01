@@ -26,7 +26,8 @@ export function validateContact(input: ContactRequestInput, rates: ShippingRate[
   if (input.contactName.trim().length < 3) errors.push('name');
   if (!normalizePhone(input.phone)) errors.push('phone');
   if (input.email.trim() && !isEmail(input.email)) errors.push('email');
-  if (!rates.some((r) => r.id === input.cityId)) errors.push('city');
+  // same rule as an order (order.ts validateCustomer): a city switched off takes no request
+  if (!rates.some((r) => r.id === input.cityId && r.active)) errors.push('city');
   return errors;
 }
 

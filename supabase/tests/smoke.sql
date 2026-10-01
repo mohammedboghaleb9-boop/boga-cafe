@@ -979,6 +979,8 @@ select 'ok 25 - recipe lines 1 to 100 %; a switched-off origin is never sold; st
 
 -- 26. Live server step: internal helpers closed to the API; B2B requests and rate
 --     limits are server-only; the low-stock trigger still fires --------------------
+-- a bucket exists, so "anon reads no rate limits" means row level security hides it
+insert into public.rate_limits (bucket) values ('t26:existing');
 set role anon;
 do $$ begin
   begin

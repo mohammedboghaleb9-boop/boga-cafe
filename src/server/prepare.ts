@@ -54,11 +54,14 @@ export function prepareOrder(input: CheckoutInput, catalog: CatalogData, now: Da
 }
 
 export function prepareQuote(input: QuoteInput, catalog: CatalogData, now: Date) {
-  const result = buildQuoteRequest(input, checkout(catalog), ids(now));
+  const ctx = checkout(catalog);
+  const result = buildQuoteRequest(input, ctx, ids(now));
   if (!result.ok) return result;
   return {
     ok: true as const,
     quote: result.quote,
+    /** The site sends a B2B request only for a cart above the threshold (src/core/cart.ts isB2B). */
+    aboveThreshold: result.quote.weightKg > ctx.settings.b2bThresholdKg,
     phone: result.quote.phone,
     args: { p_quote: result.quote as unknown as Json, ...messageArgs(quoteMessage(result.quote, templates(catalog))) },
   };

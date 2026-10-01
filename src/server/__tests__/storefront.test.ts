@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TEXT_MAX } from '@/core/limits';
 import type { Client } from '@/data/supabase/client';
-import { hashIp } from '../guard';
+import { hashIp, MAX_OPEN_ORDERS, verifyTurnstile } from '../guard';
 import { parseCheckoutInput, parseQuoteInput } from '../parse';
 import { NUMBER_PLACEHOLDER } from '../prepare';
 import { handleStorefront, type Deps } from '../storefront';
@@ -25,7 +25,10 @@ const rowsWith = (settings: Record<string, unknown>, cardEnabled = false): Recor
     product('signature', 'signature', { '250': 60, '1000': 200 }, [['brazil', 80], ['vietnam', 20]]),
     product('horeca', 'b2b', { '250': 50, '1000': 150 }, [['brazil', 100]]),
   ],
-  shipping_rates: [{ id: 'oujda', city: L('Oujda'), distance_km: 0, base_fee: 20, included_kg: 3, extra_per_kg: 5, delivery_days: '1', active: true }],
+  shipping_rates: [
+    { id: 'oujda', city: L('Oujda'), distance_km: 0, base_fee: 20, included_kg: 3, extra_per_kg: 5, delivery_days: '1', active: true },
+    { id: 'closed', city: L('Fermée'), distance_km: 9, base_fee: 30, included_kg: 3, extra_per_kg: 5, delivery_days: '2', active: false },
+  ],
   payment_methods: [
     { id: 'card', enabled: cardEnabled, label: L('Carte'), instructions: L('') },
     { id: 'cashplus', enabled: true, label: L('Cash Plus'), instructions: L('') },
@@ -34,23 +37,39 @@ const rowsWith = (settings: Record<string, unknown>, cardEnabled = false): Recor
   site_config: [{ settings: { freeShippingOver: 0, b2bThresholdKg: 10, roastLossPercent: 0, ...settings }, content: {} }],
 });
 
-/** Enough of supabase-js for loadCatalog() and rpc(); records every rpc call. */
-function fakeDb(opts: { limit?: number; commitError?: string; settings?: Record<string, unknown>; cardEnabled?: boolean } = {}) {
+interface FakeOptions {
+  /** max hits of every bucket whose name starts with limitPrefix (default: all) */
+  limit?: number;
+  limitPrefix?: string;
+  commitError?: string;
+  settings?: Record<string, unknown>;
+  cardEnabled?: boolean;
+  /** unpaid orders this phone already holds */
+  openOrders?: number;
+}
+
+/** Enough of supabase-js for loadCatalog(), the open-orders count and rpc(); records every call. */
+function fakeDb(opts: FakeOptions = {}) {
   const tables = rowsWith(opts.settings ?? PAYEE, opts.cardEnabled);
   const hits = new Map<string, number>();
   const calls: { name: string; args: Record<string, unknown> }[] = [];
-  // a query is awaited for its rows, or chained further
+  const reads: string[] = [];
+  // a query is awaited for its rows (or, for orders, its count), or chained further
   interface Query extends Promise<unknown> {
     select(): Query;
     order(): Query;
     eq(): Query;
+    in(): Query;
     maybeSingle(): Promise<unknown>;
   }
   const query = (table: string) => {
-    const q: Query = Object.assign(Promise.resolve({ data: tables[table], error: null }), {
+    reads.push(table);
+    const result = table === 'orders' ? { data: null, count: opts.openOrders ?? 0, error: null } : { data: tables[table], error: null };
+    const q: Query = Object.assign(Promise.resolve(result), {
       select: () => q,
       order: () => q,
       eq: () => q,
+      in: () => q,
       maybeSingle: async () => ({ data: tables[table][0] ?? null, error: null }),
     });
     return q;
@@ -58,17 +77,22 @@ function fakeDb(opts: { limit?: number; commitError?: string; settings?: Record<
   const rpc = async (name: string, args: Record<string, unknown>) => {
     calls.push({ name, args });
     if (name === 'rate_limit_hit') {
-      const n = (hits.get(args.p_bucket as string) ?? 0) + 1;
-      hits.set(args.p_bucket as string, n);
-      return { data: n <= (opts.limit ?? 100), error: null };
+      const bucket = args.p_bucket as string;
+      const n = (hits.get(bucket) ?? 0) + 1;
+      hits.set(bucket, n);
+      const limited = bucket.startsWith(opts.limitPrefix ?? '');
+      return { data: n <= (limited ? (opts.limit ?? 100) : 100), error: null };
     }
     if (opts.commitError) return { data: null, error: { message: opts.commitError } };
     return { data: [{ id: 'row-id', number: 'XX-2026-0001' }], error: null };
   };
-  return { db: { from: query, rpc } as unknown as Client, calls };
+  return { db: { from: query, rpc } as unknown as Client, calls, reads };
 }
 
-const deps = (db: Client, over: Partial<Deps> = {}): Deps => ({ db, ip: '196.200.1.1', turnstileSecret: '', now: new Date('2026-10-01T10:00:00Z'), ...over });
+const IP_KEY = 'server-secret';
+const deps = (db: Client, over: Partial<Deps> = {}): Deps => ({
+  db, ip: '196.200.1.1', ipKey: IP_KEY, turnstileSecret: '', now: new Date('2026-10-01T10:00:00Z'), ...over,
+});
 
 const contact = { businessType: 'cafe', company: 'Café Test', contactName: 'Amine Test', phone: '0612345678', email: '', cityId: 'oujda', notes: '' };
 const customer = { fullName: 'Salma Bennani', phone: '0612345678', email: '', cityId: 'oujda', address: 'Rue 1, Oujda', company: '', notes: '' };
@@ -80,6 +104,10 @@ const orderBody = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 const committed = (calls: { name: string }[]) => calls.some((c) => c.name.startsWith('commit_'));
+/** Limit buckets of accepted requests (the per-connection budget is spent on every request). */
+const counted = (calls: { name: string; args: Record<string, unknown> }[]) =>
+  calls.filter((c) => c.name === 'rate_limit_hit' && !String(c.args.p_bucket).startsWith('req:')).map((c) => c.args.p_bucket);
+const b2bItems = [{ id: 'a', type: 'product', productId: 'horeca', size: 1000, qty: 12 }];
 
 describe('storefront: request bodies', () => {
   it('keeps only the known fields of a cart (a price sent by the browser is dropped)', () => {
@@ -94,14 +122,23 @@ describe('storefront: request bodies', () => {
     ['a customer field that is not text', orderBody({ customer: { ...customer, fullName: 42 } })],
     ['notes longer than the form allows', orderBody({ customer: { ...customer, notes: 'x'.repeat(TEXT_MAX.notes + 1) } })],
     ['a company longer than the form allows', orderBody({ customer: { ...customer, company: 'x'.repeat(TEXT_MAX.company + 1) } })],
+    ['a NUL character (PostgreSQL cannot store it)', orderBody({ customer: { ...customer, notes: 'a\u0000b' } })],
+    ['a lone surrogate (not valid in jsonb)', orderBody({ customer: { ...customer, fullName: 'Salma \uD800' } })],
     ['an unknown payment method', orderBody({ paymentMethod: 'cod' })],
   ])('refuses an order with %s', (_, raw) => {
     expect(parseCheckoutInput(raw)).toBeNull();
   });
 
-  it('reads a B2B request, refusing an unknown business type', () => {
-    expect(parseQuoteInput({ ...contact, items: orderBody().items })?.items).toHaveLength(1);
-    expect(parseQuoteInput({ ...contact, businessType: 'bank', items: orderBody().items })).toBeNull();
+  it('keeps an emoji (a valid surrogate pair) and counts it as one character', () => {
+    expect(parseCheckoutInput(orderBody({ customer: { ...customer, notes: '☕'.repeat(TEXT_MAX.notes) } }))).not.toBeNull();
+    expect(parseCheckoutInput(orderBody({ customer: { ...customer, notes: '\u{1F600}'.repeat(TEXT_MAX.notes) } }))).not.toBeNull();
+  });
+
+  it('reads a B2B request within the form limits, refusing an unknown business type', () => {
+    expect(parseQuoteInput({ ...contact, items: b2bItems })?.items).toHaveLength(1);
+    expect(parseQuoteInput({ ...contact, businessType: 'bank', items: b2bItems })).toBeNull();
+    expect(parseQuoteInput({ ...contact, contactName: 'x'.repeat(TEXT_MAX.name + 1), items: b2bItems })).toBeNull();
+    expect(parseQuoteInput({ ...contact, notes: 'x'.repeat(TEXT_MAX.notes + 1), items: b2bItems })).toBeNull();
   });
 });
 
@@ -130,19 +167,36 @@ describe('storefront: order', () => {
     expect(committed([...closed.calls, ...card.calls])).toBe(false);
   });
 
-  it('counts the phone and the hashed IP, never the IP itself, and only once the order is valid', async () => {
+  it('counts the phone and a keyed hash of the IP, never the IP itself, and only once the order is valid', async () => {
     const { db, calls } = fakeDb();
     await handleStorefront('order', orderBody({ customer: { ...customer, address: 'x' } }), deps(db));
-    expect(calls).toEqual([]);
+    expect(counted(calls)).toEqual([]);
     await handleStorefront('order', orderBody(), deps(db));
-    const buckets = calls.filter((c) => c.name === 'rate_limit_hit').map((c) => c.args.p_bucket);
-    expect(buckets).toEqual(['order:phone:+212612345678', `order:ip:${await hashIp('196.200.1.1')}`]);
+    const h = await hashIp('196.200.1.1', IP_KEY);
+    expect(counted(calls)).toEqual(['order:phone:3600:+212612345678', `order:ip:3600:${h}`, `order:ip:86400:${h}`]);
     expect(JSON.stringify(calls)).not.toContain('196.200.1.1');
+    // without the server's key the hash cannot be recomputed from a guessed IP
+    expect(await hashIp('196.200.1.1', 'another-key')).not.toBe(h);
   });
 
   it('stops a phone above its limit before anything is saved', async () => {
-    const { db, calls } = fakeDb({ limit: 0 });
+    const { db, calls } = fakeDb({ limit: 0, limitPrefix: 'order:phone:' });
     expect((await handleStorefront('order', orderBody(), deps(db))).body).toEqual({ ok: false, errors: ['too_many'] });
+    expect(committed(calls)).toBe(false);
+  });
+
+  it(`lets a phone hold at most ${MAX_OPEN_ORDERS} unpaid orders`, async () => {
+    const full = fakeDb({ openOrders: MAX_OPEN_ORDERS });
+    expect((await handleStorefront('order', orderBody(), deps(full.db))).body).toEqual({ ok: false, errors: ['too_many'] });
+    expect(committed(full.calls)).toBe(false);
+    const room = fakeDb({ openOrders: MAX_OPEN_ORDERS - 1 });
+    expect(((await handleStorefront('order', orderBody(), deps(room.db))).body as { ok: boolean }).ok).toBe(true);
+  });
+
+  it('stops a connection that sends too many requests before reading the catalog', async () => {
+    const { db, calls, reads } = fakeDb({ limit: 0, limitPrefix: 'req:ip:' });
+    expect((await handleStorefront('order', orderBody(), deps(db))).body).toEqual({ ok: false, errors: ['too_many'] });
+    expect(reads).toEqual([]);
     expect(committed(calls)).toBe(false);
   });
 
@@ -154,6 +208,7 @@ describe('storefront: order', () => {
   it('answers 400 to what the forms never send, and lets real failures surface', async () => {
     expect((await handleStorefront('order', { items: 'x' }, deps(fakeDb().db))).status).toBe(400);
     expect((await handleStorefront('order', orderBody(), deps(fakeDb({ commitError: 'invalid_order:text_too_long' }).db))).status).toBe(400);
+    expect((await handleStorefront('order', orderBody(), deps(fakeDb({ commitError: 'invalid_order' }).db))).status).toBe(400);
     await expect(handleStorefront('order', orderBody(), deps(fakeDb({ commitError: 'connection lost' }).db))).rejects.toMatchObject({ message: 'connection lost' });
   });
 
@@ -163,7 +218,7 @@ describe('storefront: order', () => {
     const { db, calls } = fakeDb();
     const send = (token: string) => handleStorefront('order', orderBody({ captchaToken: token }), deps(db, { turnstileSecret: 'secret', verifyCaptcha }));
     expect((await send('bad')).body).toEqual({ ok: false, errors: ['captcha'] });
-    expect(calls).toEqual([]);
+    expect(committed(calls) || counted(calls).length > 0).toBe(false);
     expect(((await send('good')).body as { ok: boolean }).ok).toBe(true);
     expect(seen).toEqual(['bad', 'good']);
   });
@@ -172,19 +227,46 @@ describe('storefront: order', () => {
 describe('storefront: B2B request', () => {
   it('prices the cart at the website prices for reference, with the number left to the database', async () => {
     const { db, calls } = fakeDb();
-    const items = [{ id: 'a', type: 'product', productId: 'horeca', size: 1000, qty: 12 }];
-    const r = await handleStorefront('quote', { ...contact, items }, deps(db));
+    const r = await handleStorefront('quote', { ...contact, items: b2bItems }, deps(db));
     expect(r.body).toMatchObject({ ok: true, quote: { number: 'XX-2026-0001', phone: '+212612345678', weightKg: 12, indicativeTotal: 1800, finalPrice: null } });
-    expect(calls.map((c) => c.name)).toEqual(['rate_limit_hit', 'rate_limit_hit', 'commit_quote_request']);
-    expect(calls[2].args.p_subject).toContain(NUMBER_PLACEHOLDER);
+    const commit = calls.find((c) => c.name === 'commit_quote_request')!;
+    expect(commit.args.p_subject).toContain(NUMBER_PLACEHOLDER);
+    expect(counted(calls)).toHaveLength(2);
   });
 
-  it('refuses contact errors and a cart with nothing from the catalog, saving nothing', async () => {
+  it('refuses contact errors, a city switched off, and carts that are not above the threshold, saving nothing', async () => {
     const { db, calls } = fakeDb();
-    const items = [{ id: 'a', type: 'product', productId: 'horeca', size: 1000, qty: 12 }];
-    expect((await handleStorefront('quote', { ...contact, phone: '123', items }, deps(db))).body).toEqual({ ok: false, errors: ['phone'] });
+    expect((await handleStorefront('quote', { ...contact, phone: '123', items: b2bItems }, deps(db))).body).toEqual({ ok: false, errors: ['phone'] });
+    expect((await handleStorefront('quote', { ...contact, cityId: 'closed', items: b2bItems }, deps(db))).body).toEqual({ ok: false, errors: ['city'] });
+    // one 250 g bag is an order, not a B2B request
+    const small = [{ id: 'a', type: 'product', productId: 'horeca', size: 250, qty: 1 }];
+    expect((await handleStorefront('quote', { ...contact, items: small }, deps(db))).status).toBe(400);
+    // exactly at the threshold is still an order (isB2B is "above")
+    const at = [{ id: 'a', type: 'product', productId: 'horeca', size: 1000, qty: 10 }];
+    expect((await handleStorefront('quote', { ...contact, items: at }, deps(db))).status).toBe(400);
     const gone = [{ id: 'a', type: 'product', productId: 'gone', size: 1000, qty: 12 }];
     expect((await handleStorefront('quote', { ...contact, items: gone }, deps(db))).status).toBe(400);
-    expect(calls).toEqual([]);
+    expect(committed(calls) || counted(calls).length > 0).toBe(false);
+  });
+});
+
+describe('storefront: Turnstile answer', () => {
+  const answer = (body: unknown) => (async () => new Response(JSON.stringify(body))) as unknown as typeof fetch;
+
+  it('is verified only when Cloudflare says success', async () => {
+    expect(await verifyTurnstile('s', 'token', null, answer({ success: true }))).toBe(true);
+    expect(await verifyTurnstile('s', 'token', null, answer({ success: false }))).toBe(false);
+  });
+
+  it('fails closed: no token, an unreachable Cloudflare or a broken answer', async () => {
+    let asked = false;
+    const spy = (async () => ((asked = true), new Response('{"success":true}'))) as unknown as typeof fetch;
+    expect(await verifyTurnstile('s', '', null, spy)).toBe(false);
+    expect(asked).toBe(false);
+    const down = (async () => {
+      throw new Error('network down');
+    }) as unknown as typeof fetch;
+    expect(await verifyTurnstile('s', 'token', null, down)).toBe(false);
+    expect(await verifyTurnstile('s', 'token', null, (async () => new Response('<html>')) as unknown as typeof fetch)).toBe(false);
   });
 });

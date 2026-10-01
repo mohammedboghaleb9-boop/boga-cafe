@@ -39,3 +39,14 @@ grep -q "BC-" "$OUT/a" || { echo "TEST FAILED: the first order did not go throug
 STOCK=$($PSQL -t -A -c "select stock_kg from public.origins where id = 'last'")
 [ "$STOCK" = "0.250" ] || { echo "TEST FAILED: stock is $STOCK, expected 0.250"; exit 1; }
 echo " ok race - two customers, one last kilo: the second waits, then gets out_of_stock"
+
+# Twenty requests of one phone at the same moment, limit 5: exactly 5 get through
+# (rate_limit_hit's upsert locks the bucket's row, so they are counted one by one).
+for i in $(seq 20); do
+  $PSQL -t -A -c "set role service_role; select public.rate_limit_hit('race:phone', 5, 3600)" >"$OUT/hit$i" 2>&1 &
+done
+wait
+ALLOWED=$(cat "$OUT"/hit* | grep -c '^t$' || true)
+REFUSED=$(cat "$OUT"/hit* | grep -c '^f$' || true)
+[ "$ALLOWED" = 5 ] && [ "$REFUSED" = 15 ] || { echo "TEST FAILED: $ALLOWED allowed, $REFUSED refused, expected 5 and 15"; cat "$OUT"/hit*; exit 1; }
+echo " ok race - twenty requests of one phone at once, limit 5: exactly 5 get through"

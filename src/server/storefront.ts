@@ -9,14 +9,14 @@
  *
  * Answers: 400 malformed body (or one the site's forms never send); 200
  * {ok: false, errors} for every refusal the customer can act on (form errors,
- * stock, 'too_many', 'captcha'); 200 {ok: true, …}.
+ * stock, 'too_many', 'captcha'); 200 {ok: true, …}. Limits: see guard.ts.
  */
 import type { CheckoutError } from '@/core/order';
 import type { RequestError } from '@/core/requests';
 import type { Order, QuoteRequest } from '@/core/types';
 import { loadCatalog } from '@/data/supabase/catalog';
 import type { Client } from '@/data/supabase/client';
-import { verifyTurnstile, withinLimits, type Route } from './guard';
+import { MAX_OPEN_ORDERS, openOrders, verifyTurnstile, withinBudget, withinLimits, type Route } from './guard';
 import { captchaToken, parseCheckoutInput, parseQuoteInput } from './parse';
 import { prepareOrder, prepareQuote } from './prepare';
 
@@ -29,6 +29,8 @@ export interface Deps {
   db: Client;
   /** Visitor's IP as seen by the platform, if any. */
   ip: string | null;
+  /** Server secret that keys the IP hash (guard.ts hashIp). */
+  ipKey: string;
   /** Empty = Turnstile off. */
   turnstileSecret: string;
   verifyCaptcha?: typeof verifyTurnstile;
@@ -50,7 +52,7 @@ type Saved = { data: { id: string; number: string }[] | null; error: { message: 
  * (invalid_order:…, invalid_quote:…) is a request the site's forms never send.
  */
 function saved(r: Saved): { id: string; number: string } | null {
-  if (r.error && /^invalid_(order|quote):/.test(r.error.message)) return null;
+  if (r.error && /^invalid_(order|quote)(:|$)/.test(r.error.message)) return null;
   if (r.error) throw r.error;
   return r.data![0];
 }
@@ -67,10 +69,12 @@ async function captchaOk(raw: unknown, deps: Deps) {
 async function order(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
   const input = parseCheckoutInput(raw);
   if (!input) return BAD_REQUEST;
+  if (!(await withinBudget(deps.db, deps.ip, deps.ipKey))) return refuse('too_many');
   if (!(await captchaOk(raw, deps))) return refuse('captcha');
   const p = prepareOrder(input, await loadCatalog(deps.db), now);
   if (!p.ok) return refuse(...p.errors);
-  if (!(await withinLimits(deps.db, 'order', p.phone, deps.ip))) return refuse('too_many');
+  if ((await openOrders(deps.db, p.phone)) >= MAX_OPEN_ORDERS) return refuse('too_many');
+  if (!(await withinLimits(deps.db, 'order', p.phone, deps.ip, deps.ipKey))) return refuse('too_many');
   const r = await deps.db.rpc('commit_order', p.args);
   // someone bought the last kilos between our check and the commit
   if (r.error?.message.startsWith('out_of_stock:')) return refuse('out_of_stock');
@@ -82,12 +86,13 @@ async function order(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
 async function quote(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
   const input = parseQuoteInput(raw);
   if (!input) return BAD_REQUEST;
+  if (!(await withinBudget(deps.db, deps.ip, deps.ipKey))) return refuse('too_many');
   if (!(await captchaOk(raw, deps))) return refuse('captcha');
   const p = prepareQuote(input, await loadCatalog(deps.db), now);
   if (!p.ok) return refuse(...p.errors);
-  // nothing in the cart exists in the catalog: not a cart the site sends
-  if (p.quote.lines.length === 0) return BAD_REQUEST;
-  if (!(await withinLimits(deps.db, 'quote', p.phone, deps.ip))) return refuse('too_many');
+  // a cart at or under the threshold is an order, and an empty one is nothing: not what the site sends
+  if (!p.aboveThreshold) return BAD_REQUEST;
+  if (!(await withinLimits(deps.db, 'quote', p.phone, deps.ip, deps.ipKey))) return refuse('too_many');
   const row = saved(await deps.db.rpc('commit_quote_request', p.args));
   if (!row) return BAD_REQUEST;
   return { status: 200, body: { ok: true, quote: { ...p.quote, ...row } } satisfies QuoteResult };
