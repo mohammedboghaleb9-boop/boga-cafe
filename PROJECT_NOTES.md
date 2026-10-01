@@ -11,10 +11,10 @@ B2B blends: 250 g and 500 g are paid samples bought like any bag; the 1 kg bag o
 Custom Blend (customer sets origin percentages, total must be 100). Stock in kg per origin. Arabic (RTL),
 French, English. Admin roles owner / manager / staff. No cash on delivery: every order is paid before prep.
 
-## Status (from PROJECT_STATUS.html, 2026-09-30)
-- **Estimated** 60 % by item count: 26 done / 43. Effort left is heavier than this
-  suggests: the biggest item (real backend, P5) has not started.
-- `main` = `901c8af` (merge of `fix/remediation-3-7`, owner approved 2026-09-30), CI green (run 56). It carries
+## Status (from PROJECT_STATUS.html, 2026-10-01)
+- **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done
+  (branch `fix/supabase-live`, CI runs 61-63 green), the site is not connected yet (4-9 days, Estimated).
+- `main` = `264db38` (status page merge, CI run 60); before it `901c8af` (merge of `fix/remediation-3-7`, owner approved 2026-09-30). It carries
   audit fixes 1-7, the status report, working rules, the owner's answers, paid samples and the reply hours.
 - **Site deployed by the owner** on Cloudflare Workers from `main` (build `npm run build`, deploy `npx wrangler deploy`;
   seen on the owner's screenshot, URL not checked by me). It is the real build: catalog from the seed in the browser,
