@@ -4,6 +4,11 @@ One dated line per meaningful change, newest first. Built from `git log`. Hashes
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
+## 2026-10-01
+- 2026-10-01 [fix/supabase-live] Storefront Edge Function on the live project: orders and B2B requests rebuilt from the database with `src/core`, limits per phone and per connection, Turnstile ready (off), card never offered before CMI; B2B request building moved to `src/core/requests.ts`; checked over HTTP (06a28df).
+- 2026-10-01 [fix/supabase-live] Live database loaded with the catalog, delivery fees and texts the site shows (`supabase/seed.sql` from `scripts/seed-sql.mjs`), no payment details, card off (6dfd758).
+- 2026-10-01 [fix/supabase-live] Live Supabase project on this repo's schema: advisor fixes, server-only B2B request commit, rate limits (one row per bucket), unpaid orders expired every 15 min by pg_cron (48c19e5).
+
 ## 2026-09-30
 - 2026-09-30 Status report published as one live page for the owner (https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH), republished on every change; the old "BOGA CAFÉ Control Center" page was deleted at the owner's request.
 - 2026-09-30 `fix/remediation-3-7` merged into `main` on the owner's approval; CI green on `main` (run 56); status report updated (901c8af).
