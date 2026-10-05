@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-01 (branch `fix/supabase-live`: live Supabase database and storefront function). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-05 (`fix/supabase-live` merged into `main`, owner approved). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -13,9 +13,17 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 
 ## Status (from PROJECT_STATUS.html, 2026-10-01)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done
-  (branch `fix/supabase-live`, CI runs 61-63 green), the site is not connected yet (4-9 days, Estimated).
-- `main` = `264db38` (status page merge, CI run 60); before it `901c8af` (merge of `fix/remediation-3-7`, owner approved 2026-09-30). It carries
-  audit fixes 1-7, the status report, working rules, the owner's answers, paid samples and the reply hours.
+  and merged, the site is not connected yet (4-9 days, Estimated).
+- `main` = `e13a85e` (merge of `fix/supabase-live`, owner approved 2026-10-05; branch CI run 69 green; on the merge:
+  lint 0/0, typecheck ok, vitest 173/173 in 20 files, build, check:real-build and build:functions ok). Before it
+  `fa0d5fd` (CLAUDE.md rules), `264db38` (status page), `901c8af` (`fix/remediation-3-7`). It carries audit fixes 1-7,
+  the status report, working rules, the owner's answers, paid samples, the reply hours, the live Supabase schema and the
+  `storefront` function.
+
+## Open branches (not merged into `main`)
+- None. `fix/supabase-live` is merged (still on GitHub, delete only with the owner's approval). The 12 older branches
+  (`chore/phase-3-modern-base`, `copilot/read-only-comparison`, `docs/status-*`, `feat/phase-4-mobile-a11y`,
+  `feature/brand-visuals`, `fix/*`) are all merged too; none deleted yet (owner's approval needed).
 - **Site deployed by the owner** on Cloudflare Workers from `main` (build `npm run build`, deploy `npx wrangler deploy`;
   seen on the owner's screenshot, URL not checked by me). It is the real build: catalog from the seed in the browser,
   no admin panel, no payment method open. It does not use Supabase yet.
@@ -23,6 +31,10 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
   `supabase/migrations` applied (file names = versions recorded on the server), catalog loaded from `supabase/seed.sql`,
   two owner accounts (the owner knows which; not listed here, the repo is public; sign-up turned off), Edge Function
   `storefront` deployed and checked over HTTP. The site is not connected to it yet (P5 step 3).
+  Checked on 2026-10-05 (read-only): 7 migrations recorded on the server, same names and versions as
+  `supabase/migrations` (init, harden, rate_limits, quote_requests, expiry_cron, pg_net, pg_net_private);
+  `storefront` version 4 ACTIVE (deployed 2026-10-01 from the branch's bundle; not re-compared byte for byte today);
+  old `create-order` version 2 still ACTIVE (see Known issues). Rule: deploy only from `main` (`CLAUDE.md`).
 
 ## Stack
 Node 24 (`.node-version`, `engines 24.x`), React 19.3, Vite 8.3, React Router 8.4 (declarative), TypeScript 7,

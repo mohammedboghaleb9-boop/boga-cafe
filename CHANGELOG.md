@@ -4,6 +4,9 @@ One dated line per meaningful change, newest first. Built from `git log`. Hashes
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
+## 2026-10-05
+- 2026-10-05 Merged `fix/supabase-live` into `main` (e13a85e, owner approved): live Supabase schema, limits, `storefront` function. New rule in `CLAUDE.md`: deploy only from `main`.
+
 ## 2026-10-01
 - 2026-10-01 [fix/supabase-live] Second review: no cap on open orders per phone (it let anyone lock a customer out), IP from Cloudflare's header only, IPv6 counted by /64, body read no further than 64 KB; storefront version 4 deployed and checked.
 - 2026-10-01 [fix/supabase-live] Fixes from the independent review: at most 2 unpaid orders per phone, per-connection limits by hour and day and a request budget, IP from Cloudflare's header (spoofing checked on the live project) with a keyed hash, B2B requests only above the threshold and for active cities, NUL and lone surrogates refused, HTTP edge tested (4c06a48).

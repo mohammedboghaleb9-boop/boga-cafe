@@ -23,6 +23,7 @@
 - `PROJECT_NOTES.md` on `main` must list every open branch and what it contains, so a new session starting from `main` knows about it.
 - Start every session with `git branch -a`, then `git log main..<branch>` for each open branch, before reading or changing code.
 - Never merge, force-push, rewrite history or delete a branch with unmerged work without the owner's approval.
+- Never deploy (migrations, Edge Functions, site) from a branch that is not merged into main.
 
 
 # Mohammed's working rules (added 2026-09-30)
