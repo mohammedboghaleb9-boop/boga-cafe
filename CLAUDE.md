@@ -1,9 +1,28 @@
 # Instructions for Claude
 
+## This project: BOGA CAFÉ (read first)
+- Official repository: `mohammedboghaleb9-boop/boga-cafe`. It is the only source of truth for code. Work only here.
+- `mohammedboghaleb9-boop/map-test` is an old experimental copy, used only as a Supabase donor (branch `claude/boga-cafe-foundation` @ `f9ba067`; its `main` is empty). Never commit, branch or open a PR there. It will be archived once the comparison is done.
+- Open work not merged into `main` (as of 2026-10-03):
+  - `fix/supabase-live` @ `b220aa2`: live Supabase (migrations, rate limits, B2B request commit, expiry cron, seed), Storefront Edge Function (order/quote) and two review fixes. Built on `main@264db38`. Review and merge it (with the owner's approval) before starting any new backend work. Do not rebuild or re-port what it already contains.
+- Many other old branches exist. Do not delete any of them without listing them and asking the owner first.
+
 ## Language and direction of replies
 - Always reply to the owner in **Moroccan Darija** (Arabic script), including reports and summaries.
 - Every line must read right to left: start each line or bullet with an Arabic word, never with an English word, a file name or code. Put English terms, file names and commands after the Arabic start of the line.
 - Code, commit messages and code comments stay in English, as in the rest of the repository.
+
+## Secrets
+- This repository is public. Never put secrets, API keys, passwords or private tokens in code, commits, docs or chat. Use environment variables, Supabase secrets or placeholders.
+- Only values that are public by design (Supabase URL, publishable/anon key) may appear in `.env` files that are committed.
+
+## Git workflow
+- One repository per project. Never create a second repository or a copy of this one without asking the owner.
+- One branch per task. When the task is done and verified: merge into `main` (with the owner's approval), then delete the branch.
+- Never start new work while an unmerged branch exists. Tell the owner first and finish or close that branch.
+- `PROJECT_NOTES.md` on `main` must list every open branch and what it contains, so a new session starting from `main` knows about it.
+- Start every session with `git branch -a`, then `git log main..<branch>` for each open branch, before reading or changing code.
+- Never merge, force-push, rewrite history or delete a branch with unmerged work without the owner's approval.
 
 
 # Mohammed's working rules (added 2026-09-30)
@@ -34,7 +53,7 @@
 - Give it full effort. Think about how parts connect: a change here can break something there. Check that.
 - Keep the whole history in mind: what we decided, why, what was tried and failed. Do not repeat mistakes already made in this project.
 - Claude does not remember between sessions by itself, so every project root has these files, kept up to date:
-  - `PROJECT_NOTES.md` (short, max ~150 lines): what the project is, architecture, key decisions and why, known issues, what is next. Claude reads it FIRST at the start of every session and updates it BEFORE finishing any session that changed code.
+  - `PROJECT_NOTES.md` (short, max ~150 lines): what the project is, architecture, key decisions and why, known issues, open branches, what is next. Claude reads it FIRST at the start of every session and updates it BEFORE finishing any session that changed code.
   - `CHANGELOG.md`: one dated line per meaningful change.
   - `PROJECT_STATUS.html`: the professional Project Roadmap / Status Report for me (see below). Updated when a task or phase changes status, not after every small edit.
 - A Stop hook (`.claude/hooks/check-status-report.py`) blocks finishing if code changed but `PROJECT_NOTES.md` was not updated. If it blocks, update the files, do not argue with it.
@@ -56,7 +75,7 @@
 - When you add or move files, tell me the new structure in a few lines.
 
 ## Ready-made tools (source: https://www.aitmpl.com)
-(These are my working rules. They do not replace the language and git rules already written above in this file.)
+(These are my working rules. They do not replace the project, language, secrets and git rules written above in this file.)
 Catalog index for Claude to read: https://docs.aitmpl.com/llms.txt
 
 1. Do NOT install anything "just in case". Install only what the current task needs.
@@ -79,3 +98,4 @@ Catalog index for Claude to read: https://docs.aitmpl.com/llms.txt
 ## Optional (only if the task needs them)
 - Ads work: `facebook-ads-mcp-server`, `google-ads-mcp-server` (need my own tokens and a local server).
 - Podcast / video content: `podcast-content-analyzer`, `seo-podcast-optimizer`.
+
