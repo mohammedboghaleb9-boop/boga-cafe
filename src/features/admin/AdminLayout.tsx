@@ -41,7 +41,7 @@ export function AdminLayout() {
 
   // unpaid orders past the time limit give their stock back
   useEffect(() => {
-    api.expireUnpaidOrders();
+    void api.expireUnpaidOrders();
   }, []);
 
   const badges: Partial<Record<Section, number>> = {

@@ -169,17 +169,20 @@ export function ConfirmButton({
   confirmLabel,
   onConfirm,
   className = 'btn btn-danger btn-sm',
+  disabled = false,
 }: {
   label: string;
   confirmLabel: string;
   onConfirm: () => void;
   className?: string;
+  disabled?: boolean;
 }) {
   const [armed, setArmed] = useState(false);
   return (
     <button
       type="button"
       className={className}
+      disabled={disabled}
       onClick={() => (armed ? (setArmed(false), onConfirm()) : setArmed(true))}
       onBlur={() => setArmed(false)}
     >

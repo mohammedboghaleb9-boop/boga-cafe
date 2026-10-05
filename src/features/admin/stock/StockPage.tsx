@@ -11,6 +11,7 @@ import { Icon } from '@/shared/ui/Icon';
 import { canEditCatalog } from '../permissions';
 import { useAdminRole } from '../session';
 import { LocalizedInput, Switch, TableWrap } from '../ui';
+import { useAction } from '../useAction';
 
 export function StockPage() {
   const { t, l, date } = useI18n();
@@ -178,12 +179,15 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
   const [delta, setDelta] = useState('');
   const [reason, setReason] = useState<StockReason>('restock');
   const [note, setNote] = useState('');
+  const [busy, run] = useAction();
   const value = Number(delta.replace(',', '.'));
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!Number.isFinite(value) || value === 0) return;
-    api.adjustStock(origin.id, value, reason, note);
-    onDone();
+    void run(async () => {
+      await api.adjustStock(origin.id, value, reason, note);
+      onDone();
+    });
   }
   return (
     <form className="row" onSubmit={submit} style={{ alignItems: 'flex-end' }}>
@@ -203,7 +207,7 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
         <span className="label">{t.admin.stock.note}</span>
         <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
-      <button type="submit" className="btn btn-primary btn-sm" disabled={!Number.isFinite(value) || value === 0}>
+      <button type="submit" className="btn btn-primary btn-sm" disabled={!Number.isFinite(value) || value === 0 || busy}>
         {t.admin.stock.apply}
       </button>
     </form>
@@ -232,15 +236,17 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
   );
   const set = <K extends keyof Origin>(k: K, v: Origin[K]) => setO((cur) => ({ ...cur, [k]: v }));
   const [refused, setRefused] = useState(false);
+  const [busy, run] = useAction();
   const priced = isPrice(o.pricePerKg);
   const valid = o.name.fr.trim() && o.countryCode.trim().length === 2 && priced;
-  function save() {
-    if (!valid) return;
-    const next = { ...o, countryCode: o.countryCode.toUpperCase() };
-    const done = origin ? api.saveOrigin(next) : api.createOrigin(next) !== null;
-    if (done) onClose();
-    else setRefused(true); // never close as if it had worked
-  }
+  const save = () =>
+    run(async () => {
+      if (!valid) return;
+      const next = { ...o, countryCode: o.countryCode.toUpperCase() };
+      const done = origin ? await api.saveOrigin(next) : (await api.createOrigin(next)) !== null;
+      if (done) onClose();
+      else setRefused(true); // never close as if it had worked
+    });
   return (
     <section className="panel stack">
       <div className="spread">
@@ -249,7 +255,7 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
             {t.common.cancel}
           </button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!valid} onClick={save}>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!valid || busy} onClick={save}>
             {t.common.save}
           </button>
         </div>

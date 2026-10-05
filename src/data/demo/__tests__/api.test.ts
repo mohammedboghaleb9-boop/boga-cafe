@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 async function fresh() {
   vi.resetModules();
-  const [{ api }, { db }] = await Promise.all([import('../api'), import('../store')]);
+  const [{ demoApi: api }, { db }] = await Promise.all([import('../api'), import('../store')]);
   return { api, db };
 }
 
@@ -20,7 +20,7 @@ const stockOf = (id: string) => t.db.get().origins.find((o) => o.id === id)!.sto
 
 describe('real site data (audit H4)', () => {
   it('starts with the catalog only: no example customers, and nowhere to pay until the real account exists', async () => {
-    const [{ initialState }, { storefrontCheckoutContext }] = await Promise.all([import('../store'), import('../context')]);
+    const [{ initialState }, { storefrontCheckoutContext }] = await Promise.all([import('../store'), import('../../context')]);
     const s = initialState(false);
     expect([s.orders, s.quotes, s.notifications, s.stockMovements].map((x) => x.length)).toEqual([0, 0, 0, 0]);
     expect(s.settings.bank).toEqual({ holder: '', bankName: '', rib: '' });
@@ -32,24 +32,24 @@ describe('real site data (audit H4)', () => {
 });
 
 describe('demo data layer', () => {
-  it('keeps contact and recipients for the owner, free shipping for managers, nothing for staff', () => {
+  it('keeps contact and recipients for the owner, free shipping for managers, nothing for staff', async () => {
     const { api, db } = t;
     const s = db.get().settings;
-    expect(api.saveSettings({ ...s, contact: { ...s.contact, whatsapp: '+212700000000' } }, 'manager')).toBe(false);
-    expect(api.saveSettings({ ...s, notifications: { ...s.notifications, adminEmail: 'x@evil.example' } }, 'manager')).toBe(false);
-    expect(api.saveSettings({ ...s, freeShippingOver: 999 }, 'staff')).toBe(false);
+    expect(await api.saveSettings({ ...s, contact: { ...s.contact, whatsapp: '+212700000000' } }, 'manager')).toBe(false);
+    expect(await api.saveSettings({ ...s, notifications: { ...s.notifications, adminEmail: 'x@evil.example' } }, 'manager')).toBe(false);
+    expect(await api.saveSettings({ ...s, freeShippingOver: 999 }, 'staff')).toBe(false);
     expect(db.get().settings).toEqual(s);
-    expect(api.saveSettings({ ...s, freeShippingOver: 999 }, 'manager')).toBe(true);
+    expect(await api.saveSettings({ ...s, freeShippingOver: 999 }, 'manager')).toBe(true);
     expect(db.get().settings.freeShippingOver).toBe(999);
-    expect(api.saveSettings({ ...s, contact: { ...s.contact, whatsapp: '+212700000000' } }, 'owner')).toBe(true);
+    expect(await api.saveSettings({ ...s, contact: { ...s.contact, whatsapp: '+212700000000' } }, 'owner')).toBe(true);
     expect(db.get().settings.contact.whatsapp).toBe('+212700000000');
   });
 
-  it('logs the stock change that really happened', () => {
+  it('logs the stock change that really happened', async () => {
     const { api, db } = t;
     const id = db.get().origins[0].id;
     const before = stockOf(id);
-    api.adjustStock(id, -99_999, 'correction', 'casse');
+    await api.adjustStock(id, -99_999, 'correction', 'casse');
     expect(stockOf(id)).toBe(0);
     expect(db.get().stockMovements[0]).toMatchObject({ originId: id, deltaKg: -before, note: 'casse' });
   });
@@ -62,43 +62,43 @@ describe('demo data layer', () => {
     const old = new Date(Date.now() - 121 * 3_600_000).toISOString();
     db.update((s) => ({ ...s, orders: s.orders.map((o) => (o.id === claim.id || o.id === paid.id ? { ...o, createdAt: old } : o)) }));
     const before = new Map(claim.stockDeductions.map((d) => [d.originId, stockOf(d.originId)]));
-    expect(api.expireUnpaidOrders()).toBeGreaterThanOrEqual(1);
+    expect(await api.expireUnpaidOrders()).toBeGreaterThanOrEqual(1);
     expect(order((x) => x.id === claim.id).status).toBe('cancelled');
     expect(order((x) => x.id === paid.id).status).toBe('confirmed');
     for (const d of claim.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
-    expect(api.expireUnpaidOrders()).toBe(0); // given back once
+    expect(await api.expireUnpaidOrders()).toBe(0); // given back once
     // staff cannot cancel the paid one either: the owner refunds it
-    expect(api.setOrderStatus(paid.id, 'cancelled', 'staff')).toBe('refund_instead');
+    expect(await api.setOrderStatus(paid.id, 'cancelled', 'staff')).toBe('refund_instead');
     expect(order((x) => x.id === paid.id).status).toBe('confirmed');
   });
 
   it('ignores a payment report on a cancelled order', async () => {
     const { api } = t;
     const o = order((x) => x.status === 'new' && x.paymentMethod !== 'card' && x.paymentStatus === 'pending');
-    expect(api.setOrderStatus(o.id, 'cancelled', 'staff')).toBeNull();
+    expect(await api.setOrderStatus(o.id, 'cancelled', 'staff')).toBeNull();
     await api.reportOfflinePayment(o.id, 'LATE-REF');
     expect(order((x) => x.id === o.id).paymentStatus).toBe('pending');
   });
 
-  it('cancels an order refunded before production and gives its coffee back', () => {
+  it('cancels an order refunded before production and gives its coffee back', async () => {
     const { api, db } = t;
     const o = order((x) => x.status === 'confirmed' && x.paymentStatus === 'paid');
     const before = new Map(o.stockDeductions.map((d) => [d.originId, stockOf(d.originId)]));
-    expect(api.setPaymentStatus(o.id, 'refunded', 'owner')).toBe(true);
+    expect(await api.setPaymentStatus(o.id, 'refunded', 'owner')).toBe(true);
     const after = order((x) => x.id === o.id);
     expect(after).toMatchObject({ status: 'cancelled', paymentStatus: 'refunded' });
     for (const d of o.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
     expect(db.get().stockMovements.filter((m) => m.ref === o.number && m.reason === 'order_cancelled')).toHaveLength(o.stockDeductions.length);
     // the order is closed: no second refund, no payment asked again
-    expect(api.setPaymentStatus(o.id, 'refunded', 'owner')).toBe(false);
-    expect(api.setPaymentStatus(o.id, 'paid', 'owner')).toBe(false);
+    expect(await api.setPaymentStatus(o.id, 'refunded', 'owner')).toBe(false);
+    expect(await api.setPaymentStatus(o.id, 'paid', 'owner')).toBe(false);
   });
 
-  it('refuses money changes from anyone but the owner', () => {
+  it('refuses money changes from anyone but the owner', async () => {
     const { api } = t;
     const o = order((x) => x.status === 'new' && x.paymentStatus === 'pending');
-    expect(api.setPaymentStatus(o.id, 'paid', 'manager')).toBe(false);
-    expect(api.setPaymentStatus(o.id, 'paid', 'staff')).toBe(false);
+    expect(await api.setPaymentStatus(o.id, 'paid', 'manager')).toBe(false);
+    expect(await api.setPaymentStatus(o.id, 'paid', 'staff')).toBe(false);
     expect(order((x) => x.id === o.id).paymentStatus).toBe('pending');
   });
 });
@@ -190,51 +190,51 @@ describe('after the merge review', () => {
 describe('admin protection (phase 2)', () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it('adding a product with an existing name never replaces it', () => {
+  it('adding a product with an existing name never replaces it', async () => {
     const { api, db } = t;
     const original = db.get().products.find((p) => p.id === 'boga-signature')!;
     const draft = { ...original, id: '', slug: '', prices: { 250: 0, 500: 0, 1000: 0 }, active: false };
-    const created = api.createProduct(draft);
+    const created = await api.createProduct(draft);
     expect(created.id).toBe('boga-signature-2');
     expect(created.slug).toBe('boga-signature-2');
     expect(db.get().products.find((p) => p.id === 'boga-signature')).toEqual(original);
     expect(db.get().products.filter((p) => p.slug === 'boga-signature')).toHaveLength(1);
     // saving a product that does not exist creates nothing
-    expect(api.saveProduct({ ...original, id: 'ghost', slug: 'ghost' })).toBe(false);
+    expect(await api.saveProduct({ ...original, id: 'ghost', slug: 'ghost' })).toBe(false);
     expect(db.get().products.some((p) => p.id === 'ghost')).toBe(false);
   });
 
-  it('adding an origin with an existing name never replaces it, and starts at 0 kg', () => {
+  it('adding an origin with an existing name never replaces it, and starts at 0 kg', async () => {
     const { api, db } = t;
     const original = db.get().origins[0];
-    const created = api.createOrigin({ ...original, id: '', pricePerKg: 999, stockKg: 50 })!;
+    const created = (await api.createOrigin({ ...original, id: '', pricePerKg: 999, stockKg: 50 }))!;
     expect(created.id).not.toBe(original.id);
     expect(created.stockKg).toBe(0);
     expect(db.get().origins.find((o) => o.id === original.id)).toEqual(original);
     // a name whose id is already taken gets the next free one
-    const twice = api.createOrigin({ ...original, id: '', name: { ...original.name, fr: created.name.fr } })!;
+    const twice = (await api.createOrigin({ ...original, id: '', name: { ...original.name, fr: created.name.fr } }))!;
     expect(twice.id).toBe(`${created.id}-2`);
     expect(db.get().origins.find((o) => o.id === created.id)).toEqual(created);
   });
 
-  it('editing an origin never changes its stock (only adjustStock does, with a history line)', () => {
+  it('editing an origin never changes its stock (only adjustStock does, with a history line)', async () => {
     const { api, db } = t;
     const o = db.get().origins[0];
-    expect(api.saveOrigin({ ...o, stockKg: 999, pricePerKg: o.pricePerKg + 10 })).toBe(true);
+    expect(await api.saveOrigin({ ...o, stockKg: 999, pricePerKg: o.pricePerKg + 10 })).toBe(true);
     const after = db.get().origins.find((x) => x.id === o.id)!;
     expect(after.stockKg).toBe(o.stockKg);
     expect(after.pricePerKg).toBe(o.pricePerKg + 10);
-    expect(api.saveOrigin({ ...o, id: 'ghost' })).toBe(false);
+    expect(await api.saveOrigin({ ...o, id: 'ghost' })).toBe(false);
   });
 
-  it('cancelling an order gives its coffee back once, with a history line', () => {
+  it('cancelling an order gives its coffee back once, with a history line', async () => {
     const { api, db } = t;
     const o = db.get().orders.find((x) => x.status === 'new')!;
     const before = new Map(o.stockDeductions.map((d) => [d.originId, stockOf(d.originId)]));
-    expect(api.setOrderStatus(o.id, 'cancelled', 'staff')).toBeNull();
+    expect(await api.setOrderStatus(o.id, 'cancelled', 'staff')).toBeNull();
     for (const d of o.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
     expect(db.get().stockMovements.filter((m) => m.ref === o.number && m.reason === 'order_cancelled')).toHaveLength(o.stockDeductions.length);
-    expect(api.setOrderStatus(o.id, 'cancelled', 'staff')).toBe('closed');
+    expect(await api.setOrderStatus(o.id, 'cancelled', 'staff')).toBe('closed');
     for (const d of o.stockDeductions) expect(stockOf(d.originId)).toBeCloseTo(before.get(d.originId)! + d.kg, 3);
   });
 
@@ -259,22 +259,22 @@ describe('admin protection (phase 2)', () => {
 });
 
 describe('phase 2 review', () => {
-  it('a product id or address already in use, either one, is never reused', () => {
+  it('a product id or address already in use, either one, is never reused', async () => {
     const { api, db } = t;
     const base = db.get().products[0];
     db.update((s) => ({ ...s, products: [...s.products, { ...base, id: 'only-id', slug: 'only-slug' }] }));
-    expect(api.createProduct({ ...base, name: { ...base.name, fr: 'Only id' } }).id).toBe('only-id-2');
-    expect(api.createProduct({ ...base, name: { ...base.name, fr: 'Only slug' } }).id).toBe('only-slug-2');
+    expect((await api.createProduct({ ...base, name: { ...base.name, fr: 'Only id' } })).id).toBe('only-id-2');
+    expect((await api.createProduct({ ...base, name: { ...base.name, fr: 'Only slug' } })).id).toBe('only-slug-2');
     // "new" is the address of the add-product form
-    expect(api.createProduct({ ...base, name: { ...base.name, fr: 'New' } }).id).toBe('new-2');
+    expect((await api.createProduct({ ...base, name: { ...base.name, fr: 'New' } })).id).toBe('new-2');
   });
 
-  it('refuses an origin without a real price per kg', () => {
+  it('refuses an origin without a real price per kg', async () => {
     const { api, db } = t;
     const o = db.get().origins[0];
     for (const bad of [0, 0.4, -50, Number.NaN]) {
-      expect(api.saveOrigin({ ...o, pricePerKg: bad }), String(bad)).toBe(false);
-      expect(api.createOrigin({ ...o, id: '', name: { ...o.name, fr: `Test ${bad}` }, pricePerKg: bad }), String(bad)).toBeNull();
+      expect(await api.saveOrigin({ ...o, pricePerKg: bad }), String(bad)).toBe(false);
+      expect(await api.createOrigin({ ...o, id: '', name: { ...o.name, fr: `Test ${bad}` }, pricePerKg: bad }), String(bad)).toBeNull();
     }
     expect(db.get().origins.find((x) => x.id === o.id)!.pricePerKg).toBe(o.pricePerKg);
   });

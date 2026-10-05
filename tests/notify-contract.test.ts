@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { parsePayload } from '../api/_lib/notify';
 import { templateContext } from '../src/data/context';
-import { initialState } from '../src/data/store';
+import { initialState } from '../src/data/demo/store';
 import { orderMessage, paymentReportMessage, quoteMessage } from '../src/services/notifications';
 
 describe('site messages and the notification server agree', () => {

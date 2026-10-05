@@ -10,7 +10,7 @@ import { parsePayload } from '../../../../api/_lib/notify';
 async function demo() {
   vi.resetModules();
   const [{ db }, { templateContext }, templates] = await Promise.all([
-    import('@/data/store'),
+    import('@/data/demo/store'),
     import('@/data/context'),
     import('../templates'),
   ]);

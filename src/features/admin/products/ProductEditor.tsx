@@ -11,6 +11,7 @@ import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { SpeciesBar } from '@/shared/ui/bits';
 import { ConfirmButton, LocalizedInput, Switch } from '../ui';
+import { useAction } from '../useAction';
 
 const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
 const empty = { ar: '', fr: '', en: '' };
@@ -50,6 +51,7 @@ function ProductForm({ id }: { id: string | undefined }) {
   );
 
   const [refused, setRefused] = useState(false);
+  const [busy, run] = useAction();
 
   if (!isNew && !existing) return <p className="muted">404</p>;
 
@@ -60,12 +62,13 @@ function ProductForm({ id }: { id: string | undefined }) {
   const priced = offeredSizes(p).length > 0;
   const valid = total === 100 && p.name.fr.trim() !== '' && p.recipe.every((r) => originIndex[r.originId]) && (priced || !p.active);
 
-  function save() {
-    if (!valid) return;
-    if (isNew) api.createProduct(p);
-    else if (!api.saveProduct(p)) return setRefused(true); // never leave as if it had worked
-    navigate('/admin/products');
-  }
+  const save = () =>
+    run(async () => {
+      if (!valid) return;
+      if (isNew) await api.createProduct(p);
+      else if (!(await api.saveProduct(p))) return setRefused(true); // never leave as if it had worked
+      navigate('/admin/products');
+    });
 
   return (
     <>
@@ -81,13 +84,16 @@ function ProductForm({ id }: { id: string | undefined }) {
             <ConfirmButton
               label={t.common.delete}
               confirmLabel={t.common.confirmDelete}
-              onConfirm={() => {
-                api.deleteProduct(p.id);
-                navigate('/admin/products');
-              }}
+              disabled={busy}
+              onConfirm={() =>
+                run(async () => {
+                  await api.deleteProduct(p.id);
+                  navigate('/admin/products');
+                })
+              }
             />
           )}
-          <button type="button" className="btn btn-primary btn-sm" disabled={!valid} onClick={save}>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!valid || busy} onClick={save}>
             {t.common.save}
           </button>
         </div>

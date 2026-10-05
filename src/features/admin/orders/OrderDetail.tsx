@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router';
 import { formatKg, formatNumber, formatSize } from '@/core/format';
 import { reservationDeadline } from '@/core/order';
 import { canSetPayment, NEXT_STATUS, refundCancelsOrder, statusChangeRefusal } from '@/core/orderFlow';
-import type { PaymentStatus } from '@/core/types';
+import type { OrderStatus, PaymentStatus } from '@/core/types';
 import { api } from '@/data/api';
 import { useDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
@@ -11,12 +11,14 @@ import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { useAdminRole } from '../session';
 import { ConfirmButton, OrderStatusPill, PaymentPill, TableWrap } from '../ui';
+import { useAction } from '../useAction';
 
 export function OrderDetail() {
   const { id } = useParams();
   const { t, l, money, date } = useI18n();
   const { orders, origins, shippingRates, paymentMethods, settings } = useDb();
   const role = useAdminRole()!;
+  const [busy, run] = useAction();
   const order = orders.find((o) => o.id === id);
   if (!order) return <p className="muted">{t.order.notFound}</p>;
 
@@ -29,6 +31,14 @@ export function OrderDetail() {
   const canCancel = cancelRefusal === null;
   const deadline = reservationDeadline(order, settings);
   const pay = (status: PaymentStatus) => canSetPayment(order, status, role);
+  const setStatus = (status: OrderStatus) =>
+    run(async () => {
+      await api.setOrderStatus(order.id, status, role);
+    });
+  const setPayment = (status: PaymentStatus) =>
+    run(async () => {
+      await api.setPaymentStatus(order.id, status, role);
+    });
   const c = order.customer;
 
   return (
@@ -48,9 +58,9 @@ export function OrderDetail() {
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              disabled={nextRefusal !== null}
+              disabled={nextRefusal !== null || busy}
               aria-describedby={nextRefusal === 'needs_payment' ? 'next-hint' : undefined}
-              onClick={() => api.setOrderStatus(order.id, next, role)}
+              onClick={() => setStatus(next)}
             >
               {fmt(t.admin.orders.next, { status: t.orderStatus[next] })}
             </button>
@@ -64,7 +74,8 @@ export function OrderDetail() {
             <ConfirmButton
               label={t.admin.orders.cancel}
               confirmLabel={t.admin.orders.cancelConfirm}
-              onConfirm={() => api.setOrderStatus(order.id, 'cancelled', role)}
+              disabled={busy}
+              onConfirm={() => setStatus('cancelled')}
             />
           )}
           {(cancelRefusal === 'refund_instead' || cancelRefusal === 'owner_only') && (
@@ -219,12 +230,12 @@ export function OrderDetail() {
             </dl>
             <div className="row">
               {pay('paid') && (
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => api.setPaymentStatus(order.id, 'paid', role)}>
+                <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => setPayment('paid')}>
                   {t.admin.orders.markPaid}
                 </button>
               )}
               {pay('failed') && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => api.setPaymentStatus(order.id, 'failed', role)}>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => setPayment('failed')}>
                   {t.admin.orders.markFailed}
                 </button>
               )}
@@ -233,7 +244,8 @@ export function OrderDetail() {
                   className="btn btn-ghost btn-sm"
                   label={t.admin.orders.markRefunded}
                   confirmLabel={refundCancelsOrder(order) ? t.admin.orders.refundCancelConfirm : t.admin.orders.refundConfirm}
-                  onConfirm={() => api.setPaymentStatus(order.id, 'refunded', role)}
+                  disabled={busy}
+                  onConfirm={() => setPayment('refunded')}
                 />
               )}
               {role !== 'owner' && <span className="small muted">{t.admin.orders.ownerPayments}</span>}
