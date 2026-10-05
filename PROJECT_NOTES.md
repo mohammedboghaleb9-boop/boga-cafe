@@ -20,8 +20,7 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 - **Site on Cloudflare Workers**, deployed by the owner from `main` (`npx wrangler deploy`; URL not checked by me). Real
   build: seed catalog in the browser, no admin panel, no payment method open. **Not connected to Supabase** (no data
   layer yet, P5 step 3): the live database gets nothing from the site. **Notifications do not work** (Known issues).
-- **Next: #11** (the owner's wording). I could not map it: this repo has no item with that meaning and GitHub has no
-  issues or PRs (the status table's #11 is "Payments (manual)", already done). Ask the owner before starting.
+- **Next: P5 step 3**: site Supabase data layer (`VITE_DATA_MODE=supabase`) + real admin sign-in for the two owners.
 - **Live Supabase project** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): migrations applied, catalog
   loaded from `supabase/seed.sql`, two owner accounts (not listed here, the repo is public; sign-up off), Edge Function
   `storefront` v4 ACTIVE (deployed 2026-10-01 from the branch's bundle, not re-compared byte for byte). Checked read-only
