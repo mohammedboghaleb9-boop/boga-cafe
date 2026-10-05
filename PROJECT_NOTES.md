@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-05 (`fix/supabase-live` merged into `main`, owner approved). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-05 (post-cleanup: only `main` left on the remote). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -11,30 +11,25 @@ B2B blends: 250 g and 500 g are paid samples bought like any bag; the 1 kg bag o
 Custom Blend (customer sets origin percentages, total must be 100). Stock in kg per origin. Arabic (RTL),
 French, English. Admin roles owner / manager / staff. No cash on delivery: every order is paid before prep.
 
-## Status (from PROJECT_STATUS.html, 2026-10-01)
-- **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done
-  and merged, the site is not connected yet (4-9 days, Estimated).
-- `main` = `e13a85e` (merge of `fix/supabase-live`, owner approved 2026-10-05; branch CI run 69 green; on the merge:
-  lint 0/0, typecheck ok, vitest 173/173 in 20 files, build, check:real-build and build:functions ok). Before it
-  `fa0d5fd` (CLAUDE.md rules), `264db38` (status page), `901c8af` (`fix/remediation-3-7`). It carries audit fixes 1-7,
-  the status report, working rules, the owner's answers, paid samples, the reply hours, the live Supabase schema and the
-  `storefront` function.
+## Status (2026-10-05; numbers from PROJECT_STATUS.html)
+- **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
+  the site is not connected to it yet (4-9 days, Estimated).
+- `main` = `68e8643` (CI run 71 green) + the docs commit "docs: post-cleanup status". Below it `e13a85e`, merge of
+  `fix/supabase-live` (owner approved 2026-10-05; branch CI run 69 green; on the merge: lint, typecheck, vitest 173/173,
+  build, check:real-build, build:functions ok).
+- **Site on Cloudflare Workers**, deployed by the owner from `main` (`npx wrangler deploy`; URL not checked by me). Real
+  build: seed catalog in the browser, no admin panel, no payment method open. **Not connected to Supabase** (no data
+  layer yet, P5 step 3): the live database gets nothing from the site. **Notifications do not work** (Known issues).
+- **Next: #11** (the owner's wording). I could not map it: this repo has no item with that meaning and GitHub has no
+  issues or PRs (the status table's #11 is "Payments (manual)", already done). Ask the owner before starting.
+- **Live Supabase project** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): migrations applied, catalog
+  loaded from `supabase/seed.sql`, two owner accounts (not listed here, the repo is public; sign-up off), Edge Function
+  `storefront` v4 ACTIVE (deployed 2026-10-01 from the branch's bundle, not re-compared byte for byte). Checked read-only
+  2026-10-05: 7 migrations on the server, same names and versions as `supabase/migrations`.
 
 ## Open branches (not merged into `main`)
-- None. `fix/supabase-live` is merged (still on GitHub, delete only with the owner's approval). The 12 older branches
-  (`chore/phase-3-modern-base`, `copilot/read-only-comparison`, `docs/status-*`, `feat/phase-4-mobile-a11y`,
-  `feature/brand-visuals`, `fix/*`) are all merged too; none deleted yet (owner's approval needed).
-- **Site deployed by the owner** on Cloudflare Workers from `main` (build `npm run build`, deploy `npx wrangler deploy`;
-  seen on the owner's screenshot, URL not checked by me). It is the real build: catalog from the seed in the browser,
-  no admin panel, no payment method open. It does not use Supabase yet.
-- **Live Supabase project** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): all migrations of
-  `supabase/migrations` applied (file names = versions recorded on the server), catalog loaded from `supabase/seed.sql`,
-  two owner accounts (the owner knows which; not listed here, the repo is public; sign-up turned off), Edge Function
-  `storefront` deployed and checked over HTTP. The site is not connected to it yet (P5 step 3).
-  Checked on 2026-10-05 (read-only): 7 migrations recorded on the server, same names and versions as
-  `supabase/migrations` (init, harden, rate_limits, quote_requests, expiry_cron, pg_net, pg_net_private);
-  `storefront` version 4 ACTIVE (deployed 2026-10-01 from the branch's bundle; not re-compared byte for byte today);
-  old `create-order` version 2 still ACTIVE (see Known issues). Rule: deploy only from `main` (`CLAUDE.md`).
+- None. The owner deleted every old branch, `fix/supabase-live` included. Checked 2026-10-05 with `git fetch --prune`
+  and `git ls-remote --heads origin`: only `main` @ `68e8643`.
 
 ## Stack
 Node 24 (`.node-version`, `engines 24.x`), React 19.3, Vite 8.3, React Router 8.4 (declarative), TypeScript 7,
@@ -137,9 +132,8 @@ functions bundled with `rolldown`). Hosting: the owner deployed on Cloudflare Wo
 - **Payment timing (Q11):** the owner pasted an analysis proposing weekend-aware counting of the 120 h, receipt-image upload, and WhatsApp reminders at 24 h and 4 h before cancelling. Not built. My view: weekend-aware counting is sound but lengthens how long a fake claim can hold stock (no per-phone limit yet), so do it with the P5 limit. Receipt upload needs storage plus abuse limits (P5). Customer reminders need WhatsApp Business plus a consent basis. The claim that Moroccan interbank transfers take 24-48 working hours is **not verified**.
 
 ## What is next
-1. P5 real backend, done: live project, schema, advisor fixes, starting data, `storefront` function with limits,
-   expiry every 15 min (pg_cron). Left: the site's Supabase data layer (async, `VITE_DATA_MODE=supabase`), real admin
-   sign-in for the two owners (+ 2FA), Turnstile keys, sending the outbox (phase 4).
+1. P5 left (the server side is done, see Status): the site's Supabase data layer (async, `VITE_DATA_MODE=supabase`),
+   real admin sign-in for the two owners (+ 2FA), Turnstile keys, sending the outbox (phase 4).
 2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch. Estimate 17-28 working days of technical work (**Estimated**, not a promise).
 
 ## Needs verification
@@ -153,5 +147,4 @@ functions bundled with `rolldown`). Hosting: the owner deployed on Cloudflare Wo
 - Whether Vercel's free plan is allowed for a commercial site (Q21).
 - Whether Cash Plus needs a bank-style RIB or other beneficiary data; whether a bank transfer can be recalled after it lands (Q23, Q24).
 - The Stop hook in a real Claude Code session: the script is tested by hand (mtime and git mode), the harness firing was not observed.
-- `/home/user/map-test` (branch `claude/boga-cafe-foundation`) is an earlier copy where the Supabase work was first
-  built; it is reference only. This repo is the main project (owner agreed 2026-10-01).
+- `/home/user/map-test` (branch `claude/boga-cafe-foundation`): earlier copy, reference only (owner agreed 2026-10-01).

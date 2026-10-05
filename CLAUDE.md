@@ -3,8 +3,7 @@
 ## This project: BOGA CAFÉ (read first)
 - Official repository: `mohammedboghaleb9-boop/boga-cafe`. It is the only source of truth for code. Work only here.
 - `mohammedboghaleb9-boop/map-test` is an old experimental copy, used only as a Supabase donor (branch `claude/boga-cafe-foundation` @ `f9ba067`; its `main` is empty). Never commit, branch or open a PR there. It will be archived once the comparison is done.
-- Open work not merged into `main` (as of 2026-10-03):
-  - `fix/supabase-live` @ `b220aa2`: live Supabase (migrations, rate limits, B2B request commit, expiry cron, seed), Storefront Edge Function (order/quote) and two review fixes. Built on `main@264db38`. Review and merge it (with the owner's approval) before starting any new backend work. Do not rebuild or re-port what it already contains.
+- Open branches: None (checked 2026-10-05: the remote has only `main`).
 - Many other old branches exist. Do not delete any of them without listing them and asking the owner first.
 
 ## Language and direction of replies
