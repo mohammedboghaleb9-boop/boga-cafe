@@ -370,11 +370,11 @@ footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);color:v
       <div>
         <h4>Result</h4><p>كل العمليات ديال البيانات ولات غير متزامنة (<code>src/data/types.ts</code>)، وقاعدة المتصفح تنقلات لـ <code>src/data/demo/</code>، و<code>backend.ts</code> كيختار حسب <code>VITE_DATA_MODE</code>. ما تبدل والو فـ الموقع الحقيقي ولا فـ النسخة التجريبية. <code>VITE_DATA_MODE=supabase</code> باقي كيفشل البناء عمداً. ما كاين حتى كتابة فـ Supabase ولا نشر.</p>
         <h4>What was done</h4>
-        <ul class="checks"><li class="ck done"><span class="box"></span><span>صفحات الإدارة كتسنى كل عملية، و<code>useAction</code> كيمنع الضغط المزدوج (اختبار: يفشل إلا تحيد الحارس)</span></li><li class="ck done"><span class="box"></span><span>اختبار معمارية جديد: حتى صفحة ما تقرا قاعدة البيانات نيشان (يفشل إلا زدنا import)</span></li><li class="ck done"><span class="box"></span><span>lint، typecheck، Vitest 176/176، build، build:demo، check:real-build، build:functions، E2E 37/37 (محلياً)</span></li></ul>
+        <ul class="checks"><li class="ck done"><span class="box"></span><span>أزرار الحفظ فالإدارة كتسنى عمليتها، واحدة فواحدة (<code>useAction</code>، اختبار كيفشل إلا تحيد الحارس)، والتركيز ديال الكلافيي كيبقى فالزر (اختبار متصفح)</span></li><li class="ck done"><span class="box"></span><span>مراجعة مستقلة: لقات بلي التركيز كيضيع بعد كل حفظ (تغيير ظاهر)، تصلح فـ <code>2b71dad</code>؛ والوثائق اللي كانت كتقول أكثر من الواقع تصححات</span></li><li class="ck todo"><span class="box"></span><span>باقي قبل كتابات Supabase (الشرائح 8–10): حقول التوصيل وملاحظات B2B ومفتاح المخزون كيحفظو بلا انتظار، والخطأ ديال الحفظ ما كيبانش للمسؤول</span></li><li class="ck done"><span class="box"></span><span>اختبار معمارية جديد: حتى صفحة ما تقرا قاعدة البيانات نيشان (يفشل إلا زدنا import)</span></li><li class="ck done"><span class="box"></span><span>lint، typecheck، Vitest 176/176، build، build:demo، check:real-build، build:functions، E2E 38/38 (محلياً)</span></li></ul>
       </div>
       <div>
         <h4>Next task</h4><p><b>الشريحة 2</b>: قراءة الكتالوج من Supabase للزوار، بعد دمج الشريحة 1.</p>
-        <h4>Evidence</h4><p class="mono" style="font-size:12px">feat/p5-s1-async-api @ 78b8b73 · CI run 74 · tests/architecture.test.ts · src/features/admin/__tests__/useAction.test.ts</p>
+        <h4>Evidence</h4><p class="mono" style="font-size:12px">feat/p5-s1-async-api: 78b8b73 (CI run 74) · 2b71dad (CI run 76) · tests/architecture.test.ts · useAction.test.ts · e2e/admin.spec.ts</p>
         <h4>Estimated time · Priority</h4><p class="dur">الشريحة 1: يوم (Estimated، تمت) · CRITICAL</p>
       </div>
     </div>
@@ -787,7 +787,7 @@ footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);color:v
 
 <footer>
   <span>BOGA CAFÉ Project Status · <span class="mono">2026-10-05</span></span>
-  <span>مصدر الأدلة: مستودع <span class="mono">mohammedboghaleb9-boop/boga-cafe</span>: main على <span class="mono">369391d</span> (CI run 71 على <span class="mono">68e8643</span>)، الفرع <span class="mono">feat/p5-s1-async-api</span> @ <span class="mono">78b8b73</span> (CI run 74)، ومشروع Supabase الحقيقي <span class="mono">ldzagzskfmnjbkizbayr</span>. لم يُعدَّل أي كود لإعداد هذا التقرير. يُحدَّث يدوياً عند كل تغيّر مرحلة.</span>
+  <span>مصدر الأدلة: مستودع <span class="mono">mohammedboghaleb9-boop/boga-cafe</span>: main على <span class="mono">369391d</span> (CI run 71 على <span class="mono">68e8643</span>)، الفرع <span class="mono">feat/p5-s1-async-api</span> @ <span class="mono">2b71dad</span> (CI run 76)، ومشروع Supabase الحقيقي <span class="mono">ldzagzskfmnjbkizbayr</span>. لم يُعدَّل أي كود لإعداد هذا التقرير. يُحدَّث يدوياً عند كل تغيّر مرحلة.</span>
   <span>المدد تقديرية وليست التزاماً بموعد. عندما يتغير شيء، تُحدَّث هذه الصفحة بنفس الأدلة.</span>
 </footer>
 </div>
