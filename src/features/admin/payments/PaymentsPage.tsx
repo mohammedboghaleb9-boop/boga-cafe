@@ -58,7 +58,7 @@ export function PaymentsPage() {
                       <button
                         type="button"
                         className="btn btn-primary btn-sm"
-                        disabled={busy}
+                        aria-disabled={busy || undefined}
                         onClick={() =>
                           run(async () => {
                             await api.setPaymentStatus(o.id, 'paid', role);
@@ -107,7 +107,7 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            disabled={busy}
+            aria-disabled={busy || undefined}
             onClick={() =>
               run(async () => {
                 await api.savePaymentMethod(m);
@@ -150,7 +150,7 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            disabled={busy}
+            aria-disabled={busy || undefined}
             onClick={() =>
               run(async () => {
                 await api.saveSettings({ ...settings, bank, cashplus }, role);

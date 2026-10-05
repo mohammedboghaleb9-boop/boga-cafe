@@ -33,7 +33,7 @@ export function ContentPage() {
         <h1>{t.admin.nav.content}</h1>
         <div className="row">
           <SavedFlash show={saved} />
-          <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={save}>
+          <button type="button" className="btn btn-primary btn-sm" aria-disabled={busy || undefined} onClick={save}>
             {t.common.save}
           </button>
         </div>

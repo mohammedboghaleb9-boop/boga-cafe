@@ -79,7 +79,7 @@ export function AdminLayout() {
           <ConfirmButton
             label={t.admin.resetDemo}
             confirmLabel={t.admin.resetConfirm}
-            onConfirm={api.resetDemo}
+            onConfirm={() => void api.resetDemo()}
             className="btn btn-sm btn-link"
           />
         </div>

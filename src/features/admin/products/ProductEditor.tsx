@@ -84,7 +84,7 @@ function ProductForm({ id }: { id: string | undefined }) {
             <ConfirmButton
               label={t.common.delete}
               confirmLabel={t.common.confirmDelete}
-              disabled={busy}
+              busy={busy}
               onConfirm={() =>
                 run(async () => {
                   await api.deleteProduct(p.id);
@@ -93,7 +93,7 @@ function ProductForm({ id }: { id: string | undefined }) {
               }
             />
           )}
-          <button type="button" className="btn btn-primary btn-sm" disabled={!valid || busy} onClick={save}>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!valid} aria-disabled={busy || undefined} onClick={save}>
             {t.common.save}
           </button>
         </div>

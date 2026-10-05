@@ -58,7 +58,8 @@ export function OrderDetail() {
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              disabled={nextRefusal !== null || busy}
+              disabled={nextRefusal !== null}
+              aria-disabled={busy || undefined}
               aria-describedby={nextRefusal === 'needs_payment' ? 'next-hint' : undefined}
               onClick={() => setStatus(next)}
             >
@@ -74,7 +75,7 @@ export function OrderDetail() {
             <ConfirmButton
               label={t.admin.orders.cancel}
               confirmLabel={t.admin.orders.cancelConfirm}
-              disabled={busy}
+              busy={busy}
               onConfirm={() => setStatus('cancelled')}
             />
           )}
@@ -230,12 +231,12 @@ export function OrderDetail() {
             </dl>
             <div className="row">
               {pay('paid') && (
-                <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => setPayment('paid')}>
+                <button type="button" className="btn btn-primary btn-sm" aria-disabled={busy || undefined} onClick={() => setPayment('paid')}>
                   {t.admin.orders.markPaid}
                 </button>
               )}
               {pay('failed') && (
-                <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => setPayment('failed')}>
+                <button type="button" className="btn btn-ghost btn-sm" aria-disabled={busy || undefined} onClick={() => setPayment('failed')}>
                   {t.admin.orders.markFailed}
                 </button>
               )}
@@ -244,7 +245,7 @@ export function OrderDetail() {
                   className="btn btn-ghost btn-sm"
                   label={t.admin.orders.markRefunded}
                   confirmLabel={refundCancelsOrder(order) ? t.admin.orders.refundCancelConfirm : t.admin.orders.refundConfirm}
-                  disabled={busy}
+                  busy={busy}
                   onConfirm={() => setPayment('refunded')}
                 />
               )}

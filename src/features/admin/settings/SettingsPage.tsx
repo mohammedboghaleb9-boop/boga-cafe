@@ -29,7 +29,7 @@ export function SettingsPage() {
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            disabled={busy}
+            aria-disabled={busy || undefined}
             onClick={() =>
               run(async () => {
                 await api.saveSettings({ ...db.settings, ...s, bank: db.settings.bank, cashplus: db.settings.cashplus, contact: db.settings.contact, notifications: db.settings.notifications }, role);
@@ -160,7 +160,7 @@ export function SettingsPage() {
       </section>
 
       <div>
-        <ConfirmButton label={t.admin.resetDemo} confirmLabel={t.admin.resetConfirm} onConfirm={api.resetDemo} />
+        <ConfirmButton label={t.admin.resetDemo} confirmLabel={t.admin.resetConfirm} onConfirm={() => void api.resetDemo()} />
       </div>
     </>
   );

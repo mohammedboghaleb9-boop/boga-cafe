@@ -51,7 +51,7 @@ export function NotificationsPage() {
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
-                  disabled={busy}
+                  aria-disabled={busy || undefined}
                   onClick={() =>
                     run(async () => {
                       await api.saveSettings({ ...settings, notifications: n }, role);

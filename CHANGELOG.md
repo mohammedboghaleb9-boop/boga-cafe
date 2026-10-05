@@ -5,7 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-05
-- 2026-10-05 [feat/p5-s1-async-api] P5 step 3 slice 1: async `Api` contract (`src/data/types.ts`), browser backend moved to `src/data/demo/`, `backend.ts` picks it by `VITE_DATA_MODE`, admin pages await their calls with a double-submit guard (`useAction`), architecture test keeps pages off the stores. No visible change.
+- 2026-10-05 [feat/p5-s1-async-api] P5 step 3 slice 1: async `Api` contract (`src/data/types.ts`), browser backend moved to `src/data/demo/`, `backend.ts` picks it by `VITE_DATA_MODE`, admin save buttons await their call one at a time (`useAction`, `aria-disabled` so keyboard focus stays; e2e test), architecture test keeps pages off the backends. Inline fields (shipping, B2B notes, stock switch) still save without waiting (slices 8-10). No visible change.
 - 2026-10-05 Merged `fix/supabase-live` into `main` (e13a85e, owner approved): live Supabase schema, limits, `storefront` function. New rule in `CLAUDE.md`: deploy only from `main`.
 
 ## 2026-10-01

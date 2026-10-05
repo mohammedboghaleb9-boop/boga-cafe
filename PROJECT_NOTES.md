@@ -13,7 +13,7 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 
 ## Status (2026-10-05; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
-  the site is not connected yet: 11 slices, 9-11 days (**Estimated**, sum of the slice estimates; see What is next).
+  the site is not connected yet: 9-12 days left (**Estimated**: slices 2-11 = 8.75 d + outbox sender 1-1.5 d; per slice in PROJECT_STATUS.html §5/§7).
 - `main` = `369391d` (docs on top of `68e8643`, CI run 71 green; `e13a85e` = merge of `fix/supabase-live`).
 - **Site on Cloudflare Workers**, deployed by the owner from `main` (`npx wrangler deploy`; URL not checked by me). Real
   build: seed catalog in the browser, no admin panel, no payment method open. **Not connected to Supabase** (no data
@@ -83,8 +83,8 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   empty). `seed-sql.mjs` refuses to run if `seed/config.ts` holds payment details (the repo is public).
 - **Data contract** (2026-10-05): pages see data only through `src/data/api.ts` (async `Api`, `types.ts`) and the hooks;
   `tests/architecture.test.ts` refuses a page importing a backend. The Supabase backend fills the same `DbState`
-  (store approach from `map-test`, owner approved), so storefront pages stay unchanged. Admin buttons that await go
-  through `useAction` (one call at a time, no double submit).
+  (store approach from `map-test`, owner approved), so storefront pages stay unchanged. Admin save buttons go through
+  `useAction` (one call at a time); busy = `aria-disabled`, not `disabled`, so keyboard focus stays (a review found it lost).
 - **Workflow**: branch `fix/*` or `feat/*`, independent read-only review, CI green, `merge --no-ff` into main. No pull requests unless asked. No secrets in the repo (Gmail App Password and CallMeBot key go in Vercel settings only).
 - **Audit rule**: a rule counts as tested only if breaking it makes a test fail. The audit's own faults were re-run (code 3 of 58 survive, SQL 3 of 31; `docs/10` section 6).
 
@@ -101,8 +101,9 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - Leaked password protection (advisor) needs the Pro plan: skipped by the owner; long passwords + mandatory 2FA instead.
 - `skip locked` in `expire_unpaid_orders` is not tested under concurrency.
 - The Supabase backend is not written yet (slices 2-10); `VITE_DATA_MODE=supabase` still fails the build on purpose.
-- Admin "saved" flash shows even when a save is refused (pre-existing; harmless in the demo, where the menu hides refused
-  actions). Must show the refusal before the Supabase writes (slices 8-10).
+- Before the Supabase writes (slices 8-10): admin "saved" flash shows even when a save is refused; a failed call in
+  `useAction` is an unhandled rejection (no message); shipping rows, B2B notes and the stock blend switch save on every
+  change without waiting (fine in the browser store, would race over the network). Storage (photos) is not in the 11 slices.
 - `api/notify` rate limit is in memory per instance. Messages are written by the browser; the server checks shape only.
 - A lone surrogate or NUL in a customer text: the storefront function refuses it (400, `src/server/parse.ts`, tested); the browser-only demo build does not check it.
 - The status hook treats edits to `CLAUDE.md`, `README.md`, `docs/*` as code: a docs-only session gets blocked until this file changes.
@@ -135,7 +136,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
    (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, deploy from `main`.
    Then Turnstile keys and the outbox sender (phase 4). Open process point: the rule "`main` lists every open branch"
    needs a docs commit on `main` while a branch is open; the owner has not said whether that commit may go straight to `main`.
-2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch. Estimate 17-28 working days of technical work (**Estimated**, not a promise).
+2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 19-26 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
 
 ## Needs verification
 - Q1 answer "yes" was read as agreeing with the default (roasted stock).

@@ -207,7 +207,7 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
         <span className="label">{t.admin.stock.note}</span>
         <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
-      <button type="submit" className="btn btn-primary btn-sm" disabled={!Number.isFinite(value) || value === 0 || busy}>
+      <button type="submit" className="btn btn-primary btn-sm" disabled={!Number.isFinite(value) || value === 0} aria-disabled={busy || undefined}>
         {t.admin.stock.apply}
       </button>
     </form>
@@ -255,7 +255,7 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
             {t.common.cancel}
           </button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!valid || busy} onClick={save}>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!valid} aria-disabled={busy || undefined} onClick={save}>
             {t.common.save}
           </button>
         </div>
