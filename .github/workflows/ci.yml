@@ -22,6 +22,13 @@ jobs:
       - run: npm run check:real-build
       - run: npm run build:functions
       - run: npm run build:demo
+      # the live-database build: needs its public values and ships no example catalog
+      - run: npx vite build --outDir dist-supabase
+        env:
+          VITE_DATA_MODE: supabase
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+      - run: "! grep -l boga-signature dist-supabase/assets/*.js"
 
   # the site in a browser (real settings, demo data): shop, checkout, admin roles, phone widths, axe
   e2e:

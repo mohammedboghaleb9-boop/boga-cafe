@@ -71,7 +71,13 @@ export interface ReadStore<T> {
   subscribe(listener: () => void): () => void;
 }
 
+/** Where the first data load stands: the browser store is ready at once, a server answers later. */
+export type DataStatus = 'loading' | 'ready' | 'error';
+
 export interface Backend {
   db: ReadStore<DbState>;
   api: Api;
+  status: ReadStore<DataStatus>;
+  /** Loads the data again after an error. */
+  retry(): void;
 }

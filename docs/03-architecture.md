@@ -120,7 +120,8 @@ src/
     types.ts           عقد Api: كل العمليات غير متزامنة (placeOrder, requestQuote, adjustStock…)
     api.ts, hooks.ts   طريق الصفحات إلى البيانات (tests/architecture.test.ts يمنع استيراد مزوّد مباشرة)
     backend.ts         يختار مكان البيانات حسب VITE_DATA_MODE
-    demo/              قاعدة بيانات المتصفح (store.ts) وقواعدها (api.ts)  ← Supabase يأتي بجانبها
+    demo/              قاعدة بيانات المتصفح (store.ts) وقواعدها (api.ts)
+    supabase/          الكتالوج الحي من Supabase (store.ts) مع VITE_DATA_MODE=supabase؛ الطلبات من الشريحة 3
   services/          الخدمات الخارجية كمحوّلات (adapters)
     payments/          بطاقة / كاش بلوس / تحويل
     notifications/     قوالب رسائل واتساب والبريد

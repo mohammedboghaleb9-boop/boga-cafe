@@ -65,12 +65,20 @@ function save(s: DbState) {
   }
 }
 
-let state: DbState = load() ?? initialState();
+// read on first use: a build that never uses this store (VITE_DATA_MODE=supabase) drops it, example catalog included
+let state: DbState | null = null;
+const current = (): DbState => {
+  watchOtherTabs();
+  return (state ??= load() ?? initialState());
+};
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-// Keep several open tabs (shop + admin) in sync.
-if (typeof window !== 'undefined') {
+// Keep several open tabs (shop + admin) in sync, from the first read of the store.
+let watching = false;
+function watchOtherTabs() {
+  if (watching || typeof window === 'undefined') return;
+  watching = true;
   window.addEventListener('storage', (e) => {
     if (e.key !== STORAGE_KEY) return;
     const next = load();
@@ -82,9 +90,9 @@ if (typeof window !== 'undefined') {
 }
 
 export const db = {
-  get: (): DbState => state,
+  get: current,
   update(recipe: (s: DbState) => DbState) {
-    state = recipe(state);
+    state = recipe(current());
     save(state);
     emit();
   },

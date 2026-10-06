@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { useCart } from '@/shared/cart/CartProvider';
-import { useDb } from '@/data/hooks';
+import { useDataStatus, useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '../ui/Icon';
@@ -16,6 +16,7 @@ export function StoreLayout() {
   const { pathname, hash } = useLocation();
   const { toast, dismissToast } = useCart();
   const { settings } = useDb();
+  const { status, retry } = useDataStatus();
   const { t } = useI18n();
 
   // new page: back to the top, or to the section named in the link (/page#section)
@@ -41,13 +42,16 @@ export function StoreLayout() {
       window.clearTimeout(timer);
       moves.forEach((e) => window.removeEventListener(e, stop));
     };
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs again on each new page, on purpose
-  }, [pathname, hash]);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs again on each new page, and once the live catalog has arrived (the section exists only then)
+  }, [pathname, hash, status]);
 
   // unpaid orders past the time limit give their stock back
   useEffect(() => {
     void api.expireUnpaidOrders();
   }, []);
+
+  // the live catalog has not arrived (or failed): no page, and never example products instead
+  if (status !== 'ready') return <DataPending failed={status === 'error'} retry={retry} />;
 
   return (
     <div className="store">
@@ -77,5 +81,33 @@ export function StoreLayout() {
         </div>
       )}
     </div>
+  );
+}
+
+function DataPending({ failed, retry }: { failed: boolean; retry: () => void }) {
+  const { t } = useI18n();
+  // once shown, the button stays (busy while loading again) so keyboard focus is never lost
+  const [retried, setRetried] = useState(false);
+  return (
+    <main id="main" className="container page stack" aria-busy={!failed}>
+      <p className="lead" role="status">
+        {failed ? t.common.loadFailed : t.common.loading}
+      </p>
+      {(failed || retried) && (
+        <button
+          type="button"
+          className="btn btn-primary"
+          style={{ alignSelf: 'flex-start' }}
+          aria-disabled={!failed || undefined}
+          onClick={() => {
+            if (!failed) return;
+            setRetried(true);
+            retry();
+          }}
+        >
+          {t.common.retry}
+        </button>
+      )}
+    </main>
   );
 }
