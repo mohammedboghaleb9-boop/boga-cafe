@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { useCart } from '@/shared/cart/CartProvider';
-import { useDb } from '@/data/hooks';
+import { useDataStatus, useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '../ui/Icon';
@@ -16,6 +16,7 @@ export function StoreLayout() {
   const { pathname, hash } = useLocation();
   const { toast, dismissToast } = useCart();
   const { settings } = useDb();
+  const { status, retry } = useDataStatus();
   const { t } = useI18n();
 
   // new page: back to the top, or to the section named in the link (/page#section)
@@ -49,6 +50,9 @@ export function StoreLayout() {
     void api.expireUnpaidOrders();
   }, []);
 
+  // the live catalog has not arrived (or failed): no page, and never example products instead
+  if (status !== 'ready') return <DataPending failed={status === 'error'} retry={retry} />;
+
   return (
     <div className="store">
       <SkipLink />
@@ -77,5 +81,21 @@ export function StoreLayout() {
         </div>
       )}
     </div>
+  );
+}
+
+function DataPending({ failed, retry }: { failed: boolean; retry: () => void }) {
+  const { t } = useI18n();
+  return (
+    <main id="main" className="container page stack" aria-busy={!failed}>
+      <p className="lead" role={failed ? 'alert' : 'status'}>
+        {failed ? t.common.loadFailed : t.common.loading}
+      </p>
+      {failed && (
+        <button type="button" className="btn btn-primary" style={{ alignSelf: 'flex-start' }} onClick={retry}>
+          {t.common.retry}
+        </button>
+      )}
+    </main>
   );
 }

@@ -69,6 +69,8 @@ export const fr: Dict = {
     copy: 'Copier',
     copied: 'Copié',
     loading: 'Un instant…',
+    loadFailed: 'Le catalogue n’a pas pu être chargé. Vérifiez votre connexion, puis réessayez.',
+    retry: 'Réessayer',
     sending: 'Envoi…',
     kg: 'kg',
     days: '{d} jours',

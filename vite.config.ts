@@ -6,6 +6,17 @@ import { fileURLToPath, URL } from 'node:url';
 // Two build targets:
 //  - default: the real website (multi-file, served from the domain root)
 //  - "demo":  the clickable prototype packed into ONE html file (dist-demo/index.html)
+/** A secret key (sb_secret_…) or a legacy service_role JWT. */
+function isSecretKey(key: string): boolean {
+  if (key.startsWith('sb_secret_')) return true;
+  try {
+    const payload = JSON.parse(Buffer.from(key.split('.')[1] ?? '', 'base64url').toString('utf8')) as { role?: string };
+    return payload.role === 'service_role';
+  } catch {
+    return false;
+  }
+}
+
 export default defineConfig(({ command, mode }) => {
   const demo = mode === 'demo';
   // the simulated card page must never reach real customers (docs/09, .env.example)
@@ -13,9 +24,13 @@ export default defineConfig(({ command, mode }) => {
   if (command === 'build' && !demo && env.VITE_CARD_GATEWAY === 'demo') {
     throw new Error('VITE_CARD_GATEWAY=demo is for the prototype only (npm run build:demo). Leave it empty until CMI is connected.');
   }
-  // no Supabase data layer exists yet: never let a build believe it runs on one
+  // the live database: both public values, and never a secret key (it would ship to every visitor)
   if (env.VITE_DATA_MODE === 'supabase') {
-    throw new Error('VITE_DATA_MODE=supabase: the Supabase data layer is not written yet (phase 2). Leave it empty for the real site, or "demo".');
+    const key = env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
+    if (!env.VITE_SUPABASE_URL || !key) {
+      throw new Error('VITE_DATA_MODE=supabase needs VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (.env.example). The site never falls back to the example catalog.');
+    }
+    if (isSecretKey(key)) throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY holds a secret key: use the publishable key (sb_publishable_…).');
   }
   return {
     base: demo ? './' : '/',
@@ -26,6 +41,8 @@ export default defineConfig(({ command, mode }) => {
     build: {
       outDir: demo ? 'dist-demo' : 'dist',
       assetsInlineLimit: demo ? 100_000_000 : 4096,
+      // the seed files are plain data: a build that does not use them (VITE_DATA_MODE=supabase) drops them whole
+      rollupOptions: { treeshake: { moduleSideEffects: (id: string) => !id.includes('/src/data/seed/') } },
     },
     test: {
       include: ['src/**/*.test.ts', 'api/**/*.test.ts', 'tests/**/*.test.ts'],

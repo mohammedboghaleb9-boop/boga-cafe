@@ -3,7 +3,6 @@
 ## This project: BOGA CAFÉ (read first)
 - Official repository: `mohammedboghaleb9-boop/boga-cafe`. It is the only source of truth for code. Work only here.
 - `mohammedboghaleb9-boop/map-test` is an old experimental copy, used only as a Supabase donor (branch `claude/boga-cafe-foundation` @ `f9ba067`; its `main` is empty). Never commit, branch or open a PR there. It will be archived once the comparison is done.
-- Open branches: None (checked 2026-10-05: the remote has only `main`).
 
 ## Language and direction of replies
 - Always reply to the owner in **Moroccan Darija** (Arabic script), including reports and summaries.

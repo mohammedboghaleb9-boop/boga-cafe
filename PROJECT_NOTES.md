@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-05 (P5 step 3 planned in 11 slices; slice 1 on `feat/p5-s1-async-api`, not merged). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-06 (P5 step 3: slice 1 merged `abb9646`; slice 2 on `feat/p5-s2-catalog-read`, not merged). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -11,10 +11,10 @@ B2B blends: 250 g and 500 g are paid samples bought like any bag; the 1 kg bag o
 Custom Blend (customer sets origin percentages, total must be 100). Stock in kg per origin. Arabic (RTL),
 French, English. Admin roles owner / manager / staff. No cash on delivery: every order is paid before prep.
 
-## Status (2026-10-05; numbers from PROJECT_STATUS.html)
+## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
-  the site is not connected yet: 9-12 days left (**Estimated**: slices 2-11 = 8.75 d + outbox sender 1-1.5 d; per slice in PROJECT_STATUS.html §5/§7).
-- `main` = `369391d` (docs on top of `68e8643`, CI run 71 green; `e13a85e` = merge of `fix/supabase-live`).
+  the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; per slice in PROJECT_STATUS.html §5/§7).
+- `main` = `abb9646`, merge of slice 1 (owner approved 2026-10-06; branch CI run 78 green).
 - **Site on Cloudflare Workers**, deployed by the owner from `main` (`npx wrangler deploy`; URL not checked by me). Real
   build: seed catalog in the browser, no admin panel, no payment method open. **Not connected to Supabase** (no data
   layer yet, P5 step 3): the live database gets nothing from the site. **Notifications do not work** (Known issues).
@@ -26,7 +26,6 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 
 ## Open branches
 - Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks open branches in Notion.
-  `feat/p5-s1-async-api` (slice 1) approved for merge 2026-10-06.
 
 ## Stack
 Node 24 (`.node-version`, `engines 24.x`), React 19.3, Vite 8.3, React Router 8.4 (declarative), TypeScript 7, Vitest 5, Oxlint, Playwright 1.63 + axe-core.
@@ -36,11 +35,11 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 ## Folder structure
 - `src/core/` pure TypeScript business rules (pricing, blend, cart, order, orderFlow, stock, shipping, money, validation). No React.
 - `src/data/`: `types.ts` the async `Api` contract, `api.ts` + `hooks.ts` (all pages use), `backend.ts` (picks the
-  backend by `VITE_DATA_MODE`), `demo/` browser store + rules (demo and, until slice 2, the real site), `mode.ts`, `seed/`.
+  backend by `VITE_DATA_MODE`), `demo/` browser store + rules (demo and the real site today), `mode.ts`, `seed/`.
 - `src/features/` one folder per section: home, shop, product, single-origin, custom-blend, b2b, cart, checkout, contact, admin.
 - `src/services/` notifications and payments adapters; `src/shared/` layout, UI, cart state; `src/i18n/` AR/FR/EN dictionaries.
 - `src/server/` storefront server logic (parse, guard = limits + Turnstile, prepare, storefront), unit tested; bundled into `supabase/functions/storefront/dist/index.js` by `scripts/build-functions.mjs` (not committed).
-- `src/data/supabase/` database types, row mappers, catalog loader (shared by the function and, next, the site).
+- `src/data/supabase/` types, row mappers, catalog loader (shared with the function); `store.ts`, `index.ts`, `api.ts`: the site's Supabase backend (catalog only; other calls throw "not wired yet").
 - `api/` notification function + tests. `supabase/migrations/` schema, `supabase/tests/` smoke, parity, race, `supabase/seed.sql` (from `scripts/seed-sql.mjs`), `supabase/config.toml`.
 - `e2e/` Playwright; `tests/` architecture (section boundaries), SQL parity generator, notify contract.
 - `scripts/check-real-build.mjs`, `docs/` (Arabic, 01-10), `brand/`, `public/`.
@@ -50,7 +49,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 `check:real-build` (after `build`) · `supabase/tests/run-local.sh` (needs PostgreSQL) · `build:functions` · `seed:sql` (regenerate `supabase/seed.sql`).
 
 ## Key decisions and why
-- **Two builds from one code base** (`VITE_DATA_MODE=demo` or not). The real build has no example customers, no admin panel, no payment details, so no fake data or password can reach customers. `check:real-build` fails CI if a demo string ships. `VITE_DATA_MODE=supabase` fails the build on purpose: that layer does not exist yet.
+- **Two builds from one code base** (`VITE_DATA_MODE=demo` or not). The real build has no example customers, no admin panel, no payment details, so no fake data or password can reach customers. `check:real-build` fails CI if a demo string ships. `VITE_DATA_MODE=supabase` builds only with `VITE_SUPABASE_URL` + publishable key (a secret key is refused) and never shows the seed catalog: loading/error screen until the live catalog arrives; seed files are marked side-effect free so that build drops them.
 - **The database recomputes every order** (`check_order`) and stores what it rebuilt, not what the browser sent. Why: the browser is not trusted. `tests/sql-parity.test.ts` generates `supabase/tests/parity.sql` (42 orders built by `src/core`) and CI runs it on real PostgreSQL.
 - **Rounding matches PostgreSQL**: half rounds up (`money.ts`, 1e-9 nudge); stock per origin is summed as whole numbers and divided once. Why: a per-bag division produced 0.06249… against 0.0625 and refused real orders (found by an independent review, fixed).
 - **Every stock reservation ends**: 48 h unpaid, 120 h after the customer says "I paid", counted from the order time; no setting turns it off (`reservationDeadline`, `expire_unpaid_orders`).
@@ -100,7 +99,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   `net` is not exposed through the API. Moving it needs a DROP the tool here cannot run: owner can toggle pg_net off/on (Dashboard → Database → Extensions).
 - Leaked password protection (advisor) needs the Pro plan: skipped by the owner; long passwords + mandatory 2FA instead.
 - `skip locked` in `expire_unpaid_orders` is not tested under concurrency.
-- The Supabase backend is not written yet (slices 2-10); `VITE_DATA_MODE=supabase` still fails the build on purpose.
+- Supabase mode (slice 2) reads the catalog only. Checkout, payment report, B2B form: not wired (slice 3), the call throws and the button stays busy; checkout is unreachable today anyway (no payee details).
 - Before the Supabase writes (slices 8-10): admin "saved" flash shows even when a save is refused; a failed call in
   `useAction` is an unhandled rejection (no message); shipping rows, B2B notes and the stock blend switch save on every
   change without waiting (fine in the browser store, would race over the network). No Storage slice (owner, below).
@@ -132,7 +131,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
-   1 async contract (merged) · 2 catalog read from Supabase · 3 orders via `storefront` · 4 Turnstile · 5 Supabase Auth
+   1 async contract (merged) · 2 catalog read from Supabase (on branch) · 3 orders via `storefront` · 4 Turnstile · 5 Supabase Auth
    sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
    (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, deploy from `main`.
    Then Turnstile keys and the outbox sender (phase 4).
@@ -142,7 +141,8 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - Q1 answer "yes" was read as agreeing with the default (roasted stock).
 - Paid samples: tested in core (3 mutants caught), SQL (2 mutants caught), parity (42 orders, 11 B2B 250/500 g lines) and browser screenshots at 390 px (fr, ar); the `bulk_only` text in English was not seen in a browser.
 - On real Supabase, checked: schema byte-identical to the files, `set_order_status` as the owner cancels and returns stock, `check_order` accepts an
-  order built by `src/core` and refuses closed methods, the storefront function end to end. Not checked: RLS reads through the API (slices 2 and 7).
+  order built by `src/core` and refuses closed methods, the storefront function end to end. Anon RLS (2026-10-06, role `anon` in SQL): 10 products, 6 origins, 20 cities, 2 methods, 1 config; 0 orders/requests/messages/stock lines/admins.
+  Not checked: the same over HTTP (this container's egress denies `*.supabase.co`), admin reads (slice 7).
 - Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only.
 - Whether Vercel's free plan is allowed for a commercial site (Q21).
 - Whether Cash Plus needs a bank-style RIB or other beneficiary data; whether a bank transfer can be recalled after it lands (Q23, Q24).

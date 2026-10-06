@@ -71,6 +71,8 @@ export const en = {
     copy: 'Copy',
     copied: 'Copied',
     loading: 'Please wait…',
+    loadFailed: 'The catalog could not be loaded. Check your connection, then try again.',
+    retry: 'Try again',
     sending: 'Sending…',
     kg: 'kg',
     days: '{d} days',
