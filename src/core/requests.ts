@@ -19,7 +19,9 @@ export interface ContactRequestInput {
 
 export type QuoteInput = ContactRequestInput & { items: CartItem[] };
 
-export type RequestError = 'name' | 'phone' | 'email' | 'city';
+/** Every reason a B2B request can be refused (the site reads the server's answers against this list). */
+export const REQUEST_ERRORS = ['name', 'phone', 'email', 'city'] as const;
+export type RequestError = (typeof REQUEST_ERRORS)[number];
 
 export function validateContact(input: ContactRequestInput, rates: ShippingRate[]): RequestError[] {
   const errors: RequestError[] = [];

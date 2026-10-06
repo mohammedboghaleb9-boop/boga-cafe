@@ -5,7 +5,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import type { Backend } from '../types';
-import { supabaseApi } from './api';
+import { createSupabaseApi } from './api';
 import type { Database } from './database.types';
 import { createCatalogStore } from './store';
 
@@ -17,12 +17,13 @@ export function createSupabaseBackend(): Backend {
   const url = import.meta.env.VITE_SUPABASE_URL ?? '';
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
   if (!url || !key) throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are required with VITE_DATA_MODE=supabase.');
-  // visitors only read for now: no session to keep (admin sign-in comes with slice 5)
+  // visitors need no session (admin sign-in comes with slice 5)
   const client = createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { fetch: fetchWithTimeout },
   });
   const store = createCatalogStore(client);
   void store.load();
-  return { db: store.db, status: store.status, api: supabaseApi, retry: () => void store.load() };
+  const api = createSupabaseApi({ client, store, storefront: { url, key } });
+  return { db: store.db, status: store.status, api, retry: () => void store.load() };
 }

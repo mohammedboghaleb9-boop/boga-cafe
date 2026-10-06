@@ -27,17 +27,20 @@ export interface CheckoutContext {
   paymentMethods: PaymentMethodConfig[];
 }
 
-export type CheckoutError =
-  | 'empty_cart'
-  | 'cart_problem'
-  | 'b2b_required'
-  | 'out_of_stock'
-  | 'name'
-  | 'phone'
-  | 'email'
-  | 'city'
-  | 'address'
-  | 'payment_method';
+/** Every reason an order can be refused (the site reads the server's answers against this list). */
+export const CHECKOUT_ERRORS = [
+  'empty_cart',
+  'cart_problem',
+  'b2b_required',
+  'out_of_stock',
+  'name',
+  'phone',
+  'email',
+  'city',
+  'address',
+  'payment_method',
+] as const;
+export type CheckoutError = (typeof CHECKOUT_ERRORS)[number];
 
 export function validateCustomer(c: CustomerInfo, rates: ShippingRate[]): CheckoutError[] {
   const errors: CheckoutError[] = [];

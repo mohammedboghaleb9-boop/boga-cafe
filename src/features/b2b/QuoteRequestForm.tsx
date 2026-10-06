@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { TEXT_MAX } from '@/core/limits';
 import type { CartItem } from '@/core/types';
-import { api, type RequestError } from '@/data/api';
+import { api, GUARD_ERRORS, type GuardError, type RequestError } from '@/data/api';
 import type { MessageDraft } from '@/services/notifications';
 import { useI18n } from '@/i18n';
 import { Field } from '@/shared/ui/bits';
@@ -11,17 +11,20 @@ import { RequestFields, emptyRequest, focusFirstError } from './RequestFields';
 export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent: (ref: string, message: MessageDraft) => void }) {
   const { t } = useI18n();
   const [contact, setContact] = useState(emptyRequest);
-  const [errors, setErrors] = useState<RequestError[]>([]);
+  const [errors, setErrors] = useState<(RequestError | GuardError)[]>([]);
   const [busy, setBusy] = useState(false);
+  const isGuard = (e: RequestError | GuardError): e is GuardError => (GUARD_ERRORS as readonly string[]).includes(e);
+  const fieldErrors = errors.filter((e): e is RequestError => !isGuard(e));
+  const guardErrors = errors.filter(isGuard);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
-    const r = await api.requestQuote({ ...contact, items });
-    setBusy(false);
+    // the button never stays on "sending": every answer, even a failure, ends here
+    const r = await api.requestQuote({ ...contact, items }).finally(() => setBusy(false));
     if (!r.ok) {
       setErrors(r.errors);
-      focusFirstError('quote', r.errors);
+      focusFirstError('quote', r.errors.filter((x): x is RequestError => !isGuard(x)));
       return;
     }
     onSent(r.quote.number, r.message);
@@ -29,7 +32,7 @@ export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent:
 
   return (
     <form className="form-grid" onSubmit={submit} noValidate>
-      <RequestFields idPrefix="quote" value={contact} onChange={setContact} errors={errors} />
+      <RequestFields idPrefix="quote" value={contact} onChange={setContact} errors={fieldErrors} />
       <Field label={t.b2b.notes} htmlFor="quote-notes" optional className="span-all">
         <textarea
           id="quote-notes"
@@ -39,6 +42,15 @@ export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent:
           onChange={(e) => setContact({ ...contact, notes: e.target.value })}
         />
       </Field>
+      {guardErrors.length > 0 && (
+        <div className="span-all stack" role="alert">
+          {guardErrors.map((g) => (
+            <p key={g} className="notice notice-bad small">
+              {t.checkout.errors[g]}
+            </p>
+          ))}
+        </div>
+      )}
       <div className="span-all">
         <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy ? t.common.sending : t.cart.b2bSend}

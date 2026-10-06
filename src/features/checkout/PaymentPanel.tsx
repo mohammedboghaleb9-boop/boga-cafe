@@ -119,12 +119,13 @@ function ReportPayment({ order }: { order: Order }) {
   const { t } = useI18n();
   const [ref, setRef] = useState('');
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!ref.trim()) return;
     setBusy(true);
-    await api.reportOfflinePayment(order.id, ref.trim());
-    setBusy(false);
+    const sent = await api.reportOfflinePayment(order.id, ref.trim()).finally(() => setBusy(false));
+    setFailed(!sent);
   }
   return (
     <form className="stack report" onSubmit={submit}>
@@ -138,6 +139,11 @@ function ReportPayment({ order }: { order: Order }) {
           {busy ? t.common.sending : t.payment.reportSend}
         </button>
       </div>
+      {failed && (
+        <p className="notice notice-bad small" role="alert">
+          {t.checkout.errors.server}
+        </p>
+      )}
     </form>
   );
 }

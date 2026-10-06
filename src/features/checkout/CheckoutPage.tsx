@@ -5,7 +5,7 @@ import { formatKg } from '@/core/format';
 import type { CheckoutError } from '@/core/order';
 import { shippingFee } from '@/core/shipping';
 import type { CustomerInfo, PaymentMethodId } from '@/core/types';
-import { api } from '@/data/api';
+import { api, GUARD_ERRORS, type GuardError } from '@/data/api';
 import { methodAvailable } from '@/services/payments';
 import { useCatalog, useDb } from '@/data/hooks';
 import { useCart } from '@/shared/cart/CartProvider';
@@ -31,7 +31,7 @@ const emptyCustomer: CustomerInfo = {
 
 /** One-page checkout, no account needed. */
 /** Where the keyboard goes when an error needs fixing (fields first, in page order). */
-const FIELD_OF: Partial<Record<CheckoutError, string>> = {
+const FIELD_OF: Partial<Record<CheckoutError | GuardError, string>> = {
   name: 'co-name',
   phone: 'co-phone',
   email: 'co-email',
@@ -39,7 +39,7 @@ const FIELD_OF: Partial<Record<CheckoutError, string>> = {
   address: 'co-address',
 };
 
-function focusField(error: CheckoutError | undefined) {
+function focusField(error: CheckoutError | GuardError | undefined) {
   if (!error) return;
   requestAnimationFrame(() => {
     const el =
@@ -61,7 +61,7 @@ export function CheckoutPage() {
   // the card stays listed as "soon" while no gateway is connected (services/payments)
   const methods = paymentMethods.filter((m) => m.enabled);
   const [method, setMethod] = useState<PaymentMethodId | ''>(methods.find((m) => methodAvailable(m, settings))?.id ?? '');
-  const [errors, setErrors] = useState<CheckoutError[]>([]);
+  const [errors, setErrors] = useState<(CheckoutError | GuardError)[]>([]);
   const [busy, setBusy] = useState(false);
 
   const summary = summarizeCart(cart.items, { products, origins: originIndex }, settings);
@@ -90,8 +90,7 @@ export function CheckoutPage() {
       return;
     }
     setBusy(true);
-    const r = await api.placeOrder({ items: cart.items, customer, paymentMethod: method, locale });
-    setBusy(false);
+    const r = await api.placeOrder({ items: cart.items, customer, paymentMethod: method, locale }).finally(() => setBusy(false));
     if (!r.ok) {
       setErrors(r.errors);
       focusField(r.errors.find((code) => code in FIELD_OF) ?? r.errors[0]);
@@ -102,7 +101,7 @@ export function CheckoutPage() {
   }
 
   const globalErrors = errors.filter((e) =>
-    (['empty_cart', 'cart_problem', 'b2b_required', 'out_of_stock'] as CheckoutError[]).includes(e),
+    ([...GUARD_ERRORS, 'empty_cart', 'cart_problem', 'b2b_required', 'out_of_stock'] as (CheckoutError | GuardError)[]).includes(e),
   );
 
   return (

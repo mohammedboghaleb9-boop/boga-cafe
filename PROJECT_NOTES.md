@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-06 (P5 step 3: slice 1 merged `abb9646`; slice 2 on `feat/p5-s2-catalog-read`, not merged). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-06 (P5 step 3: slices 1-2 merged, `main` = `0a55ea1`; slice 3 on `feat/p5-s3-orders`, not merged). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -13,16 +13,15 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
-  the site is not connected yet: 9-12 days left (**Estimated**: slices 2-11 = 8.75 d + outbox sender 1-1.5 d; slice 2 counts once merged).
-- `main` = `abb9646`, merge of slice 1 (owner approved 2026-10-06; branch CI run 78 green).
-- **Site on Cloudflare Workers**, deployed by the owner from `main` (`npx wrangler deploy`; URL not checked by me). Real
-  build: seed catalog in the browser, no admin panel, no payment method open. **Not connected to Supabase**: the deployed
-  build is the browser one; the live catalog read exists only on the slice 2 branch. **Notifications do not work** (Known issues).
-- **Live Supabase project** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): migrations applied, catalog
-  loaded from `supabase/seed.sql`, two owner accounts (not listed here, the repo is public; sign-up off), Edge Function
-  `storefront` v4 ACTIVE (deployed 2026-10-01 from the branch's bundle, not re-compared byte for byte). Checked read-only
-  2026-10-05: 7 migrations, same as `supabase/migrations`; `storefront` is the only function (`create-order` is gone);
-  the two owners never signed in, no 2FA factor yet; no `save_product` function yet (slice 9).
+  the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; slice 3b not estimated).
+- `main` = `0a55ea1`, merge of slice 2 (owner approved 2026-10-06; CI run 84 green). Slice 1 = `abb9646`.
+- **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
+  yet). **Every merge into `main` is a release.** Preview builds: `npx wrangler versions upload`. The Supabase switch =
+  adding `VITE_DATA_MODE`/URL/key in Cloudflare build variables, owner only, slice 11. Workers Builds does not wait for
+  GitHub CI: merge only on a green branch. Deployed build today: browser store, seed catalog, no admin, no payment method
+  open, **not connected to Supabase**. **Notifications do not work** (Known issues).
+- **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 7 migrations = `supabase/migrations`, catalog from `supabase/seed.sql`,
+  two owner accounts (sign-up off; never signed in, no 2FA yet), `storefront` v4 the only function (not re-compared byte for byte), no `save_product` yet (slice 9).
 
 ## Open branches
 - Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks open branches in Notion.
@@ -39,7 +38,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - `src/features/` one folder per section: home, shop, product, single-origin, custom-blend, b2b, cart, checkout, contact, admin.
 - `src/services/` notifications and payments adapters; `src/shared/` layout, UI, cart state; `src/i18n/` AR/FR/EN dictionaries.
 - `src/server/` storefront server logic (parse, guard = limits + Turnstile, prepare, storefront), unit tested; bundled into `supabase/functions/storefront/dist/index.js` by `scripts/build-functions.mjs` (not committed).
-- `src/data/supabase/` types, row mappers, catalog loader (shared with the function); `store.ts`, `index.ts`, `api.ts`: the site's Supabase backend (catalog only; other calls throw "not wired yet").
+- `src/data/supabase/` types, row mappers, catalog loader (shared with the function); `store.ts`, `index.ts`, `api.ts`, `storefront.ts`, `orderCache.ts`: the site's Supabase backend (catalog, orders, B2B; admin calls throw "not wired yet").
 - `api/` notification function + tests. `supabase/migrations/` schema, `supabase/tests/` smoke, parity, race, `supabase/seed.sql` (from `scripts/seed-sql.mjs`), `supabase/config.toml`.
 - `e2e/` Playwright; `tests/` architecture (section boundaries), SQL parity generator, notify contract.
 - `scripts/check-real-build.mjs`, `docs/` (Arabic, 01-10), `brand/`, `public/`.
@@ -90,16 +89,18 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 ## Known issues (evidence in PROJECT_STATUS.html section 17)
 - **Hosting mismatch**: the site runs on Cloudflare Workers, `api/notify` is a Vercel function, so no message reaches WhatsApp/Gmail from the deployed site.
   With Supabase the messages are queued in `notification_outbox`; a Supabase function should send them (phase 4) and replace `api/notify`. Recommended.
-- **Test rows in the live database** (still there 2026-10-05): order BC-2026-0001 (cancelled), B2B request QR-2026-0001
-  (note "TEST"), 4 outbox rows `failed`, their order events and stock lines. Owner: keep them for now, delete them all
-  and reset numbering to 0001 in slice 11, before launch (the tool here cannot run DELETE; SQL editor).
+- **Test rows in the live database** (2026-10-06): order BC-2026-0001 (cancelled), B2B requests QR-2026-0001 and QR-2026-0002 (both closed,
+  note "TEST"), 6 outbox rows `failed`, events, stock lines, rate-limit rows. Owner: delete all and reset numbering to 0001 in slice 11.
 - The tool that applies SQL to the live project times out on some statements (any DELETE, some function texts).
   Workaround used: smaller migrations, UPDATE instead of DELETE, checks through `pg_net`.
 - pg_net (in `public`, advisor warning): Supabase grants `net.*` to PUBLIC as `supabase_admin`; `postgres` cannot revoke it (`pg_net_private` had no effect).
   `net` is not exposed through the API. Moving it needs a DROP the tool here cannot run: owner can toggle pg_net off/on (Dashboard → Database → Extensions).
 - Leaked password protection (advisor) needs the Pro plan: skipped by the owner; long passwords + mandatory 2FA instead.
 - `skip locked` in `expire_unpaid_orders` is not tested under concurrency.
-- Supabase mode (slice 2) reads the catalog only. Checkout, payment report, B2B form: not wired (slice 3), the call throws and the button stays busy. Checkout is unreachable today (live `site_config` bank/Cash Plus payee empty, checked 2026-10-06, so `methodAvailable` closes both); the B2B form (cart above the threshold) is reachable and hangs on "Sending…". Not deployed, so acceptable until slice 3.
+- Supabase mode (slice 3): orders/B2B via `storefront` (network, 4xx, 5xx, unreadable body = `server`); the order page keeps the placed order
+  for the tab (sessionStorage), else reads `get_order_public` (no phone/address: no message to send); "I have paid" = RPC; `deliver` off (outbox).
+  A real order is refused today (`payment_method`, payee empty: correct). POST timeout 30 s: a lost answer after the save shows `server`, a retry
+  can duplicate. "Commande introuvable sur cet appareil" reads wrong in this mode. supabase-js retries a failed GET.
 - Before the Supabase writes (slices 8-10): admin "saved" flash shows even when a save is refused; a failed call in
   `useAction` is an unhandled rejection (no message); shipping rows, B2B notes and the stock blend switch save on every
   change without waiting (fine in the browser store, would race over the network). No Storage slice (owner, below).
@@ -131,20 +132,19 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
-   1 async contract (merged) · 2 catalog read from Supabase (on branch) · 3 orders via `storefront` · 4 Turnstile · 5 Supabase Auth
+   1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (on branch) · 4 Turnstile · 5 Supabase Auth
    sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
    (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, deploy from `main`.
-   Then Turnstile keys and the outbox sender (phase 4).
-2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 19-26 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
+   3b (owner, 2026-10-06; not built): a product with an inactive or out-of-stock origin is "unavailable" and the server
+   refuses it. Then Turnstile keys and the outbox sender (phase 4). Before launch: an idempotency key per order (needs a migration)
+   so a retry after a lost answer cannot duplicate; the privacy page (P7) mentions the order copy kept in the tab (sessionStorage).
+2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 18-25 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
 
 ## Needs verification
-- Q1 answer "yes" was read as agreeing with the default (roasted stock).
 - Paid samples: tested in core (3 mutants caught), SQL (2 mutants caught), parity (42 orders, 11 B2B 250/500 g lines) and browser screenshots at 390 px (fr, ar); the `bulk_only` text in English was not seen in a browser.
 - On real Supabase, checked: schema byte-identical to the files, `set_order_status` as the owner cancels and returns stock, `check_order` accepts an
-  order built by `src/core` and refuses closed methods, the storefront function end to end. Anon RLS (2026-10-06, role `anon` in SQL): 10 products, 6 origins, 20 cities, 2 methods, 1 config; 0 orders/requests/messages/stock lines/admins.
-  Not checked: the same over HTTP (this container's egress denies `*.supabase.co`), admin reads (slice 7).
+  order built by `src/core` and refuses closed methods, the storefront function end to end. Anon over HTTP (2026-10-06): 10 products, 6 origins, 20 cities, 2 methods, 1 config; 0 orders/requests/messages/admins; the supabase build in a
+  browser shows the live shop and reads an order by its link. Not checked: admin reads (slice 7).
 - Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only.
-- Whether Vercel's free plan is allowed for a commercial site (Q21).
-- Whether Cash Plus needs a bank-style RIB or other beneficiary data; whether a bank transfer can be recalled after it lands (Q23, Q24).
-- The Stop hook in a real Claude Code session: the script is tested by hand (mtime and git mode), the harness firing was not observed.
-- `map-test` @ `f9ba067`: donor only (port `save_product`, `Captcha.tsx`, guard i18n keys, missing mappers; drop samples).
+- Q1 "yes" read as the default (roasted stock); Q21 Vercel free plan for a commercial site; Q23/Q24 Cash Plus beneficiary data, can a bank transfer be recalled after it lands.
+- The Stop hook firing in a real session was not observed (script tested by hand). `map-test` @ `f9ba067`: donor only (still to port: `save_product`, `Captcha.tsx`, admin mappers).
