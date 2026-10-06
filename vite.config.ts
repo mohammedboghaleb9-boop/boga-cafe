@@ -6,12 +6,13 @@ import { fileURLToPath, URL } from 'node:url';
 // Two build targets:
 //  - default: the real website (multi-file, served from the domain root)
 //  - "demo":  the clickable prototype packed into ONE html file (dist-demo/index.html)
-/** A secret key (sb_secret_…) or a legacy service_role JWT. */
-function isSecretKey(key: string): boolean {
-  if (key.startsWith('sb_secret_')) return true;
+/** Only a key meant for browsers: sb_publishable_… or a legacy JWT whose role is anon (an allowlist, so no other key slips through). */
+function isPublishableKey(key: string): boolean {
+  if (key !== key.trim()) return false;
+  if (/^sb_publishable_[\w-]+$/.test(key)) return true;
   try {
     const payload = JSON.parse(Buffer.from(key.split('.')[1] ?? '', 'base64url').toString('utf8')) as { role?: string };
-    return payload.role === 'service_role';
+    return payload.role === 'anon';
   } catch {
     return false;
   }
@@ -30,7 +31,7 @@ export default defineConfig(({ command, mode }) => {
     if (!env.VITE_SUPABASE_URL || !key) {
       throw new Error('VITE_DATA_MODE=supabase needs VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (.env.example). The site never falls back to the example catalog.');
     }
-    if (isSecretKey(key)) throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY holds a secret key: use the publishable key (sb_publishable_…).');
+    if (!isPublishableKey(key)) throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY must be the publishable key (sb_publishable_…) or the legacy anon key, with no spaces: anything else would ship to every visitor.');
   }
   return {
     base: demo ? './' : '/',

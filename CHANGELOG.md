@@ -5,7 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-06
-- 2026-10-06 [feat/p5-s2-catalog-read] P5 step 3 slice 2: `VITE_DATA_MODE=supabase` reads the live catalog (`src/data/supabase/store.ts`), loading/error screen, build needs URL + publishable key and refuses a secret key, no seed data in that build. Browser builds unchanged.
+- 2026-10-06 [feat/p5-s2-catalog-read] P5 step 3 slice 2: `VITE_DATA_MODE=supabase` reads the live catalog (`src/data/supabase/store.ts`), loading/error screen, build needs URL + publishable key and refuses a secret key, no seed data in that build (CI checks it). Review fixes: 15 s read timeout, publishable-key allowlist, retry keeps focus, deep links wait for the catalog. Browser builds unchanged.
 - 2026-10-06 Merged `feat/p5-s1-async-api` into `main` (abb9646, owner approved): slice 1, async data contract.
 
 ## 2026-10-05

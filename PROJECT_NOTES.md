@@ -13,11 +13,11 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
-  the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; per slice in PROJECT_STATUS.html §5/§7).
+  the site is not connected yet: 9-12 days left (**Estimated**: slices 2-11 = 8.75 d + outbox sender 1-1.5 d; slice 2 counts once merged).
 - `main` = `abb9646`, merge of slice 1 (owner approved 2026-10-06; branch CI run 78 green).
 - **Site on Cloudflare Workers**, deployed by the owner from `main` (`npx wrangler deploy`; URL not checked by me). Real
-  build: seed catalog in the browser, no admin panel, no payment method open. **Not connected to Supabase** (no data
-  layer yet, P5 step 3): the live database gets nothing from the site. **Notifications do not work** (Known issues).
+  build: seed catalog in the browser, no admin panel, no payment method open. **Not connected to Supabase**: the deployed
+  build is the browser one; the live catalog read exists only on the slice 2 branch. **Notifications do not work** (Known issues).
 - **Live Supabase project** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): migrations applied, catalog
   loaded from `supabase/seed.sql`, two owner accounts (not listed here, the repo is public; sign-up off), Edge Function
   `storefront` v4 ACTIVE (deployed 2026-10-01 from the branch's bundle, not re-compared byte for byte). Checked read-only
@@ -99,7 +99,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   `net` is not exposed through the API. Moving it needs a DROP the tool here cannot run: owner can toggle pg_net off/on (Dashboard → Database → Extensions).
 - Leaked password protection (advisor) needs the Pro plan: skipped by the owner; long passwords + mandatory 2FA instead.
 - `skip locked` in `expire_unpaid_orders` is not tested under concurrency.
-- Supabase mode (slice 2) reads the catalog only. Checkout, payment report, B2B form: not wired (slice 3), the call throws and the button stays busy; checkout is unreachable today anyway (no payee details).
+- Supabase mode (slice 2) reads the catalog only. Checkout, payment report, B2B form: not wired (slice 3), the call throws and the button stays busy. Checkout is unreachable today (live `site_config` bank/Cash Plus payee empty, checked 2026-10-06, so `methodAvailable` closes both); the B2B form (cart above the threshold) is reachable and hangs on "Sending…". Not deployed, so acceptable until slice 3.
 - Before the Supabase writes (slices 8-10): admin "saved" flash shows even when a save is refused; a failed call in
   `useAction` is an unhandled rejection (no message); shipping rows, B2B notes and the stock blend switch save on every
   change without waiting (fine in the browser store, would race over the network). No Storage slice (owner, below).

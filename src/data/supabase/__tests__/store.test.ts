@@ -25,9 +25,10 @@ const tables: Record<string, unknown[]> = {
   site_config: [{ settings: { b2bThresholdKg: 25 }, content: {} }],
 };
 
-/** Enough of supabase-js for loadCatalog(); `failing` tables answer with an error. */
-function fakeClient(failing = new Set<string>()) {
+/** Enough of supabase-js for loadCatalog(); `failing` tables answer with an error; `reads` counts queries per table. */
+function fakeClient(failing = new Set<string>(), reads = new Map<string, number>()) {
   const from = (table: string) => {
+    reads.set(table, (reads.get(table) ?? 0) + 1);
     const result = failing.has(table) ? { data: null, error: new Error(`${table} unreachable`) } : { data: tables[table], error: null };
     const q = Object.assign(Promise.resolve(result), {
       select: () => q,
@@ -72,5 +73,20 @@ describe('live catalog store', () => {
     await store.load();
     expect(store.status.get()).toBe('ready');
     expect(store.db.get().products).toHaveLength(1);
+  });
+
+  it('reads once for two clicks, and says "loading" as soon as a retry starts', async () => {
+    const failing = new Set(['products']);
+    const reads = new Map<string, number>();
+    const store = createCatalogStore(fakeClient(failing, reads));
+    await store.load();
+    expect(store.status.get()).toBe('error');
+    failing.clear();
+    const first = store.load();
+    expect(store.status.get()).toBe('loading'); // the error screen does not stay up while it retries
+    const second = store.load(); // a second click while it loads
+    await Promise.all([first, second]);
+    expect(reads.get('products')).toBe(2); // the failed read, then one retry
+    expect(store.status.get()).toBe('ready');
   });
 });

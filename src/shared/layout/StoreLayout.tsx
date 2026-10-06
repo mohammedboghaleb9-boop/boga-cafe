@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { useCart } from '@/shared/cart/CartProvider';
 import { useDataStatus, useDb } from '@/data/hooks';
@@ -42,8 +42,8 @@ export function StoreLayout() {
       window.clearTimeout(timer);
       moves.forEach((e) => window.removeEventListener(e, stop));
     };
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs again on each new page, on purpose
-  }, [pathname, hash]);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs again on each new page, and once the live catalog has arrived (the section exists only then)
+  }, [pathname, hash, status]);
 
   // unpaid orders past the time limit give their stock back
   useEffect(() => {
@@ -86,13 +86,25 @@ export function StoreLayout() {
 
 function DataPending({ failed, retry }: { failed: boolean; retry: () => void }) {
   const { t } = useI18n();
+  // once shown, the button stays (busy while loading again) so keyboard focus is never lost
+  const [retried, setRetried] = useState(false);
   return (
     <main id="main" className="container page stack" aria-busy={!failed}>
-      <p className="lead" role={failed ? 'alert' : 'status'}>
+      <p className="lead" role="status">
         {failed ? t.common.loadFailed : t.common.loading}
       </p>
-      {failed && (
-        <button type="button" className="btn btn-primary" style={{ alignSelf: 'flex-start' }} onClick={retry}>
+      {(failed || retried) && (
+        <button
+          type="button"
+          className="btn btn-primary"
+          style={{ alignSelf: 'flex-start' }}
+          aria-disabled={!failed || undefined}
+          onClick={() => {
+            if (!failed) return;
+            setRetried(true);
+            retry();
+          }}
+        >
           {t.common.retry}
         </button>
       )}
