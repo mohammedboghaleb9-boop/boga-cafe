@@ -305,6 +305,9 @@ export const en = {
       city: 'Choose your city.',
       address: 'Enter the delivery address.',
       payment_method: 'Choose a payment method.',
+      server: 'Connection problem: your request was not confirmed. Please try again in a moment.',
+      too_many: 'Too many requests from this phone number or connection. Please try again later, or write to us on WhatsApp.',
+      captcha: 'The anti-robot check did not pass. Please wait for it to finish, then try again.',
     },
   },
 
@@ -344,6 +347,7 @@ export const en = {
     refundedText: 'Your payment has been refunded. For any question, we are on WhatsApp.',
     deliveredText: 'Delivered. Enjoy your coffee! For a new order or a question, we are on WhatsApp.',
     notFound: 'Order not found on this device.',
+    loadFailed: 'This order could not be loaded. Check your connection, then reload the page.',
   },
 
   orderStatus: {

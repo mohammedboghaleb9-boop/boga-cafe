@@ -303,6 +303,9 @@ export const fr: Dict = {
       city: 'Choisissez votre ville.',
       address: 'Indiquez l’adresse de livraison.',
       payment_method: 'Choisissez un moyen de paiement.',
+      server: 'Problème de connexion : votre demande n’a pas été confirmée. Réessayez dans un instant.',
+      too_many: 'Trop de demandes depuis ce numéro ou cette connexion. Réessayez plus tard ou écrivez-nous sur WhatsApp.',
+      captcha: 'La vérification anti-robot n’a pas abouti. Attendez qu’elle se termine, puis réessayez.',
     },
   },
 
@@ -342,6 +345,7 @@ export const fr: Dict = {
     refundedText: 'Votre paiement a été remboursé. Pour toute question, nous sommes sur WhatsApp.',
     deliveredText: 'Commande livrée. Bonne dégustation ! Pour une nouvelle commande ou une question, nous sommes sur WhatsApp.',
     notFound: 'Commande introuvable sur cet appareil.',
+    loadFailed: 'Cette commande n’a pas pu être chargée. Vérifiez votre connexion, puis rechargez la page.',
   },
 
   orderStatus: {

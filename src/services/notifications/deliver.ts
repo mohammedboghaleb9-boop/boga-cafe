@@ -23,7 +23,8 @@ import type { MessageDraft } from './templates';
 export type DeliverableEvent = Extract<NotificationEvent, 'order.created' | 'payment.reported' | 'quote.created'>;
 export type DeliveryStatus = 'off' | 'pending' | 'slow' | 'sent' | 'failed';
 
-export const notifyUrl: string = import.meta.env.VITE_NOTIFY_URL ?? '';
+// live database: the messages are queued with the order itself (notification_outbox), never sent from the browser
+export const notifyUrl: string = import.meta.env.VITE_DATA_MODE === 'supabase' ? '' : (import.meta.env.VITE_NOTIFY_URL ?? '');
 
 /** After this, the page shows the manual step too; the request goes on and can still end 'sent'. */
 const PATIENCE_MS = 9_000;

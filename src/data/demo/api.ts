@@ -115,7 +115,7 @@ export const demoApi: Api = {
     await latency();
     const o = db.get().orders.find((x) => x.id === orderId);
     // Cash Plus / transfer only, and never over a payment already confirmed (core/orderFlow)
-    if (!o || !canReportPayment(o)) return;
+    if (!o || !canReportPayment(o)) return false;
     const at = now();
     const reported: Order = {
       ...o,
@@ -131,7 +131,11 @@ export const demoApi: Api = {
       notifications: [...draftsToLogs('payment.reported', message, s.settings, at, uid), ...s.notifications],
     }));
     deliver('payment.reported', reported.number, message);
+    return true;
   },
+
+  /** Every order is already in this browser's store. */
+  async loadOrder() {},
 
   /** Cart above the B2B threshold → request handled by the administration. */
   async requestQuote(input: QuoteInput) {

@@ -3,7 +3,9 @@
  * what a visitor may see (row level security shows active rows only), kept in
  * the same DbState the pages already read. Until it answers the catalog is
  * empty, never the seed's examples; the layout shows "loading" or the error.
+ * Orders: only the ones this visitor placed or opened by their link.
  */
+import type { Order } from '@/core/types';
 import { seedContent, seedSettings } from '../seed/config';
 import { STATE_VERSION, type DbState } from '../state';
 import type { DataStatus, ReadStore } from '../types';
@@ -31,6 +33,8 @@ export interface CatalogStore {
   status: ReadStore<DataStatus>;
   /** Reads the catalog; a call while one is running waits for that one. */
   load(): Promise<void>;
+  /** Adds or replaces one order the visitor placed or opened (the catalog read never touches orders). */
+  putOrder(order: Order): void;
 }
 
 export function createCatalogStore(client: Client): CatalogStore {
@@ -72,5 +76,9 @@ export function createCatalogStore(client: Client): CatalogStore {
     db: { get: () => state, subscribe },
     status: { get: () => status, subscribe },
     load: () => (running ??= read().finally(() => (running = null))),
+    putOrder(order) {
+      state = { ...state, orders: [order, ...state.orders.filter((o) => o.id !== order.id)] };
+      emit();
+    },
   };
 }

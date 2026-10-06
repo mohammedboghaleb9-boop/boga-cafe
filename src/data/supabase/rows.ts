@@ -5,16 +5,20 @@
 import {
   PACK_SIZES,
   type Localized,
+  type Order,
+  type OrderLine,
+  type OrderStatus,
   type Origin,
   type PackSize,
   type PaymentMethodConfig,
   type PaymentMethodId,
+  type PaymentStatus,
   type Product,
   type Settings,
   type ShippingRate,
   type SiteContent,
 } from '@/core/types';
-import type { Json, Tables } from './database.types';
+import type { FunctionReturns, Json, Tables } from './database.types';
 
 export type ProductRow = Tables<'products'> & {
   product_recipes: Pick<Tables<'product_recipes'>, 'origin_id' | 'percent'>[];
@@ -134,4 +138,30 @@ export function settingsFromRows(site: Json | undefined, admin: Tables<'admin_co
 export const contentFromRow = (j: Json | undefined, defaults: SiteContent): SiteContent => ({
   ...defaults,
   ...((j ?? {}) as Partial<SiteContent>),
+});
+
+export type PublicOrderRow = FunctionReturns<'get_order_public'>[number];
+
+/**
+ * An order read back by its link (get_order_public): what the customer may see
+ * again from any device. The phone, email, address and notes are not returned,
+ * on purpose, so they stay empty here and the page shows no message to send.
+ */
+export const publicOrderFromRow = (id: string, r: PublicOrderRow): Order => ({
+  id,
+  number: r.number,
+  createdAt: r.created_at,
+  // not returned; the order page does not use it
+  locale: 'fr',
+  customer: { fullName: r.customer_name, phone: '', email: '', cityId: r.city_id, address: '', company: '', notes: '' },
+  lines: r.lines as unknown as OrderLine[],
+  weightKg: Number(r.weight_kg),
+  subtotal: Number(r.subtotal),
+  shippingFee: Number(r.shipping_fee),
+  total: Number(r.total),
+  paymentMethod: r.payment_method as PaymentMethodId,
+  paymentStatus: r.payment_status as PaymentStatus,
+  status: r.status as OrderStatus,
+  stockDeductions: [],
+  history: [],
 });

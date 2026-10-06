@@ -38,7 +38,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - `src/features/` one folder per section: home, shop, product, single-origin, custom-blend, b2b, cart, checkout, contact, admin.
 - `src/services/` notifications and payments adapters; `src/shared/` layout, UI, cart state; `src/i18n/` AR/FR/EN dictionaries.
 - `src/server/` storefront server logic (parse, guard = limits + Turnstile, prepare, storefront), unit tested; bundled into `supabase/functions/storefront/dist/index.js` by `scripts/build-functions.mjs` (not committed).
-- `src/data/supabase/` types, row mappers, catalog loader (shared with the function); `store.ts`, `index.ts`, `api.ts`: the site's Supabase backend (catalog only; other calls throw "not wired yet").
+- `src/data/supabase/` types, row mappers, catalog loader (shared with the function); `store.ts`, `index.ts`, `api.ts`, `storefront.ts`, `orderCache.ts`: the site's Supabase backend (catalog, orders, B2B; admin calls throw "not wired yet").
 - `api/` notification function + tests. `supabase/migrations/` schema, `supabase/tests/` smoke, parity, race, `supabase/seed.sql` (from `scripts/seed-sql.mjs`), `supabase/config.toml`.
 - `e2e/` Playwright; `tests/` architecture (section boundaries), SQL parity generator, notify contract.
 - `scripts/check-real-build.mjs`, `docs/` (Arabic, 01-10), `brand/`, `public/`.
@@ -89,16 +89,18 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 ## Known issues (evidence in PROJECT_STATUS.html section 17)
 - **Hosting mismatch**: the site runs on Cloudflare Workers, `api/notify` is a Vercel function, so no message reaches WhatsApp/Gmail from the deployed site.
   With Supabase the messages are queued in `notification_outbox`; a Supabase function should send them (phase 4) and replace `api/notify`. Recommended.
-- **Test rows in the live database** (still there 2026-10-05): order BC-2026-0001 (cancelled), B2B request QR-2026-0001
-  (note "TEST"), 4 outbox rows `failed`, their order events and stock lines. Owner: keep them for now, delete them all
-  and reset numbering to 0001 in slice 11, before launch (the tool here cannot run DELETE; SQL editor).
+- **Test rows in the live database** (2026-10-06): order BC-2026-0001 (cancelled), B2B requests QR-2026-0001 and QR-2026-0002 (both closed,
+  note "TEST"), 6 outbox rows `failed`, events, stock lines, rate-limit rows. Owner: delete all and reset numbering to 0001 in slice 11.
 - The tool that applies SQL to the live project times out on some statements (any DELETE, some function texts).
   Workaround used: smaller migrations, UPDATE instead of DELETE, checks through `pg_net`.
 - pg_net (in `public`, advisor warning): Supabase grants `net.*` to PUBLIC as `supabase_admin`; `postgres` cannot revoke it (`pg_net_private` had no effect).
   `net` is not exposed through the API. Moving it needs a DROP the tool here cannot run: owner can toggle pg_net off/on (Dashboard → Database → Extensions).
 - Leaked password protection (advisor) needs the Pro plan: skipped by the owner; long passwords + mandatory 2FA instead.
 - `skip locked` in `expire_unpaid_orders` is not tested under concurrency.
-- Supabase mode (slice 2) reads the catalog only. Checkout, payment report, B2B form: not wired (slice 3), the call throws and the button stays busy. Checkout is unreachable today (live `site_config` bank/Cash Plus payee empty, checked 2026-10-06, so `methodAvailable` closes both); the B2B form (cart above the threshold) is reachable and hangs on "Sending…". Not deployed, so acceptable until slice 3.
+- Supabase mode (slice 3): orders/B2B via `storefront` (network, 4xx, 5xx, unreadable body = `server`); the order page keeps the placed order
+  for the tab (sessionStorage), else reads `get_order_public` (no phone/address: no message to send); "I have paid" = RPC; `deliver` off (outbox).
+  A real order is refused today (`payment_method`, payee empty: correct). POST timeout 30 s: a lost answer after the save shows `server`, a retry
+  can duplicate. "Commande introuvable sur cet appareil" reads wrong in this mode. supabase-js retries a failed GET.
 - Before the Supabase writes (slices 8-10): admin "saved" flash shows even when a save is refused; a failed call in
   `useAction` is an unhandled rejection (no message); shipping rows, B2B notes and the stock blend switch save on every
   change without waiting (fine in the browser store, would race over the network). No Storage slice (owner, below).
@@ -141,10 +143,8 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - Q1 answer "yes" was read as agreeing with the default (roasted stock).
 - Paid samples: tested in core (3 mutants caught), SQL (2 mutants caught), parity (42 orders, 11 B2B 250/500 g lines) and browser screenshots at 390 px (fr, ar); the `bulk_only` text in English was not seen in a browser.
 - On real Supabase, checked: schema byte-identical to the files, `set_order_status` as the owner cancels and returns stock, `check_order` accepts an
-  order built by `src/core` and refuses closed methods, the storefront function end to end. Anon RLS (2026-10-06, role `anon` in SQL): 10 products, 6 origins, 20 cities, 2 methods, 1 config; 0 orders/requests/messages/stock lines/admins.
-  Not checked: the same over HTTP (this container's egress denies `*.supabase.co`), admin reads (slice 7).
+  order built by `src/core` and refuses closed methods, the storefront function end to end. Anon over HTTP (2026-10-06): 10 products, 6 origins, 20 cities, 2 methods, 1 config; 0 orders/requests/messages/admins; the supabase build in a
+  browser shows the live shop and reads an order by its link. Not checked: admin reads (slice 7).
 - Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only.
-- Whether Vercel's free plan is allowed for a commercial site (Q21).
-- Whether Cash Plus needs a bank-style RIB or other beneficiary data; whether a bank transfer can be recalled after it lands (Q23, Q24).
-- The Stop hook in a real Claude Code session: the script is tested by hand (mtime and git mode), the harness firing was not observed.
-- `map-test` @ `f9ba067`: donor only (port `save_product`, `Captcha.tsx`, guard i18n keys, missing mappers; drop samples).
+- Q21 Vercel free plan for a commercial site; Q23/Q24 Cash Plus beneficiary data, can a bank transfer be recalled after it lands.
+- The Stop hook firing in a real session was not observed (script tested by hand). `map-test` @ `f9ba067`: donor only (still to port: `save_product`, `Captcha.tsx`, admin mappers).

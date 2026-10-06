@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { formatKg } from '@/core/format';
 import { orderPhase } from '@/core/orderFlow';
-import type { OrderStatus } from '@/core/types';
+import type { Order, OrderStatus } from '@/core/types';
 import { templateContext } from '@/data/context';
-import { useDb } from '@/data/hooks';
+import { useDb, useOrder } from '@/data/hooks';
 import { LineDetails } from '@/shared/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
 import { orderHandoff } from '@/services/notifications';
@@ -18,27 +18,41 @@ const FLOW: OrderStatus[] = ['new', 'confirmed', 'in_production', 'shipped', 'de
 
 export function OrderPage() {
   const { id } = useParams();
-  const { t, l, money, date } = useI18n();
-  const db = useDb();
-  const { orders, shippingRates } = db;
-  const order = orders.find((o) => o.id === id);
-  usePageTitle(order ? order.number : t.order.notFound);
-  // the payment was reported during this visit: bring the new message into view
-  const [statusOnArrival] = useState(order?.paymentStatus);
+  const { t } = useI18n();
+  const { order, loading, failed } = useOrder(id);
+  usePageTitle(order ? order.number : loading ? t.common.loading : t.order.notFound);
 
-  if (!order) {
+  if (order) return <OrderView key={order.id} order={order} />;
+  if (loading) {
     return (
-      <div className="container page stack" style={{ alignItems: 'flex-start' }}>
-        <h1>{t.order.notFound}</h1>
-        <Link to="/" className="btn btn-primary">
-          {t.common.backHome}
-        </Link>
+      <div className="container page">
+        <p className="lead" role="status">
+          {t.common.loading}
+        </p>
       </div>
     );
   }
+  return (
+    <div className="container page stack" style={{ alignItems: 'flex-start' }}>
+      <h1>{failed ? t.order.loadFailed : t.order.notFound}</h1>
+      <Link to="/" className="btn btn-primary">
+        {t.common.backHome}
+      </Link>
+    </div>
+  );
+}
+
+/** Mounted once the order is known, so "status on arrival" is the status the customer first saw. */
+function OrderView({ order }: { order: Order }) {
+  const { t, l, money, date } = useI18n();
+  const db = useDb();
+  const { shippingRates } = db;
+  // the payment was reported during this visit: bring the new message into view
+  const [statusOnArrival] = useState(order.paymentStatus);
 
   const city = shippingRates.find((r) => r.id === order.customer.cityId);
-  const handoff = orderHandoff(order, templateContext(db));
+  // an order read back by its link has no phone or address (get_order_public): no message to send from here
+  const handoff = order.customer.phone ? orderHandoff(order, templateContext(db)) : null;
   const justReported = handoff?.event === 'payment.reported' && statusOnArrival !== 'awaiting_verification';
   const reached = FLOW.indexOf(order.status);
   const firstName = order.customer.fullName.split(' ')[0];
@@ -121,9 +135,15 @@ export function OrderPage() {
             </div>
           </div>
           <div className="small muted">
-            {order.customer.fullName} · <span dir="ltr">{order.customer.phone}</span>
-            <br />
-            {order.customer.address}
+            {order.customer.fullName}
+            {order.customer.phone && (
+              <>
+                {' · '}
+                <span dir="ltr">{order.customer.phone}</span>
+                <br />
+                {order.customer.address}
+              </>
+            )}
           </div>
         </aside>
       </div>
