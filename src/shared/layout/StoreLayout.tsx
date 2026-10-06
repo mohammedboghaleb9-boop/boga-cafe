@@ -46,7 +46,7 @@ export function StoreLayout() {
 
   // unpaid orders past the time limit give their stock back
   useEffect(() => {
-    api.expireUnpaidOrders();
+    void api.expireUnpaidOrders();
   }, []);
 
   return (

@@ -7,12 +7,14 @@ import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
 import { SavedFlash, Switch, Tabs, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
+import { useAction } from '../useAction';
 
 export function NotificationsPage() {
   const { t, date } = useI18n();
   const { notifications, settings } = useDb();
   const [n, setN] = useState(settings.notifications);
   const [saved, flash] = useSavedFlash();
+  const [busy, run] = useAction();
   const role = useAdminRole()!;
   const owner = role === 'owner';
   const [channel, setChannel] = useState<'all' | NotificationChannel>('all');
@@ -49,10 +51,13 @@ export function NotificationsPage() {
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
-                  onClick={() => {
-                    api.saveSettings({ ...settings, notifications: n }, role);
-                    flash();
-                  }}
+                  aria-disabled={busy || undefined}
+                  onClick={() =>
+                    run(async () => {
+                      await api.saveSettings({ ...settings, notifications: n }, role);
+                      flash();
+                    })
+                  }
                 >
                   {t.common.save}
                 </button>

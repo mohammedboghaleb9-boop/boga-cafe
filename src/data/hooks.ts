@@ -1,6 +1,8 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { indexOrigins } from '@/core/recipe';
-import { db } from './store';
+import { backend } from './backend';
+
+const { db } = backend;
 
 /** Whole state; re-renders when anything changes. */
 export const useDb = () => useSyncExternalStore(db.subscribe, db.get, db.get);

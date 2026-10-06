@@ -8,6 +8,7 @@ import { Icon } from '@/shared/ui/Icon';
 import { PERMISSIONS, ROLES, SECTIONS } from '../permissions';
 import { ConfirmButton, SavedFlash, Switch, TableWrap, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
+import { useAction } from '../useAction';
 
 export function SettingsPage() {
   const role = useAdminRole()!;
@@ -15,6 +16,7 @@ export function SettingsPage() {
   const db = useDb();
   const [s, setS] = useState<Settings>(db.settings);
   const [saved, flash] = useSavedFlash();
+  const [busy, run] = useAction();
   const num = (v: string) => Math.max(0, Number(v) || 0);
   const cb = s.customBlend;
 
@@ -27,10 +29,13 @@ export function SettingsPage() {
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            onClick={() => {
-              api.saveSettings({ ...db.settings, ...s, bank: db.settings.bank, cashplus: db.settings.cashplus, contact: db.settings.contact, notifications: db.settings.notifications }, role);
-              flash();
-            }}
+            aria-disabled={busy || undefined}
+            onClick={() =>
+              run(async () => {
+                await api.saveSettings({ ...db.settings, ...s, bank: db.settings.bank, cashplus: db.settings.cashplus, contact: db.settings.contact, notifications: db.settings.notifications }, role);
+                flash();
+              })
+            }
           >
             {t.common.save}
           </button>
@@ -155,7 +160,7 @@ export function SettingsPage() {
       </section>
 
       <div>
-        <ConfirmButton label={t.admin.resetDemo} confirmLabel={t.admin.resetConfirm} onConfirm={api.resetDemo} />
+        <ConfirmButton label={t.admin.resetDemo} confirmLabel={t.admin.resetConfirm} onConfirm={() => void api.resetDemo()} />
       </div>
     </>
   );

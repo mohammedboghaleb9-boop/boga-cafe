@@ -1,21 +1,22 @@
 /**
  * Browser database: the whole state lives in memory and is saved in this
- * browser (localStorage), so each visitor only ever sees their own copy. It is
- * the only file that knows where data is kept. Phase 2 replaces it with
- * Supabase (docs/03-architecture.md, docs/05-roadmap.md).
+ * browser (localStorage), so each visitor only ever sees their own copy.
+ * Used by the demo and, until the Supabase backend exists (P5), by the real
+ * site with the catalog only. Pages never import it: they go through
+ * src/data/api.ts and src/data/hooks.ts (tests/architecture.test.ts).
  */
 import {
   draftsToLogs,
   orderMessage,
   quoteMessage,
 } from '@/services/notifications';
-import { templateContext } from './context';
-import { uid } from './ids';
-import { DEMO_DATA } from './mode';
-import { buildDemoActivity, DEMO_PAYEE } from './seed/activity';
-import { seedOrigins, seedProducts } from './seed/catalog';
-import { seedContent, seedPaymentMethods, seedSettings, seedShippingRates } from './seed/config';
-import { STATE_VERSION, type DbState } from './state';
+import { templateContext } from '../context';
+import { uid } from '../ids';
+import { DEMO_DATA } from '../mode';
+import { buildDemoActivity, DEMO_PAYEE } from '../seed/activity';
+import { seedOrigins, seedProducts } from '../seed/catalog';
+import { seedContent, seedPaymentMethods, seedSettings, seedShippingRates } from '../seed/config';
+import { STATE_VERSION, type DbState } from '../state';
 
 const STORAGE_KEY = 'boga-cafe-demo-db';
 

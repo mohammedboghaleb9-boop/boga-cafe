@@ -9,7 +9,7 @@ import { defangLinks } from '../../../../api/_lib/notify';
 describe('link blocking and the site messages', () => {
   it('leaves every demo order and B2B message unchanged', async () => {
     vi.resetModules();
-    const { db } = await import('@/data/store');
+    const { db } = await import('@/data/demo/store');
     const logs = db.get().notifications;
     expect(logs.length).toBeGreaterThanOrEqual(10);
     for (const log of logs) {

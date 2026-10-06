@@ -54,4 +54,14 @@ test.describe('admin', () => {
     await page.locator('tbody tr.clickable td:nth-child(3)').first().click();
     await expect(page).toHaveURL(/\/admin\/products\/[^/]+$/);
   });
+
+  test('saving with the keyboard keeps focus on the button (keyboard and screen-reader users keep their place)', async ({ page }) => {
+    await signIn(page, 'owner');
+    await open(page, '/admin/settings');
+    const save = page.locator('.admin-head').getByRole('button', { name: 'Enregistrer' });
+    await save.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.admin-head')).toContainText('Enregistré');
+    await expect(save).toBeFocused();
+  });
 });

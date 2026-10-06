@@ -169,18 +169,22 @@ export function ConfirmButton({
   confirmLabel,
   onConfirm,
   className = 'btn btn-danger btn-sm',
+  busy = false,
 }: {
   label: string;
   confirmLabel: string;
   onConfirm: () => void;
   className?: string;
+  /** A call is saving: the button keeps its focus (aria-disabled, not disabled) and ignores clicks. */
+  busy?: boolean;
 }) {
   const [armed, setArmed] = useState(false);
   return (
     <button
       type="button"
       className={className}
-      onClick={() => (armed ? (setArmed(false), onConfirm()) : setArmed(true))}
+      aria-disabled={busy || undefined}
+      onClick={() => !busy && (armed ? (setArmed(false), onConfirm()) : setArmed(true))}
       onBlur={() => setArmed(false)}
     >
       {armed ? confirmLabel : label}

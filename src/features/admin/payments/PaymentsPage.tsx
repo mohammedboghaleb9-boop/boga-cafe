@@ -10,6 +10,7 @@ import type { Role } from '../permissions';
 import { payeeReady } from '@/core/orderFlow';
 import { methodAvailable } from '@/services/payments';
 import { useAdminRole } from '../session';
+import { useAction } from '../useAction';
 
 const icons: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
 
@@ -17,6 +18,7 @@ export function PaymentsPage() {
   const role = useAdminRole()!;
   const { t, money, l } = useI18n();
   const { paymentMethods, orders, settings } = useDb();
+  const [busy, run] = useAction();
   const toVerify = orders.filter(
     (o) => o.status !== 'cancelled' && (o.paymentStatus === 'awaiting_verification' || (o.paymentStatus === 'pending' && o.paymentMethod !== 'card')),
   );
@@ -53,7 +55,16 @@ export function PaymentsPage() {
                       <PaymentPill status={o.paymentStatus} />
                     </td>
                     <td className="end">
-                      <button type="button" className="btn btn-primary btn-sm" onClick={() => api.setPaymentStatus(o.id, 'paid', role)}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        aria-disabled={busy || undefined}
+                        onClick={() =>
+                          run(async () => {
+                            await api.setPaymentStatus(o.id, 'paid', role);
+                          })
+                        }
+                      >
                         {t.admin.orders.markPaid}
                       </button>
                     </td>
@@ -83,6 +94,7 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
   const { t, l } = useI18n();
   const [m, setM] = useState(method);
   const [saved, flash] = useSavedFlash();
+  const [busy, run] = useAction();
   return (
     <article className="panel stack">
       <div className="spread">
@@ -95,10 +107,13 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            onClick={() => {
-              api.savePaymentMethod(m);
-              flash();
-            }}
+            aria-disabled={busy || undefined}
+            onClick={() =>
+              run(async () => {
+                await api.savePaymentMethod(m);
+                flash();
+              })
+            }
           >
             {t.common.save}
           </button>
@@ -125,6 +140,7 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
   const [bank, setBank] = useState(settings.bank);
   const [cashplus, setCashplus] = useState(settings.cashplus);
   const [saved, flash] = useSavedFlash();
+  const [busy, run] = useAction();
   return (
     <section className="panel stack">
       <div className="spread">
@@ -134,10 +150,13 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            onClick={() => {
-              api.saveSettings({ ...settings, bank, cashplus }, role);
-              flash();
-            }}
+            aria-disabled={busy || undefined}
+            onClick={() =>
+              run(async () => {
+                await api.saveSettings({ ...settings, bank, cashplus }, role);
+                flash();
+              })
+            }
           >
             {t.common.save}
           </button>

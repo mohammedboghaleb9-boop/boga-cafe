@@ -6,6 +6,7 @@ import { useI18n } from '@/i18n';
 import { LocalizedInput, SavedFlash, useSavedFlash } from '../ui';
 import { cleanProfileUrl } from '@/shared/contact';
 import { useAdminRole } from '../session';
+import { useAction } from '../useAction';
 
 export function ContentPage() {
   const { t } = useI18n();
@@ -13,16 +14,18 @@ export function ContentPage() {
   const [content, setContent] = useState<SiteContent>(db.content);
   const [contact, setContact] = useState<Settings['contact']>(db.settings.contact);
   const [saved, flash] = useSavedFlash();
+  const [busy, run] = useAction();
   const role = useAdminRole()!;
   const ownsContact = role === 'owner';
   const setC = <K extends keyof SiteContent>(k: K, v: SiteContent[K]) => setContent((c) => ({ ...c, [k]: v }));
   const setK = <K extends keyof Settings['contact']>(k: K, v: Settings['contact'][K]) => setContact((c) => ({ ...c, [k]: v }));
 
-  function save() {
-    api.saveContent(content);
-    if (ownsContact) api.saveSettings({ ...db.settings, contact }, role);
-    flash();
-  }
+  const save = () =>
+    run(async () => {
+      await api.saveContent(content);
+      if (ownsContact) await api.saveSettings({ ...db.settings, contact }, role);
+      flash();
+    });
 
   return (
     <>
@@ -30,7 +33,7 @@ export function ContentPage() {
         <h1>{t.admin.nav.content}</h1>
         <div className="row">
           <SavedFlash show={saved} />
-          <button type="button" className="btn btn-primary btn-sm" onClick={save}>
+          <button type="button" className="btn btn-primary btn-sm" aria-disabled={busy || undefined} onClick={save}>
             {t.common.save}
           </button>
         </div>

@@ -79,6 +79,11 @@ export function boundaryViolations(all: Module[]) {
         return other !== own && rest.length > 0 && rest.join('/') !== 'index';
       });
     }),
+    // pages reach data only through src/data/api and the hooks, never a backend itself
+    // (src/server is the Edge Function's code: it reads the database directly)
+    pagesThroughApi: ['app', 'features', 'shared', 'services', 'i18n'].flatMap((area) =>
+      inside(area).flatMap((f) => list(f, (i) => /^@\/data\/(demo|supabase|backend|store)(\/|$)/.test(i))),
+    ),
     // only the admin section imports admin code
     adminOnly: all
       .filter((f) => !f.path.startsWith('features/admin/') && f.path !== 'app/App.tsx')
@@ -97,6 +102,7 @@ describe('module boundaries', () => {
   it('shared, data and services never depend on a feature section', () => expect(found.sharedOnFeature).toEqual([]));
   it('a feature uses another feature only through its public index', () => expect(found.featureInternals).toEqual([]));
   it('only the admin section imports admin code', () => expect(found.adminOnly).toEqual([]));
+  it('pages reach data only through api and hooks, never a backend store', () => expect(found.pagesThroughApi).toEqual([]));
 });
 
 describe('the boundary checks cannot be sidestepped', () => {
@@ -158,6 +164,10 @@ describe('the boundary checks cannot be sidestepped', () => {
       // a line comment inside import(), and the second pattern of a glob list
       planted('features/b2b/B2BPage.tsx', [`const a = () => import(\n  // note\n  '../admin/AdminApp'\n);`, `const b = import.meta.glob(['./*.css', '../admin/*.tsx']);`]),
       planted('app/App.tsx', [`import { AdminApp } from '../features/admin/AdminApp';`]),
+      // a page that reads a backend's store, however the path is written; the server may read the database
+      planted('shared/layout/Header.tsx', [`import { db } from '@/data/demo/store';`, `import { useDb } from '@/data/hooks';`, `import { api } from '@/data/api';`]),
+      planted('features/admin/orders/OrderDetail.tsx', [`import { db } from '../../../data/demo/store';`, `import { backend } from '@/data/backend';`]),
+      planted('server/storefront.ts', [`import { loadCatalog } from '@/data/supabase/catalog';`]),
     ]);
     expect(found).toEqual({
       core: ['core/cart.ts → @/data/store'],
@@ -168,6 +178,11 @@ describe('the boundary checks cannot be sidestepped', () => {
         'features/shop/ShopPage.tsx → @/features/admin/*.tsx',
         'features/b2b/B2BPage.tsx → @/features/admin/AdminApp',
         'features/b2b/B2BPage.tsx → @/features/admin/*.tsx',
+      ],
+      pagesThroughApi: [
+        'features/admin/orders/OrderDetail.tsx → @/data/demo/store',
+        'features/admin/orders/OrderDetail.tsx → @/data/backend',
+        'shared/layout/Header.tsx → @/data/demo/store',
       ],
       adminOnly: [
         'features/cart/CartPage.tsx → @/features/admin/AdminApp',

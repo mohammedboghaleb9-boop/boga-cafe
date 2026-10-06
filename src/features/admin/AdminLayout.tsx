@@ -41,7 +41,7 @@ export function AdminLayout() {
 
   // unpaid orders past the time limit give their stock back
   useEffect(() => {
-    api.expireUnpaidOrders();
+    void api.expireUnpaidOrders();
   }, []);
 
   const badges: Partial<Record<Section, number>> = {
@@ -79,7 +79,7 @@ export function AdminLayout() {
           <ConfirmButton
             label={t.admin.resetDemo}
             confirmLabel={t.admin.resetConfirm}
-            onConfirm={api.resetDemo}
+            onConfirm={() => void api.resetDemo()}
             className="btn btn-sm btn-link"
           />
         </div>
