@@ -6,10 +6,12 @@
  * the database (notification_outbox), so nothing is sent from the browser.
  * Every other call says which slice brings it (P5 step 3, PROJECT_NOTES.md).
  */
+import { CHECKOUT_ERRORS } from '@/core/order';
+import { REQUEST_ERRORS } from '@/core/requests';
 import type { Order, QuoteRequest } from '@/core/types';
 import { quoteMessage } from '@/services/notifications';
 import { templateContext } from '../context';
-import type { Api, PlaceOrderResult, QuoteResult } from '../types';
+import { GUARD_ERRORS, type Api, type GuardError, type PlaceOrderResult, type QuoteResult } from '../types';
 import type { Client } from './client';
 import { cachedOrder, rememberOrder } from './orderCache';
 import { publicOrderFromRow } from './rows';
@@ -21,6 +23,15 @@ const notYet = (what: string) => async (): Promise<never> => {
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The server's refusals the form knows how to show; any other code (a newer
+ * function than this site) becomes 'server', so the customer always sees a message.
+ */
+export function knownErrors<T extends string>(errors: string[], codes: readonly T[]): (T | GuardError)[] {
+  const isKnown = (e: string): e is T | GuardError => (codes as readonly string[]).includes(e) || (GUARD_ERRORS as readonly string[]).includes(e);
+  return [...new Set(errors.map((e) => (isKnown(e) ? e : 'server')))];
+}
 
 /** The customer's copy (phone, address) with the status the server has now. */
 const withStatus = (known: Order, fresh: Order): Order => ({ ...known, paymentStatus: fresh.paymentStatus, status: fresh.status });
@@ -51,14 +62,14 @@ export function createSupabaseApi({ client, store, storefront }: SupabaseApiDeps
   return {
     async placeOrder(input): Promise<PlaceOrderResult> {
       const r = await postStorefront<{ order: Order }>('order', input, 'order', storefront);
-      if (!r.ok) return { ok: false, errors: r.errors as (PlaceOrderResult & { ok: false })['errors'] };
+      if (!r.ok) return { ok: false, errors: knownErrors(r.errors, CHECKOUT_ERRORS) };
       keep(r.order);
       return { ok: true, order: r.order };
     },
 
     async requestQuote(input): Promise<QuoteResult> {
       const r = await postStorefront<{ quote: QuoteRequest }>('quote', input, 'quote', storefront);
-      if (!r.ok) return { ok: false, errors: r.errors as (QuoteResult & { ok: false })['errors'] };
+      if (!r.ok) return { ok: false, errors: knownErrors(r.errors, REQUEST_ERRORS) };
       // the team's copy is already queued by the database; this one is for the customer's own "send" step
       return { ok: true, quote: r.quote, message: quoteMessage(r.quote, templateContext(store.db.get())) };
     },
@@ -71,12 +82,14 @@ export function createSupabaseApi({ client, store, storefront }: SupabaseApiDeps
         return false;
       }
       // the function answers nothing: read the order again to show where it stands
+      const mine = known(orderId);
       try {
         const fresh = await readPublic(orderId);
-        const mine = known(orderId);
         if (fresh) keep(mine ? { ...withStatus(mine, fresh), paymentRef: fresh.paymentStatus === 'awaiting_verification' ? ref : mine.paymentRef } : fresh);
       } catch (e) {
         console.error('get_order_public:', e);
+        // saved, but not read back: show what the report does to an order that can take it
+        if (mine) keep({ ...mine, paymentStatus: 'awaiting_verification', paymentRef: ref });
       }
       return true;
     },

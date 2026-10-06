@@ -5,7 +5,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Order } from '@/core/types';
-import { createSupabaseApi } from '../api';
+import { createSupabaseApi, knownErrors } from '../api';
+import { CHECKOUT_ERRORS } from '@/core/order';
 import type { Client } from '../client';
 import { createCatalogStore } from '../store';
 
@@ -19,8 +20,11 @@ const placed = {
 const publicRow = { number: 'BC-2026-0002', created_at: '2026-10-06T10:00:00Z', customer_name: 'Salma Test', city_id: 'oujda', lines: [],
   weight_kg: 0.25, subtotal: 65, shipping_fee: 20, total: 85, payment_method: 'bank_transfer', payment_status: 'paid', status: 'confirmed' };
 
-function setup(reply: () => Promise<Response>) {
-  const rpc = vi.fn(async (name: string) => (name === 'get_order_public' ? { data: [publicRow], error: null } : { data: null, error: null }));
+type Rpc = (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+const okRpc: Rpc = async (name) => (name === 'get_order_public' ? { data: [publicRow], error: null } : { data: null, error: null });
+
+function setup(reply: () => Promise<Response>, rpcImpl: Rpc = okRpc) {
+  const rpc = vi.fn(rpcImpl);
   const client = { rpc, from: () => { throw new Error('no catalog read in these tests'); } } as unknown as Client;
   const store = createCatalogStore(client);
   const api = createSupabaseApi({ client, store, storefront: { url: 'https://p.supabase.co', key: 'k', fetchFn: reply as unknown as typeof fetch } });
@@ -62,9 +66,48 @@ describe('orders on the live site', () => {
     expect(other.rpc).toHaveBeenCalledTimes(1);
   });
 
-  it('never throws at the B2B form when the connection is lost', async () => {
+  const contact = { businessType: 'cafe' as const, company: '', contactName: 'Amine', phone: '0612345678', email: '', cityId: 'oujda', notes: '' };
+
+  it('never throws at the B2B form when the connection is lost, and builds the customer\'s message on success', async () => {
     const offline = setup(() => Promise.reject(new TypeError('Failed to fetch')));
-    const contact = { businessType: 'cafe' as const, company: '', contactName: 'Amine', phone: '0612345678', email: '', cityId: 'oujda', notes: '' };
     await expect(offline.api.requestQuote({ ...contact, items: [] })).resolves.toEqual({ ok: false, errors: ['server'] });
+
+    const quote = { id: 'q1', number: 'QR-2026-0009', createdAt: '2026-10-06T10:00:00Z', businessType: 'cafe', company: '', contactName: 'Amine',
+      phone: '+212612345678', email: '', cityId: 'oujda', lines: [], weightKg: 11, indicativeTotal: 1000, notes: '', status: 'new' };
+    const online = setup(async () => new Response(JSON.stringify({ ok: true, quote }), { status: 200 }));
+    const r = await online.api.requestQuote({ ...contact, items: [] });
+    if (!r.ok) throw new Error(r.errors.join());
+    expect(r.message.whatsapp).toContain('QR-2026-0009');
+  });
+
+  it('shows a refusal this site does not know as "server", never as nothing', async () => {
+    expect(knownErrors(['unavailable'], CHECKOUT_ERRORS)).toEqual(['server']);
+    expect(knownErrors(['phone', 'unavailable', 'too_many'], CHECKOUT_ERRORS)).toEqual(['phone', 'server', 'too_many']);
+    const newer = setup(async () => new Response(JSON.stringify({ ok: false, errors: ['unavailable'] }), { status: 200 }));
+    expect(await newer.api.requestQuote({ ...contact, items: [] })).toEqual({ ok: false, errors: ['server'] });
+  });
+
+  it('reports a payment by RPC, shows the new status, and says when it could not be sent', async () => {
+    const tab = setup(async () => new Response(JSON.stringify({ ok: true, order: placed }), { status: 200 }), async (name) =>
+      name === 'get_order_public' ? { data: [{ ...publicRow, payment_status: 'awaiting_verification', status: 'new' }], error: null } : { data: null, error: null });
+    await tab.api.placeOrder({ items: [], customer: placed.customer, paymentMethod: 'bank_transfer', locale: 'fr' });
+    expect(await tab.api.reportOfflinePayment(ID, '  CP-778812  ')).toBe(true);
+    expect(tab.rpc).toHaveBeenCalledWith('report_offline_payment', { p_order_id: ID, p_ref: 'CP-778812' });
+    expect(tab.store.db.get().orders[0]).toMatchObject({ paymentStatus: 'awaiting_verification', paymentRef: 'CP-778812', customer: { phone: '0612345678' } });
+
+    const down = setup(async () => new Response('', { status: 500 }), async () => ({ data: null, error: { message: 'offline' } }));
+    expect(await down.api.reportOfflinePayment(ID, 'CP-1')).toBe(false);
+  });
+
+  it('says the order could not be read only when this tab has no copy of it', async () => {
+    const failing: Rpc = async () => ({ data: null, error: { message: 'offline' } });
+    vi.stubGlobal('sessionStorage', { getItem: () => null, setItem: () => {} });
+    await expect(setup(async () => new Response(''), failing).api.loadOrder(ID)).rejects.toBeTruthy();
+
+    const saved = new Map([['boga.orders', JSON.stringify([placed])]]);
+    vi.stubGlobal('sessionStorage', { getItem: (k: string) => saved.get(k) ?? null, setItem: () => {} });
+    const withCopy = setup(async () => new Response(''), failing);
+    await expect(withCopy.api.loadOrder(ID)).resolves.toBeUndefined();
+    expect(withCopy.store.db.get().orders[0].customer.address).toBe('Rue 1, Oujda');
   });
 });

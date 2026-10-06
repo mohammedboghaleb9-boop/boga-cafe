@@ -44,7 +44,8 @@ export async function postStorefront<T>(
   { url, key, fetchFn = fetch }: StorefrontTarget,
 ): Promise<StorefrontReply<T>> {
   try {
-    const res = await fetchFn(`${url}/functions/v1/storefront/${route}`, {
+    // a URL pasted with a trailing slash would give …co//functions (the catalog works, every order fails)
+    const res = await fetchFn(`${url.replace(/\/+$/, '')}/functions/v1/storefront/${route}`, {
       method: 'POST',
       headers: { apikey: key, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

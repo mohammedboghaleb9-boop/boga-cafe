@@ -22,18 +22,22 @@ describe('storefront answers', () => {
     ['a body that is not JSON', 200, null, { ok: false, errors: ['server'] }],
     ['"ok" without the order', 200, { ok: true }, { ok: false, errors: ['server'] }],
     ['a refusal without reasons', 200, { ok: false, errors: [] }, { ok: false, errors: ['server'] }],
+    ['a refusal-shaped body with an error status', 400, { ok: false, errors: ['phone'] }, { ok: false, errors: ['server'] }],
+    ['reasons that are not text', 200, { ok: false, errors: [1] }, { ok: false, errors: ['server'] }],
   ])('%s', (_, status, body, expected) => {
     expect(read(status, body)).toEqual(expected);
   });
 
   it('posts the form with the publishable key, and turns a lost connection into "server"', async () => {
     const fetchFn = vi.fn(async () => new Response(JSON.stringify({ ok: true, order: { id: 'o1' } }), { status: 200 }));
-    const target = { url: 'https://project.supabase.co', key: 'sb_publishable_x', fetchFn: fetchFn as unknown as typeof fetch };
+    // pasted with a trailing slash, as a build variable can be
+    const target = { url: 'https://project.supabase.co/', key: 'sb_publishable_x', fetchFn: fetchFn as unknown as typeof fetch };
     expect(await postStorefront<OrderReply>('order', { items: [] }, 'order', target)).toEqual({ ok: true, order: { id: 'o1' } });
     const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://project.supabase.co/functions/v1/storefront/order');
     expect(init.method).toBe('POST');
     expect((init.headers as Record<string, string>).apikey).toBe('sb_publishable_x');
+    expect(init.signal).toBeInstanceOf(AbortSignal); // a server that never answers ends as 'server'
 
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const offline = { ...target, fetchFn: (async () => Promise.reject(new TypeError('Failed to fetch'))) as typeof fetch };
