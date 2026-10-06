@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-06 (P5 step 3: slice 1 merged `abb9646`; slice 2 on `feat/p5-s2-catalog-read`, not merged). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-06 (P5 step 3: slices 1-2 merged, `main` = `0a55ea1`; slice 3 on `feat/p5-s3-orders`, not merged). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -13,16 +13,15 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
-  the site is not connected yet: 9-12 days left (**Estimated**: slices 2-11 = 8.75 d + outbox sender 1-1.5 d; slice 2 counts once merged).
-- `main` = `abb9646`, merge of slice 1 (owner approved 2026-10-06; branch CI run 78 green).
-- **Site on Cloudflare Workers**, deployed by the owner from `main` (`npx wrangler deploy`; URL not checked by me). Real
-  build: seed catalog in the browser, no admin panel, no payment method open. **Not connected to Supabase**: the deployed
-  build is the browser one; the live catalog read exists only on the slice 2 branch. **Notifications do not work** (Known issues).
-- **Live Supabase project** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): migrations applied, catalog
-  loaded from `supabase/seed.sql`, two owner accounts (not listed here, the repo is public; sign-up off), Edge Function
-  `storefront` v4 ACTIVE (deployed 2026-10-01 from the branch's bundle, not re-compared byte for byte). Checked read-only
-  2026-10-05: 7 migrations, same as `supabase/migrations`; `storefront` is the only function (`create-order` is gone);
-  the two owners never signed in, no 2FA factor yet; no `save_product` function yet (slice 9).
+  the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; slice 3b not estimated).
+- `main` = `0a55ea1`, merge of slice 2 (owner approved 2026-10-06; CI run 84 green). Slice 1 = `abb9646`.
+- **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
+  yet). **Every merge into `main` is a release.** Preview builds: `npx wrangler versions upload`. The Supabase switch =
+  adding `VITE_DATA_MODE`/URL/key in Cloudflare build variables, owner only, slice 11. Workers Builds does not wait for
+  GitHub CI: merge only on a green branch. Deployed build today: browser store, seed catalog, no admin, no payment method
+  open, **not connected to Supabase**. **Notifications do not work** (Known issues).
+- **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 7 migrations = `supabase/migrations`, catalog from `supabase/seed.sql`,
+  two owner accounts (sign-up off; never signed in, no 2FA yet), `storefront` v4 the only function (not re-compared byte for byte), no `save_product` yet (slice 9).
 
 ## Open branches
 - Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks open branches in Notion.
@@ -131,10 +130,11 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
-   1 async contract (merged) · 2 catalog read from Supabase (on branch) · 3 orders via `storefront` · 4 Turnstile · 5 Supabase Auth
+   1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (on branch) · 4 Turnstile · 5 Supabase Auth
    sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
    (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, deploy from `main`.
-   Then Turnstile keys and the outbox sender (phase 4).
+   3b (owner, 2026-10-06; not built): a product with an inactive or out-of-stock origin is "unavailable" and the server
+   refuses it. Then Turnstile keys and the outbox sender (phase 4).
 2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 19-26 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
 
 ## Needs verification

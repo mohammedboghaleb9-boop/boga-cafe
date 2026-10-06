@@ -258,14 +258,14 @@ footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);color:v
   <h1>مركز التحكم بمشروع BOGA CAFÉ<small>Project Roadmap + Status Report + Visual Development Plan</small></h1>
   <div class="meta">
     <span>آخر تحديث: <b class="mono">2026-10-05</b></span>
-    <span>النسخة الرئيسية: <b class="mono">main @ abb9646</b> (دمج الشريحة 1، بموافقتك 2026-10-06؛ CI run 78 على الفرع)</span>
-    <span>الفروع المفتوحة: <b class="mono">feat/p5-s2-catalog-read</b> · P5 الخطوة 3، الشريحة 2، كتسنى موافقتك على الدمج</span>
+    <span>النسخة الرئيسية: <b class="mono">main @ 0a55ea1</b> (دمج الشريحة 2، بموافقتك 2026-10-06؛ CI run 84 أخضر) · <b>كل دمج فـ main = إصدار</b> (Cloudflare Workers Builds كينشر main أوتوماتيكياً)</span>
+    <span>الفروع المفتوحة: <b class="mono">feat/p5-s3-orders</b> · P5 الخطوة 3، الشريحة 3 (الطلبات وB2B عبر الخادم)</span>
   </div>
 
   <div class="answers" aria-label="الإجابات في دقيقة">
     <div class="ans a-done"><h2>Where are we?</h2><p class="k">حوالي 66٪ <span class="mono">(Estimated)</span></p><p>الموقع منشور على Cloudflare (نشرتَه أنت، النسخة الحقيقية بدون دفع ولا إدارة). خادم Supabase الحقيقي <b>خدّام</b>: قاعدة البيانات والكتالوج ودالة الطلبات. <b>الموقع مازال ما مربوطش</b> بالخادم، و<b>الرسائل (WhatsApp/Gmail) ما كتخدمش</b> من الموقع المنشور.</p></div>
     <div class="ans a-done"><h2>What is finished?</h2><p class="k">27 من 43 بنداً + 3 جزئية</p><p>منطق البيع والخلطة وB2B والمخزون، الإدارة بثلاثة أدوار، 3 لغات، اختبارات المتصفح في CI (P4)، وقاعدة البيانات تعيد حساب كل طلب بنفسها (تدقيق، البندان 1 و2).</p></div>
-    <div class="ans a-plan"><h2>What now?</h2><p class="k">P5 · ربط الموقع بالخادم</p><p>تم: مشروع Supabase بالمخطط ديال هاد المشروع، الكتالوج، دالة <code>storefront</code> للطلبات وطلبات B2B مع حدود لكل هاتف، والإلغاء الآلي كل 15 دقيقة. الباقي: الموقع يقرا ويكتب فـ Supabase، ودخول الإدارة الحقيقي. <b>P5 الخطوة 3</b> (11 شريحة): الشريحة 1 مدموجة (<code>abb9646</code>). الشريحة 2 (الموقع كيقرا الكتالوج الحي من Supabase فـ وضع <code>supabase</code>) جاهزة فـ الفرع <code>feat/p5-s2-catalog-read</code> وكتسنى موافقتك. الموقع المنشور ما تبدلش.</p></div>
+    <div class="ans a-plan"><h2>What now?</h2><p class="k">P5 · ربط الموقع بالخادم</p><p>الشريحة 1 (عقد غير متزامن) والشريحة 2 (قراءة الكتالوج الحي فـ وضع <code>supabase</code>) مدموجين فـ main. <b>دابا: الشريحة 3</b>، الطلبات وطلبات B2B عبر دالة <code>storefront</code>، فـ الفرع <code>feat/p5-s3-orders</code>. الموقع المنشور باقي على قاعدة المتصفح حتى الشريحة 11.</p></div>
     <div class="ans a-plan"><h2>What is left?</h2><p class="k">7 مخططة + 3 جزئية</p><p>ربط الموقع بـ Supabase، دخول الإدارة الحقيقي + 2FA، إرسال الرسائل من الخادم، مفاتيح Turnstile، SEO، الصفحات القانونية، الفحص النهائي، الإطلاق.</p></div>
     <div class="ans a-plan"><h2>How long?</h2><p class="k">4 إلى 5 أسابيع عمل <span class="mono">(Estimated)</span></p><p>P5 الباقي 9–12 يوم (الشرائح 2–11 = 8.75 يوم + مرسل الرسائل 1–1.5 يوم)، والمجموع 19–26 يوم عمل للأعمال التقنية المتبقية فقط، بدون الانتظارات الخارجية. تقدير وليس وعداً: كان 4–9 أيام قبل تقسيم P5 لشرائح.</p></div>
     <div class="ans a-block"><h2>What blocks us?</h2><p class="k">6 بنود خارج يدي</p><p>معلومات الحساب البنكي الحقيقي ومستفيد كاش بلوس (بدونها لا دفع)، المنتجات والأسعار النهائية، مفاتيح Gmail وCallMeBot، النطاق (ANRT)، CNDP، CMI للبطاقة.</p></div>
@@ -364,20 +364,9 @@ footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);color:v
 <!-- ═════════════ 5 ═════════════ -->
 <section class="chap" id="s5">
   <div class="chead"><span class="no">05</span><h2>Current Work</h2><span class="ar">قيد العمل الآن</span></div>
-  <article class="pcard prog">
-    <header><div><span class="pid">ON A BRANCH · WAITING FOR YOUR MERGE APPROVAL</span><h3>P5 step 3 · slice 2: catalog read from Supabase (feat/p5-s2-catalog-read)</h3></div><span class="b prog"><i></i>IN PROGRESS</span></header>
-    <div class="pgrid">
-      <div>
-        <h4>Result</h4><p>فـ وضع <code>VITE_DATA_MODE=supabase</code> الموقع كيقرا المنتجات والمصادر والمدن وطرق الدفع والإعدادات من قاعدة البيانات الحية، وكيبين «لحظة» ولا رسالة خطأ مع «أعد المحاولة»، و<b>أبداً</b> الكتالوج التجريبي. الطلب وطلب B2B باقين ما مربوطينش (الشريحة 3). النسخة المنشورة والتجريبية ما تبدلوش. ما كاين حتى كتابة فـ Supabase ولا نشر.</p>
-        <h4>What was done</h4>
-        <ul class="checks"><li class="ck done"><span class="box"></span><span>البناء فـ وضع supabase كيرفض بلا URL ومفتاح، وكيقبل غير المفتاح العمومي (publishable أو anon)؛ CI كيبنيه وكيتأكد بلي ما فيه حتى منتج تجريبي</span></li><li class="ck done"><span class="box"></span><span>قراءة كـ زائر (anon) فـ قاعدة البيانات الحية، قراءة فقط: 10 منتجات، 6 مصادر، 20 مدينة، طريقتين ديال الدفع؛ 0 طلبات و0 رسائل و0 مسؤولين باينين</span></li><li class="ck done"><span class="box"></span><span>مراجعة مستقلة: ما كاين حتى مشكل خطير؛ 6 تصلحو (مهلة 15 ثانية، المفتاح، التركيز فـ «أعد المحاولة»، الروابط لقسم، اختبار، الوثائق)</span></li><li class="ck done"><span class="box"></span><span>lint، typecheck، Vitest 179/179، build، build:demo، check:real-build، build:functions، E2E 38/38 (محلياً)</span></li><li class="ck todo"><span class="box"></span><span><span class="verify">⚠️ Needs Verification</span> القراءة عبر HTTP من المتصفح: البيئة ديالي كتمنع <code>supabase.co</code>، فشفت غير شاشة الخطأ</span></li></ul>
-      </div>
-      <div>
-        <h4>Next task</h4><p><b>الشريحة 3</b>: الطلبات وB2B عبر دالة <code>storefront</code>، بعد دمج الشريحة 2.</p>
-        <h4>Evidence</h4><p class="mono" style="font-size:12px">feat/p5-s2-catalog-read: 3799552 (CI run 80) · cc892f8 (CI run 81) · src/data/supabase/__tests__/store.test.ts</p>
-        <h4>Estimated time · Priority</h4><p class="dur">الشريحة 2: يوم (Estimated، تمت على الفرع) · CRITICAL</p>
-      </div>
-    </div>
+  <article class="pcard done">
+    <header><div><span class="pid">MERGED · 2026-10-06</span><h3>P5 step 3 · slice 2: catalog read from Supabase (0a55ea1)</h3></div><span class="b done"><i></i>COMPLETED</span></header>
+    <p>فـ وضع <code>supabase</code> الموقع كيقرا الكتالوج الحي، مع «لحظة» ولا خطأ و«أعد المحاولة»، وأبداً الكتالوج التجريبي؛ البناء كيقبل غير المفتاح العمومي. الدليل: <span class="mono">0a55ea1 · CI run 84 · src/data/supabase/__tests__/store.test.ts</span>. القراءة كـ زائر مفحوصة فـ SQL؛ عبر HTTP كتجرب فـ الشريحة 3.</p>
   </article>
   <article class="pcard done">
     <header><div><span class="pid">MERGED · 2026-10-06</span><h3>P5 step 3 · slice 1: async data contract (abb9646)</h3></div><span class="b done"><i></i>COMPLETED</span></header>
@@ -728,7 +717,7 @@ footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);color:v
     <div class="larr">▼</div>
     <div class="layer"><div class="lname">Delivery</div><div class="lbox">
       <div class="chip done">GitHub Actions CI<small>web + e2e + database</small></div>
-      <div class="chip part">Cloudflare Workers<small>الموقع منشور من main (نشره المالك)؛ <code>api/notify</code> مكتوبة لـ Vercel فما كتخدمش تما</small></div>
+      <div class="chip part">Cloudflare Workers<small>Workers Builds: main كيتنشر أوتوماتيكياً (بلا متغيرات بناء بعد)؛ المعاينة بـ <code>wrangler versions upload</code>؛ <code>api/notify</code> مكتوبة لـ Vercel فما كتخدمش تما</small></div>
       <div class="chip block">bogacafe.ma<small>ينتظر ANRT</small></div></div></div>
   </div>
   <p class="note">ليس فيه شيء غير موجود فعلاً: Supabase (قاعدة البيانات، دالة <code>storefront</code>، pg_cron) خدّام؛ Auth للإدارة وStorage للصور مخططان. الموقع منشور على Cloudflare Workers، لكن دالة الرسائل <code>api/notify</code> مكتوبة لـ Vercel وما كتخدمش تما (قرار مفتوح، القسم 17).</p>
