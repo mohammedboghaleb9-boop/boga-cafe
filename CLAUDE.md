@@ -18,7 +18,7 @@
 - One repository per project. Never create a second repository or a copy of this one without asking the owner.
 - One branch per task. When the task is done and verified: merge into `main` (with the owner's approval), then delete the branch.
 - Never start new work while an unmerged branch exists. Tell the owner first and finish or close that branch.
-- `PROJECT_NOTES.md` on `main` must list every open branch and what it contains, so a new session starting from `main` knows about it.
+- Open branches: run `git branch -a` at session start; the owner tracks open branches in Notion. No docs-only commits on main while a branch is open.
 - Start every session with `git branch -a`, then `git log main..<branch>` for each open branch, before reading or changing code.
 - Never merge, force-push, rewrite history or delete a branch with unmerged work without the owner's approval.
 - Never deploy (migrations, Edge Functions, site) from a branch that is not merged into main.

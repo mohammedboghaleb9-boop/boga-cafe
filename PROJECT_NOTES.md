@@ -24,9 +24,9 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
   2026-10-05: 7 migrations, same as `supabase/migrations`; `storefront` is the only function (`create-order` is gone);
   the two owners never signed in, no 2FA factor yet; no `save_product` function yet (slice 9).
 
-## Open branches (not merged into `main`)
-- `feat/p5-s1-async-api` (from `369391d`): P5 step 3 slice 1, async data contract, no visible change. Waiting for the
-  owner's merge approval. `main`'s copy of this file cannot list it until a commit lands on `main` (see What is next).
+## Open branches
+- Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks open branches in Notion.
+  `feat/p5-s1-async-api` (slice 1) approved for merge 2026-10-06.
 
 ## Stack
 Node 24 (`.node-version`, `engines 24.x`), React 19.3, Vite 8.3, React Router 8.4 (declarative), TypeScript 7, Vitest 5, Oxlint, Playwright 1.63 + axe-core.
@@ -103,7 +103,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - The Supabase backend is not written yet (slices 2-10); `VITE_DATA_MODE=supabase` still fails the build on purpose.
 - Before the Supabase writes (slices 8-10): admin "saved" flash shows even when a save is refused; a failed call in
   `useAction` is an unhandled rejection (no message); shipping rows, B2B notes and the stock blend switch save on every
-  change without waiting (fine in the browser store, would race over the network). Storage (photos) is not in the 11 slices.
+  change without waiting (fine in the browser store, would race over the network). No Storage slice (owner, below).
 - `api/notify` rate limit is in memory per instance. Messages are written by the browser; the server checks shape only.
 - A lone surrogate or NUL in a customer text: the storefront function refuses it (400, `src/server/parse.ts`, tested); the browser-only demo build does not check it.
 - The status hook treats edits to `CLAUDE.md`, `README.md`, `docs/*` as code: a docs-only session gets blocked until this file changes.
@@ -128,14 +128,14 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - Login tracking: last sign-in + the existing `actor` on each change; no new table. Site URL for Turnstile/Auth:
   https://boga-cafe.mohammedboghaleb9.workers.dev/ (`bogacafe.ma` later). Notifications off during development, but
   **no real launch until the outbox sender exists**. Leaked password protection: skipped (Pro plan only).
+- 2026-10-06: product photos stay in the code (`public/`) until after launch; no Storage slice now.
 
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
-   1 async contract (on branch) · 2 catalog read from Supabase · 3 orders via `storefront` · 4 Turnstile · 5 Supabase Auth
+   1 async contract (merged) · 2 catalog read from Supabase · 3 orders via `storefront` · 4 Turnstile · 5 Supabase Auth
    sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
    (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, deploy from `main`.
-   Then Turnstile keys and the outbox sender (phase 4). Open process point: the rule "`main` lists every open branch"
-   needs a docs commit on `main` while a branch is open; the owner has not said whether that commit may go straight to `main`.
+   Then Turnstile keys and the outbox sender (phase 4).
 2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 19-26 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
 
 ## Needs verification
