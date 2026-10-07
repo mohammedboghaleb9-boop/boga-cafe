@@ -14,8 +14,9 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
   the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; slice 3b not estimated).
-- `main` = `d2ebd36`, merge of slice 3 (owner approved 2026-10-07; `feat/p5-s3-orders` kept for the owner to delete). Slice 3b: code `b3425ba`
-  (CI run 89 green), review running, migration `order_idempotency` **not applied live yet**.
+- `main` = `d2ebd36`, merge of slice 3 (owner approved 2026-10-07; `feat/p5-s3-orders` kept for the owner to delete). Slice 3b: code + review
+  fixes on its branch; live: `20261007005011_order_idempotency_key` applied, `order_idempotency_commit` **not yet** (the live SQL tool
+  times out on DROP: it waits for a confirmation; the old `commit_order` is renamed `commit_order_before_3b` instead, to drop in slice 11).
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
   yet). **Every merge into `main` is a release.** Preview builds: `npx wrangler versions upload`. The Supabase switch =
   adding `VITE_DATA_MODE`/URL/key in Cloudflare build variables, owner only, slice 11. Workers Builds does not wait for
