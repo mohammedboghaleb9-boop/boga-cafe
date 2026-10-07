@@ -84,8 +84,8 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   (store approach from `map-test`, owner approved), so storefront pages stay unchanged. Admin save buttons go through
   `useAction` (one call at a time); busy = `aria-disabled`, not `disabled`, so keyboard focus stays (a review found it lost).
 - **Admin sign-in (slice 5)**: `Backend.admin`. Demo: role picker (`src/data/demo/session.ts`). Live: Supabase Auth email + password, own client (`boga-admin-auth`: the shop stays a visitor);
-  admin = `is_admin()` true + own `admin_users` role, else signed out and "no access"; one message for every refused email/password. No sign-up/reset UI; 2FA = slice 6.
-- **Workflow**: branch `fix/*` or `feat/*`, independent read-only review, CI green, `merge --no-ff` into main. No pull requests unless asked. No secrets in the repo (Gmail App Password and CallMeBot key go in Vercel settings only).
+  admin = `is_admin()` true + own `admin_users` role, else signed out and "no access"; one message for every refused email/password. No sign-up/reset UI; 2FA = slice 6. Sign-out = this browser only (scope local; removed by hand when supabase-js cannot). Browser-only build: no-admin stub, no demo password (`check-real-build`).
+- **Workflow**: `fix/*`/`feat/*` branch, read-only review, CI green, `merge --no-ff`. No PRs unless asked. No secrets in the repo (Gmail/CallMeBot keys: Vercel settings only).
 - **Audit rule**: a rule counts as tested only if breaking it makes a test fail. The audit's own faults were re-run (code 3 of 58 survive, SQL 3 of 31; `docs/10` section 6).
 
 ## Known issues (evidence in PROJECT_STATUS.html section 17)
