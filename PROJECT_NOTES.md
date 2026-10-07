@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-07 (P5 step 3: slices 1-3 merged, `main` = `d2ebd36`; slice 3b on `feat/p5-s3b-order-guards`, not merged). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-07 (P5 step 3: slices 1-3b merged, `main` = `344952f`; deploy config on `feat/p5-deploy-config`, not merged). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -14,14 +14,14 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
   the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; slice 3b not estimated).
-- `main` = `d2ebd36`, merge of slice 3 (owner approved 2026-10-07, CI run 88; `feat/p5-s3-orders` kept for the owner to delete).
-  Slice 3b on `feat/p5-s3b-order-guards` @ `8cd628d` (CI 93-94 green), **applied live, not merged**: waiting for the owner.
+- `main` = `344952f`, merge of slice 3b (owner approved 2026-10-07, CI run 97; slice 3 = `d2ebd36`). Merged branches deleted by the owner.
+  Now: deploy config (`wrangler.jsonc`, pinned wrangler) on `feat/p5-deploy-config`, before slice 4.
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
   yet). **Every merge into `main` is a release.** Preview builds: `npx wrangler versions upload`. The Supabase switch =
   adding `VITE_DATA_MODE`/URL/key in Cloudflare build variables, owner only, slice 11. Workers Builds does not wait for
   GitHub CI: merge only on a green branch. Deployed build today: browser store, seed catalog, no admin, no payment method
   open, **not connected to Supabase**. **Notifications do not work** (Known issues).
-- **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b, branch only),
+- **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b),
   catalog from `seed.sql`, two owner accounts (never signed in, no 2FA yet), `storefront` **v5** = slice 3b build, no `save_product` yet (slice 9).
   Rollout order for 3b: migrations first, then the function (old function + new DB works; new function + old DB fails every keyed order).
 
@@ -135,8 +135,8 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
    1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile · 5 Supabase Auth
    sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
-   (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, deploy from `main`.
-   3b (applied live, waiting for merge): unavailable products, order idempotency key (B2B requests: none yet), order page text by link.
+   (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, drop `commit_order_before_3b`, the live
+   same-key success test with payee details, deploy from `main`. 3b (merged): unavailable products, order key (B2B: none yet), order page by link.
    Then Turnstile keys and the outbox sender (phase 4). Before launch: the privacy page (P7) mentions the order copy kept in the tab (sessionStorage).
 2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 18-25 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
 
