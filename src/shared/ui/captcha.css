@@ -1,0 +1,5 @@
+/* Room for the Turnstile widget before it loads (65 px tall; 140 px in its compact size), so the button does not jump. */
+.captcha-box {
+  min-height: 65px;
+  max-width: 100%;
+}

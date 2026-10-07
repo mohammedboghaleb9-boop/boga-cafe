@@ -103,18 +103,38 @@ function fakeDb(opts: FakeOptions = {}) {
   return { db: { from: query, rpc } as unknown as Client, calls, reads };
 }
 
+/* Cloudflare's test keys (developers.cloudflare.com/turnstile/troubleshooting/testing): the "always passes"
+   widget hands out the dummy token, which only the testing secrets accept; "always fails" refuses it. */
+const PASS_SECRET = '1x0000000000000000000000000000000AA';
+const FAIL_SECRET = '2x0000000000000000000000000000000AA';
+const DUMMY_TOKEN = 'XXXX.DUMMY.TOKEN.XXXX';
+
+/** siteverify as Cloudflare answers for the test keys; records what it was sent. */
+function fakeSiteverify(sent: URLSearchParams[] = []) {
+  return (async (url: string, init: RequestInit) => {
+    expect(url).toBe('https://challenges.cloudflare.com/turnstile/v0/siteverify');
+    const body = init.body as URLSearchParams;
+    sent.push(body);
+    const success = body.get('secret') === PASS_SECRET && body.get('response') === DUMMY_TOKEN;
+    return new Response(JSON.stringify(success ? { success } : { success, 'error-codes': ['invalid-input-response'] }));
+  }) as unknown as typeof fetch;
+}
+
 const IP_KEY = 'server-secret';
-const deps = (db: Client, over: Partial<Deps> = {}): Deps => ({
-  db, ip: '196.200.1.1', ipKey: IP_KEY, turnstileSecret: '', now: new Date('2026-10-01T10:00:00Z'), ...over,
+const deps = (db: Client, over: Partial<Deps> = {}, siteverify = fakeSiteverify()): Deps => ({
+  db, ip: '196.200.1.1', ipKey: IP_KEY, turnstileSecret: PASS_SECRET, now: new Date('2026-10-01T10:00:00Z'),
+  verifyCaptcha: (secret, token, ip) => verifyTurnstile(secret, token, ip, siteverify),
+  ...over,
 });
 
-const contact = { businessType: 'cafe', company: 'Café Test', contactName: 'Amine Test', phone: '0612345678', email: '', cityId: 'oujda', notes: '' };
+const contact = { businessType: 'cafe', company: 'Café Test', contactName: 'Amine Test', phone: '0612345678', email: '', cityId: 'oujda', notes: '', captchaToken: DUMMY_TOKEN };
 const customer = { fullName: 'Salma Bennani', phone: '0612345678', email: '', cityId: 'oujda', address: 'Rue 1, Oujda', company: '', notes: '' };
 const orderBody = (over: Record<string, unknown> = {}) => ({
   items: [{ id: 'a', type: 'product', productId: 'signature', size: 1000, qty: 2, unitPrice: 1 }],
   customer,
   paymentMethod: 'cashplus',
   locale: 'ar',
+  captchaToken: DUMMY_TOKEN,
   ...over,
 });
 function committed(calls: { name: string }[]) {
@@ -291,21 +311,10 @@ describe('storefront: order', () => {
   });
 
   it('answers 400 to what the forms never send, and lets real failures surface', async () => {
-    expect((await handleStorefront('order', { items: 'x' }, deps(fakeDb().db))).status).toBe(400);
+    expect((await handleStorefront('order', { items: 'x', captchaToken: DUMMY_TOKEN }, deps(fakeDb().db))).status).toBe(400);
     expect((await handleStorefront('order', orderBody(), deps(fakeDb({ commitError: 'invalid_order:text_too_long' }).db))).status).toBe(400);
     expect((await handleStorefront('order', orderBody(), deps(fakeDb({ commitError: 'invalid_order' }).db))).status).toBe(400);
     await expect(handleStorefront('order', orderBody(), deps(fakeDb({ commitError: 'connection lost' }).db))).rejects.toMatchObject({ message: 'connection lost' });
-  });
-
-  it('requires a valid Turnstile token once the secret is set', async () => {
-    const seen: string[] = [];
-    const verifyCaptcha = async (_: string, token: string) => (seen.push(token), token === 'good');
-    const { db, calls } = fakeDb();
-    const send = (token: string) => handleStorefront('order', orderBody({ captchaToken: token }), deps(db, { turnstileSecret: 'secret', verifyCaptcha }));
-    expect((await send('bad')).body).toEqual({ ok: false, errors: ['captcha'] });
-    expect(committed(calls) || counted(calls).length > 0).toBe(false);
-    expect(((await send('good')).body as { ok: boolean }).ok).toBe(true);
-    expect(seen).toEqual(['bad', 'good']);
   });
 });
 
@@ -332,6 +341,71 @@ describe('storefront: B2B request', () => {
     const gone = [{ id: 'a', type: 'product', productId: 'gone', size: 1000, qty: 12 }];
     expect((await handleStorefront('quote', { ...contact, items: gone }, deps(db))).status).toBe(400);
     expect(committed(calls) || counted(calls).length > 0).toBe(false);
+  });
+});
+
+describe('storefront: Turnstile first', () => {
+  /** Nothing reached the database: no read, no count, no row. */
+  const untouched = ({ calls, reads }: ReturnType<typeof fakeDb>) => calls.length === 0 && reads.length === 0;
+  const CAPTCHA = { status: 200, body: { ok: false, errors: ['captcha'] } };
+
+  it('refuses a form without a token before anything else, without asking Cloudflare', async () => {
+    const sent: URLSearchParams[] = [];
+    const order = fakeDb();
+    expect(await handleStorefront('order', orderBody({ captchaToken: undefined }), deps(order.db, {}, fakeSiteverify(sent)))).toEqual(CAPTCHA);
+    const quote = fakeDb();
+    expect(await handleStorefront('quote', { ...contact, captchaToken: '', items: b2bItems }, deps(quote.db, {}, fakeSiteverify(sent)))).toEqual(CAPTCHA);
+    // even a body the forms never send gets 'captcha', not 400: its shape is not looked at
+    expect(await handleStorefront('order', { items: 'x' }, deps(fakeDb().db))).toEqual(CAPTCHA);
+    expect(untouched(order) && untouched(quote)).toBe(true);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('refuses a token Cloudflare does not accept, saving and counting nothing', async () => {
+    const forged = fakeDb();
+    expect(await handleStorefront('order', orderBody({ captchaToken: 'forged' }), deps(forged.db))).toEqual(CAPTCHA);
+    // the "always fails" test secret refuses even the dummy token
+    const failing = fakeDb();
+    expect(await handleStorefront('quote', { ...contact, items: b2bItems }, deps(failing.db, { turnstileSecret: FAIL_SECRET }))).toEqual(CAPTCHA);
+    expect(untouched(forged) && untouched(failing)).toBe(true);
+  });
+
+  it('refuses when siteverify is down or answers garbage (fails closed)', async () => {
+    const down = (async () => {
+      throw new Error('network down');
+    }) as unknown as typeof fetch;
+    const broken = (async () => new Response('<html>502 Bad Gateway</html>', { status: 502 })) as unknown as typeof fetch;
+    for (const siteverify of [down, broken]) {
+      const fake = fakeDb();
+      expect(await handleStorefront('order', orderBody(), deps(fake.db, {}, siteverify))).toEqual(CAPTCHA);
+      expect(untouched(fake)).toBe(true);
+    }
+  });
+
+  it('lets a valid token through, sending Cloudflare the secret, the token and the visitor IP', async () => {
+    const sent: URLSearchParams[] = [];
+    const { db, calls } = fakeDb();
+    const r = await handleStorefront('order', orderBody(), deps(db, {}, fakeSiteverify(sent)));
+    expect(r.body).toMatchObject({ ok: true, order: { number: 'XX-2026-0001' } });
+    expect(committed(calls)).toBe(true);
+    expect(sent.map((b) => Object.fromEntries(b))).toEqual([{ secret: PASS_SECRET, response: DUMMY_TOKEN, remoteip: '196.200.1.1' }]);
+  });
+
+  it('refuses everything when the secret is missing (http.ts answers 500)', async () => {
+    const sent: URLSearchParams[] = [];
+    const fake = fakeDb();
+    await expect(handleStorefront('order', orderBody(), deps(fake.db, { turnstileSecret: '' }, fakeSiteverify(sent)))).rejects.toThrow('TURNSTILE_SECRET_KEY');
+    await expect(handleStorefront('quote', { ...contact, items: b2bItems }, deps(fake.db, { turnstileSecret: '' }))).rejects.toThrow('TURNSTILE_SECRET_KEY');
+    expect(untouched(fake)).toBe(true);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('asks a resent order for a fresh token too, then gives the saved order back', async () => {
+    const fake = fakeDb({ saved: [savedRow] });
+    expect(await handleStorefront('order', orderBody({ idempotencyKey: KEY, captchaToken: '' }), deps(fake.db))).toEqual(CAPTCHA);
+    expect(untouched(fake)).toBe(true);
+    const r = await handleStorefront('order', orderBody({ idempotencyKey: KEY }), deps(fake.db));
+    expect(r.body).toMatchObject({ ok: true, order: { id: 'first-id', number: 'BC-2026-0007' } });
   });
 });
 

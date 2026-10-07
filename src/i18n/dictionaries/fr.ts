@@ -277,6 +277,7 @@ export const fr: Dict = {
     cardSoonText: 'Le paiement par carte arrive bientôt.',
     methodSoonText: 'Ce moyen de paiement ouvre bientôt.',
     noMethodYet: 'La commande en ligne ouvre bientôt : aucun moyen de paiement n’est encore actif. Écrivez-nous sur WhatsApp.',
+    captchaBlocked: 'La vérification anti-robot n’a pas pu se charger. Vérifiez votre connexion, désactivez tout bloqueur pour ce site, puis rechargez la page.',
     title: 'Commande',
     noAccount: 'Aucun compte nécessaire.',
     contactTitle: 'Coordonnées & livraison',

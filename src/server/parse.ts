@@ -123,5 +123,5 @@ export function idempotencyKey(raw: unknown): string | null | 'invalid' {
   return typeof v === 'string' && UUID.test(v) ? v.toLowerCase() : 'invalid';
 }
 
-/** Cloudflare Turnstile token sent with either form (absent while Turnstile is off). */
+/** Cloudflare Turnstile token sent with either form; '' when there is none. */
 export const captchaToken = (raw: unknown): string => (isObject(raw) && isText(raw.captchaToken, 4096) ? raw.captchaToken : '');

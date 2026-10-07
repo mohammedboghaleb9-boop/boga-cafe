@@ -61,10 +61,10 @@ export function createSupabaseApi({ client, store, storefront }: SupabaseApiDeps
   }
 
   return {
-    async placeOrder(input): Promise<PlaceOrderResult> {
-      // a retry after a lost answer carries the same key: the server gives back the saved order
+    async placeOrder(input, guard): Promise<PlaceOrderResult> {
+      // a retry after a lost answer carries the same key (and a fresh token): the server gives back the saved order
       const key = await orderKey(input).catch(() => null); // no Web Crypto (plain http): sent without a key
-      const body = key ? { ...input, idempotencyKey: key } : input;
+      const body = { ...input, ...(key && { idempotencyKey: key }), captchaToken: guard?.captchaToken ?? '' };
       const r = await postStorefront<{ order: Order }>('order', body, 'order', storefront);
       if (!r.ok) {
         // the stock changed since the page loaded: read it again so the cart shows which line it is
@@ -76,8 +76,8 @@ export function createSupabaseApi({ client, store, storefront }: SupabaseApiDeps
       return { ok: true, order: r.order };
     },
 
-    async requestQuote(input): Promise<QuoteResult> {
-      const r = await postStorefront<{ quote: QuoteRequest }>('quote', input, 'quote', storefront);
+    async requestQuote(input, guard): Promise<QuoteResult> {
+      const r = await postStorefront<{ quote: QuoteRequest }>('quote', { ...input, captchaToken: guard?.captchaToken ?? '' }, 'quote', storefront);
       if (!r.ok) return { ok: false, errors: knownErrors(r.errors, REQUEST_ERRORS) };
       // the team's copy is already queued by the database; this one is for the customer's own "send" step
       return { ok: true, quote: r.quote, message: quoteMessage(r.quote, templateContext(store.db.get())) };

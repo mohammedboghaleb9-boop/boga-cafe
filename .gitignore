@@ -2,18 +2,20 @@ node_modules
 dist
 dist-demo
 dist-supabase
+dist-e2e-supabase
 # wrangler's local state (dry runs, wrangler dev)
 .wrangler/
 supabase/functions/*/dist
 *.local
 # Local settings and secrets (Gmail App Password, CallMeBot key…) never go to git.
 # Defaults live in the code; examples in .env.example; the demo build uses .env.demo,
-# the browser-test build .env.e2e.
+# the browser-test builds .env.e2e and .env.e2e-supabase.
 .env
 .env.*
 !.env.example
 !.env.demo
 !.env.e2e
+!.env.e2e-supabase
 .DS_Store
 coverage
 

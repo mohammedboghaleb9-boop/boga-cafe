@@ -10,7 +10,8 @@
  * checked in http.ts instead.
  *
  * Secrets (Dashboard → Edge Functions → Secrets):
- *   TURNSTILE_SECRET_KEY  optional; when set, every form must carry a valid Turnstile token.
+ *   TURNSTILE_SECRET_KEY  required: every form must carry a valid Turnstile token; without
+ *                         the secret every form is refused (500), none goes through unchecked.
  */
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/data/supabase/database.types';

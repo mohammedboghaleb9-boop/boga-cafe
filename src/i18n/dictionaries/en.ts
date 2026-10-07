@@ -279,6 +279,7 @@ export const en = {
     cardSoonText: 'Online card payment arrives soon.',
     methodSoonText: 'This payment method opens soon.',
     noMethodYet: 'Online ordering opens soon: no payment method is active yet. Contact us on WhatsApp.',
+    captchaBlocked: 'The anti-robot check could not load. Check your connection, turn off any blocker for this site, then reload the page.',
     title: 'Checkout',
     noAccount: 'No account needed.',
     contactTitle: 'Contact & delivery',

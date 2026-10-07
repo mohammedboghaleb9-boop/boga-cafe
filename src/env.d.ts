@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   /** Supabase project URL and publishable key: public values, required with VITE_DATA_MODE=supabase. */
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
+  /** Cloudflare Turnstile site key (public), required with VITE_DATA_MODE=supabase (src/shared/ui/Captcha.tsx). */
+  readonly VITE_TURNSTILE_SITE_KEY?: string;
   /** URL of the notification function (api/notify.ts). Empty in the prototype. */
   readonly VITE_NOTIFY_URL?: string;
   /** 'demo' = simulated card page (prototype only). Anything else: no card until CMI is connected. */

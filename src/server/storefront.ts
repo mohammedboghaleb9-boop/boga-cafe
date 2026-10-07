@@ -10,8 +10,11 @@
  * Answers: 400 malformed body (or one the site's forms never send); 200
  * {ok: false, errors} for every refusal the customer can act on (form errors,
  * stock, 'unavailable', 'too_many', 'captcha'); 200 {ok: true, …}. Limits: see guard.ts.
+ * Cloudflare Turnstile comes first (slice 4): without a valid token nothing else
+ * runs, not a read, not a count; without the secret every form is refused (500).
  * An order sent again with the idempotency key of a saved one gets that order back
- * (slice 3b): nothing is checked, counted or saved again.
+ * (slice 3b): with a fresh token (a token works once), nothing else is checked,
+ * counted or saved again.
  */
 import type { CheckoutError } from '@/core/order';
 import type { RequestError } from '@/core/requests';
@@ -34,7 +37,7 @@ export interface Deps {
   ip: string | null;
   /** Server secret that keys the IP hash (guard.ts hashIp). */
   ipKey: string;
-  /** Empty = Turnstile off. */
+  /** Turnstile secret key (TURNSTILE_SECRET_KEY); empty = every form refused, never let through. */
   turnstileSecret: string;
   verifyCaptcha?: typeof verifyTurnstile;
   now?: Date;
@@ -65,11 +68,6 @@ export function isRoute(v: string): v is Route {
   return v === 'order' || v === 'quote';
 }
 
-async function captchaOk(raw: unknown, deps: Deps) {
-  if (!deps.turnstileSecret) return true;
-  return (deps.verifyCaptcha ?? verifyTurnstile)(deps.turnstileSecret, captchaToken(raw), deps.ip);
-}
-
 /** The order saved under this idempotency key, if any (secret key: the whole row). */
 async function savedOrder(db: Client, key: string): Promise<Order | null> {
   const { data, error } = await db.from('orders').select('*').eq('idempotency_key', key).maybeSingle();
@@ -85,7 +83,7 @@ async function order(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
   if (!input || key === 'invalid') return BAD_REQUEST;
   if (!(await withinBudget(deps.db, deps.ip, deps.ipKey))) return refuse('too_many');
   // the same submission again (its answer was lost): its order, before any check that
-  // could now refuse it (the last kilos it took, a used captcha token, the phone's limit)
+  // could now refuse it (the last kilos it took, the phone's limit)
   const before = key && (await savedOrder(deps.db, key));
   if (before) return placed(before);
   // a refusal after that may come from its twin, saved meanwhile with the last kilos: the customer gets that order
@@ -93,7 +91,6 @@ async function order(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
     const twin = key && (await savedOrder(deps.db, key));
     return twin ? placed(twin) : reply;
   };
-  if (!(await captchaOk(raw, deps))) return refuse('captcha');
   const p = prepareOrder(input, await loadCatalog(deps.db), now);
   if (!p.ok) return unlessSaved(refuse(...p.errors));
   if (!(await withinLimits(deps.db, 'order', p.phone, deps.ip, deps.ipKey))) return refuse('too_many');
@@ -115,7 +112,6 @@ async function quote(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
   const input = parseQuoteInput(raw);
   if (!input) return BAD_REQUEST;
   if (!(await withinBudget(deps.db, deps.ip, deps.ipKey))) return refuse('too_many');
-  if (!(await captchaOk(raw, deps))) return refuse('captcha');
   const p = prepareQuote(input, await loadCatalog(deps.db), now);
   if (!p.ok) return refuse(...p.errors);
   // a cart at or under the threshold is an order, and an empty one is nothing: not what the site sends
@@ -128,6 +124,9 @@ async function quote(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
 
 const HANDLERS = { order, quote };
 
-export function handleStorefront(route: Route, raw: unknown, deps: Deps): Promise<Reply> {
+export async function handleStorefront(route: Route, raw: unknown, deps: Deps): Promise<Reply> {
+  // fails closed: a function deployed without its secret refuses everything (http.ts answers 500)
+  if (!deps.turnstileSecret) throw new Error('storefront: TURNSTILE_SECRET_KEY is not set');
+  if (!(await (deps.verifyCaptcha ?? verifyTurnstile)(deps.turnstileSecret, captchaToken(raw), deps.ip))) return refuse('captcha');
   return HANDLERS[route](raw, deps, deps.now ?? new Date());
 }
