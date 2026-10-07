@@ -18,16 +18,17 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
   yet). **Every merge into `main` is a release.** Preview builds: `npx wrangler versions upload`. Config in the repo (branch):
   `wrangler.jsonc` (static assets from `./dist`, SPA fallback, values of Cloudflare's auto-setup) + wrangler 4.148.0 pinned, no Vite
-  plugin (same 35 files, checked). Before it: previews failed, production relied on auto-setup each build. The Supabase switch =
+  plugin (same 35 served files, checked; wrangler says 36: it counts `assets/`; auto-setup's 38 adds `wrangler.json` + `.assetsignore`,
+  not served). **Preview build still red** (needs a Build command, owner). Before: production relied on auto-setup. The Supabase switch =
   adding `VITE_DATA_MODE`/URL/key in Cloudflare build variables, owner only, slice 11. Workers Builds does not wait for
   GitHub CI: merge only on a green branch. Deployed build today: browser store, seed catalog, no admin, no payment method
   open, **not connected to Supabase**. **Notifications do not work** (Known issues).
 - **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b),
-  catalog from `seed.sql`, two owner accounts (never signed in, no 2FA yet), `storefront` **v5** = slice 3b build, no `save_product` yet (slice 9).
-  Rollout order for 3b: migrations first, then the function (old function + new DB works; new function + old DB fails every keyed order).
+  catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v5** = 3b build, no `save_product` yet. Rollout: migrations, then the function.
 
 ## Open branches
 Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
+
 ## Stack
 Node 24 (`.node-version`, `engines 24.x`), React 19.3, Vite 8.3, React Router 8.4 (declarative), TypeScript 7, Vitest 5, Oxlint, Playwright 1.63 + axe-core.
 `api/notify.ts`: Vercel function (nodemailer for Gmail, CallMeBot for WhatsApp). Database: Supabase (PostgreSQL + RLS, Edge Functions on Deno, `@supabase/supabase-js` 2.117, bundled with `rolldown`).
@@ -98,7 +99,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   for HTTP checks (the container's network policy now refuses `*.supabase.co`, 2026-10-07: the owner can allow it in the environment settings).
 - pg_net (in `public`, advisor warning): Supabase grants `net.*` to PUBLIC as `supabase_admin`; `postgres` cannot revoke it (`pg_net_private` had no effect).
   `net` is not exposed through the API. Moving it needs a DROP the tool here cannot run: owner can toggle pg_net off/on (Dashboard → Database → Extensions).
-- Leaked password protection needs the Pro plan: skipped (long passwords + 2FA). `skip locked` in `expire_unpaid_orders`: untested under load.
+- Leaked password protection: Pro plan only, skipped (long passwords + 2FA). `skip locked` (expiry): untested under load.
 - Supabase mode (slice 3): orders/B2B via `storefront` (network/4xx/5xx/unreadable = `server`); order page: tab copy (sessionStorage) else
   `get_order_public` (no phone: no message); "I have paid" = RPC; `deliver` off. Real orders refused today (`payment_method`, correct). A lost answer
   shows `server`; 3b's key makes the retry get the saved order (`orderKey.ts`: per tab, kept 24 h). supabase-js retries a failed GET.
@@ -128,8 +129,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - Store approach from `map-test`: yes. 2FA mandatory for both owners, enforced in the database (`is_admin()` needs `aal2`).
 - Login tracking: last sign-in + the existing `actor` on each change; no new table. Site URL for Turnstile/Auth:
   https://boga-cafe.mohammedboghaleb9.workers.dev/ (`bogacafe.ma` later). Notifications off during development, but
-  **no real launch until the outbox sender exists**. Leaked password protection: skipped (Pro plan only).
-- 2026-10-06: product photos stay in the code (`public/`) until after launch; no Storage slice now.
+  **no real launch until the outbox sender exists**. 2026-10-06: product photos stay in `public/` until after launch; no Storage slice.
 
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
