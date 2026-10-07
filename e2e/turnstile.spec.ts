@@ -31,22 +31,22 @@ const tables: Record<string, unknown[]> = {
 
 /** Cloudflare's script, replaced: render() draws a box of the documented size and solves it unless held. */
 const TURNSTILE_STUB = `
-window.__ts = { renders: [], resets: 0, widgets: {} };
+window.tsStub = { renders: [], resets: 0, widgets: {} };
 window.turnstile = {
   render(el, o) {
-    const id = 'w' + window.__ts.renders.length;
+    const id = 'w' + window.tsStub.renders.length;
     const box = document.createElement('div');
     box.className = 'ts-stub';
     box.style.cssText = o.size === 'compact' ? 'width:150px;height:140px' : o.size === 'flexible' ? 'width:100%;min-width:300px;height:65px' : 'width:300px;height:65px';
     el.appendChild(box);
-    const solve = () => { if (!window.__tsHold) setTimeout(() => o.callback(${JSON.stringify(DUMMY_TOKEN)}), 20); };
-    window.__ts.widgets[id] = { box, solve };
-    window.__ts.renders.push({ sitekey: o.sitekey, language: o.language, size: o.size, theme: o.theme });
+    const solve = () => { if (!window.tsHold) setTimeout(() => o.callback(${JSON.stringify(DUMMY_TOKEN)}), 20); };
+    window.tsStub.widgets[id] = { box, solve };
+    window.tsStub.renders.push({ sitekey: o.sitekey, language: o.language, size: o.size, theme: o.theme });
     solve();
     return id;
   },
-  reset(id) { window.__ts.resets++; window.__ts.widgets[id]?.solve(); },
-  remove(id) { window.__ts.widgets[id]?.box.remove(); delete window.__ts.widgets[id]; },
+  reset(id) { window.tsStub.resets++; window.tsStub.widgets[id]?.solve(); },
+  remove(id) { window.tsStub.widgets[id]?.box.remove(); delete window.tsStub.widgets[id]; },
 };`;
 
 type Answer = Record<string, unknown>;
@@ -89,8 +89,8 @@ async function fillCheckout(page: Page) {
   await page.locator('input[value=cashplus]').check();
 }
 const placeOrder = (page: Page) => page.locator('form.checkout button[type=submit]').click();
-const renders = (page: Page) => page.evaluate(() => (window as unknown as { __ts: { renders: object[] } }).__ts.renders);
-const resets = (page: Page) => page.evaluate(() => (window as unknown as { __ts: { resets: number } }).__ts.resets);
+const renders = (page: Page) => page.evaluate(() => (window as unknown as { tsStub: { renders: object[] } }).tsStub.renders);
+const resets = (page: Page) => page.evaluate(() => (window as unknown as { tsStub: { resets: number } }).tsStub.resets);
 
 /** The widget sits inside the window: nothing of it past either edge. */
 async function expectWidgetInside(page: Page) {
@@ -118,7 +118,7 @@ test.describe('Turnstile on the live site', () => {
   });
 
   test('nothing is sent while the check is not finished; the form says so', async ({ page }) => {
-    await page.addInitScript(() => ((window as unknown as { __tsHold: boolean }).__tsHold = true));
+    await page.addInitScript(() => ((window as unknown as { tsHold: boolean }).tsHold = true));
     const sent = await fakeServer(page, { cart: bag });
     await fillCheckout(page);
     await expect(page.locator('.ts-stub')).toBeVisible();
@@ -127,9 +127,9 @@ test.describe('Turnstile on the live site', () => {
     expect(sent).toEqual([]);
     // solved: the order goes
     await page.evaluate(() => {
-      const w = window as unknown as { __tsHold: boolean; __ts: { widgets: Record<string, { solve(): void }> } };
-      w.__tsHold = false;
-      Object.values(w.__ts.widgets).forEach((x) => x.solve());
+      const w = window as unknown as { tsHold: boolean; tsStub: { widgets: Record<string, { solve(): void }> } };
+      w.tsHold = false;
+      Object.values(w.tsStub.widgets).forEach((x) => x.solve());
     });
     await placeOrder(page);
     await expect.poll(() => sent.length).toBe(1);
