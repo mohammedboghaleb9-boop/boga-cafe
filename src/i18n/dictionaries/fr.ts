@@ -262,6 +262,7 @@ export const fr: Dict = {
       size_not_offered: 'Ce format n’est plus proposé.',
       invalid_blend: 'Ce blend ne respecte plus les règles actuelles (origine indisponible, part sous le minimum ou trop d’origines). Recomposez-le dans Custom Blend.',
       bulk_only: 'Le sachet de 1 kg de ce blend B2B se commande seulement au-delà de {kg} kg (demande B2B). Choisissez 250 g ou 500 g, ou complétez votre commande.',
+      unavailable: 'Ce produit est indisponible pour le moment. Retirez-le pour commander le reste.',
     },
     shortage: 'Pas assez de {origin} : {need} kg nécessaires, {left} kg restants.',
     b2bTitle: 'Commande de plus de {max} kg : procédure B2B',
@@ -295,6 +296,7 @@ export const fr: Dict = {
     errors: {
       empty_cart: 'Votre panier est vide.',
       cart_problem: 'Un article de votre panier doit être vérifié.',
+      unavailable: 'Un produit de votre panier est indisponible pour le moment. Retirez-le de votre panier.',
       b2b_required: 'Votre panier dépasse la limite en ligne : envoyez-le en demande B2B.',
       out_of_stock: 'Un café n’est plus en stock. Vérifiez votre panier.',
       name: 'Indiquez votre nom complet.',
@@ -345,6 +347,7 @@ export const fr: Dict = {
     refundedText: 'Votre paiement a été remboursé. Pour toute question, nous sommes sur WhatsApp.',
     deliveredText: 'Commande livrée. Bonne dégustation ! Pour une nouvelle commande ou une question, nous sommes sur WhatsApp.',
     notFound: 'Commande introuvable sur cet appareil.',
+    notFoundLink: 'Commande introuvable. Vérifiez le lien de votre commande.',
     loadFailed: 'Cette commande n’a pas pu être chargée. Vérifiez votre connexion, puis rechargez la page.',
   },
 

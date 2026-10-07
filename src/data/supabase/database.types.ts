@@ -87,6 +87,7 @@ export type Database = {
           customer_name: string;
           email: string;
           id: string;
+          idempotency_key: string | null;
           lines: Json;
           locale: string;
           notes: string;
@@ -111,6 +112,7 @@ export type Database = {
           customer_name: string;
           email?: string;
           id?: string;
+          idempotency_key?: string | null;
           lines: Json;
           locale?: string;
           notes?: string;
@@ -135,6 +137,7 @@ export type Database = {
           customer_name?: string;
           email?: string;
           id?: string;
+          idempotency_key?: string | null;
           lines?: Json;
           locale?: string;
           notes?: string;
@@ -460,8 +463,8 @@ export type Database = {
       admin_role: { Args: never; Returns: string };
       check_order: { Args: { p_order: Json }; Returns: Json };
       commit_order: {
-        Args: { p_email: string; p_order: Json; p_subject: string; p_whatsapp: string };
-        Returns: { id: string; number: string }[];
+        Args: { p_email: string; p_idempotency_key?: string; p_order: Json; p_subject: string; p_whatsapp: string };
+        Returns: { created: boolean; id: string; number: string }[];
       };
       commit_quote_request: {
         Args: { p_email: string; p_quote: Json; p_subject: string; p_whatsapp: string };

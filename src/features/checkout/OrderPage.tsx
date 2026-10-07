@@ -5,6 +5,7 @@ import { orderPhase } from '@/core/orderFlow';
 import type { Order, OrderStatus } from '@/core/types';
 import { templateContext } from '@/data/context';
 import { useDb, useOrder } from '@/data/hooks';
+import { SERVER_DATA } from '@/data/mode';
 import { LineDetails } from '@/shared/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
 import { orderHandoff } from '@/services/notifications';
@@ -20,7 +21,9 @@ export function OrderPage() {
   const { id } = useParams();
   const { t } = useI18n();
   const { order, loading, failed } = useOrder(id);
-  usePageTitle(order ? order.number : loading ? t.common.loading : t.order.notFound);
+  // the browser store only knows this device's orders; the server knows every order's link
+  const notFound = SERVER_DATA ? t.order.notFoundLink : t.order.notFound;
+  usePageTitle(order ? order.number : loading ? t.common.loading : notFound);
 
   if (order) return <OrderView key={order.id} order={order} />;
   if (loading) {
@@ -34,7 +37,7 @@ export function OrderPage() {
   }
   return (
     <div className="container page stack" style={{ alignItems: 'flex-start' }}>
-      <h1>{failed ? t.order.loadFailed : t.order.notFound}</h1>
+      <h1>{failed ? t.order.loadFailed : notFound}</h1>
       <Link to="/" className="btn btn-primary">
         {t.common.backHome}
       </Link>

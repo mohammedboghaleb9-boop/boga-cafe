@@ -1,7 +1,7 @@
 /**
  * The Api contract on Supabase. Orders and B2B requests go through the
  * storefront Edge Function (prices and stock recomputed on the server, limits,
- * Turnstile); an order is read back by its link with get_order_public, and
+ * Turnstile; an order carries an idempotency key, orderKey.ts); an order is read back by its link with get_order_public, and
  * "I have paid" is report_offline_payment. The team's messages are queued by
  * the database (notification_outbox), so nothing is sent from the browser.
  * Every other call says which slice brings it (P5 step 3, PROJECT_NOTES.md).
@@ -14,6 +14,7 @@ import { templateContext } from '../context';
 import { GUARD_ERRORS, type Api, type GuardError, type PlaceOrderResult, type QuoteResult } from '../types';
 import type { Client } from './client';
 import { cachedOrder, rememberOrder } from './orderCache';
+import { orderKey, orderSent } from './orderKey';
 import { publicOrderFromRow } from './rows';
 import type { CatalogStore } from './store';
 import { postStorefront, type StorefrontTarget } from './storefront';
@@ -61,8 +62,16 @@ export function createSupabaseApi({ client, store, storefront }: SupabaseApiDeps
 
   return {
     async placeOrder(input): Promise<PlaceOrderResult> {
-      const r = await postStorefront<{ order: Order }>('order', input, 'order', storefront);
-      if (!r.ok) return { ok: false, errors: knownErrors(r.errors, CHECKOUT_ERRORS) };
+      // a retry after a lost answer carries the same key: the server gives back the saved order
+      const key = await orderKey(input).catch(() => null); // no Web Crypto (plain http): sent without a key
+      const body = key ? { ...input, idempotencyKey: key } : input;
+      const r = await postStorefront<{ order: Order }>('order', body, 'order', storefront);
+      if (!r.ok) {
+        // the stock changed since the page loaded: read it again so the cart shows which line it is
+        if (r.errors.some((e) => e === 'unavailable' || e === 'out_of_stock')) await store.refresh();
+        return { ok: false, errors: knownErrors(r.errors, CHECKOUT_ERRORS) };
+      }
+      orderSent();
       keep(r.order);
       return { ok: true, order: r.order };
     },

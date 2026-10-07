@@ -12,3 +12,6 @@
  * owner nothing a customer did.
  */
 export const DEMO_DATA: boolean = import.meta.env.VITE_DATA_MODE === 'demo';
+
+/** VITE_DATA_MODE=supabase: orders live on the server, so any device opens one by its link. */
+export const SERVER_DATA: boolean = import.meta.env.VITE_DATA_MODE === 'supabase';

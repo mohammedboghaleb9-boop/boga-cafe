@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router';
 import { formatSize } from '@/core/format';
 import { isBulkOnly } from '@/core/cart';
 import { offeredSizes, productPrice } from '@/core/pricing';
-import { maxBags } from '@/core/stock';
+import { isProductAvailable, maxBags } from '@/core/stock';
 import { PACK_SIZES, type PackSize } from '@/core/types';
 import { NotFound } from '@/app/NotFound';
 import { useCatalog, useSettings } from '@/data/hooks';
@@ -49,7 +49,9 @@ function ProductDetails({ slug }: { slug?: string }) {
     (s, i) => (i.type === 'product' && i.productId === product.id && i.size === size ? s + i.qty : s),
     0,
   );
-  const available = Math.max(0, maxBags(product.recipe, size, originIndex, settings.roastLossPercent) - inCart);
+  // an empty or switched-off origin makes every size unavailable (src/core/stock.ts isProductAvailable)
+  const sellable = isProductAvailable(product.recipe, originIndex);
+  const available = sellable ? Math.max(0, maxBags(product.recipe, size, originIndex, settings.roastLossPercent) - inCart) : 0;
   const related = products.filter((p) => p.active && p.kind === product.kind && p.id !== product.id).slice(0, 3);
 
   return (

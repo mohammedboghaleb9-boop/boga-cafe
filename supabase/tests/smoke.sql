@@ -1051,3 +1051,84 @@ do $$ begin
   end if;
 end $$;
 select 'ok 26 - internal helpers closed to the API; B2B requests and rate limits server-only; low-stock trigger still fires' as result;
+
+-- 27. Slice 3b: the same order sent again with its key gives back the first order
+--     (no second row, stock deduction or message); without a key, as before ---------
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001'; -- owner
+select public.adjust_stock('brazil', 5, 'restock', 'test 27');
+reset role;
+do $$
+declare
+  k uuid := 'b0ca0000-0000-4000-8000-000000000027';
+  a record; b record; c record; x record; y record;
+  n_orders bigint := (select count(*) from public.orders);
+  n_moves bigint;
+  n_out bigint;
+  v_stock numeric;
+begin
+  select * into a from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer', 'Client Cle'), 'N {number}', 'N {number}', 'S {number}', k);
+  if not a.created or a.number !~ '^BC-' then raise exception 'TEST FAILED: first order with a key not saved'; end if;
+  if (select idempotency_key from public.orders where id = a.id) is distinct from k then raise exception 'TEST FAILED: key not stored'; end if;
+  select count(*) into n_moves from public.stock_movements;
+  select count(*) into n_out from public.notification_outbox;
+  select stock_kg into v_stock from public.origins where id = 'brazil';
+  -- sent again, even when that cart would now be refused (here a closed method; also
+  -- the last kilos gone or a new price): the first order comes back, nothing else happens
+  select * into b from public.commit_order(pg_temp.test_order('so-brazil', 500, 2, 'cashplus', 'Client Cle'), 'N {number}', 'N {number}', 'S {number}', k);
+  if b.created or b.id <> a.id or b.number <> a.number then raise exception 'TEST FAILED: same key gave %', b; end if;
+  if (select count(*) from public.orders) <> n_orders + 1 then raise exception 'TEST FAILED: second row for one key'; end if;
+  if (select count(*) from public.stock_movements) <> n_moves or (select count(*) from public.notification_outbox) <> n_out
+     or (select stock_kg from public.origins where id = 'brazil') <> v_stock then
+    raise exception 'TEST FAILED: a repeated key moved stock or queued a message';
+  end if;
+  -- another key is another order
+  select * into c from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer', 'Client Cle'), '', '', '', 'b0ca0000-0000-4000-8000-000000000028');
+  if not c.created or c.id = a.id then raise exception 'TEST FAILED: a new key did not save a new order'; end if;
+  -- no key (the four-argument call of before, or null): two identical orders are two orders
+  select * into x from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer', 'Sans Cle'), '', '', '');
+  select * into y from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer', 'Sans Cle'), '', '', '', null);
+  if not x.created or not y.created or x.id = y.id then raise exception 'TEST FAILED: orders without a key'; end if;
+  if (select count(*) from public.orders where customer_name = 'Sans Cle' and idempotency_key is null) <> 2 then
+    raise exception 'TEST FAILED: keyless orders not stored without a key';
+  end if;
+  -- a refused order keeps its key free: the corrected one goes through with the same key
+  begin
+    perform public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'cashplus'), '', '', '', 'b0ca0000-0000-4000-8000-000000000029');
+    raise exception 'TEST FAILED: closed method accepted';
+  exception when others then if sqlerrm not like 'invalid_order:payment_method%' then raise; end if;
+  end;
+  if not (select created from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '', 'b0ca0000-0000-4000-8000-000000000029')) then
+    raise exception 'TEST FAILED: key of a refused order blocked';
+  end if;
+end $$;
+-- any other unique violation is not a repeated key: it is raised, never answered with an order
+do $$
+declare n bigint := (select last_value from public.order_number_seq);
+begin
+  perform setval('public.order_number_seq', n - 1);  -- the next number is already taken
+  begin
+    perform public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '', 'b0ca0000-0000-4000-8000-000000000030');
+    raise exception 'TEST FAILED: a taken order number was not raised';
+  exception when unique_violation then null;
+  end;
+  perform setval('public.order_number_seq', n);
+end $$;
+-- the server's role may call it; a visitor may not (section 4 tries without a key)
+set role service_role;
+select count(*) from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '', 'b0ca0000-0000-4000-8000-000000000027');
+-- the function before slice 3b is kept (renamed) until slice 11, closed even to the server
+do $$ begin
+  perform public.commit_order_before_3b(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '');
+  raise exception 'TEST FAILED: the old commit_order is still callable';
+exception when insufficient_privilege then null;
+end $$;
+reset role;
+set role anon;
+do $$ begin
+  perform public.commit_order('{}', '', '', '', 'b0ca0000-0000-4000-8000-000000000027');
+  raise exception 'TEST FAILED: anon called commit_order with a key';
+exception when insufficient_privilege then null;
+end $$;
+reset role;
+select 'ok 27 - an order sent again with its key gives back the first one (no second row, stock or message); without a key as before' as result;

@@ -4,6 +4,12 @@ One dated line per meaningful change, newest first. Built from `git log`. Hashes
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
+## 2026-10-07
+- 2026-10-07 [feat/p5-s3b-order-guards] Slice 3b applied live: migrations `20261007005011_order_idempotency_key` and `20261007080308_order_idempotency_commit`, `storefront` v5. Live: Ethiopia (0 kg) refused `unavailable`, bad key 400, no key still accepted up to `payment_method`; no row written.
+- 2026-10-07 [feat/p5-s3b-order-guards] Slice 3b review fixes (17dae3c: keyed retry at the last kilos, quiet catalog reload, key kept 24 h) and migration split as applied live (8cd628d): key column applied, `commit_order` replaced by rename (DROP times out in the live SQL tool).
+- 2026-10-07 [feat/p5-s3b-order-guards] Slice 3b code (b3425ba): unavailable products (empty or switched-off origin) not addable and refused as `unavailable`; order idempotency key (site, storefront, migration `order_idempotency` with a unique key in `commit_order`); order page text by link in supabase mode. Not applied live yet.
+- 2026-10-07 Slice 3 merged into `main` (d2ebd36, owner approved); slice 3b (order guards) started on `feat/p5-s3b-order-guards`.
+
 ## 2026-10-06
 - 2026-10-06 [feat/p5-s3-orders] P5 step 3 slice 3: in supabase mode orders and B2B requests go through the `storefront` function (`server`/`too_many`/`captcha` shown, the B2B form never hangs), the order page keeps the placed order for the tab or reads `get_order_public`, "I have paid" via RPC, no browser notifications. Live: B2B request QR-2026-0002 sent then closed; an order is refused (no payee details, correct). Review fixes: an unknown refusal code shows `server`, trailing slash in the URL, report confirmation when the re-read fails, 12/12 mutants caught.
 - 2026-10-06 Merged `feat/p5-s2-catalog-read` into `main` (0a55ea1, owner approved). `main` auto-deploys to Cloudflare Workers: every merge is a release.

@@ -22,6 +22,8 @@ export function CartPage() {
   const settings = useSettings();
   const summary = summarizeCart(cart.items, { products, origins: originIndex }, settings);
   const max = settings.b2bThresholdKg;
+  // a cart holding an unavailable product is sent neither as an order nor as a B2B request
+  const unavailable = summary.lines.some((x) => x.problem === 'unavailable');
   const ratio = summary.weightKg / max;
   // kept here: sending the quote empties the cart, and the confirmation must stay on screen
   const [quote, setQuote] = useState<{ ref: string; message: MessageDraft } | null>(null);
@@ -52,7 +54,9 @@ export function CartPage() {
 
   const whatsappText = [
     fmt(t.cart.b2bWhatsapp, { w: formatNumber(summary.weightKg, 2) }),
-    ...summary.lines.flatMap(({ line }) => (line ? [`- ${l(line.name)} ${formatSize(line.size)} x${line.qty}`] : [])),
+    ...summary.lines.flatMap(({ line, problem }) =>
+      line && problem !== 'unavailable' ? [`- ${l(line.name)} ${formatSize(line.size)} x${line.qty}`] : [],
+    ),
   ].join('\n');
 
   return (
@@ -66,7 +70,7 @@ export function CartPage() {
               <div className="cart-line-actions">
                 <QtyStepper value={item.qty} onChange={(q) => cart.setQty(item.id, q)} label={t.common.qty} />
                 <div className="cart-line-price">
-                  {line && (
+                  {line && problem !== 'unavailable' && (
                     <>
                       <strong className="num">{money(line.lineTotal)}</strong>
                       <span className="small muted num">
@@ -148,13 +152,19 @@ export function CartPage() {
           >
             <Icon name="whatsapp" size={18} /> {t.b2b.largeCta}
           </a>
-          <QuoteRequestForm
-            items={cart.items}
-            onSent={(ref, message) => {
-              setQuote({ ref, message });
-              cart.clear();
-            }}
-          />
+          {unavailable ? (
+            <p className="notice notice-bad" role="alert">
+              {t.checkout.errors.unavailable}
+            </p>
+          ) : (
+            <QuoteRequestForm
+              items={cart.items}
+              onSent={(ref, message) => {
+                setQuote({ ref, message });
+                cart.clear();
+              }}
+            />
+          )}
         </section>
       )}
     </div>

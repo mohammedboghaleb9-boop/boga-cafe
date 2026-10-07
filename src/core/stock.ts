@@ -52,6 +52,19 @@ export function findShortages(requirements: StockDeduction[], origins: OriginInd
   return shortages;
 }
 
+/**
+ * A product is sold only while every origin of its recipe is switched on and has
+ * coffee left (owner, 2026-10-06): one empty or inactive origin makes the whole
+ * product unavailable, whatever the size. An origin the visitor cannot see
+ * (inactive rows are hidden from the public) counts as inactive.
+ */
+export function isProductAvailable(recipe: RecipeLine[], origins: OriginIndex): boolean {
+  return recipe.length > 0 && recipe.every((l) => {
+    const origin = origins[l.originId];
+    return origin !== undefined && origin.active && origin.stockKg > 0;
+  });
+}
+
 /** How many bags of this recipe/size the current stock can still produce. */
 export function maxBags(
   recipe: RecipeLine[],
