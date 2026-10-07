@@ -1,13 +1,10 @@
--- P5 step 3, slice 3b: an order sent again after a lost answer gives back the first
--- order instead of saving a second one. The site sends one random key (uuid) per
--- submission, and the same key when the customer sends the same submission again.
--- No key = no check, as before. B2B requests have no key yet (they reserve no stock).
-
-alter table public.orders add column idempotency_key uuid;
-alter table public.orders add constraint orders_idempotency_key_key unique (idempotency_key);
-
--- a new argument and a new result column: replaced, not overloaded (one function, one grant)
-drop function public.commit_order(jsonb, text, text, text);
+-- P5 step 3, slice 3b: commit_order with the idempotency key. An order sent again
+-- after a lost answer gives back the first order instead of saving a second one.
+-- A new argument and a new result column, so a new function. The one before is
+-- renamed and closed to every role, not dropped: the tool that applies SQL to the
+-- live project waits for a confirmation on any DROP and times out. It goes in slice 11.
+alter function public.commit_order(jsonb, text, text, text) rename to commit_order_before_3b;
+revoke all on function public.commit_order_before_3b(jsonb, text, text, text) from public, anon, authenticated, service_role;
 
 create function public.commit_order(p_order jsonb, p_whatsapp text, p_email text, p_subject text,
                                     p_idempotency_key uuid default null)

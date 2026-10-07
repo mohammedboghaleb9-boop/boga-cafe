@@ -1117,6 +1117,12 @@ end $$;
 -- the server's role may call it; a visitor may not (section 4 tries without a key)
 set role service_role;
 select count(*) from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '', 'b0ca0000-0000-4000-8000-000000000027');
+-- the function before slice 3b is kept (renamed) until slice 11, closed even to the server
+do $$ begin
+  perform public.commit_order_before_3b(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '');
+  raise exception 'TEST FAILED: the old commit_order is still callable';
+exception when insufficient_privilege then null;
+end $$;
 reset role;
 set role anon;
 do $$ begin
