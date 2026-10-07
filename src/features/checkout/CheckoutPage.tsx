@@ -11,6 +11,7 @@ import { useCatalog, useDb } from '@/data/hooks';
 import { useCart } from '@/shared/cart/CartProvider';
 import { LineDetails } from '@/shared/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
+import { useCaptcha } from '@/shared/ui/Captcha';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { Field } from '@/shared/ui/bits';
 import './checkout.css';
@@ -63,6 +64,7 @@ export function CheckoutPage() {
   const [method, setMethod] = useState<PaymentMethodId | ''>(methods.find((m) => methodAvailable(m, settings))?.id ?? '');
   const [errors, setErrors] = useState<(CheckoutError | GuardError)[]>([]);
   const [busy, setBusy] = useState(false);
+  const captcha = useCaptcha();
 
   const summary = summarizeCart(cart.items, { products, origins: originIndex }, settings);
   const rate = shippingRates.find((r) => r.id === customer.cityId && r.active);
@@ -89,8 +91,16 @@ export function CheckoutPage() {
       focusField('payment_method');
       return;
     }
+    if (captcha.missing) {
+      setErrors(['captcha']);
+      focusField('captcha');
+      return;
+    }
     setBusy(true);
-    const r = await api.placeOrder({ items: cart.items, customer, paymentMethod: method, locale }).finally(() => setBusy(false));
+    const r = await api
+      .placeOrder({ items: cart.items, customer, paymentMethod: method, locale }, { captchaToken: captcha.token })
+      .finally(() => setBusy(false));
+    captcha.reset();
     if (!r.ok) {
       setErrors(r.errors);
       focusField(r.errors.find((code) => code in FIELD_OF) ?? r.errors[0]);
@@ -284,6 +294,7 @@ export function CheckoutPage() {
               <strong className="num">{money(summary.subtotal + (fee ?? 0))}</strong>
             </div>
           </div>
+          {captcha.widget}
           {globalErrors.length > 0 && (
             <div className="checkout-errors stack" tabIndex={-1} role="alert">
               {globalErrors.map((e) => (

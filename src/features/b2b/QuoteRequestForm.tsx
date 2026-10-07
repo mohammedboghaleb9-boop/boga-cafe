@@ -5,6 +5,7 @@ import { api, GUARD_ERRORS, type GuardError, type RequestError } from '@/data/ap
 import type { MessageDraft } from '@/services/notifications';
 import { useI18n } from '@/i18n';
 import { Field } from '@/shared/ui/bits';
+import { useCaptcha } from '@/shared/ui/Captcha';
 import { RequestFields, emptyRequest, focusFirstError } from './RequestFields';
 
 /** Sends a cart above the B2B threshold (settings.b2bThresholdKg) to the administration, which sets the final price. */
@@ -13,15 +14,21 @@ export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent:
   const [contact, setContact] = useState(emptyRequest);
   const [errors, setErrors] = useState<(RequestError | GuardError)[]>([]);
   const [busy, setBusy] = useState(false);
+  const captcha = useCaptcha();
   const isGuard = (e: RequestError | GuardError): e is GuardError => (GUARD_ERRORS as readonly string[]).includes(e);
   const fieldErrors = errors.filter((e): e is RequestError => !isGuard(e));
   const guardErrors = errors.filter(isGuard);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (captcha.missing) {
+      setErrors(['captcha']);
+      return;
+    }
     setBusy(true);
     // the button never stays on "sending": every answer, even a failure, ends here
-    const r = await api.requestQuote({ ...contact, items }).finally(() => setBusy(false));
+    const r = await api.requestQuote({ ...contact, items }, { captchaToken: captcha.token }).finally(() => setBusy(false));
+    captcha.reset();
     if (!r.ok) {
       setErrors(r.errors);
       focusFirstError('quote', r.errors.filter((x): x is RequestError => !isGuard(x)));
@@ -42,6 +49,7 @@ export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent:
           onChange={(e) => setContact({ ...contact, notes: e.target.value })}
         />
       </Field>
+      {captcha.widget}
       {guardErrors.length > 0 && (
         <div className="span-all stack" role="alert">
           {guardErrors.map((g) => (

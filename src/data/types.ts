@@ -33,12 +33,17 @@ export type { ContactRequestInput, RequestError } from '@/core/requests';
 export type GuardError = 'server' | 'too_many' | 'captcha';
 export const GUARD_ERRORS: readonly GuardError[] = ['server', 'too_many', 'captcha'];
 
+/** Proof sent with a public form: the Turnstile token (src/shared/ui/Captcha.tsx); ignored where there is no server. */
+export interface FormGuard {
+  captchaToken: string;
+}
+
 export type PlaceOrderResult = { ok: true; order: Order } | { ok: false; errors: (CheckoutError | GuardError)[] };
 export type QuoteResult = { ok: true; quote: QuoteRequest; message: MessageDraft } | { ok: false; errors: (RequestError | GuardError)[] };
 
 export interface Api {
   /* Storefront */
-  placeOrder(input: CheckoutInput): Promise<PlaceOrderResult>;
+  placeOrder(input: CheckoutInput, guard?: FormGuard): Promise<PlaceOrderResult>;
   /** Card gateway answer (CMI callback in production). */
   completeCardPayment(orderId: string, success: boolean): Promise<void>;
   /** Customer says "I have paid" for Cash Plus / transfer and gives the receipt reference; false if it could not be sent. */
@@ -46,7 +51,7 @@ export interface Api {
   /** Brings an order into the state when the customer opens its link (live site: from this tab, else from the server). */
   loadOrder(orderId: string): Promise<void>;
   /** Cart above the B2B threshold → request handled by the administration. */
-  requestQuote(input: QuoteInput): Promise<QuoteResult>;
+  requestQuote(input: QuoteInput, guard?: FormGuard): Promise<QuoteResult>;
 
   /* Admin */
   /** Why the change is refused for this role (core/orderFlow), or null once done. */

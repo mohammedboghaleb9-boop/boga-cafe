@@ -28,9 +28,12 @@ jobs:
           VITE_DATA_MODE: supabase
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+          # Cloudflare's Turnstile test key that always passes (the real one comes in slice 11)
+          VITE_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
       - run: "! grep -l boga-signature dist-supabase/assets/*.js"
 
-  # the site in a browser (real settings, demo data): shop, checkout, admin roles, phone widths, axe
+  # the site in a browser (real settings, demo data): shop, checkout, admin roles, phone widths, axe;
+  # and the live-site build's Turnstile forms against a Supabase and a widget the tests answer
   e2e:
     runs-on: ubuntu-latest
     steps:

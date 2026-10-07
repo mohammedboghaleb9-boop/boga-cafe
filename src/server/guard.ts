@@ -1,14 +1,13 @@
 /**
  * Protection of the public forms against floods and fake orders that would
  * hold the stock (an unpaid order reserves it for 48 h). What it does:
- *  - every request that reaches the server costs from a per-connection budget,
+ *  - every request that passes Turnstile costs from a per-connection budget,
  *    before the catalog is even read;
  *  - accepted requests are counted per phone number and per connection, by the
  *    hour and by the day (rate_limit_hit);
- *  - Cloudflare Turnstile, when TURNSTILE_SECRET_KEY is set on the server.
+ *  - Cloudflare Turnstile on every form, checked first (storefront.ts).
  * What it does not do: stop someone with many phone numbers and many connections.
- * Turnstile is what makes that expensive, so set its keys before the site takes
- * orders; the 48 h expiry bounds the damage meanwhile.
+ * Turnstile is what makes that expensive; the 48 h expiry bounds the damage of what gets through.
  * No cap on open unpaid orders per phone: phone numbers are not verified, so a cap
  * would let anyone lock a real customer out for 48 h with two cheap orders, unseen;
  * a fake order is visible and the owner frees its stock by cancelling it.
@@ -25,7 +24,7 @@ export const LIMITS: Record<Route, { phone: Limit[]; ip: Limit[] }> = {
   order: { phone: [[5, 3600]], ip: [[10, 3600], [20, 86_400]] },
   quote: { phone: [[3, 86_400]], ip: [[20, 86_400]] },
 };
-/** Any request that parses, accepted or not: it costs a catalog read. */
+/** Any request past Turnstile, accepted or not: it costs a catalog read. */
 export const REQUEST_BUDGET: Limit = [120, 3600];
 
 /**
@@ -68,6 +67,19 @@ export async function withinLimits(db: Client, route: Route, phone: string, ip: 
   }
   for (const [bucket, limit] of buckets) if (!(await hit(db, bucket, limit))) return false;
   return true;
+}
+
+/** Cloudflare's test secrets (always passes, always fails, token already spent). */
+const TEST_SECRET = /^[123]x0+AA$/;
+
+/**
+ * The secret the live function may use: a test secret there would accept the public
+ * dummy token from anyone, so it counts as no secret (every form refused, logged).
+ */
+export function liveTurnstileSecret(secret: string): string {
+  if (!TEST_SECRET.test(secret)) return secret;
+  console.error('storefront: TURNSTILE_SECRET_KEY is a Cloudflare test secret; refusing every form');
+  return '';
 }
 
 /** Cloudflare's answer for a widget token. Fails closed: no answer in 5 s = not verified. */

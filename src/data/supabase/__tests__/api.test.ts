@@ -156,6 +156,18 @@ describe('the idempotency key of an order', () => {
     expect(stored.has('boga.orderAttempt')).toBe(false); // nothing left once an order went through
   });
 
+  it('sends the Turnstile token with each form, a fresh one on a resend that keeps the same order key', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const fetchFn = async (_: string, init: RequestInit) => (bodies.push(JSON.parse(init.body as string)), new Response('', { status: 502 }));
+    const { api } = setup(fetchFn as never);
+    const input = { items: [], customer: placed.customer, paymentMethod: 'bank_transfer' as const, locale: 'fr' as const };
+    await api.placeOrder(input, { captchaToken: 'token-1' });
+    await api.placeOrder(input, { captchaToken: 'token-2' }); // a token works once: the resend has a new one
+    await api.requestQuote({ businessType: 'cafe', company: 'Café', contactName: 'Amine', phone: '0612345678', email: '', cityId: 'oujda', notes: '', items: [] }, { captchaToken: 'token-3' });
+    expect(bodies.map((b) => b.captchaToken)).toEqual(['token-1', 'token-2', 'token-3']);
+    expect(bodies[1].idempotencyKey).toBe(bodies[0].idempotencyKey);
+  });
+
   it('keeps the key in memory when the tab cannot store it, and sends none without Web Crypto', async () => {
     vi.stubGlobal('sessionStorage', { getItem: () => null, setItem: () => { throw new Error('private mode'); }, removeItem: () => {} });
     const bodies: Record<string, unknown>[] = [];
