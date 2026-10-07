@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-07 (P5 step 3: slices 1-3b and deploy config merged, `main` = `a778b66`; slice 4 Turnstile on `feat/p5-s4-turnstile`). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-07 (P5 step 3: slices 1-4 and deploy config merged, `main` = `5acfad6`; slice 5 admin sign-in on `feat/p5-s5-admin-signin`). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -14,17 +14,16 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
   the site is not connected yet: 7-10 days left (**Estimated**: slices 4-11 = 6.75 d + outbox sender 1-1.5 d; 3b took ~1 d).
-- `main` = `a778b66`, merge of the deploy config (owner approved 2026-10-07; production build 9587e73b success; slice 3b = `344952f`). Merged branches deleted by the owner. Rollback of the config = `git revert -m 1 a778b66`.
+- `main` = `5acfad6`, merge of slice 4 Turnstile (owner approved 2026-10-07; CI run 112; production build b902f276 success; deploy config = `a778b66`). Merged branches deleted by the owner.
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
   yet). **Every merge into `main` is a release.** Dashboard (owner): Build command `npm run build`; Deploy command (main)
-  `npx wrangler deploy`. Previews **fail on every branch** (known, ignore until the design phase, decided there): "name must
-  match" (bug https://github.com/cloudflare/workers-sdk/issues/15682); the `env -u WRANGLER_CI_MATCH_TAG` command saved in Previews Base
-  is NOT used (old preview model runs plain `npx wrangler versions upload`, build 9322a28f); fix = Worker Previews, irreversible. Repo: `wrangler.jsonc` (assets `./dist`,
+  `npx wrangler deploy`. Previews: failed on every branch ("name must match", workers-sdk#15682) until 2026-10-07, then
+  **pass** (Workers Builds success on `a557226` and `94816b7`; cause of the change not known to me). Repo: `wrangler.jsonc` (assets `./dist`,
   SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked). The Supabase switch =
   `VITE_DATA_MODE`/URL/key + `VITE_TURNSTILE_SITE_KEY` as Cloudflare build variables (owner, slice 11). Workers Builds does not wait for GitHub CI: merge only on green.
   Deployed today: browser store, seed catalog, no admin, no payment method, **not on Supabase**, **no notifications** (Known issues).
 - **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b),
-  catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v5** = 3b build (no Turnstile: slice 4 not deployed), no `save_product` yet. Rollout: migrations, then the function.
+  catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v6** = slice 4 build (`5acfad6`), no `TURNSTILE_SECRET_KEY`: every form refused (500) until slice 11, no `save_product` yet. Rollout: migrations, then the function.
 
 ## Open branches
 Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
@@ -133,10 +132,11 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
-   1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile (branch `feat/p5-s4-turnstile`) · 5 Supabase Auth
+   1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile (merged) · 5 Supabase Auth
    sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
    (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, drop `commit_order_before_3b`, the live
-   same-key success test with payee details, deploy from `main`. 3b (merged): unavailable products, order key (B2B: none yet), order page by link.
+   same-key success test with payee details, real Turnstile keys (widget + `TURNSTILE_SECRET_KEY` + `VITE_TURNSTILE_SITE_KEY`),
+   siteverify `hostname` + `action` check, a build check that the site key variable holds no secret, deploy from `main`. 3b (merged): unavailable products, order key (B2B: none yet), order page by link.
    Then Turnstile keys and the outbox sender (phase 4). Before launch: the privacy page (P7) mentions the order copy kept in the tab (sessionStorage).
 2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 18-25 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
 
