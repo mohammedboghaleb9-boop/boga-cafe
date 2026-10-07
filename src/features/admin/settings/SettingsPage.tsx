@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { PACK_SIZES, type Settings } from '@/core/types';
 import { api } from '@/data/api';
 import { useDb } from '@/data/hooks';
+import { DEMO_DATA } from '@/data/mode';
 import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { PERMISSIONS, ROLES, SECTIONS } from '../permissions';
@@ -159,9 +160,11 @@ export function SettingsPage() {
         </TableWrap>
       </section>
 
-      <div>
-        <ConfirmButton label={t.admin.resetDemo} confirmLabel={t.admin.resetConfirm} onConfirm={() => void api.resetDemo()} />
-      </div>
+      {DEMO_DATA && (
+        <div>
+          <ConfirmButton label={t.admin.resetDemo} confirmLabel={t.admin.resetConfirm} onConfirm={() => void api.resetDemo()} />
+        </div>
+      )}
     </>
   );
 }

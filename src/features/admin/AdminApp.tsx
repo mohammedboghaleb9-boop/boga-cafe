@@ -1,9 +1,11 @@
 /**
- * Admin Panel: login, layout and one route per section.
- * Each section is a folder next to this file.
+ * Admin Panel: sign-in, layout and one route per section.
+ * Each section is a folder next to this file. Signed out, any /admin address shows
+ * the sign-in form (then that page); an account that is not an admin gets "no access".
  */
 import { Navigate, Route, Routes } from 'react-router';
 import { AdminLayout } from './AdminLayout';
+import { AdminDenied } from './AdminDenied';
 import { AdminLogin } from './AdminLogin';
 import { B2BRequestsPage } from './b2b/B2BRequestsPage';
 import { ContentPage } from './content/ContentPage';
@@ -15,6 +17,7 @@ import { PaymentsPage } from './payments/PaymentsPage';
 import { can, type Section } from './permissions';
 import { ProductEditor } from './products/ProductEditor';
 import { ProductsPage } from './products/ProductsPage';
+import { useAdminSession } from '@/data/hooks';
 import { useAdminRole } from './session';
 import { SettingsPage } from './settings/SettingsPage';
 import { ShippingPage } from './shipping/ShippingPage';
@@ -36,8 +39,11 @@ function Guard({ section, children }: { section: Section; children: React.ReactN
 }
 
 export function AdminApp() {
-  const role = useAdminRole();
-  if (!role) return <AdminLogin />;
+  const session = useAdminSession();
+  // the kept session is being checked: nothing yet, rather than the form flashing by
+  if (session.state === 'loading') return null;
+  if (session.state === 'denied') return <AdminDenied />;
+  if (session.state !== 'signed_in') return <AdminLogin />;
   return (
     <Routes>
       <Route element={<AdminLayout />}>

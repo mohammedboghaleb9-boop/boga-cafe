@@ -22,6 +22,9 @@ export function useCatalog() {
 
 export const useSettings = () => useDb().settings;
 
+/** The admin's sign-in state (starts the live session check on first use). */
+export const useAdminSession = () => useSyncExternalStore(backend.admin.session.subscribe, backend.admin.session.get, backend.admin.session.get);
+
 /** Whether the data has arrived (always 'ready' for the browser store), and a way to ask again after an error. */
 export function useDataStatus() {
   return { status: useSyncExternalStore(status.subscribe, status.get, status.get), retry: backend.retry };

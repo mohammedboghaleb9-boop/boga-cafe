@@ -80,6 +80,37 @@ export interface Api {
   resetDemo(): Promise<void>;
 }
 
+/**
+ * Where the admin's sign-in stands. 'denied' = the password was right but the account
+ * is not an admin (is_admin() false): it has been signed out again. `problem` on
+ * 'signed_out': a kept session could not be checked (no connection); it stays kept.
+ */
+export type AdminSession =
+  | { state: 'loading' }
+  | { state: 'signed_out'; problem?: 'server' }
+  | { state: 'denied' }
+  | { state: 'signed_in'; role: AdminRole };
+
+/** Prototype: a role and the public demo password. Live site: the admin's own account. */
+export type SignInInput = { role: AdminRole; password: string } | { email: string; password: string };
+
+/**
+ * 'credentials' covers every refusal of the email or the password alike, so the
+ * answer never tells whether an account exists; 'too_many' = Auth's rate limit;
+ * 'denied' = signed in, but not an admin (the session says so too).
+ */
+export type SignInResult = 'ok' | 'denied' | 'credentials' | 'too_many' | 'server';
+
+export interface AdminAuth {
+  session: ReadStore<AdminSession>;
+  signIn(input: SignInInput): Promise<SignInResult>;
+  signOut(): Promise<void>;
+  /** From the "no access" page back to the sign-in form. */
+  dismiss(): void;
+  /** The prototype's public password (demo build only). */
+  demoPassword?: string;
+}
+
 /** Read side of a backend: the whole state, and a way to hear about changes. */
 export interface ReadStore<T> {
   get(): T;
@@ -95,4 +126,6 @@ export interface Backend {
   status: ReadStore<DataStatus>;
   /** Loads the data again after an error. */
   retry(): void;
+  /** Admin sign-in (the Admin Panel only). */
+  admin: AdminAuth;
 }

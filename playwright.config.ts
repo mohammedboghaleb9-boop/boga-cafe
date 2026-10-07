@@ -3,11 +3,11 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Browser tests on `npm run build:e2e`: the real site's settings (browser router,
  * card payment off) with the demo data (.env.e2e), served by `vite preview`; and the
- * live-site build (.env.e2e-supabase) for the Turnstile forms, whose Supabase and
- * Turnstile the tests answer themselves (e2e/turnstile.spec.ts). In CI the browser comes from `npx playwright install`; locally,
+ * live-site build (.env.e2e-supabase) for the Turnstile forms and the admin sign-in, whose
+ * Supabase and Turnstile the tests answer themselves (e2e/live.ts). In CI the browser comes from `npx playwright install`; locally,
  * PW_CHROMIUM can point to an already installed Chromium.
  */
-const LIVE_BUILD = 'turnstile.spec.ts';
+const LIVE_BUILD = /(turnstile|admin-live)\.spec\.ts$/;
 const executablePath = process.env.PW_CHROMIUM || undefined;
 
 export default defineConfig({

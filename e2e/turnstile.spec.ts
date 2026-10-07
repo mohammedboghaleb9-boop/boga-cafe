@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Request } from '@playwright/test';
 import { clippedContent, expectNoSideScroll, open } from './helpers';
+import { answerCatalog, CORS, SUPABASE } from './live';
 
 /**
  * Turnstile on the live-site build (VITE_DATA_MODE=supabase, .env.e2e-supabase), served on
@@ -11,25 +12,6 @@ import { clippedContent, expectNoSideScroll, open } from './helpers';
  */
 const SITE_KEY = '1x00000000000000000000AA';
 const DUMMY_TOKEN = 'XXXX.DUMMY.TOKEN.XXXX';
-const SUPABASE = 'https://e2e.supabase.test';
-
-const L = (s: string) => ({ ar: s, fr: s, en: s });
-const tables: Record<string, unknown[]> = {
-  origins: [
-    { id: 'brazil', name: L('Brésil'), country_code: 'BR', species: 'arabica', region: '', roast_level: 'medium', tasting_notes: L(''),
-      stock_kg: 80, low_stock_kg: 5, price_per_kg: 200, custom_blend_enabled: true, restock_date: null, active: true, updated_at: '' },
-  ],
-  products: [
-    { id: 'boga-signature', slug: 'boga-signature', kind: 'signature', name: L('BOGA Signature'), tagline: L(''), description: L(''), roast_level: 'medium',
-      tasting_notes: L(''), prices: { 250: 65, 500: 120, 1000: 220 }, image_url: null, featured: true, active: true, sort_order: 1, updated_at: '',
-      product_recipes: [{ origin_id: 'brazil', percent: 100 }] },
-  ],
-  shipping_rates: [{ id: 'oujda', city: L('Oujda'), distance_km: 0, base_fee: 20, included_kg: 3, extra_per_kg: 5, delivery_days: '1', active: true }],
-  payment_methods: [{ id: 'cashplus', enabled: true, label: L('Cash Plus'), instructions: L('') }],
-  // a payee, so Cash Plus can be chosen and the form reaches the server
-  site_config: [{ settings: { cashplus: { beneficiary: 'BOGA E2E' } }, content: {} }],
-};
-
 /** Cloudflare's script, replaced: render() draws a box of the documented size and solves it unless held. */
 const TURNSTILE_STUB = `
 window.tsStub = { renders: [], resets: 0, widgets: {}, issued: 0 };
@@ -51,7 +33,6 @@ window.turnstile = {
 };`;
 
 type Answer = Record<string, unknown>;
-const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
 
 /** Answers the catalog and the storefront function; returns the bodies the forms sent, by route. */
 async function fakeServer(page: Page, opts: { answer?: Answer; turnstile?: 'stub' | 'blocked'; cart: object[] }) {
@@ -69,10 +50,7 @@ async function fakeServer(page: Page, opts: { answer?: Answer; turnstile?: 'stub
       sent.push({ route: fn[1], body: req.postDataJSON() as Answer });
       return r.fulfill({ headers: CORS, contentType: 'application/json', json: opts.answer ?? { ok: false, errors: ['too_many'] } });
     }
-    const rows = tables[url.pathname.split('/').at(-1) ?? ''];
-    if (!rows) return r.fulfill({ status: 404, headers: CORS, json: { message: 'not in the e2e catalog' } });
-    const single = (req.headers()['accept'] ?? '').includes('vnd.pgrst.object');
-    return r.fulfill({ headers: CORS, contentType: 'application/json', json: single ? rows[0] : rows });
+    return answerCatalog(r);
   });
   return sent;
 }

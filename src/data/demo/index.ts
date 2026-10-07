@@ -1,5 +1,6 @@
 import type { Backend, DataStatus } from '../types';
 import { demoApi } from './api';
+import { demoAdmin } from './session';
 import { db } from './store';
 
 const ready: DataStatus = 'ready';
@@ -10,4 +11,5 @@ export const demoBackend: Backend = {
   api: demoApi,
   status: { get: () => ready, subscribe: () => () => {} },
   retry: () => {},
+  admin: demoAdmin,
 };
