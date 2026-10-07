@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-07
+- 2026-10-07 [feat/p5-s5-admin-signin] Review: the browser-only build no longer ships the demo password (it did on the branch; check-real-build fixed to see it), sign-out removes the kept session even offline, other tabs' sign-ins re-checked, "try again" for an unchecked session.
 - 2026-10-07 [feat/p5-s5-admin-signin] P5 step 3 slice 5: admin sign-in with Supabase Auth in the live-database build (email + password; admin = `is_admin()` + own `admin_users` role, any other account signed out with "no access"; one message for every refused email or password; session kept and refreshed in its own client). Demo sign-in unchanged; the supabase build ships no demo password (CI check).
 - 2026-10-07 Slice 4 merged into `main` (5acfad6, owner approved; CI run 112, production build b902f276). `storefront` v6 live without a Turnstile secret: order and B2B request, with no token or a dummy token, all answer 500 and write no row (checked). Preview builds now pass.
 - 2026-10-07 [feat/p5-s4-turnstile] P5 step 3 slice 4: Turnstile on checkout and the B2B request (supabase mode only). The storefront function checks the token before anything else and fails closed (no secret or a test secret = every form refused); the widget is dark, compact under 300 px, with "try again"; tests with Cloudflare's test keys (Vitest + a live-site Playwright build). Not deployed live.
