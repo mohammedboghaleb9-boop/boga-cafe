@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-07
+- 2026-10-07 [feat/p5-s4-turnstile] P5 step 3 slice 4: Turnstile on checkout and the B2B request (supabase mode only). The storefront function checks the token before anything else and fails closed (no secret or a test secret = every form refused); the widget is dark, compact under 300 px, with "try again"; tests with Cloudflare's test keys (Vitest + a live-site Playwright build). Not deployed live.
 - 2026-10-07 Deploy config merged into `main` (a778b66, owner approved): `wrangler.jsonc` + wrangler 4.148.0; production build 9587e73b success; live site checked (home, /shop, unknown paths show the site's 404, /wrangler.jsonc not served).
 - 2026-10-07 [feat/p5-deploy-config] Notes corrected: the `env -u` Preview command is not used (old preview model, build 9322a28f); previews fail on every branch, ignored until the design phase (owner decision); config merge approved for production stability.
 - 2026-10-07 [feat/p5-deploy-config] Preview build cause found by the owner: Workers Builds bug workers-sdk#15682 (match tag); Preview command now `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload`; dashboard settings recorded in PROJECT_NOTES and docs/03.

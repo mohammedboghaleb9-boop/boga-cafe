@@ -21,10 +21,10 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
   match" (bug https://github.com/cloudflare/workers-sdk/issues/15682); the `env -u WRANGLER_CI_MATCH_TAG` command saved in Previews Base
   is NOT used (old preview model runs plain `npx wrangler versions upload`, build 9322a28f); fix = Worker Previews, irreversible. Repo: `wrangler.jsonc` (assets `./dist`,
   SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked). The Supabase switch =
-  `VITE_DATA_MODE`/URL/key as Cloudflare build variables (owner, slice 11). Workers Builds does not wait for GitHub CI: merge only on green.
+  `VITE_DATA_MODE`/URL/key + `VITE_TURNSTILE_SITE_KEY` as Cloudflare build variables (owner, slice 11). Workers Builds does not wait for GitHub CI: merge only on green.
   Deployed today: browser store, seed catalog, no admin, no payment method, **not on Supabase**, **no notifications** (Known issues).
 - **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b),
-  catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v5** = 3b build, no `save_product` yet. Rollout: migrations, then the function.
+  catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v5** = 3b build (no Turnstile: slice 4 not deployed), no `save_product` yet. Rollout: migrations, then the function.
 
 ## Open branches
 Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
@@ -57,8 +57,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - **Every stock reservation ends**: 48 h unpaid, 120 h after the customer says "I paid", counted from the order time; no setting turns it off (`reservationDeadline`, `expire_unpaid_orders`).
 - **"I paid" is a claim, not money.** Only the owner marks paid. A paid order ends with a refund, not a plain cancel; a reported payment can be cancelled only by the owner.
 - **Payment methods stay closed until real details exist** (`payeeReady`, `invalid_order:payment_details`). Nothing is invented for the RIB or Cash Plus.
-- **One B2B threshold** in settings; texts read it.
-- **Samples are paid bags, not a request form** (owner, 2026-09-30): a B2B blend's 250 g / 500 g bag is an ordinary order (paid before prep, delivery as usual); its 1 kg bag is refused in a cart at or under the threshold (`isBulkOnly` in `src/core/cart.ts`, line problem `bulk_only`; `check_order` raises `invalid_order:bulk_only`, since an order is never above the threshold). Why: no free-sample abuse to police, one payment path, ~26 files of sample flow removed. The 250 g prices (55 / 45 / 65 DH) are examples like the rest of the catalog. **Page titles, skip link, Escape closes the menu** (a11y findings).
+- **One B2B threshold** in settings; texts read it. **Samples are paid bags, not a request form** (owner, 2026-09-30): a B2B blend's 250 g / 500 g bag is an ordinary order (paid before prep, delivery as usual); its 1 kg bag is refused in a cart at or under the threshold (`isBulkOnly` in `src/core/cart.ts`, line problem `bulk_only`; `check_order` raises `invalid_order:bulk_only`, since an order is never above the threshold). Why: no free-sample abuse to police, one payment path, ~26 files of sample flow removed. The 250 g prices (55 / 45 / 65 DH) are examples like the rest of the catalog. **Page titles, skip link, Escape closes the menu** (a11y findings).
 - **Orders and B2B requests go through the server** (`storefront` function, `POST …/storefront/order|quote`): it
   rebuilds every figure from the database with `src/core`, then `check_order` checks them again and `commit_*` saves,
   numbers and queues the messages in one transaction. B2B request building lives in `src/core/requests.ts` so the site
@@ -69,8 +68,8 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   20/day per connection (B2B requests: 3/day per phone, 20/day per connection). An IPv6 visitor counts by its /64.
   No cap on open unpaid orders per phone (tried, then removed after the second review): phones are not verified, so
   two cheap orders would lock a real customer out for 48 h, unseen; a fake order is visible and the owner frees its
-  stock by cancelling it. What this does not stop: many phones and many connections. Turnstile is the real defence,
-  so its keys must be set before the site takes orders; the 48 h expiry bounds the damage meanwhile.
+  stock by cancelling it. What this does not stop: many phones and many connections. Turnstile is the real defence
+  (slice 4: checked before anything else); the 48 h expiry bounds the damage of what gets through.
   The visitor IP is Cloudflare's `cf-connecting-ip` only (no header = no per-connection limit, logged); checked on the
   live project: requests land in one bucket with or without a forged `x-forwarded-for`, and a forged
   `cf-connecting-ip` is refused by Cloudflare (403). Buckets carry an HMAC of the IP keyed with the server secret key
@@ -79,7 +78,8 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   (`race.sh`, in CI). Why not one row per hit with an advisory lock: the tool that applies SQL to the live project
   refused that function's text, and one row per bucket is simpler anyway.
 - **Card stored off in the live database** until the CMI callback exists, so `check_order` itself refuses a card
-  order nobody could pay; the server also never offers it. Turnstile is ready but off until both keys exist.
+  order nobody could pay; the server also never offers it. **Turnstile (slice 4)**: the function checks the token first (nothing read or counted
+  before); no secret, or a Cloudflare test secret, = every form refused (500). Widget only in `supabase` mode (`src/shared/ui/Captcha.tsx`, dark, compact under 300 px, "try again"); a resend needs a fresh token.
 - **Starting data = the examples the site already shows** (products, prices, stock are examples; payment details
   empty). `seed-sql.mjs` refuses to run if `seed/config.ts` holds payment details (the repo is public).
 - **Data contract** (2026-10-05): pages see data only through `src/data/api.ts` (async `Api`, `types.ts`) and the hooks;
@@ -133,7 +133,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
-   1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile (branch) · 5 Supabase Auth
+   1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile (branch `feat/p5-s4-turnstile`) · 5 Supabase Auth
    sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
    (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, drop `commit_order_before_3b`, the live
    same-key success test with payee details, deploy from `main`. 3b (merged): unavailable products, order key (B2B: none yet), order page by link.
@@ -145,6 +145,6 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - On real Supabase, checked: schema byte-identical to the files, `set_order_status` as the owner cancels and returns stock, `check_order` accepts an
   order built by `src/core` and refuses closed methods, the storefront function end to end. Anon over HTTP (2026-10-06): 10 products, 6 origins, 20 cities, 2 methods, 1 config; 0 orders/requests/messages/admins; the supabase build in a
   browser shows the live shop and reads an order by its link. Not checked: admin reads (slice 7).
-- Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only.
-- Q1 "yes" read as the default (roasted stock); Q21 Vercel free plan for a commercial site; Q23/Q24 Cash Plus beneficiary data, can a bank transfer be recalled after it lands.
-- The Stop hook firing in a real session was not observed (script tested by hand). `map-test` @ `f9ba067`: donor only (still to port: `save_product`, `Captcha.tsx`, admin mappers).
+- Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only. Q1 "yes" read as the default (roasted stock); Q21 Vercel free plan for a commercial site; Q23/Q24 Cash Plus beneficiary data, can a bank transfer be recalled after it lands.
+- Turnstile: the real widget and a real siteverify answer were never seen from here (Cloudflare is blocked; e2e uses a stand-in); Arabic in the widget unconfirmed.
+- The Stop hook firing in a real session was not observed (script tested by hand). `map-test` @ `f9ba067`: donor only (still to port: `save_product`, admin mappers; `Captcha.tsx` ported in slice 4).
