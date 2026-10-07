@@ -10,7 +10,7 @@
 | اللغات | قواميس TypeScript (`ar.ts`, `fr.ts`, `en.ts`) | إذا نسيت ترجمة جملة، يرفض المشروع البناء. لا مكتبة إضافية |
 | منطق الأعمال | `src/core` (TypeScript بدون React) | نفس الكود يعمل في المتصفح (السعر المباشر) وفي الخادم (التحقق النهائي). مُختبر آلياً (الكميات، الأحجام، الخلطة، الأسعار، المخزون، قواعد الحالة والدفع) |
 | قاعدة البيانات والخادم | **Supabase**: PostgreSQL + Auth + Storage + Edge Functions | قاعدة بيانات حقيقية، أمان على مستوى الصفوف (RLS)، تسجيل دخول الإدارة، تخزين الصور وإيصالات الدفع، بدون خادم نديره بأنفسنا |
-| الاستضافة | **Vercel** (مُجهّز الآن: `vercel.json` + دالة `api/notify.ts`؛ Cloudflare Pages بديل بنقل ملف واحد) | الموقع ملفات ثابتة + دالة واحدة. **تحقّقنا (شتنبر 2026):** خطة Vercel المجانية (Hobby) للاستعمال الشخصي غير التجاري فقط، والمتجر يحتاج خطة Pro (20$ شهرياً لكل عضو). Cloudflare Pages مجاني للاستعمال التجاري، مقابل نقل `api/notify.ts` |
+| الاستضافة | **Cloudflare Workers** (ملفات ثابتة فقط، `wrangler.jsonc`: المجلد `./dist` وكل رابط مجهول يعطي `index.html`؛ wrangler 4.148.0 مثبّت). Workers Builds ينشر `main` تلقائياً. إعدادات اللوحة (صاحب المشروع): Build command `npm run build`، Deploy command `npx wrangler deploy`، Preview command `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload` | الموقع ملفات ثابتة. `env -u` يتجاوز خللاً في Workers Builds ([workers-sdk#15682](https://github.com/cloudflare/workers-sdk/issues/15682)): بناء المعاينة يأخذ وسماً لا يطابق أي Worker فيرفض الاسم `boga-cafe`؛ الإنتاج لا يتأثر، ويُحذف التجاوز عند إصلاح الخلل. `vercel.json` و`api/notify.ts` بقايا من خطة Vercel: الدالة لا تعمل على Cloudflare (الرسائل من Supabase، المرحلة 4) |
 | الاختبارات | Vitest (منطق الأعمال) + اختبار SQL على PostgreSQL + Playwright (تصفح آلي) | |
 
 ### لماذا ليس Shopify أو WooCommerce؟

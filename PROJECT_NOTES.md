@@ -16,13 +16,13 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
   the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; slice 3b not estimated).
 - `main` = `344952f`, merge of slice 3b (owner approved 2026-10-07, CI run 97; slice 3 = `d2ebd36`). Merged branches deleted by the owner. Now: deploy config branch.
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
-  yet). **Every merge into `main` is a release.** Preview builds: `npx wrangler versions upload`. Config in the repo (branch):
-  `wrangler.jsonc` (static assets from `./dist`, SPA fallback, values of Cloudflare's auto-setup) + wrangler 4.148.0 pinned, no Vite
-  plugin (same 35 served files, checked; wrangler says 36: it counts `assets/`; auto-setup's 38 adds `wrangler.json` + `.assetsignore`,
-  not served). **Preview build still red** (needs a Build command, owner). Before: production relied on auto-setup. The Supabase switch =
-  adding `VITE_DATA_MODE`/URL/key in Cloudflare build variables, owner only, slice 11. Workers Builds does not wait for
-  GitHub CI: merge only on a green branch. Deployed build today: browser store, seed catalog, no admin, no payment method
-  open, **not connected to Supabase**. **Notifications do not work** (Known issues).
+  yet). **Every merge into `main` is a release.** Dashboard (owner): Build command `npm run build`; Deploy command (main)
+  `npx wrangler deploy`; Preview command `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload`. Why: Workers Builds
+  bug https://github.com/cloudflare/workers-sdk/issues/15682 (preview builds get a match tag of no Worker: "name must match"
+  though it is `boga-cafe`); production unaffected; drop `env -u …` once fixed. Repo (branch): `wrangler.jsonc` (assets `./dist`,
+  SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked). The Supabase switch =
+  `VITE_DATA_MODE`/URL/key as Cloudflare build variables (owner, slice 11). Workers Builds does not wait for GitHub CI: merge only on green.
+  Deployed today: browser store, seed catalog, no admin, no payment method, **not on Supabase**, **no notifications** (Known issues).
 - **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b),
   catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v5** = 3b build, no `save_product` yet. Rollout: migrations, then the function.
 
