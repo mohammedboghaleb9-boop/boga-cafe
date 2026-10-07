@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-07 (P5 step 3: slices 1-3b merged, `main` = `344952f`; deploy config `feat/p5-deploy-config` approved for merge by the owner). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-07 (P5 step 3: slices 1-3b and deploy config merged, `main` = `a778b66`; slice 4 Turnstile on `feat/p5-s4-turnstile`). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -13,8 +13,8 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
-  the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; slice 3b not estimated).
-- `main` = `344952f`, merge of slice 3b (owner approved 2026-10-07, CI run 97; slice 3 = `d2ebd36`). Merged branches deleted by the owner. Deploy config: merge approved 2026-10-07; rollback = `git revert -m 1 <merge>`.
+  the site is not connected yet: 7-10 days left (**Estimated**: slices 4-11 = 6.75 d + outbox sender 1-1.5 d; 3b took ~1 d).
+- `main` = `a778b66`, merge of the deploy config (owner approved 2026-10-07; production build 9587e73b success; slice 3b = `344952f`). Merged branches deleted by the owner. Rollback of the config = `git revert -m 1 a778b66`.
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
   yet). **Every merge into `main` is a release.** Dashboard (owner): Build command `npm run build`; Deploy command (main)
   `npx wrangler deploy`. Previews **fail on every branch** (known, ignore until the design phase, decided there): "name must
@@ -133,7 +133,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
-   1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile · 5 Supabase Auth
+   1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile (branch) · 5 Supabase Auth
    sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
    (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, drop `commit_order_before_3b`, the live
    same-key success test with payee details, deploy from `main`. 3b (merged): unavailable products, order key (B2B: none yet), order page by link.
