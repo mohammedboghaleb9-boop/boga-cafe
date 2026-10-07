@@ -1102,6 +1102,18 @@ begin
     raise exception 'TEST FAILED: key of a refused order blocked';
   end if;
 end $$;
+-- any other unique violation is not a repeated key: it is raised, never answered with an order
+do $$
+declare n bigint := (select last_value from public.order_number_seq);
+begin
+  perform setval('public.order_number_seq', n - 1);  -- the next number is already taken
+  begin
+    perform public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '', 'b0ca0000-0000-4000-8000-000000000030');
+    raise exception 'TEST FAILED: a taken order number was not raised';
+  exception when unique_violation then null;
+  end;
+  perform setval('public.order_number_seq', n);
+end $$;
 -- the server's role may call it; a visitor may not (section 4 tries without a key)
 set role service_role;
 select count(*) from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '', 'b0ca0000-0000-4000-8000-000000000027');

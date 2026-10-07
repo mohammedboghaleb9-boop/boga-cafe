@@ -245,8 +245,8 @@ export function CheckoutPage() {
             <span className="step-n">3</span> {t.checkout.summaryTitle}
           </h2>
           <ul className="co-lines">
-            {summary.lines.map(({ item, line }) =>
-              line ? (
+            {summary.lines.map(({ item, line, problem }) =>
+              line && problem !== 'unavailable' ? (
                 <li key={item.id}>
                   <LineDetails line={line} />
                   <span className="num small">×{line.qty}</span>

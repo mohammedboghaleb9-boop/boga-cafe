@@ -88,13 +88,18 @@ async function order(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
   // could now refuse it (the last kilos it took, a used captcha token, the phone's limit)
   const before = key && (await savedOrder(deps.db, key));
   if (before) return placed(before);
+  // a refusal after that may come from its twin, saved meanwhile with the last kilos: the customer gets that order
+  const unlessSaved = async (reply: Reply) => {
+    const twin = key && (await savedOrder(deps.db, key));
+    return twin ? placed(twin) : reply;
+  };
   if (!(await captchaOk(raw, deps))) return refuse('captcha');
   const p = prepareOrder(input, await loadCatalog(deps.db), now);
-  if (!p.ok) return refuse(...p.errors);
+  if (!p.ok) return unlessSaved(refuse(...p.errors));
   if (!(await withinLimits(deps.db, 'order', p.phone, deps.ip, deps.ipKey))) return refuse('too_many');
   const r = await deps.db.rpc('commit_order', key ? { ...p.args, p_idempotency_key: key } : p.args);
   // someone bought the last kilos between our check and the commit
-  if (r.error?.message.startsWith('out_of_stock:')) return refuse('out_of_stock');
+  if (r.error?.message.startsWith('out_of_stock:')) return unlessSaved(refuse('out_of_stock'));
   const row = saved(r);
   if (!row) return BAD_REQUEST;
   // sent twice at the same moment: the other request saved it first

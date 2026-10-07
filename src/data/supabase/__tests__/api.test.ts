@@ -155,5 +155,79 @@ describe('the idempotency key of an order', () => {
     expect(new Set(keys).size).toBe(3);
     expect(stored.has('boga.orderAttempt')).toBe(false); // nothing left once an order went through
   });
+
+  it('keeps the key in memory when the tab cannot store it, and sends none without Web Crypto', async () => {
+    vi.stubGlobal('sessionStorage', { getItem: () => null, setItem: () => { throw new Error('private mode'); }, removeItem: () => {} });
+    const bodies: Record<string, unknown>[] = [];
+    const fetchFn = async (_: string, init: RequestInit) => (bodies.push(JSON.parse(init.body as string)), new Response('', { status: 502 }));
+    const { api } = setup(fetchFn as never);
+    const input = { items: [], customer: placed.customer, paymentMethod: 'bank_transfer' as const, locale: 'fr' as const };
+    await api.placeOrder(input);
+    await api.placeOrder(input);
+    expect(bodies[0].idempotencyKey).toMatch(UUID);
+    expect(bodies[1].idempotencyKey).toBe(bodies[0].idempotencyKey);
+    // a page on plain http has no crypto.subtle: the order still goes, without a key
+    vi.stubGlobal('crypto', {});
+    expect(await api.placeOrder(input)).toEqual({ ok: false, errors: ['server'] });
+    expect(bodies[2]).not.toHaveProperty('idempotencyKey');
+    expect(bodies[2].customer).toEqual(input.customer);
+  });
+
+  it('starts a new key after a day: a tab restored later places a new order', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const keys: string[] = [];
+      const fetchFn = async (_: string, init: RequestInit) => (keys.push(JSON.parse(init.body as string).idempotencyKey), new Response('', { status: 502 }));
+      const { api } = setup(fetchFn as never);
+      const input = { items: [], customer: placed.customer, paymentMethod: 'bank_transfer' as const, locale: 'fr' as const };
+      vi.setSystemTime(new Date('2026-10-07T10:00:00Z'));
+      await api.placeOrder(input);
+      vi.setSystemTime(new Date('2026-10-08T09:59:00Z'));
+      await api.placeOrder(input);
+      vi.setSystemTime(new Date('2026-10-08T10:01:00Z'));
+      await api.placeOrder(input);
+      expect(keys[1]).toBe(keys[0]);
+      expect(keys[2]).not.toBe(keys[0]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
+describe('a product the server says is unavailable', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reads the catalog again without the loading screen, so the cart shows which line it is', async () => {
+    vi.stubGlobal('sessionStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} });
+    let stock = 5;
+    const tables = () => ({
+      origins: [{ id: 'ethiopia', name: {}, country_code: 'ET', species: 'arabica', region: '', roast_level: 'light', tasting_notes: {}, stock_kg: stock, low_stock_kg: 1, price_per_kg: 300, custom_blend_enabled: false, restock_date: null, active: true }],
+      products: [], shipping_rates: [], payment_methods: [],
+    });
+    const from = vi.fn((table: string) => {
+      const result = { data: (tables() as Record<string, unknown[]>)[table] ?? [], error: null };
+      const q = Object.assign(Promise.resolve(result), { select: () => q, order: () => q, eq: () => q, maybeSingle: async () => ({ data: { settings: {}, content: {} }, error: null }) });
+      return q;
+    });
+    const client = { rpc: vi.fn(), from } as unknown as Client;
+    const store = createCatalogStore(client);
+    const reply = async () => new Response(JSON.stringify({ ok: false, errors: ['unavailable', 'payment_method'] }), { status: 200 });
+    const api = createSupabaseApi({ client, store, storefront: { url: 'https://p.supabase.co', key: 'k', fetchFn: reply as unknown as typeof fetch } });
+    await store.load();
+    const seen: string[] = [];
+    store.status.subscribe(() => seen.push(store.status.get()));
+    stock = 0; // emptied since the page loaded
+    const r = await api.placeOrder({ items: [], customer: placed.customer, paymentMethod: 'bank_transfer', locale: 'fr' });
+    expect(r).toEqual({ ok: false, errors: ['unavailable', 'payment_method'] });
+    expect(store.db.get().origins[0].stockKg).toBe(0);
+    expect(seen).not.toContain('loading');
+    expect(store.status.get()).toBe('ready');
+    // the network drops during that read: the page keeps the copy it has, no error screen
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    from.mockImplementation(() => {
+      throw new Error('offline');
+    });
+    await api.placeOrder({ items: [], customer: placed.customer, paymentMethod: 'bank_transfer', locale: 'fr' });
+    expect([store.status.get(), store.db.get().origins.length]).toEqual(['ready', 1]);
+  });
+});

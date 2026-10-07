@@ -63,9 +63,14 @@ export function createSupabaseApi({ client, store, storefront }: SupabaseApiDeps
   return {
     async placeOrder(input): Promise<PlaceOrderResult> {
       // a retry after a lost answer carries the same key: the server gives back the saved order
-      const body = { ...input, idempotencyKey: await orderKey(input) };
+      const key = await orderKey(input).catch(() => null); // no Web Crypto (plain http): sent without a key
+      const body = key ? { ...input, idempotencyKey: key } : input;
       const r = await postStorefront<{ order: Order }>('order', body, 'order', storefront);
-      if (!r.ok) return { ok: false, errors: knownErrors(r.errors, CHECKOUT_ERRORS) };
+      if (!r.ok) {
+        // the stock changed since the page loaded: read it again so the cart shows which line it is
+        if (r.errors.some((e) => e === 'unavailable' || e === 'out_of_stock')) await store.refresh();
+        return { ok: false, errors: knownErrors(r.errors, CHECKOUT_ERRORS) };
+      }
       orderSent();
       keep(r.order);
       return { ok: true, order: r.order };

@@ -51,6 +51,8 @@ interface FakeOptions {
   /** order rows saved under an idempotency key; with `afterCommit`, only once commit_order ran (the other request won) */
   saved?: Record<string, unknown>[];
   afterCommit?: boolean;
+  /** the saved rows show only from this lookup on (1 = the first): the twin request saved it meanwhile */
+  visibleFrom?: number;
 }
 
 /** Enough of supabase-js for loadCatalog(), the open-orders count and rpc(); records every call. */
@@ -59,6 +61,7 @@ function fakeDb(opts: FakeOptions = {}) {
   const hits = new Map<string, number>();
   const calls: { name: string; args: Record<string, unknown> }[] = [];
   const reads: string[] = [];
+  let lookups = 0;
   // a query is awaited for its rows (or, for orders, its count), or chained further
   interface Query extends Promise<unknown> {
     select(): Query;
@@ -71,7 +74,8 @@ function fakeDb(opts: FakeOptions = {}) {
     reads.push(table);
     const result = table === 'orders' ? { data: null, count: opts.openOrders ?? 0, error: null } : { data: tables[table], error: null };
     let key: unknown;
-    const savedRows = () => (opts.afterCommit && !committed(calls) ? [] : (opts.saved ?? []));
+    const savedRows = () =>
+      (opts.afterCommit && !committed(calls)) || ++lookups < (opts.visibleFrom ?? 0) ? [] : (opts.saved ?? []);
     const q: Query = Object.assign(Promise.resolve(result), {
       select: () => q,
       order: () => q,
@@ -262,6 +266,17 @@ describe('storefront: order', () => {
       order: { id: 'first-id', number: 'BC-2026-0007', total: 420, customer: { phone: '+212612345678' }, stockDeductions: [{ originId: 'brazil', kg: 1.6 }] },
     });
     expect(committed(calls) || counted(calls).length > 0).toBe(false);
+  });
+
+  it('gives the saved order, not a refusal, when its twin took the last kilos meanwhile', async () => {
+    // the first lookup finds nothing; then the stock is gone because the twin was saved with it
+    const { db, calls } = fakeDb({ saved: [savedRow], visibleFrom: 2, origins: { vietnam: { stock_kg: 0 } } });
+    expect((await handleStorefront('order', orderBody({ idempotencyKey: KEY }), deps(db))).body).toMatchObject({ ok: true, order: { number: 'BC-2026-0007' } });
+    expect(committed(calls)).toBe(false);
+    const raced = fakeDb({ saved: [savedRow], visibleFrom: 2, commitError: 'out_of_stock:brazil' });
+    expect((await handleStorefront('order', orderBody({ idempotencyKey: KEY }), deps(raced.db))).body).toMatchObject({ ok: true, order: { number: 'BC-2026-0007' } });
+    // without a twin the refusal stands
+    expect((await handleStorefront('order', orderBody({ idempotencyKey: KEY }), deps(fakeDb({ commitError: 'out_of_stock:brazil' }).db))).body).toEqual({ ok: false, errors: ['out_of_stock'] });
   });
 
   it('gives the saved order back when the same key was saved by a request sent at the same moment', async () => {

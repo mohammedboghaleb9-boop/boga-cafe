@@ -24,7 +24,9 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 - **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 7 migrations = `supabase/migrations`, catalog from `supabase/seed.sql`,
   two owner accounts (sign-up off; never signed in, no 2FA yet), `storefront` v4 the only function (not re-compared byte for byte), no `save_product` yet (slice 9).
 
-## Open branches: not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
+## Open branches
+Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
+
 ## Stack
 Node 24 (`.node-version`, `engines 24.x`), React 19.3, Vite 8.3, React Router 8.4 (declarative), TypeScript 7, Vitest 5, Oxlint, Playwright 1.63 + axe-core.
 `api/notify.ts`: Vercel function (nodemailer for Gmail, CallMeBot for WhatsApp). Database: Supabase (PostgreSQL + RLS, Edge Functions on Deno, `@supabase/supabase-js` 2.117, bundled with `rolldown`).

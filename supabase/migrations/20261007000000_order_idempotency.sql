@@ -46,23 +46,8 @@ begin
   v_checked := public.check_order(p_order);
   v_deductions := v_checked -> 'stockDeductions';
   begin
-    perform set_config('boga.stock_write', 'on', true);
-    -- Lock every origin used, in a fixed order to avoid deadlocks.
-    for d in
-      select value from jsonb_array_elements(v_deductions) order by value ->> 'originId'
-    loop
-      select * into v_origin from public.origins o where o.id = d ->> 'originId' for update;
-      if not found or not v_origin.active then
-        raise exception 'out_of_stock:%', d ->> 'originId';
-      end if;
-      if v_origin.stock_kg < (d ->> 'kg')::numeric then
-        raise exception 'out_of_stock:%', d ->> 'originId';
-      end if;
-      update public.origins o set stock_kg = o.stock_kg - (d ->> 'kg')::numeric where o.id = v_origin.id;
-      insert into public.stock_movements (origin_id, delta_kg, reason, ref)
-      values (v_origin.id, -((d ->> 'kg')::numeric), 'order', v_number);
-    end loop;
-
+    -- the order row first: a second call with the same key waits here until the first
+    -- one ends, then lands in the handler below, before it could find the stock gone
     insert into public.orders (
       id, number, locale, customer_name, phone, email, city_id, address, company, notes,
       lines, weight_kg, subtotal, shipping_fee, total, payment_method, stock_deductions, idempotency_key
@@ -86,13 +71,30 @@ begin
       p_idempotency_key
     );
 
+    perform set_config('boga.stock_write', 'on', true);
+    -- Lock every origin used, in a fixed order to avoid deadlocks.
+    for d in
+      select value from jsonb_array_elements(v_deductions) order by value ->> 'originId'
+    loop
+      select * into v_origin from public.origins o where o.id = d ->> 'originId' for update;
+      if not found or not v_origin.active then
+        raise exception 'out_of_stock:%', d ->> 'originId';
+      end if;
+      if v_origin.stock_kg < (d ->> 'kg')::numeric then
+        raise exception 'out_of_stock:%', d ->> 'originId';
+      end if;
+      update public.origins o set stock_kg = o.stock_kg - (d ->> 'kg')::numeric where o.id = v_origin.id;
+      insert into public.stock_movements (origin_id, delta_kg, reason, ref)
+      values (v_origin.id, -((d ->> 'kg')::numeric), 'order', v_number);
+    end loop;
+
     insert into public.order_events (order_id, label) values (v_id, 'order.created');
     perform public.queue_notification('order.created', replace(p_subject, '{number}', v_number),
                                       replace(p_whatsapp, '{number}', v_number), replace(p_email, '{number}', v_number));
     perform set_config('boga.stock_write', '', true);
   exception when unique_violation then
     -- the same key sent twice at the same moment: this one waited for the other to
-    -- commit; everything it did in this block (stock, movements, messages) is undone
+    -- commit; nothing it did in this block is kept
     get stacked diagnostics v_constraint = constraint_name;
     if v_constraint is distinct from 'orders_idempotency_key_key' then
       raise;

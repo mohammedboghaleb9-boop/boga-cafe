@@ -54,7 +54,9 @@ export function CartPage() {
 
   const whatsappText = [
     fmt(t.cart.b2bWhatsapp, { w: formatNumber(summary.weightKg, 2) }),
-    ...summary.lines.flatMap(({ line }) => (line ? [`- ${l(line.name)} ${formatSize(line.size)} x${line.qty}`] : [])),
+    ...summary.lines.flatMap(({ line, problem }) =>
+      line && problem !== 'unavailable' ? [`- ${l(line.name)} ${formatSize(line.size)} x${line.qty}`] : [],
+    ),
   ].join('\n');
 
   return (

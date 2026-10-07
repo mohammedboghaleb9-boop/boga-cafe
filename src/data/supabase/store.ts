@@ -33,6 +33,12 @@ export interface CatalogStore {
   status: ReadStore<DataStatus>;
   /** Reads the catalog; a call while one is running waits for that one. */
   load(): Promise<void>;
+  /**
+   * Reads it again without the "loading" screen (the page and its form stay):
+   * after the server refused a product the site still showed as available.
+   * A failed read keeps the copy it has.
+   */
+  refresh(): Promise<void>;
   /** Adds or replaces one order the visitor placed or opened (the catalog read never touches orders). */
   putOrder(order: Order): void;
 }
@@ -50,9 +56,11 @@ export function createCatalogStore(client: Client): CatalogStore {
     };
   };
 
-  async function read() {
-    status = 'loading';
-    emit();
+  async function read(quiet = false) {
+    if (!quiet) {
+      status = 'loading';
+      emit();
+    }
     try {
       const c = await loadCatalog(client);
       state = {
@@ -67,7 +75,7 @@ export function createCatalogStore(client: Client): CatalogStore {
       status = 'ready';
     } catch (e) {
       console.error('catalog:', e);
-      status = 'error';
+      if (!quiet) status = 'error';
     }
     emit();
   }
@@ -76,6 +84,7 @@ export function createCatalogStore(client: Client): CatalogStore {
     db: { get: () => state, subscribe },
     status: { get: () => status, subscribe },
     load: () => (running ??= read().finally(() => (running = null))),
+    refresh: () => (running ??= read(true).finally(() => (running = null))),
     putOrder(order) {
       state = { ...state, orders: [order, ...state.orders.filter((o) => o.id !== order.id)] };
       emit();
