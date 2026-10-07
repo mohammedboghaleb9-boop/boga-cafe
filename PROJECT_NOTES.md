@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-07 (P5 step 3: slices 1-3b merged, `main` = `344952f`; deploy config on `feat/p5-deploy-config`, not merged). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-07 (P5 step 3: slices 1-3b merged, `main` = `344952f`; deploy config `feat/p5-deploy-config` approved for merge by the owner). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -14,12 +14,12 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
   the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; slice 3b not estimated).
-- `main` = `344952f`, merge of slice 3b (owner approved 2026-10-07, CI run 97; slice 3 = `d2ebd36`). Merged branches deleted by the owner. Now: deploy config branch.
+- `main` = `344952f`, merge of slice 3b (owner approved 2026-10-07, CI run 97; slice 3 = `d2ebd36`). Merged branches deleted by the owner. Deploy config: merge approved 2026-10-07; rollback = `git revert -m 1 <merge>`.
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
   yet). **Every merge into `main` is a release.** Dashboard (owner): Build command `npm run build`; Deploy command (main)
-  `npx wrangler deploy`; Preview command `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload`. Why: Workers Builds
-  bug https://github.com/cloudflare/workers-sdk/issues/15682 (preview builds get a match tag of no Worker: "name must match"
-  though it is `boga-cafe`); production unaffected; drop `env -u …` once fixed. Repo (branch): `wrangler.jsonc` (assets `./dist`,
+  `npx wrangler deploy`. Previews **fail on every branch** (known, ignore until the design phase, decided there): "name must
+  match" (bug https://github.com/cloudflare/workers-sdk/issues/15682); the `env -u WRANGLER_CI_MATCH_TAG` command saved in Previews Base
+  is NOT used (old preview model runs plain `npx wrangler versions upload`, build 9322a28f); fix = Worker Previews, irreversible. Repo: `wrangler.jsonc` (assets `./dist`,
   SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked). The Supabase switch =
   `VITE_DATA_MODE`/URL/key as Cloudflare build variables (owner, slice 11). Workers Builds does not wait for GitHub CI: merge only on green.
   Deployed today: browser store, seed catalog, no admin, no payment method, **not on Supabase**, **no notifications** (Known issues).

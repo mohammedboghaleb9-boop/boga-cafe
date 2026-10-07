@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-07
+- 2026-10-07 [feat/p5-deploy-config] Notes corrected: the `env -u` Preview command is not used (old preview model, build 9322a28f); previews fail on every branch, ignored until the design phase (owner decision); config merge approved for production stability.
 - 2026-10-07 [feat/p5-deploy-config] Preview build cause found by the owner: Workers Builds bug workers-sdk#15682 (match tag); Preview command now `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload`; dashboard settings recorded in PROJECT_NOTES and docs/03.
 - 2026-10-07 [feat/p5-deploy-config] Review: `.wrangler/` ignored; Workers Builds preview build still fails (likely no Build command now that auto-setup is skipped; log needed).
 - 2026-10-07 [feat/p5-deploy-config] Deploy config (3061d9f): `wrangler.jsonc` with the production auto-setup values + `assets.directory ./dist`, wrangler 4.148.0 pinned; no Vite plugin, no app change.
