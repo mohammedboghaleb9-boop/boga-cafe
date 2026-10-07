@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { indexOrigins } from '@/core/recipe';
 import { backend } from './backend';
+import { SERVER_DATA } from './mode';
 
 const { db, status } = backend;
 
@@ -46,6 +47,5 @@ export function useOrder(id: string | undefined) {
   }, [id]);
   const done = checked.id === id;
   // the browser store already holds every order: an unknown link is "not found" at once, as before
-  const remote = import.meta.env.VITE_DATA_MODE === 'supabase';
-  return { order, loading: remote && !order && Boolean(id) && !done, failed: !order && done && checked.failed };
+  return { order, loading: SERVER_DATA && !order && Boolean(id) && !done, failed: !order && done && checked.failed };
 }

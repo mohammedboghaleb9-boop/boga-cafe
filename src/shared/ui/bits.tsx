@@ -1,6 +1,6 @@
 /** Small shared pieces used across sections. */
 import { useState, type ReactNode } from 'react';
-import { blockingRestockDate, findShortages, maxBags, stockRequirements } from '@/core/stock';
+import { blockingRestockDate, findShortages, isProductAvailable, maxBags, stockRequirements } from '@/core/stock';
 import type { OriginIndex } from '@/core/recipe';
 import type { PackSize, RecipeLine } from '@/core/types';
 import { fmt, useI18n } from '@/i18n';
@@ -80,7 +80,7 @@ export function QtyStepper({
   );
 }
 
-/** "In stock / Only 3 left / Out of stock, back around …" for a recipe + size. */
+/** "Unavailable / In stock / Only 3 left / Out of stock, back around …" for a product's recipe + size. */
 export function Availability({
   recipe,
   size,
@@ -94,13 +94,14 @@ export function Availability({
 }) {
   const { t, date } = useI18n();
   const bags = maxBags(recipe, size, origins, roastLossPercent);
-  if (bags === 0) {
+  const sellable = isProductAvailable(recipe, origins);
+  if (!sellable || bags === 0) {
     const back = blockingRestockDate(
       findShortages(stockRequirements([{ recipe, size, qty: 1 }], roastLossPercent), origins),
     );
     return (
       <span className="pill pill-bad">
-        {t.common.outOfStock}
+        {sellable ? t.common.outOfStock : t.common.unavailable}
         {back ? ` · ${fmt(t.common.backAround, { date: date(back) })}` : ''}
       </span>
     );

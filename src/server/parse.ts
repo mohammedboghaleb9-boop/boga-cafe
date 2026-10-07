@@ -110,5 +110,18 @@ export function parseQuoteInput(raw: unknown): QuoteInput | null {
   return c && items ? { ...c, items } : null;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The order's idempotency key (slice 3b): one random uuid per submission, the same
+ * when the customer sends it again. null when the body has none (a site from before
+ * the key: the order still goes through); 'invalid' for anything else than a uuid.
+ */
+export function idempotencyKey(raw: unknown): string | null | 'invalid' {
+  const v = isObject(raw) ? raw.idempotencyKey : undefined;
+  if (v === undefined || v === null) return null;
+  return typeof v === 'string' && UUID.test(v) ? v.toLowerCase() : 'invalid';
+}
+
 /** Cloudflare Turnstile token sent with either form (absent while Turnstile is off). */
 export const captchaToken = (raw: unknown): string => (isObject(raw) && isText(raw.captchaToken, 4096) ? raw.captchaToken : '');

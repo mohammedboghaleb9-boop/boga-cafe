@@ -50,3 +50,23 @@ ALLOWED=$(cat "$OUT"/hit* | grep -c '^t$' || true)
 REFUSED=$(cat "$OUT"/hit* | grep -c '^f$' || true)
 [ "$ALLOWED" = 5 ] && [ "$REFUSED" = 15 ] || { echo "TEST FAILED: $ALLOWED allowed, $REFUSED refused, expected 5 and 15"; cat "$OUT"/hit*; exit 1; }
 echo " ok race - twenty requests of one phone at once, limit 5: exactly 5 get through"
+
+# The same order sent twice at the same moment with one key (a retry while the first
+# is still saving): the second waits, then gets the first order back; stock moves once.
+# back to 1 kg (the stock gate is opened for this session only)
+$PSQL <<'SQL' >/dev/null
+select set_config('boga.stock_write', 'on', false);
+update public.origins set stock_kg = 1 where id = 'last';
+SQL
+KEY=b0ca0000-0000-4000-8000-0000000000aa
+$PSQL -t -A -c "begin; select id || ' ' || created from public.commit_order(public.race_order(1), '', '', '', '$KEY'); select pg_sleep(2); commit;" >"$OUT/ka" 2>&1 &
+sleep 0.5
+$PSQL -t -A -c "select id || ' ' || created from public.commit_order(public.race_order(1), '', '', '', '$KEY')" >"$OUT/kb" 2>&1
+wait
+A_ID=$(grep -o '^[0-9a-f-]\{36\} true$' "$OUT/ka" | cut -d' ' -f1)
+[ -n "$A_ID" ] || { echo "TEST FAILED: the first keyed order was not created"; cat "$OUT/ka"; exit 1; }
+grep -q "^$A_ID false$" "$OUT/kb" || { echo "TEST FAILED: the second call did not get the first order back"; cat "$OUT/kb"; exit 1; }
+ROWS=$($PSQL -t -A -c "select count(*) from public.orders where idempotency_key = '$KEY'")
+STOCK=$($PSQL -t -A -c "select stock_kg from public.origins where id = 'last'")
+[ "$ROWS" = 1 ] && [ "$STOCK" = "0.750" ] || { echo "TEST FAILED: $ROWS rows, stock $STOCK (expected 1 and 0.750)"; exit 1; }
+echo " ok race - one key sent twice at once: the second gets the first order back, stock moves once"

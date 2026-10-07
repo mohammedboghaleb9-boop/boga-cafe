@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TEXT_MAX } from '@/core/limits';
 import type { Client } from '@/data/supabase/client';
 import { hashIp, ipBucket, verifyTurnstile } from '../guard';
-import { parseCheckoutInput, parseQuoteInput } from '../parse';
+import { idempotencyKey, parseCheckoutInput, parseQuoteInput } from '../parse';
 import { NUMBER_PLACEHOLDER } from '../prepare';
 import { handleStorefront, type Deps } from '../storefront';
 
@@ -19,8 +19,8 @@ const product = (id: string, kind: string, prices: Record<string, number>, recip
   product_recipes: recipe.map(([origin_id, percent]) => ({ origin_id, percent })),
 });
 const PAYEE = { bank: { holder: 'BOGA', bankName: 'Banque', rib: '0123' }, cashplus: { beneficiary: 'BOGA' } };
-const rowsWith = (settings: Record<string, unknown>, cardEnabled = false): Record<string, unknown[]> => ({
-  origins: [origin('brazil', 'arabica', 50, 200), origin('vietnam', 'robusta', 1, 100)],
+const rowsWith = (settings: Record<string, unknown>, cardEnabled = false, origins: Record<string, object> = {}): Record<string, unknown[]> => ({
+  origins: [origin('brazil', 'arabica', 50, 200), origin('vietnam', 'robusta', 1, 100)].map((o) => ({ ...o, ...origins[o.id] })),
   products: [
     product('signature', 'signature', { '250': 60, '1000': 200 }, [['brazil', 80], ['vietnam', 20]]),
     product('horeca', 'b2b', { '250': 50, '1000': 150 }, [['brazil', 100]]),
@@ -46,11 +46,16 @@ interface FakeOptions {
   cardEnabled?: boolean;
   /** unpaid orders this phone already holds */
   openOrders?: number;
+  /** fields of origin rows, by id (stock_kg 0, active false…) */
+  origins?: Record<string, object>;
+  /** order rows saved under an idempotency key; with `afterCommit`, only once commit_order ran (the other request won) */
+  saved?: Record<string, unknown>[];
+  afterCommit?: boolean;
 }
 
 /** Enough of supabase-js for loadCatalog(), the open-orders count and rpc(); records every call. */
 function fakeDb(opts: FakeOptions = {}) {
-  const tables = rowsWith(opts.settings ?? PAYEE, opts.cardEnabled);
+  const tables = rowsWith(opts.settings ?? PAYEE, opts.cardEnabled, opts.origins);
   const hits = new Map<string, number>();
   const calls: { name: string; args: Record<string, unknown> }[] = [];
   const reads: string[] = [];
@@ -58,19 +63,24 @@ function fakeDb(opts: FakeOptions = {}) {
   interface Query extends Promise<unknown> {
     select(): Query;
     order(): Query;
-    eq(): Query;
+    eq(column: string, value: unknown): Query;
     in(): Query;
     maybeSingle(): Promise<unknown>;
   }
   const query = (table: string) => {
     reads.push(table);
     const result = table === 'orders' ? { data: null, count: opts.openOrders ?? 0, error: null } : { data: tables[table], error: null };
+    let key: unknown;
+    const savedRows = () => (opts.afterCommit && !committed(calls) ? [] : (opts.saved ?? []));
     const q: Query = Object.assign(Promise.resolve(result), {
       select: () => q,
       order: () => q,
-      eq: () => q,
+      eq: (column: string, value: unknown) => ((key = column === 'idempotency_key' ? value : key), q),
       in: () => q,
-      maybeSingle: async () => ({ data: tables[table][0] ?? null, error: null }),
+      maybeSingle: async () => ({
+        data: table === 'orders' ? (savedRows().find((o) => (o as { idempotency_key: unknown }).idempotency_key === key) ?? null) : (tables[table][0] ?? null),
+        error: null,
+      }),
     });
     return q;
   };
@@ -84,7 +94,7 @@ function fakeDb(opts: FakeOptions = {}) {
       return { data: n <= (limited ? (opts.limit ?? 100) : 100), error: null };
     }
     if (opts.commitError) return { data: null, error: { message: opts.commitError } };
-    return { data: [{ id: 'row-id', number: 'XX-2026-0001' }], error: null };
+    return { data: [{ id: 'row-id', number: 'XX-2026-0001', created: !opts.afterCommit }], error: null };
   };
   return { db: { from: query, rpc } as unknown as Client, calls, reads };
 }
@@ -103,15 +113,32 @@ const orderBody = (over: Record<string, unknown> = {}) => ({
   locale: 'ar',
   ...over,
 });
-const committed = (calls: { name: string }[]) => calls.some((c) => c.name.startsWith('commit_'));
+function committed(calls: { name: string }[]) {
+  return calls.some((c) => c.name.startsWith('commit_'));
+}
 /** Limit buckets of accepted requests (the per-connection budget is spent on every request). */
 const counted = (calls: { name: string; args: Record<string, unknown> }[]) =>
   calls.filter((c) => c.name === 'rate_limit_hit' && !String(c.args.p_bucket).startsWith('req:')).map((c) => c.args.p_bucket);
 const b2bItems = [{ id: 'a', type: 'product', productId: 'horeca', size: 1000, qty: 12 }];
+const KEY = '5f0c7a52-3e1b-4c9d-8a7e-2b6f1d4c9e01';
+/** An order row as the database stores it, saved under KEY. */
+const savedRow = {
+  id: 'first-id', number: 'BC-2026-0007', created_at: '2026-10-01T09:59:00Z', locale: 'ar', customer_name: 'Salma Bennani',
+  phone: '+212612345678', email: '', city_id: 'oujda', address: 'Rue 1, Oujda', company: '', notes: '',
+  lines: [], weight_kg: '2.000', subtotal: '400.00', shipping_fee: '20.00', total: '420.00', payment_method: 'cashplus',
+  payment_status: 'pending', payment_ref: null, status: 'new', stock_deductions: [{ originId: 'brazil', kg: '1.600' }],
+  stock_returned: false, idempotency_key: KEY,
+};
 
 describe('storefront: request bodies', () => {
   it('keeps only the known fields of a cart (a price sent by the browser is dropped)', () => {
     expect(parseCheckoutInput(orderBody())?.items).toEqual([{ id: 'a', type: 'product', productId: 'signature', size: 1000, qty: 2 }]);
+  });
+
+  it('reads the idempotency key: none is fine, a uuid is kept (lower case), anything else refuses the body', () => {
+    expect(idempotencyKey(orderBody())).toBeNull();
+    expect(idempotencyKey(orderBody({ idempotencyKey: KEY.toUpperCase() }))).toBe(KEY);
+    for (const bad of ['abc', 42, '', `${KEY}x`]) expect(idempotencyKey(orderBody({ idempotencyKey: bad }))).toBe('invalid');
   });
 
   it.each([
@@ -205,6 +232,42 @@ describe('storefront: order', () => {
     expect((await handleStorefront('order', orderBody(), deps(db))).body).toEqual({ ok: false, errors: ['too_many'] });
     expect(reads).toEqual([]);
     expect(committed(calls)).toBe(false);
+  });
+
+  it.each([
+    ['an empty origin', { vietnam: { stock_kg: 0 } }],
+    ['a switched-off origin', { brazil: { active: false } }],
+  ])('refuses a product with %s as "unavailable" (not "out of stock"), and saves or counts nothing', async (_, origins) => {
+    const { db, calls } = fakeDb({ origins });
+    expect((await handleStorefront('order', orderBody(), deps(db))).body).toEqual({ ok: false, errors: ['unavailable'] });
+    expect(committed(calls) || counted(calls).length > 0).toBe(false);
+  });
+
+  it('sends the key with the commit, and the same call as before when the body has none', async () => {
+    const keyed = fakeDb();
+    await handleStorefront('order', orderBody({ idempotencyKey: KEY }), deps(keyed.db));
+    expect(keyed.calls.find((c) => c.name === 'commit_order')!.args.p_idempotency_key).toBe(KEY);
+    const plain = fakeDb();
+    expect(((await handleStorefront('order', orderBody(), deps(plain.db))).body as { ok: boolean }).ok).toBe(true);
+    expect(plain.calls.find((c) => c.name === 'commit_order')!.args).not.toHaveProperty('p_idempotency_key');
+    expect((await handleStorefront('order', orderBody({ idempotencyKey: 'abc' }), deps(fakeDb().db))).status).toBe(400);
+  });
+
+  it('gives an order sent again its saved order, before any check that could now refuse it', async () => {
+    // the payment details were removed since: a new order would be refused
+    const { db, calls } = fakeDb({ saved: [savedRow], settings: { bank: { holder: '', bankName: '', rib: '' }, cashplus: { beneficiary: '' } } });
+    const r = await handleStorefront('order', orderBody({ idempotencyKey: KEY }), deps(db));
+    expect(r.body).toMatchObject({
+      ok: true,
+      order: { id: 'first-id', number: 'BC-2026-0007', total: 420, customer: { phone: '+212612345678' }, stockDeductions: [{ originId: 'brazil', kg: 1.6 }] },
+    });
+    expect(committed(calls) || counted(calls).length > 0).toBe(false);
+  });
+
+  it('gives the saved order back when the same key was saved by a request sent at the same moment', async () => {
+    const { db } = fakeDb({ saved: [savedRow], afterCommit: true });
+    const r = await handleStorefront('order', orderBody({ idempotencyKey: KEY }), deps(db));
+    expect(r.body).toMatchObject({ ok: true, order: { id: 'first-id', number: 'BC-2026-0007' } });
   });
 
   it('reports stock bought by someone else between the check and the commit', async () => {

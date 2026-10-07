@@ -4,6 +4,7 @@
  */
 import {
   PACK_SIZES,
+  type Locale,
   type Localized,
   type Order,
   type OrderLine,
@@ -17,6 +18,7 @@ import {
   type Settings,
   type ShippingRate,
   type SiteContent,
+  type StockDeduction,
 } from '@/core/types';
 import type { FunctionReturns, Json, Tables } from './database.types';
 
@@ -142,18 +144,10 @@ export const contentFromRow = (j: Json | undefined, defaults: SiteContent): Site
 
 export type PublicOrderRow = FunctionReturns<'get_order_public'>[number];
 
-/**
- * An order read back by its link (get_order_public): what the customer may see
- * again from any device. The phone, email, address and notes are not returned,
- * on purpose, so they stay empty here and the page shows no message to send.
- */
-export const publicOrderFromRow = (id: string, r: PublicOrderRow): Order => ({
-  id,
+/** What both readings share: numbers come back from PostgreSQL numeric as text or number. */
+const orderFigures = (r: PublicOrderRow) => ({
   number: r.number,
   createdAt: r.created_at,
-  // not returned; the order page does not use it
-  locale: 'fr',
-  customer: { fullName: r.customer_name, phone: '', email: '', cityId: r.city_id, address: '', company: '', notes: '' },
   lines: r.lines as unknown as OrderLine[],
   weightKg: Number(r.weight_kg),
   subtotal: Number(r.subtotal),
@@ -162,6 +156,32 @@ export const publicOrderFromRow = (id: string, r: PublicOrderRow): Order => ({
   paymentMethod: r.payment_method as PaymentMethodId,
   paymentStatus: r.payment_status as PaymentStatus,
   status: r.status as OrderStatus,
-  stockDeductions: [],
   history: [],
+});
+
+/**
+ * An order read back by its link (get_order_public): what the customer may see
+ * again from any device. The phone, email, address and notes are not returned,
+ * on purpose, so they stay empty here and the page shows no message to send.
+ */
+export const publicOrderFromRow = (id: string, r: PublicOrderRow): Order => ({
+  ...orderFigures(r),
+  id,
+  // not returned; the order page does not use it
+  locale: 'fr',
+  customer: { fullName: r.customer_name, phone: '', email: '', cityId: r.city_id, address: '', company: '', notes: '' },
+  stockDeductions: [],
+});
+
+/**
+ * A whole order row, as the server reads it with its secret key (the storefront
+ * function gives a repeated submission its saved order). Its events are not read.
+ */
+export const orderFromRow = (r: Tables<'orders'>): Order => ({
+  ...orderFigures(r),
+  id: r.id,
+  locale: r.locale as Locale,
+  customer: { fullName: r.customer_name, phone: r.phone, email: r.email, cityId: r.city_id, address: r.address, company: r.company, notes: r.notes },
+  paymentRef: r.payment_ref ?? undefined,
+  stockDeductions: (r.stock_deductions as unknown as StockDeduction[]).map((d) => ({ originId: d.originId, kg: Number(d.kg) })),
 });

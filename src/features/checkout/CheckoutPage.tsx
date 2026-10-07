@@ -101,7 +101,7 @@ export function CheckoutPage() {
   }
 
   const globalErrors = errors.filter((e) =>
-    ([...GUARD_ERRORS, 'empty_cart', 'cart_problem', 'b2b_required', 'out_of_stock'] as (CheckoutError | GuardError)[]).includes(e),
+    ([...GUARD_ERRORS, 'empty_cart', 'cart_problem', 'unavailable', 'b2b_required', 'out_of_stock'] as (CheckoutError | GuardError)[]).includes(e),
   );
 
   return (
@@ -113,7 +113,11 @@ export function CheckoutPage() {
 
       {(summary.isB2B || summary.hasProblems) && (
         <p className="notice notice-warn" style={{ marginBlockEnd: 16 }}>
-          {summary.isB2B ? t.checkout.errors.b2b_required : t.checkout.errors.cart_problem}{' '}
+          {summary.isB2B
+            ? t.checkout.errors.b2b_required
+            : summary.lines.some((x) => x.problem === 'unavailable')
+              ? t.checkout.errors.unavailable
+              : t.checkout.errors.cart_problem}{' '}
           <Link to="/cart">
             {t.nav.cart} <span className="dir-arrow" aria-hidden="true">→</span>
           </Link>

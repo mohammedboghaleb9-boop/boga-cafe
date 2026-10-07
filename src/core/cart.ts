@@ -2,7 +2,7 @@ import { validateBlend } from './blend';
 import { roundKg, roundMoney } from './money';
 import { customBlendPrice, isPrice, productPrice } from './pricing';
 import { composition, type OriginIndex } from './recipe';
-import { findShortages, stockRequirements, type Shortage } from './stock';
+import { findShortages, isProductAvailable, stockRequirements, type Shortage } from './stock';
 import { PACK_SIZES, type CartItem, type Localized, type OrderLine, type PackSize, type Product, type Settings, type StockDeduction } from './types';
 
 export interface Catalog {
@@ -16,7 +16,14 @@ export const CUSTOM_BLEND_NAME: Localized = {
   en: 'My Custom Blend',
 };
 
-export type LineProblem = 'missing_product' | 'size_not_offered' | 'invalid_blend' | 'blend_paused' | 'invalid_quantity' | 'bulk_only';
+export type LineProblem =
+  | 'missing_product'
+  | 'size_not_offered'
+  | 'invalid_blend'
+  | 'blend_paused'
+  | 'invalid_quantity'
+  | 'bulk_only'
+  | 'unavailable';
 
 /**
  * Professional (B2B) blends: the 250 g and 500 g bags are paid samples anyone can
@@ -115,9 +122,14 @@ export interface CartSummary {
 export function summarizeCart(items: CartItem[], catalog: Catalog, settings: Settings): CartSummary {
   const lines = items.map((item) => {
     const r = resolveItem(item, catalog, settings);
-    return 'line' in r ? { item, line: r.line } : { item, problem: r.problem };
+    if ('problem' in r) return { item, problem: r.problem };
+    // shown with its name, but neither priced, weighed nor counted against the stock
+    const product = r.line.productId ? catalog.products.find((p) => p.id === r.line.productId) : undefined;
+    return product && !isProductAvailable(product.recipe, catalog.origins)
+      ? { item, line: r.line, problem: 'unavailable' as const }
+      : { item, line: r.line };
   });
-  const valid = lines.flatMap((l) => (l.line ? [l.line] : []));
+  const valid = lines.flatMap((l) => (l.line && l.problem !== 'unavailable' ? [l.line] : []));
   const subtotal = roundMoney(valid.reduce((s, l) => s + l.lineTotal, 0));
   const weightKg = roundKg(valid.reduce((s, l) => s + (l.size / 1000) * l.qty, 0));
   const requirements = stockRequirements(
@@ -133,7 +145,7 @@ export function summarizeCart(items: CartItem[], catalog: Catalog, settings: Set
   // counted in the weight above (it can take the cart past the threshold), refused below it
   const checked = lines.map((l) => {
     const product = l.line?.productId ? catalog.products.find((p) => p.id === l.line!.productId) : undefined;
-    return !isB2B && l.line && product && isBulkOnly(product, l.line.size) ? { ...l, problem: 'bulk_only' as const } : l;
+    return !isB2B && !l.problem && l.line && product && isBulkOnly(product, l.line.size) ? { ...l, problem: 'bulk_only' as const } : l;
   });
   return {
     lines: checked,

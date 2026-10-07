@@ -54,7 +54,8 @@ export function buildQuoteRequest(
       phone: normalizePhone(input.phone)!,
       email: input.email.trim(),
       cityId: input.cityId,
-      lines: cart.lines.flatMap((l) => (l.line ? [l.line] : [])),
+      // same lines as the weight and the total (an unavailable product is in neither)
+      lines: cart.lines.flatMap((l) => (l.line && l.problem !== 'unavailable' ? [l.line] : [])),
       weightKg: cart.weightKg,
       indicativeTotal: cart.subtotal,
       notes: input.notes.trim(),

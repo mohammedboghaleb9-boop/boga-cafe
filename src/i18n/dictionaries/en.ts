@@ -264,6 +264,7 @@ export const en = {
       size_not_offered: 'This size is no longer offered.',
       invalid_blend: 'This blend no longer meets the current rules (an origin is unavailable, a share is below the minimum, or there are too many origins). Rebuild it in Custom Blend.',
       bulk_only: 'The 1 kg bag of this B2B blend is only for orders above {kg} kg (B2B request). Choose 250 g or 500 g, or add to your order.',
+      unavailable: 'This product is unavailable for now. Remove it to order the rest.',
     },
     shortage: 'Not enough {origin}: {need} kg needed, {left} kg left.',
     b2bTitle: 'Order above {max} kg: B2B process',
@@ -297,6 +298,7 @@ export const en = {
     errors: {
       empty_cart: 'Your cart is empty.',
       cart_problem: 'An item in your cart needs attention.',
+      unavailable: 'A product in your cart is unavailable for now. Remove it from your cart.',
       b2b_required: 'Your cart is above the online limit: send it as a B2B request.',
       out_of_stock: 'Some coffee is no longer in stock. Check your cart.',
       name: 'Enter your full name.',
@@ -347,6 +349,7 @@ export const en = {
     refundedText: 'Your payment has been refunded. For any question, we are on WhatsApp.',
     deliveredText: 'Delivered. Enjoy your coffee! For a new order or a question, we are on WhatsApp.',
     notFound: 'Order not found on this device.',
+    notFoundLink: 'Order not found. Check your order link.',
     loadFailed: 'This order could not be loaded. Check your connection, then reload the page.',
   },
 

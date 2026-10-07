@@ -63,6 +63,38 @@ test.describe('customer', () => {
     await expect(page.getByRole('heading', { name: /10 kg/ })).toBeVisible();
   });
 
+  test('a product with an empty origin is unavailable: it cannot be added, and a cart holding it is not sent', async ({ page }) => {
+    const errors = watchErrors(page);
+    // Ethiopia has 0 kg in the example catalog
+    await page.goto('/product/single-origin-ethiopia');
+    await expect(page.locator('.buy .pill')).toContainText('Indisponible');
+    await expect(page.getByRole('button', { name: /Ajouter au panier/ })).toBeDisabled();
+
+    // a cart saved before the origin ran out
+    await addSignatureBag(page);
+    const holding = (items: object[]) =>
+      page.evaluate((extra) => {
+        localStorage.setItem('boga-cart', JSON.stringify([...extra, { id: 'old', type: 'product', productId: 'so-ethiopia', size: 250, qty: 1 }]));
+      }, items);
+    await holding([{ id: 'a', type: 'product', productId: 'boga-signature', size: 250, qty: 1 }]);
+    await page.goto('/cart');
+    await expect(page.getByText('Ce produit est indisponible pour le moment.')).toBeVisible();
+    await expect(page.getByRole('link', { name: /Valider la commande/ })).toHaveAttribute('aria-disabled', 'true');
+
+    // the checkout page by its address: says why, and has nothing to send (the server refuses it too)
+    await page.goto('/checkout');
+    await expect(page.locator('.notice-warn')).toContainText('Un produit de votre panier est indisponible');
+    await expect(page.locator('button[type=submit]').last()).toBeDisabled();
+
+    // above 10 kg: no B2B request either
+    await holding([{ id: 'a', type: 'product', productId: 'boga-signature', size: 1000, qty: 11 }]);
+    await page.goto('/cart');
+    await expect(page.getByRole('heading', { name: /10 kg/ })).toBeVisible();
+    await expect(page.locator('.b2b-box [role=alert]')).toContainText('Un produit de votre panier est indisponible');
+    await expect(page.getByRole('button', { name: 'Envoyer ma demande B2B' })).toHaveCount(0);
+    errors.check();
+  });
+
   test('a custom blend of two origins goes to the cart', async ({ page }) => {
     const errors = watchErrors(page);
     await page.goto('/custom-blend');

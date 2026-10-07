@@ -31,6 +31,7 @@ export interface CheckoutContext {
 export const CHECKOUT_ERRORS = [
   'empty_cart',
   'cart_problem',
+  'unavailable',
   'b2b_required',
   'out_of_stock',
   'name',
@@ -69,7 +70,9 @@ export function buildOrder(
   if (input.items.length === 0) return { ok: false, errors: ['empty_cart'] };
 
   const cart = summarizeCart(input.items, ctx.catalog, ctx.settings);
-  if (cart.lines.some((l) => l.problem)) errors.push('cart_problem');
+  // its own message: the customer cannot fix it by changing a quantity or a size
+  if (cart.lines.some((l) => l.problem === 'unavailable')) errors.push('unavailable');
+  if (cart.lines.some((l) => l.problem && l.problem !== 'unavailable')) errors.push('cart_problem');
   if (cart.isB2B) errors.push('b2b_required');
   if (cart.shortages.length > 0) errors.push('out_of_stock');
 
