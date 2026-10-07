@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-07 (P5 step 3: slices 1-3 merged, `main` = `d2ebd36`; slice 3b on `feat/p5-s3b-order-guards`, not merged). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-07 (P5 step 3: slices 1-3b merged, `main` = `344952f`; deploy config `feat/p5-deploy-config` approved for merge by the owner). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -14,16 +14,17 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
   the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; slice 3b not estimated).
-- `main` = `d2ebd36`, merge of slice 3 (owner approved 2026-10-07, CI run 88; `feat/p5-s3-orders` kept for the owner to delete).
-  Slice 3b on `feat/p5-s3b-order-guards` @ `8cd628d` (CI 93-94 green), **applied live, not merged**: waiting for the owner.
+- `main` = `344952f`, merge of slice 3b (owner approved 2026-10-07, CI run 97; slice 3 = `d2ebd36`). Merged branches deleted by the owner. Deploy config: merge approved 2026-10-07; rollback = `git revert -m 1 <merge>`.
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
-  yet). **Every merge into `main` is a release.** Preview builds: `npx wrangler versions upload`. The Supabase switch =
-  adding `VITE_DATA_MODE`/URL/key in Cloudflare build variables, owner only, slice 11. Workers Builds does not wait for
-  GitHub CI: merge only on a green branch. Deployed build today: browser store, seed catalog, no admin, no payment method
-  open, **not connected to Supabase**. **Notifications do not work** (Known issues).
-- **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b, branch only),
-  catalog from `seed.sql`, two owner accounts (never signed in, no 2FA yet), `storefront` **v5** = slice 3b build, no `save_product` yet (slice 9).
-  Rollout order for 3b: migrations first, then the function (old function + new DB works; new function + old DB fails every keyed order).
+  yet). **Every merge into `main` is a release.** Dashboard (owner): Build command `npm run build`; Deploy command (main)
+  `npx wrangler deploy`. Previews **fail on every branch** (known, ignore until the design phase, decided there): "name must
+  match" (bug https://github.com/cloudflare/workers-sdk/issues/15682); the `env -u WRANGLER_CI_MATCH_TAG` command saved in Previews Base
+  is NOT used (old preview model runs plain `npx wrangler versions upload`, build 9322a28f); fix = Worker Previews, irreversible. Repo: `wrangler.jsonc` (assets `./dist`,
+  SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked). The Supabase switch =
+  `VITE_DATA_MODE`/URL/key as Cloudflare build variables (owner, slice 11). Workers Builds does not wait for GitHub CI: merge only on green.
+  Deployed today: browser store, seed catalog, no admin, no payment method, **not on Supabase**, **no notifications** (Known issues).
+- **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b),
+  catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v5** = 3b build, no `save_product` yet. Rollout: migrations, then the function.
 
 ## Open branches
 Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
@@ -98,7 +99,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   for HTTP checks (the container's network policy now refuses `*.supabase.co`, 2026-10-07: the owner can allow it in the environment settings).
 - pg_net (in `public`, advisor warning): Supabase grants `net.*` to PUBLIC as `supabase_admin`; `postgres` cannot revoke it (`pg_net_private` had no effect).
   `net` is not exposed through the API. Moving it needs a DROP the tool here cannot run: owner can toggle pg_net off/on (Dashboard → Database → Extensions).
-- Leaked password protection needs the Pro plan: skipped (long passwords + 2FA). `skip locked` in `expire_unpaid_orders`: untested under load.
+- Leaked password protection: Pro plan only, skipped (long passwords + 2FA). `skip locked` (expiry): untested under load.
 - Supabase mode (slice 3): orders/B2B via `storefront` (network/4xx/5xx/unreadable = `server`); order page: tab copy (sessionStorage) else
   `get_order_public` (no phone: no message); "I have paid" = RPC; `deliver` off. Real orders refused today (`payment_method`, correct). A lost answer
   shows `server`; 3b's key makes the retry get the saved order (`orderKey.ts`: per tab, kept 24 h). supabase-js retries a failed GET.
@@ -128,15 +129,14 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - Store approach from `map-test`: yes. 2FA mandatory for both owners, enforced in the database (`is_admin()` needs `aal2`).
 - Login tracking: last sign-in + the existing `actor` on each change; no new table. Site URL for Turnstile/Auth:
   https://boga-cafe.mohammedboghaleb9.workers.dev/ (`bogacafe.ma` later). Notifications off during development, but
-  **no real launch until the outbox sender exists**. Leaked password protection: skipped (Pro plan only).
-- 2026-10-06: product photos stay in the code (`public/`) until after launch; no Storage slice now.
+  **no real launch until the outbox sender exists**. 2026-10-06: product photos stay in `public/` until after launch; no Storage slice.
 
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
    1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile · 5 Supabase Auth
    sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
-   (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, deploy from `main`.
-   3b (applied live, waiting for merge): unavailable products, order idempotency key (B2B requests: none yet), order page text by link.
+   (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, drop `commit_order_before_3b`, the live
+   same-key success test with payee details, deploy from `main`. 3b (merged): unavailable products, order key (B2B: none yet), order page by link.
    Then Turnstile keys and the outbox sender (phase 4). Before launch: the privacy page (P7) mentions the order copy kept in the tab (sessionStorage).
 2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 18-25 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
 

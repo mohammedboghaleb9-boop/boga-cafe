@@ -5,6 +5,11 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-07
+- 2026-10-07 [feat/p5-deploy-config] Notes corrected: the `env -u` Preview command is not used (old preview model, build 9322a28f); previews fail on every branch, ignored until the design phase (owner decision); config merge approved for production stability.
+- 2026-10-07 [feat/p5-deploy-config] Preview build cause found by the owner: Workers Builds bug workers-sdk#15682 (match tag); Preview command now `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload`; dashboard settings recorded in PROJECT_NOTES and docs/03.
+- 2026-10-07 [feat/p5-deploy-config] Review: `.wrangler/` ignored; Workers Builds preview build still fails (likely no Build command now that auto-setup is skipped; log needed).
+- 2026-10-07 [feat/p5-deploy-config] Deploy config (3061d9f): `wrangler.jsonc` with the production auto-setup values + `assets.directory ./dist`, wrangler 4.148.0 pinned; no Vite plugin, no app change.
+- 2026-10-07 Slice 3b merged into `main` (344952f, owner approved; CI run 97); deploy config (wrangler.jsonc, pinned wrangler) started on `feat/p5-deploy-config`.
 - 2026-10-07 [feat/p5-s3b-order-guards] Slice 3b applied live: migrations `20261007005011_order_idempotency_key` and `20261007080308_order_idempotency_commit`, `storefront` v5. Live: Ethiopia (0 kg) refused `unavailable`, bad key 400, no key still accepted up to `payment_method`; no row written.
 - 2026-10-07 [feat/p5-s3b-order-guards] Slice 3b review fixes (17dae3c: keyed retry at the last kilos, quiet catalog reload, key kept 24 h) and migration split as applied live (8cd628d): key column applied, `commit_order` replaced by rename (DROP times out in the live SQL tool).
 - 2026-10-07 [feat/p5-s3b-order-guards] Slice 3b code (b3425ba): unavailable products (empty or switched-off origin) not addable and refused as `unavailable`; order idempotency key (site, storefront, migration `order_idempotency` with a unique key in `commit_order`); order page text by link in supabase mode. Not applied live yet.
