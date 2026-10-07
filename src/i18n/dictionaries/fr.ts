@@ -441,6 +441,7 @@ export const fr: Dict = {
     signInFailed: 'E-mail ou mot de passe incorrect.',
     tooManyAttempts: 'Trop de tentatives. Attendez quelques minutes, puis réessayez.',
     signInServer: 'Problème de connexion : vous n’êtes pas connecté. Réessayez dans un instant.',
+    sessionCheckFailed: 'Votre session n’a pas pu être vérifiée (problème de connexion). Réessayez, ou connectez-vous.',
     deniedTitle: 'Accès refusé',
     deniedText: 'Ce compte ne peut pas ouvrir le panneau d’administration. Il a été déconnecté.',
     otherAccount: 'Se connecter avec un autre compte',

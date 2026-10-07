@@ -443,6 +443,7 @@ export const en = {
     signInFailed: 'Email or password is incorrect.',
     tooManyAttempts: 'Too many attempts. Wait a few minutes, then try again.',
     signInServer: 'Connection problem: you are not signed in. Please try again in a moment.',
+    sessionCheckFailed: 'Your session could not be checked (connection problem). Try again, or sign in.',
     deniedTitle: 'No access',
     deniedText: 'This account cannot open the Admin Panel. It has been signed out.',
     otherAccount: 'Sign in with another account',

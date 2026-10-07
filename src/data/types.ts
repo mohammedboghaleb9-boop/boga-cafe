@@ -107,6 +107,8 @@ export interface AdminAuth {
   signOut(): Promise<void>;
   /** From the "no access" page back to the sign-in form. */
   dismiss(): void;
+  /** Checks the kept session again (after 'signed_out' with a problem). */
+  retry(): void;
   /** The prototype's public password (demo build only). */
   demoPassword?: string;
 }

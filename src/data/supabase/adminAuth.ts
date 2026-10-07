@@ -37,40 +37,80 @@ export function signInError(error: AuthError): Exclude<SignInResult, 'ok' | 'den
   return 'credentials';
 }
 
-/** `client` is created on first use: a visitor of the shop never starts an Auth client. */
-export function createAdminAuth(client: () => Client): AdminAuth {
+/**
+ * `client` is created on first use: a visitor of the shop never starts an Auth client.
+ * `forget` removes the kept session from this browser: supabase-js keeps it when it
+ * cannot read it first (an expired token whose refresh gets no answer).
+ */
+export function createAdminAuth(client: () => Client, forget: () => void): AdminAuth {
   const listeners = new Set<() => void>();
   let session: AdminSession = { state: 'loading' };
   let started = false;
+  /** The account the panel was opened for; a sign-in elsewhere with another one is checked again. */
+  let userId: string | null = null;
+  let signingIn = false;
 
   const set = (next: AdminSession) => {
     session = next;
     listeners.forEach((l) => l());
   };
 
+  /**
+   * Out of this browser, whatever the network says. Scope 'local': this session only;
+   * the admin stays signed in on their other devices.
+   */
+  async function signOutHere() {
+    userId = null;
+    const { error } = await client()
+      .auth.signOut({ scope: 'local' })
+      .catch((e: AuthError) => ({ error: e }));
+    if (error) forget();
+  }
+
   /** An account that is not (or no longer) an admin: out again. */
   async function deny() {
-    await client().auth.signOut();
+    await signOutHere();
     set({ state: 'denied' });
   }
 
-  async function start() {
-    const db = client();
-    db.auth.onAuthStateChange((event) => {
-      // the refresh token was refused (expired, revoked) or another tab signed out
-      if (event === 'SIGNED_OUT' && session.state === 'signed_in') set({ state: 'signed_out' });
-    });
+  /** The panel for this account if it is an admin, "no access" if not, the form (session kept) without an answer. */
+  async function open(id: string) {
     try {
-      const { data, error } = await db.auth.getSession();
-      if (error || !data.session) return set({ state: 'signed_out' });
-      const role = await adminRoleOf(db, data.session.user.id);
-      if (role) set({ state: 'signed_in', role });
-      else await deny();
+      const role = await adminRoleOf(client(), id);
+      if (!role) return await deny();
+      userId = id;
+      set({ state: 'signed_in', role });
     } catch (e) {
-      // no answer: the kept session is not thrown away for a lost connection
       console.error('admin session:', e);
       set({ state: 'signed_out', problem: 'server' });
     }
+  }
+
+  async function check() {
+    try {
+      const { data, error } = await client().auth.getSession();
+      if (error || !data.session) return set({ state: 'signed_out' });
+      await open(data.session.user.id);
+    } catch (e) {
+      console.error('admin session:', e);
+      set({ state: 'signed_out', problem: 'server' });
+    }
+  }
+
+  function start() {
+    client().auth.onAuthStateChange((event, changed) => {
+      // the refresh token was refused (expired, revoked) or another tab signed out
+      if (event === 'SIGNED_OUT') {
+        userId = null;
+        if (session.state === 'signed_in') set({ state: 'signed_out' });
+      }
+      // another tab signed in, maybe with another account: check it (never awaited in here)
+      if (event === 'SIGNED_IN' && changed && changed.user.id !== userId && !signingIn) {
+        const id = changed.user.id;
+        setTimeout(() => void open(id), 0);
+      }
+    });
+    void check();
   }
 
   return {
@@ -79,7 +119,7 @@ export function createAdminAuth(client: () => Client): AdminAuth {
       subscribe(l) {
         if (!started) {
           started = true;
-          void start();
+          start();
         }
         listeners.add(l);
         return () => listeners.delete(l);
@@ -88,33 +128,44 @@ export function createAdminAuth(client: () => Client): AdminAuth {
 
     async signIn(input) {
       if (!('email' in input)) return 'credentials';
+      const email = input.email.trim();
+      // nothing to check: Auth's rate limit is not spent on an empty form
+      if (!email || !input.password) return 'credentials';
       const db = client();
+      signingIn = true;
       try {
-        const { data, error } = await db.auth.signInWithPassword({ email: input.email.trim(), password: input.password });
+        const { data, error } = await db.auth.signInWithPassword({ email, password: input.password });
         if (error) return signInError(error);
         const role = await adminRoleOf(db, data.user.id);
         if (!role) {
           await deny();
           return 'denied';
         }
+        userId = data.user.id;
         set({ state: 'signed_in', role });
         return 'ok';
       } catch (e) {
         // signed in but the role could not be read: not left half signed in
         console.error('admin sign-in:', e);
-        await db.auth.signOut().catch(() => undefined);
+        await signOutHere();
         return 'server';
+      } finally {
+        signingIn = false;
       }
     },
 
     async signOut() {
-      // removes the session from this browser even when the server cannot be reached
-      await client().auth.signOut();
+      await signOutHere();
       set({ state: 'signed_out' });
     },
 
     dismiss() {
       if (session.state === 'denied') set({ state: 'signed_out' });
+    },
+
+    retry() {
+      set({ state: 'loading' });
+      void check();
     },
   };
 }

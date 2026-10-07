@@ -36,6 +36,8 @@ interface Server {
 async function fakeSupabase(page: Page, server: Server = {}) {
   const admins = server.admins ?? { [ADMIN.id]: 'manager' };
   const asked: string[] = [];
+  /** the account each catalog read was made as (null = a visitor) */
+  const shopAs: (string | null)[] = [];
   const userOf = (auth: string | undefined) => {
     const payload = auth?.split(' ')[1]?.split('.')[1];
     return payload ? (JSON.parse(Buffer.from(payload, 'base64url').toString()) as { sub: string }).sub : null;
@@ -69,9 +71,10 @@ async function fakeSupabase(page: Page, server: Server = {}) {
       const single = (req.headers()['accept'] ?? '').includes('vnd.pgrst.object');
       return json(200, single ? own : own ? [own] : []);
     }
+    shopAs.push(user);
     return answerCatalog(r);
   });
-  return asked;
+  return Object.assign(asked, { shopAs });
 }
 
 async function signIn(page: Page, account: { email: string; password: string }) {
@@ -114,11 +117,19 @@ test.describe('admin sign-in on the live site', () => {
     await expect(nav.getByRole('link', { name: 'Paiements' })).toHaveCount(0);
     await expect(page.locator('.admin-main > .notice-warn')).toContainText('pas encore les commandes');
     await expect(page.getByRole('button', { name: /démo/i })).toHaveCount(0);
-    expect(asked).toEqual(['sign-in', 'is_admin']);
+    expect([...asked]).toEqual(['sign-in', 'is_admin']);
 
     await page.reload();
     await expect(page.getByRole('heading', { level: 1, name: 'Commandes' })).toBeVisible();
     expect(await kept(page)).toContain(ADMIN.id);
+
+    // the shop, in the same browser, still reads as a visitor (an admin would see inactive products)
+    asked.shopAs.length = 0;
+    await open(page, '/shop');
+    await expect(page.getByText('BOGA Signature').first()).toBeVisible();
+    expect(asked.shopAs.length).toBeGreaterThan(0);
+    expect(asked.shopAs.filter(Boolean)).toEqual([]);
+    await open(page, '/admin/orders');
 
     await page.getByRole('button', { name: 'Déconnexion' }).click();
     await expect(page.locator('#login-email')).toBeVisible();
@@ -134,7 +145,7 @@ test.describe('admin sign-in on the live site', () => {
     await signIn(page, OTHER);
     await expect(page.getByRole('heading', { level: 1, name: 'Accès refusé' })).toBeVisible();
     await expect(page.locator('.admin-side')).toHaveCount(0);
-    expect(asked).toEqual(['sign-in', 'is_admin', 'sign-out']);
+    expect([...asked]).toEqual(['sign-in', 'is_admin', 'sign-out']);
     expect(await kept(page)).toBeNull();
     await page.getByRole('button', { name: 'Se connecter avec un autre compte' }).click();
     await expect(page.locator('#login-email')).toBeVisible();

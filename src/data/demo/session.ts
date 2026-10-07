@@ -14,7 +14,9 @@ export const DEMO_PASSWORD = 'boga2026';
 const ROLES: readonly AdminRole[] = ['owner', 'manager', 'staff'];
 
 const listeners = new Set<() => void>();
-let session: AdminSession = read();
+// read on first use, so a build without the prototype admin drops this whole module
+let session: AdminSession | undefined;
+const current = () => (session ??= read());
 
 /** Anything but a known role (edited by hand, older version) means signed out. */
 function read(): AdminSession {
@@ -39,7 +41,7 @@ function set(next: AdminSession) {
 
 export const demoAdmin: AdminAuth = {
   session: {
-    get: () => session,
+    get: current,
     subscribe(l) {
       listeners.add(l);
       return () => listeners.delete(l);
@@ -56,5 +58,6 @@ export const demoAdmin: AdminAuth = {
   dismiss() {
     set({ state: 'signed_out' });
   },
+  retry() {},
   demoPassword: DEMO_PASSWORD,
 };

@@ -25,6 +25,17 @@ import { StockPage } from './stock/StockPage';
 import { useI18n } from '@/i18n';
 import './admin.css';
 
+function AdminChecking() {
+  const { t } = useI18n();
+  return (
+    <main className="admin-login" aria-busy="true">
+      <p className="muted" role="status">
+        {t.common.loading}
+      </p>
+    </main>
+  );
+}
+
 function Guard({ section, children }: { section: Section; children: React.ReactNode }) {
   const role = useAdminRole();
   const { t } = useI18n();
@@ -40,8 +51,8 @@ function Guard({ section, children }: { section: Section; children: React.ReactN
 
 export function AdminApp() {
   const session = useAdminSession();
-  // the kept session is being checked: nothing yet, rather than the form flashing by
-  if (session.state === 'loading') return null;
+  // the kept session is being checked: no form flashing by
+  if (session.state === 'loading') return <AdminChecking />;
   if (session.state === 'denied') return <AdminDenied />;
   if (session.state !== 'signed_in') return <AdminLogin />;
   return (

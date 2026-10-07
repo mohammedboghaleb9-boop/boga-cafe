@@ -88,8 +88,9 @@ function LiveForm() {
     too_many: t.admin.tooManyAttempts,
     server: t.admin.signInServer,
   };
-  // a kept session that could not be checked (no connection) says so until the next try
-  const shown = error ?? (session.state === 'signed_out' && session.problem === 'server' ? 'server' : null);
+  // a kept session that could not be checked (no connection): said, with "try again", until the next try
+  const unchecked = !error && session.state === 'signed_out' && session.problem === 'server';
+  const shown = error;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -141,6 +142,14 @@ function LiveForm() {
         <p id="login-error" className="notice notice-bad small" role="alert" tabIndex={-1}>
           {message[shown]}
         </p>
+      )}
+      {unchecked && (
+        <div className="notice notice-warn small stack" role="alert">
+          <p>{t.admin.sessionCheckFailed}</p>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={adminAuth.retry}>
+            {t.common.retry}
+          </button>
+        </div>
       )}
       <button type="submit" className="btn btn-primary btn-block" aria-disabled={busy || undefined}>
         {busy ? t.common.loading : t.admin.signIn}

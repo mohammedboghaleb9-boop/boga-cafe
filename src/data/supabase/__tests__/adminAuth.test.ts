@@ -18,19 +18,21 @@ interface Fake {
   kept?: boolean;
   isAdmin?: boolean | Error;
   role?: string | null;
+  /** supabase-js could not read the kept session first (expired token, no network): signOut() keeps it */
+  signOutFails?: boolean;
 }
 
 function fakeClient(f: Fake) {
   const calls: string[] = [];
-  let onChange: ((event: string) => void) | undefined;
+  let onChange: ((event: string, s: { user: { id: string } } | null) => void) | undefined;
   const user = { id: USER };
   const auth = {
     signInWithPassword: vi.fn(async () =>
       f.signIn === 'ok' || f.signIn === undefined ? { data: { user, session: {} }, error: null } : { data: { user: null, session: null }, error: f.signIn.error },
     ),
     getSession: vi.fn(async () => ({ data: { session: f.kept ? { user } : null }, error: null })),
-    signOut: vi.fn(async () => (calls.push('signOut'), { error: null })),
-    onAuthStateChange: vi.fn((cb: (event: string) => void) => ((onChange = cb), { data: { subscription: { unsubscribe() {} } } })),
+    signOut: vi.fn(async () => (calls.push('signOut'), { error: f.signOutFails ? new AuthRetryableFetchError('offline', 0) : null })),
+    onAuthStateChange: vi.fn((cb: typeof onChange) => ((onChange = cb), { data: { subscription: { unsubscribe() {} } } })),
   };
   const client = {
     auth,
@@ -47,17 +49,18 @@ function fakeClient(f: Fake) {
       return q;
     }),
   } as unknown as Client;
-  return { client, auth, calls, fire: (event: string) => onChange?.(event) };
+  return { client, auth, calls, fire: (event: string, id?: string) => onChange?.(event, id ? { user: { id } } : null) };
 }
 
 /** The admin auth, already listened to (which starts the check of a kept session). */
 async function started(f: Fake) {
   const fake = fakeClient(f);
-  const admin = createAdminAuth(() => fake.client);
+  const forget = vi.fn();
+  const admin = createAdminAuth(() => fake.client, forget);
   const seen: AdminSession[] = [];
   admin.session.subscribe(() => seen.push(admin.session.get()));
   await vi.waitFor(() => expect(admin.session.get().state).not.toBe('loading'));
-  return { ...fake, admin, seen };
+  return { ...fake, admin, seen, forget };
 }
 
 const creds = { email: ' owner@example.com ', password: 'secret' };
@@ -109,12 +112,29 @@ describe('admin sign-in (live site)', () => {
     expect(calls).toContain('signOut');
   });
 
-  it('signs out', async () => {
-    const { admin, auth } = await started({ kept: true, role: 'owner' });
+  it('signs out this browser only', async () => {
+    const { admin, auth, forget } = await started({ kept: true, role: 'owner' });
     expect(admin.session.get()).toEqual({ state: 'signed_in', role: 'owner' });
     await admin.signOut();
-    expect(auth.signOut).toHaveBeenCalled();
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(admin.session.get()).toEqual({ state: 'signed_out' });
+    expect(forget).not.toHaveBeenCalled();
+  });
+
+  it('removes the kept session itself when supabase-js cannot (expired token, no network)', async () => {
+    const out = await started({ kept: true, role: 'owner', signOutFails: true });
+    await out.admin.signOut();
+    expect(out.forget).toHaveBeenCalled();
+    const denied = await started({ isAdmin: false, signOutFails: true });
+    expect(await denied.admin.signIn(creds)).toBe('denied');
+    expect(denied.forget).toHaveBeenCalled();
+  });
+
+  it('does not send an empty form to Auth (its rate limit is not spent)', async () => {
+    const { admin, auth } = await started({});
+    expect(await admin.signIn({ email: '  ', password: 'secret' })).toBe('credentials');
+    expect(await admin.signIn({ email: 'owner@example.com', password: '' })).toBe('credentials');
+    expect(auth.signInWithPassword).not.toHaveBeenCalled();
   });
 });
 
@@ -138,6 +158,37 @@ describe('kept session (next visit)', () => {
     expect(calls).not.toContain('signOut');
   });
 
+  it('checks again an account signed in from another tab, not its own sign-in', async () => {
+    const f: Fake = { kept: true, role: 'owner' };
+    const { admin, fire, calls, client } = await started(f);
+    const asked = () => calls.filter((c) => c === 'is_admin').length;
+    expect(asked()).toBe(1);
+    fire('SIGNED_IN', USER); // the same account (a refresh, a focus): nothing to check
+    await new Promise((r) => setTimeout(r, 5));
+    expect(asked()).toBe(1);
+    f.role = 'staff';
+    fire('SIGNED_IN', '99999999-0000-4000-8000-000000000000'); // another tab, another admin
+    await vi.waitFor(() => expect(admin.session.get()).toEqual({ state: 'signed_in', role: 'staff' }));
+    // our own sign-in fires SIGNED_IN too: checked once, by the sign-in itself
+    vi.mocked(client.auth.signInWithPassword).mockImplementationOnce(async () => {
+      fire('SIGNED_IN', '77777777-0000-4000-8000-000000000000');
+      return { data: { user: { id: '77777777-0000-4000-8000-000000000000' }, session: {} }, error: null } as never;
+    });
+    const before = asked();
+    expect(await admin.signIn(creds)).toBe('ok');
+    await new Promise((r) => setTimeout(r, 5));
+    expect(asked()).toBe(before + 1);
+  });
+
+  it('checks the kept session again on "try again"', async () => {
+    const f: Fake = { kept: true, isAdmin: new Error('network down') };
+    const { admin } = await started(f);
+    expect(admin.session.get()).toEqual({ state: 'signed_out', problem: 'server' });
+    f.isAdmin = true;
+    admin.retry();
+    await vi.waitFor(() => expect(admin.session.get()).toEqual({ state: 'signed_in', role: 'manager' }));
+  });
+
   it('goes back to the form when Auth signs the session out (refresh refused, other tab)', async () => {
     const { admin, fire } = await started({ kept: true, role: 'owner' });
     fire('TOKEN_REFRESHED');
@@ -148,7 +199,7 @@ describe('kept session (next visit)', () => {
 
   it('starts no Auth client for a visitor who never opens the panel', () => {
     const make = vi.fn();
-    const admin = createAdminAuth(make);
+    const admin = createAdminAuth(make, vi.fn());
     expect(admin.session.get()).toEqual({ state: 'loading' });
     expect(make).not.toHaveBeenCalled();
   });
