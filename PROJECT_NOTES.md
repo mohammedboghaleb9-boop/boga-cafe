@@ -14,10 +14,11 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
   the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; slice 3b not estimated).
-- `main` = `344952f`, merge of slice 3b (owner approved 2026-10-07, CI run 97; slice 3 = `d2ebd36`). Merged branches deleted by the owner.
-  Now: deploy config (`wrangler.jsonc`, pinned wrangler) on `feat/p5-deploy-config`, before slice 4.
+- `main` = `344952f`, merge of slice 3b (owner approved 2026-10-07, CI run 97; slice 3 = `d2ebd36`). Merged branches deleted by the owner. Now: deploy config branch.
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
-  yet). **Every merge into `main` is a release.** Preview builds: `npx wrangler versions upload`. The Supabase switch =
+  yet). **Every merge into `main` is a release.** Preview builds: `npx wrangler versions upload`. Config in the repo (branch):
+  `wrangler.jsonc` (static assets from `./dist`, SPA fallback, values of Cloudflare's auto-setup) + wrangler 4.148.0 pinned, no Vite
+  plugin (same 35 files, checked). Before it: previews failed, production relied on auto-setup each build. The Supabase switch =
   adding `VITE_DATA_MODE`/URL/key in Cloudflare build variables, owner only, slice 11. Workers Builds does not wait for
   GitHub CI: merge only on a green branch. Deployed build today: browser store, seed catalog, no admin, no payment method
   open, **not connected to Supabase**. **Notifications do not work** (Known issues).
@@ -27,7 +28,6 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 
 ## Open branches
 Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
-
 ## Stack
 Node 24 (`.node-version`, `engines 24.x`), React 19.3, Vite 8.3, React Router 8.4 (declarative), TypeScript 7, Vitest 5, Oxlint, Playwright 1.63 + axe-core.
 `api/notify.ts`: Vercel function (nodemailer for Gmail, CallMeBot for WhatsApp). Database: Supabase (PostgreSQL + RLS, Edge Functions on Deno, `@supabase/supabase-js` 2.117, bundled with `rolldown`).
