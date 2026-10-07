@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-07
+- 2026-10-07 [feat/p5-s3b-order-guards] Slice 3b code (b3425ba): unavailable products (empty or switched-off origin) not addable and refused as `unavailable`; order idempotency key (site, storefront, migration `order_idempotency` with a unique key in `commit_order`); order page text by link in supabase mode. Not applied live yet.
 - 2026-10-07 Slice 3 merged into `main` (d2ebd36, owner approved); slice 3b (order guards) started on `feat/p5-s3b-order-guards`.
 
 ## 2026-10-06

@@ -14,7 +14,8 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
   the site is not connected yet: 8-11 days left (**Estimated**: slices 3-11 = 7.75 d + outbox sender 1-1.5 d; slice 3b not estimated).
-- `main` = `d2ebd36`, merge of slice 3 (owner approved 2026-10-07; `feat/p5-s3-orders` kept for the owner to delete). Slice 3b started.
+- `main` = `d2ebd36`, merge of slice 3 (owner approved 2026-10-07; `feat/p5-s3-orders` kept for the owner to delete). Slice 3b: code `b3425ba`
+  (CI run 89 green), review running, migration `order_idempotency` **not applied live yet**.
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
   yet). **Every merge into `main` is a release.** Preview builds: `npx wrangler versions upload`. The Supabase switch =
   adding `VITE_DATA_MODE`/URL/key in Cloudflare build variables, owner only, slice 11. Workers Builds does not wait for
@@ -23,9 +24,7 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 - **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 7 migrations = `supabase/migrations`, catalog from `supabase/seed.sql`,
   two owner accounts (sign-up off; never signed in, no 2FA yet), `storefront` v4 the only function (not re-compared byte for byte), no `save_product` yet (slice 9).
 
-## Open branches
-- Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks open branches in Notion.
-
+## Open branches: not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
 ## Stack
 Node 24 (`.node-version`, `engines 24.x`), React 19.3, Vite 8.3, React Router 8.4 (declarative), TypeScript 7, Vitest 5, Oxlint, Playwright 1.63 + axe-core.
 `api/notify.ts`: Vercel function (nodemailer for Gmail, CallMeBot for WhatsApp). Database: Supabase (PostgreSQL + RLS, Edge Functions on Deno, `@supabase/supabase-js` 2.117, bundled with `rolldown`).
@@ -99,15 +98,16 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - `skip locked` in `expire_unpaid_orders` is not tested under concurrency.
 - Supabase mode (slice 3): orders/B2B via `storefront` (network, 4xx, 5xx, unreadable body = `server`); the order page keeps the placed order
   for the tab (sessionStorage), else reads `get_order_public` (no phone/address: no message to send); "I have paid" = RPC; `deliver` off (outbox).
-  A real order is refused today (`payment_method`, payee empty: correct). POST timeout 30 s: a lost answer after the save shows `server`, a retry
-  can duplicate. "Commande introuvable sur cet appareil" reads wrong in this mode. supabase-js retries a failed GET.
+  A real order is refused today (`payment_method`, payee empty: correct). POST timeout 30 s: a lost answer after the save shows `server`; slice 3b
+  sends an idempotency key so the retry gets the saved order (`orderKey.ts`, tab only: a reload keeps it, another tab does not). supabase-js retries a failed GET.
+- Slice 3b: **unavailable** = a recipe origin inactive, missing or at 0 kg (`isProductAvailable`): line shown, not priced; order refused `unavailable`;
+  B2B form replaced by a notice (a crafted B2B body just drops the line). Origin emptied between check and commit = `out_of_stock`.
 - Before the Supabase writes (slices 8-10): admin "saved" flash shows even when a save is refused; a failed call in
   `useAction` is an unhandled rejection (no message); shipping rows, B2B notes and the stock blend switch save on every
   change without waiting (fine in the browser store, would race over the network). No Storage slice (owner, below).
 - `api/notify` rate limit is in memory per instance. Messages are written by the browser; the server checks shape only.
 - A lone surrogate or NUL in a customer text: the storefront function refuses it (400, `src/server/parse.ts`, tested); the browser-only demo build does not check it.
-- The status hook treats edits to `CLAUDE.md`, `README.md`, `docs/*` as code: a docs-only session gets blocked until this file changes.
-- Browser tests run on Chromium only; English is not tested in a browser; tablet width (768) never checked.
+- The status hook treats `CLAUDE.md`, `README.md`, `docs/*` as code. Browser tests: Chromium only, English not in a browser, 768 px never checked.
 
 ## Blocked (waiting on the owner or third parties)
 - Real bank account (holder, bank, RIB) and Cash Plus beneficiary: owner said "not yet time" (2026-09-30), so transfer and Cash Plus stay closed and the real site takes no paid order. `docs/07` Q23-Q25. The repo is **public**: real bank details must be entered from the admin panel after P5, not committed in `seed/config.ts`.
@@ -135,8 +135,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
    1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile · 5 Supabase Auth
    sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
    (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, deploy from `main`.
-   3b (started 2026-10-07): a product with an inactive or out-of-stock origin is "unavailable" and the server refuses it;
-   an idempotency key per order so a retry after a lost answer cannot duplicate; order page text correct in supabase mode.
+   3b (on its branch): unavailable products, order idempotency key, order page text by link.
    Then Turnstile keys and the outbox sender (phase 4). Before launch: the privacy page (P7) mentions the order copy kept in the tab (sessionStorage).
 2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 18-25 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
 
