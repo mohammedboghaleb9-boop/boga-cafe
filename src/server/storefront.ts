@@ -7,7 +7,7 @@
  * src/core; the database checks every figure again (check_order), then saves,
  * numbers and queues the messages in one transaction.
  *
- * Answers: 400 malformed body (or one the site's forms never send); 200
+ * Answers (once Turnstile passed, below): 400 malformed body (or one the site's forms never send); 200
  * {ok: false, errors} for every refusal the customer can act on (form errors,
  * stock, 'unavailable', 'too_many', 'captcha'); 200 {ok: true, …}. Limits: see guard.ts.
  * Cloudflare Turnstile comes first (slice 4): without a valid token nothing else

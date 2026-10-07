@@ -1,5 +1,17 @@
-/* Room for the Turnstile widget before it loads (65 px tall; 140 px in its compact size), so the button does not jump. */
+/* Room for the Turnstile widget before it loads, so the button does not jump: 65 px tall,
+   140 px in its compact size (Captcha.tsx picks it under 300 px). */
+.captcha {
+  container-type: inline-size;
+}
 .captcha-box {
   min-height: 65px;
   max-width: 100%;
+}
+@container (width < 300px) {
+  .captcha-box {
+    min-height: 140px;
+  }
+}
+.captcha-box[hidden] {
+  display: none;
 }

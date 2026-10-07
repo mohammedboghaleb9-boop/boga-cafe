@@ -34,13 +34,14 @@ function loadTurnstile(): Promise<TurnstileApi> {
     const s = document.createElement('script');
     s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
     s.async = true;
-    s.addEventListener('load', () => (window.turnstile ? resolve(window.turnstile) : reject(new Error('turnstile missing'))));
-    s.addEventListener('error', () => {
-      // a blocker or a lost connection: the next form shown tries again
+    // a blocker or a lost connection: "try again" loads it anew
+    const fail = (why: string) => {
       script = undefined;
       s.remove();
-      reject(new Error('turnstile blocked'));
-    });
+      reject(new Error(why));
+    };
+    s.addEventListener('load', () => (window.turnstile ? resolve(window.turnstile) : fail('turnstile missing')));
+    s.addEventListener('error', () => fail('turnstile blocked'));
     document.head.appendChild(s);
   });
   return script;
@@ -64,29 +65,39 @@ export function useCaptcha(): Captcha {
   const [el, setEl] = useState<HTMLDivElement | null>(null);
   const id = useRef<string | null>(null);
   const [token, setToken] = useState('');
-  const [blocked, setBlocked] = useState(false);
+  // the script did not load, or the widget reports an error it does not get over by itself
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!CAPTCHA_ON || !el) return;
     let live = true;
+    // a 320 px phone leaves less than 300 px inside the form
+    const size = el.clientWidth >= FLEXIBLE_MIN_PX ? 'flexible' : 'compact';
     loadTurnstile()
       .then((ts) => {
         if (!live) return;
         id.current = ts.render(el, {
           sitekey: SITE_KEY,
           language: locale,
-          theme: 'auto',
-          // a 320 px phone leaves less than 300 px inside the form
-          size: el.clientWidth >= FLEXIBLE_MIN_PX ? 'flexible' : 'compact',
-          callback: (solved: string) => setToken(solved),
+          // the storefront is dark whatever the device theme (styles/tokens.css)
+          theme: 'dark',
+          size,
+          callback: (solved: string) => {
+            setToken(solved);
+            setFailed(false);
+          },
           // a token lasts 5 minutes; the widget gets a new one by itself
           'expired-callback': () => setToken(''),
-          'error-callback': () => setToken(''),
+          'error-callback': () => {
+            setToken('');
+            setFailed(true);
+          },
         });
       })
       .catch((e) => {
         console.error(e);
-        if (live) setBlocked(true);
+        if (live) setFailed(true);
       });
     return () => {
       live = false;
@@ -96,6 +107,11 @@ export function useCaptcha(): Captcha {
       setToken('');
     };
   }, [el, locale]);
+
+  const retry = () => {
+    setFailed(false);
+    setAttempt((n) => n + 1);
+  };
 
   const reset = useCallback(() => {
     setToken('');
@@ -107,12 +123,15 @@ export function useCaptcha(): Captcha {
     missing: CAPTCHA_ON && token === '',
     widget: CAPTCHA_ON ? (
       <div className="captcha span-all">
-        {blocked ? (
-          <p className="notice notice-bad small" role="alert">
-            {t.checkout.captchaBlocked}
-          </p>
-        ) : (
-          <div ref={setEl} className="captcha-box" />
+        {/* a new box on "try again": the effect renders a new widget in it */}
+        <div key={attempt} ref={setEl} className="captcha-box" hidden={failed} />
+        {failed && (
+          <div className="notice notice-bad small stack" role="alert">
+            <p>{t.checkout.captchaBlocked}</p>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={retry}>
+              {t.common.retry}
+            </button>
+          </div>
         )}
       </div>
     ) : null,

@@ -11,11 +11,13 @@
  *
  * Secrets (Dashboard → Edge Functions → Secrets):
  *   TURNSTILE_SECRET_KEY  required: every form must carry a valid Turnstile token; without
- *                         the secret every form is refused (500), none goes through unchecked.
+ *                         the secret, or with one of Cloudflare's test secrets, every form is
+ *                         refused (500), none goes through unchecked.
  */
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/data/supabase/database.types';
 import { handleHttp, keysOf } from '@/server/http';
+import { liveTurnstileSecret } from '@/server/guard';
 import { handleStorefront } from '@/server/storefront';
 
 declare const Deno: {
@@ -36,6 +38,6 @@ Deno.serve((req) =>
   handleHttp(req, {
     publicKeys,
     // the secret key also keys the IP hash: never stored, so a stored hash cannot be reversed
-    run: (route, raw, ip) => handleStorefront(route, raw, { db, ip, ipKey: secretKey, turnstileSecret: env('TURNSTILE_SECRET_KEY') }),
+    run: (route, raw, ip) => handleStorefront(route, raw, { db, ip, ipKey: secretKey, turnstileSecret: liveTurnstileSecret(env('TURNSTILE_SECRET_KEY')) }),
   }),
 );

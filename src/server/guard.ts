@@ -24,7 +24,7 @@ export const LIMITS: Record<Route, { phone: Limit[]; ip: Limit[] }> = {
   order: { phone: [[5, 3600]], ip: [[10, 3600], [20, 86_400]] },
   quote: { phone: [[3, 86_400]], ip: [[20, 86_400]] },
 };
-/** Any request that parses, accepted or not: it costs a catalog read. */
+/** Any request past Turnstile, accepted or not: it costs a catalog read. */
 export const REQUEST_BUDGET: Limit = [120, 3600];
 
 /**
@@ -67,6 +67,19 @@ export async function withinLimits(db: Client, route: Route, phone: string, ip: 
   }
   for (const [bucket, limit] of buckets) if (!(await hit(db, bucket, limit))) return false;
   return true;
+}
+
+/** Cloudflare's test secrets (always passes, always fails, token already spent). */
+const TEST_SECRET = /^[123]x0+AA$/;
+
+/**
+ * The secret the live function may use: a test secret there would accept the public
+ * dummy token from anyone, so it counts as no secret (every form refused, logged).
+ */
+export function liveTurnstileSecret(secret: string): string {
+  if (!TEST_SECRET.test(secret)) return secret;
+  console.error('storefront: TURNSTILE_SECRET_KEY is a Cloudflare test secret; refusing every form');
+  return '';
 }
 
 /** Cloudflare's answer for a widget token. Fails closed: no answer in 5 s = not verified. */

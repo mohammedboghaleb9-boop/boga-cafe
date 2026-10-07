@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TEXT_MAX } from '@/core/limits';
 import type { Client } from '@/data/supabase/client';
-import { hashIp, ipBucket, verifyTurnstile } from '../guard';
+import { hashIp, ipBucket, liveTurnstileSecret, verifyTurnstile } from '../guard';
 import { idempotencyKey, parseCheckoutInput, parseQuoteInput } from '../parse';
 import { NUMBER_PLACEHOLDER } from '../prepare';
 import { handleStorefront, type Deps } from '../storefront';
@@ -398,6 +398,21 @@ describe('storefront: Turnstile first', () => {
     await expect(handleStorefront('quote', { ...contact, items: b2bItems }, deps(fake.db, { turnstileSecret: '' }))).rejects.toThrow('TURNSTILE_SECRET_KEY');
     expect(untouched(fake)).toBe(true);
     expect(sent).toHaveLength(0);
+  });
+
+  it('treats a Cloudflare test secret on the live function as no secret', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    for (const test of [PASS_SECRET, FAIL_SECRET, '3x0000000000000000000000000000000AA']) expect(liveTurnstileSecret(test)).toBe('');
+    expect(liveTurnstileSecret('0x4AAAAAAAreal-looking-secret')).toBe('0x4AAAAAAAreal-looking-secret');
+    vi.restoreAllMocks();
+  });
+
+  it('refuses a token longer than Cloudflare issues (2048 characters)', async () => {
+    const sent: URLSearchParams[] = [];
+    const fake = fakeDb();
+    expect(await handleStorefront('order', orderBody({ captchaToken: 'x'.repeat(2049) }), deps(fake.db, {}, fakeSiteverify(sent)))).toEqual(CAPTCHA);
+    expect(untouched(fake)).toBe(true);
+    expect(sent).toHaveLength(0); // not even sent to Cloudflare
   });
 
   it('asks a resent order for a fresh token too, then gives the saved order back', async () => {

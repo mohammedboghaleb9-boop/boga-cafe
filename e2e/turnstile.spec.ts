@@ -5,7 +5,8 @@ import { clippedContent, expectNoSideScroll, open } from './helpers';
  * Turnstile on the live-site build (VITE_DATA_MODE=supabase, .env.e2e-supabase), served on
  * port 4174 (playwright.config.ts). The test answers its Supabase (catalog rows, the storefront
  * function) and Cloudflare's widget script: a stand-in with the documented widget sizes that hands
- * out the dummy token of Cloudflare's "always passes" test key. The real widget is not loaded
+ * out the dummy token of Cloudflare's "always passes" test key, numbered (-1, -2…) so a reused
+ * token shows. The real widget is not loaded
  * here; the server's check of the token is unit tested (src/server/__tests__/storefront.test.ts).
  */
 const SITE_KEY = '1x00000000000000000000AA';
@@ -31,7 +32,7 @@ const tables: Record<string, unknown[]> = {
 
 /** Cloudflare's script, replaced: render() draws a box of the documented size and solves it unless held. */
 const TURNSTILE_STUB = `
-window.tsStub = { renders: [], resets: 0, widgets: {} };
+window.tsStub = { renders: [], resets: 0, widgets: {}, issued: 0 };
 window.turnstile = {
   render(el, o) {
     const id = 'w' + window.tsStub.renders.length;
@@ -39,7 +40,7 @@ window.turnstile = {
     box.className = 'ts-stub';
     box.style.cssText = o.size === 'compact' ? 'width:150px;height:140px' : o.size === 'flexible' ? 'width:100%;min-width:300px;height:65px' : 'width:300px;height:65px';
     el.appendChild(box);
-    const solve = () => { if (!window.tsHold) setTimeout(() => o.callback(${JSON.stringify(DUMMY_TOKEN)}), 20); };
+    const solve = () => { if (!window.tsHold) setTimeout(() => o.callback(${JSON.stringify(DUMMY_TOKEN)} + '-' + ++window.tsStub.issued), 20); };
     window.tsStub.widgets[id] = { box, solve };
     window.tsStub.renders.push({ sitekey: o.sitekey, language: o.language, size: o.size, theme: o.theme });
     solve();
@@ -105,15 +106,15 @@ test.describe('Turnstile on the live site', () => {
   test('checkout: the widget gets the test key in French, its token goes with the order, a new one after each answer', async ({ page }) => {
     const sent = await fakeServer(page, { cart: bag });
     await fillCheckout(page);
-    await expect.poll(() => renders(page)).toEqual([{ sitekey: SITE_KEY, language: 'fr', size: 'flexible', theme: 'auto' }]);
+    await expect.poll(() => renders(page)).toEqual([{ sitekey: SITE_KEY, language: 'fr', size: 'flexible', theme: 'dark' }]);
     await placeOrder(page);
     await expect(page.locator('.checkout-errors')).toContainText('Trop de demandes');
-    expect(sent.map((s) => [s.route, s.body.captchaToken])).toEqual([['order', DUMMY_TOKEN]]);
+    expect(sent.map((s) => [s.route, s.body.captchaToken])).toEqual([['order', `${DUMMY_TOKEN}-1`]]);
     // a token works once: the widget is reset and the resend carries the new one, with the same order key
     expect(await resets(page)).toBe(1);
     await placeOrder(page);
     await expect.poll(() => sent.length).toBe(2);
-    expect(sent[1].body.captchaToken).toBe(DUMMY_TOKEN);
+    expect(sent[1].body.captchaToken).toBe(`${DUMMY_TOKEN}-2`);
     expect(sent[1].body.idempotencyKey).toBe(sent[0].body.idempotencyKey);
   });
 
@@ -133,17 +134,25 @@ test.describe('Turnstile on the live site', () => {
     });
     await placeOrder(page);
     await expect.poll(() => sent.length).toBe(1);
-    expect(sent[0].body.captchaToken).toBe(DUMMY_TOKEN);
+    expect(sent[0].body.captchaToken).toBe(`${DUMMY_TOKEN}-1`);
   });
 
-  test('a blocked widget is explained, and the order is not sent without it', async ({ page }) => {
-    page.on('console', () => {}); // the blocked script is logged on purpose
-    const sent = await fakeServer(page, { cart: bag, turnstile: 'blocked' });
+  test('a blocked widget is explained, the order is not sent without it, and "try again" keeps the form', async ({ page }) => {
+    const server: Parameters<typeof fakeServer>[1] = { cart: bag, turnstile: 'blocked' };
+    const sent = await fakeServer(page, server);
     await fillCheckout(page);
     await expect(page.locator('.captcha [role=alert]')).toContainText('n’a pas pu se charger');
     await placeOrder(page);
     await expect(page.locator('.checkout-errors')).toContainText('La vérification anti-robot n’a pas abouti');
     expect(sent).toEqual([]);
+    // the blocker is turned off: the script loads on "try again", without a reload that would empty the form
+    server.turnstile = 'stub';
+    await page.locator('.captcha').getByRole('button', { name: 'Réessayer' }).click();
+    await expect(page.locator('.ts-stub')).toBeVisible();
+    await expect(page.locator('#co-name')).toHaveValue('Client Test');
+    await placeOrder(page);
+    await expect.poll(() => sent.length).toBe(1);
+    expect(sent[0].body.captchaToken).toBe(`${DUMMY_TOKEN}-1`);
   });
 
   for (const width of [320, 390]) {
@@ -177,7 +186,7 @@ test.describe('Turnstile on the live site', () => {
           expect(await clippedContent(page)).toEqual([]);
           await page.locator('.b2b-box button[type=submit]').click();
           await expect(page.locator('.b2b-box [role=alert]')).toContainText(tooMany);
-          expect(sent.map((s) => [s.route, s.body.captchaToken])).toEqual([['quote', DUMMY_TOKEN]]);
+          expect(sent.map((s) => [s.route, s.body.captchaToken])).toEqual([['quote', `${DUMMY_TOKEN}-1`]]);
         });
       });
     }
