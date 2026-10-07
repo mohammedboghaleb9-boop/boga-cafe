@@ -1,0 +1,15 @@
+// Cloudflare Workers (Workers Builds deploys `main`; other branches upload a preview version).
+// Static site only: the files of `npm run build` in ./dist, any unknown path answered with
+// index.html so the React router shows the page (or its own "not found").
+// Same values as the configuration Cloudflare's auto-setup generated for build 344952f.
+{
+  "name": "boga-cafe",
+  "compatibility_date": "2026-10-06",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
