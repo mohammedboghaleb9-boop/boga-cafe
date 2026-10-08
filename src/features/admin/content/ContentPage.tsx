@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import type { Settings, SiteContent } from '@/core/types';
 import { api } from '@/data/api';
-import { useDb } from '@/data/hooks';
+import { canWrite, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
-import { LocalizedInput, SavedFlash, useSavedFlash } from '../ui';
+import { ComingSoon, LocalizedInput, SavedFlash, useSavedFlash } from '../ui';
 import { cleanProfileUrl } from '@/shared/contact';
 import { useAdminRole } from '../session';
 import { useAction } from '../useAction';
 
 export function ContentPage() {
   const { t } = useI18n();
-  const db = useDb();
+  const db = useAdminDb();
+  // live site: texts connect in slice 10
+  const writable = canWrite('content');
   const [content, setContent] = useState<SiteContent>(db.content);
   const [contact, setContact] = useState<Settings['contact']>(db.settings.contact);
   const [saved, flash] = useSavedFlash();
@@ -33,24 +35,25 @@ export function ContentPage() {
         <h1>{t.admin.nav.content}</h1>
         <div className="row">
           <SavedFlash show={saved} />
-          <button type="button" className="btn btn-primary btn-sm" aria-disabled={busy || undefined} onClick={save}>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!writable} aria-disabled={busy || undefined} onClick={save}>
             {t.common.save}
           </button>
         </div>
       </div>
       <p className="muted">{t.admin.content.intro}</p>
+      {!writable && <ComingSoon />}
       <div className="detail-grid">
-        <section className="panel stack">
+        <fieldset className="plain-fieldset panel stack" disabled={!writable}>
           <LocalizedInput id="c-ann" label={t.admin.content.announcement} value={content.announcement} onChange={(v) => setC('announcement', v)} />
           <LocalizedInput id="c-ht" label={t.admin.content.heroTitle} value={content.heroTitle} onChange={(v) => setC('heroTitle', v)} />
           <LocalizedInput id="c-hs" label={t.admin.content.heroSubtitle} value={content.heroSubtitle} onChange={(v) => setC('heroSubtitle', v)} multiline />
           <LocalizedInput id="c-at" label={t.admin.content.aboutTitle} value={content.aboutTitle} onChange={(v) => setC('aboutTitle', v)} />
           <LocalizedInput id="c-ax" label={t.admin.content.aboutText} value={content.aboutText} onChange={(v) => setC('aboutText', v)} multiline />
-        </section>
+        </fieldset>
         <section className="panel stack">
           <h2 className="admin-card-title">{t.admin.content.contactTitle}</h2>
           {!ownsContact && <p className="small muted">{t.admin.ownerOnly}</p>}
-          <fieldset className="plain-fieldset stack" disabled={!ownsContact}>
+          <fieldset className="plain-fieldset stack" disabled={!ownsContact || !writable}>
             <div className="form-grid">
               <label className="field">
                 <span className="label">{t.admin.content.whatsapp}</span>

@@ -3,7 +3,8 @@
  * code of an authenticator app (TOTP, slice 6). An account counts as an admin only when
  * the database says so, with the very function its row level security uses (is_admin()),
  * and is_admin() is true only once the session passed the second factor (aal2, migration
- * 20261008154205). Before that, the account's own admin_users row (readable at aal1) tells
+ * 20261008205033). A refreshed token without it (the app removed from the account) goes
+ * back to the code. Before that, the account's own admin_users row (readable at aal1) tells
  * whether to ask for the code at all: any other account is signed out again and sees
  * "no access". The session is kept in the browser and refreshed by supabase-js; its own
  * client (./index.ts) so the shop keeps reading as a visitor. No sign-up and no password
@@ -32,6 +33,17 @@ async function databaseSaysAdmin(client: Client): Promise<boolean> {
   const { data, error } = await client.rpc('is_admin');
   if (error) throw error;
   return data === true;
+}
+
+/** The assurance level a token carries (its 'aal' claim), read locally; null when it cannot be read. */
+export function tokenLevel(token: string): string | null {
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const aal = (JSON.parse(atob(payload)) as { aal?: unknown }).aal;
+    return typeof aal === 'string' ? aal : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Auth's rate limit, then no connection or a server fault; anything else is the caller's to name. */
@@ -153,6 +165,8 @@ export function createAdminAuth(client: () => Client, forget: () => void): Admin
       if (event === 'SIGNED_IN' && changed && changed.user.id !== userId) recheck();
       // another tab passed the second step for this account
       if (event === 'MFA_CHALLENGE_VERIFIED' && session.state === 'second_factor') recheck();
+      // the refreshed token lost the second factor (the app was removed): the panel closes, the code is asked
+      if (event === 'TOKEN_REFRESHED' && session.state === 'signed_in' && changed && tokenLevel(changed.access_token) !== 'aal2') recheck();
     });
     void check();
   }

@@ -6,6 +6,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Backend } from '../types';
 import { createAdminAuth } from './adminAuth';
+import { createAdminData } from './adminData';
 import type { Client } from './client';
 import { createSupabaseApi } from './api';
 import type { Database } from './database.types';
@@ -40,13 +41,13 @@ export function createSupabaseBackend(): Backend {
   // the admin's session lives in its own client: the shop keeps reading as a visitor
   // (an admin's session would show it the inactive products too)
   let adminClient: Client | undefined;
-  const admin = createAdminAuth(
-    () =>
-      (adminClient ??= createClient<Database>(url, key, {
-        auth: { storageKey: ADMIN_SESSION_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
-        global: { fetch: fetchWithTimeout },
-      })),
-    forgetAdminSession,
-  );
-  return { db: store.db, status: store.status, api, retry: () => void store.load(), admin };
+  const adminDb = () =>
+    (adminClient ??= createClient<Database>(url, key, {
+      auth: { storageKey: ADMIN_SESSION_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+      global: { fetch: fetchWithTimeout },
+    }));
+  const admin = createAdminAuth(adminDb, forgetAdminSession);
+  const adminData = createAdminData(adminDb, admin);
+  // slice 7 reads only: the panel's writes connect in slices 8-10 (api.ts says which)
+  return { db: store.db, status: store.status, api, retry: () => void store.load(), admin, adminData, adminWrites: [] };
 }

@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import type { PaymentMethodConfig, PaymentMethodId, Settings } from '@/core/types';
 import { api } from '@/data/api';
-import { useDb } from '@/data/hooks';
+import { canWrite, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
-import { LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, useSavedFlash } from '../ui';
+import { ComingSoon, LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, useSavedFlash } from '../ui';
 import type { Role } from '../permissions';
 import { payeeReady } from '@/core/orderFlow';
 import { methodAvailable } from '@/services/payments';
@@ -17,7 +17,7 @@ const icons: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash
 export function PaymentsPage() {
   const role = useAdminRole()!;
   const { t, money, l } = useI18n();
-  const { paymentMethods, orders, settings } = useDb();
+  const { paymentMethods, orders, settings } = useAdminDb();
   const [busy, run] = useAction();
   const toVerify = orders.filter(
     (o) => o.status !== 'cancelled' && (o.paymentStatus === 'awaiting_verification' || (o.paymentStatus === 'pending' && o.paymentMethod !== 'card')),
@@ -29,6 +29,8 @@ export function PaymentsPage() {
         <h1>{t.admin.nav.payments}</h1>
       </div>
       <p className="muted">{t.admin.payments.intro}</p>
+      {/* live site: "paid" connects in slice 8, methods and payee details in slice 10 */}
+      {(!canWrite('orders') || !canWrite('payments')) && <ComingSoon />}
 
       <section className="stack">
         <h2 className="admin-card-title">{t.admin.payments.toVerify}</h2>
@@ -46,7 +48,7 @@ export function PaymentsPage() {
                       </Link>
                       <div className="small muted">{o.customer.fullName}</div>
                     </td>
-                    <td className="small">{l(paymentMethods.find((m) => m.id === o.paymentMethod)!.label)}</td>
+                    <td className="small">{l(paymentMethods.find((m) => m.id === o.paymentMethod)?.label ?? { ar: o.paymentMethod, fr: o.paymentMethod, en: o.paymentMethod })}</td>
                     <td className="small num">{o.paymentRef ?? '—'}</td>
                     <td className="num end">
                       <strong>{money(o.total)}</strong>
@@ -58,6 +60,7 @@ export function PaymentsPage() {
                       <button
                         type="button"
                         className="btn btn-primary btn-sm"
+                        disabled={!canWrite('orders')}
                         aria-disabled={busy || undefined}
                         onClick={() =>
                           run(async () => {
@@ -95,8 +98,9 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
   const [m, setM] = useState(method);
   const [saved, flash] = useSavedFlash();
   const [busy, run] = useAction();
+  const writable = canWrite('payments');
   return (
-    <article className="panel stack">
+    <fieldset className="plain-fieldset panel stack" disabled={!writable}>
       <div className="spread">
         <strong className="row">
           <Icon name={icons[m.id]} /> {l(m.label)}
@@ -131,7 +135,7 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
           multiline
         />
       </div>
-    </article>
+    </fieldset>
   );
 }
 
@@ -142,7 +146,7 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
   const [saved, flash] = useSavedFlash();
   const [busy, run] = useAction();
   return (
-    <section className="panel stack">
+    <fieldset className="plain-fieldset panel stack" disabled={!canWrite('payments')}>
       <div className="spread">
         <h2 className="admin-card-title">{t.admin.payments.bankTitle}</h2>
         <div className="row">
@@ -181,6 +185,6 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
         </label>
       </div>
       <p className="small muted">{t.admin.payments.payeeHelp}</p>
-    </section>
+    </fieldset>
   );
 }

@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router';
 import { formatKg, formatNumber } from '@/core/format';
 import { isLowStock } from '@/core/stock';
-import { useDb } from '@/data/hooks';
+import { useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
 import { can } from '../permissions';
@@ -10,7 +10,7 @@ import { Kpi, OrderStatusPill, PaymentPill, RowLink, TableWrap, rowClick } from 
 
 export function DashboardPage() {
   const { t, l, money, date } = useI18n();
-  const db = useDb();
+  const db = useAdminDb();
   const navigate = useNavigate();
   const role = useAdminRole()!;
   const orders = db.orders;
@@ -51,30 +51,34 @@ export function DashboardPage() {
               {t.common.all} <span className="dir-arrow" aria-hidden="true">→</span>
             </Link>
           </div>
-          <TableWrap label={t.admin.dash.recentOrders}>
-            <table className="table">
-              <tbody>
-                {orders.slice(0, 6).map((o) => (
-                  <tr key={o.id} className="clickable" onClick={rowClick(navigate, `/admin/orders/${o.id}`)}>
-                    <td>
-                      <RowLink to={`/admin/orders/${o.id}`}>
-                        <strong className="num">{o.number}</strong>
-                      </RowLink>
-                      <div className="small muted">{date(o.createdAt, true)}</div>
-                    </td>
-                    <td>{o.customer.fullName}</td>
-                    <td className="num end">{money(o.total)}</td>
-                    <td>
-                      <PaymentPill status={o.paymentStatus} />
-                    </td>
-                    <td>
-                      <OrderStatusPill status={o.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableWrap>
+          {orders.length === 0 ? (
+            <p className="small muted">{t.admin.nothingYet}</p>
+          ) : (
+            <TableWrap label={t.admin.dash.recentOrders}>
+              <table className="table">
+                <tbody>
+                  {orders.slice(0, 6).map((o) => (
+                    <tr key={o.id} className="clickable" onClick={rowClick(navigate, `/admin/orders/${o.id}`)}>
+                      <td>
+                        <RowLink to={`/admin/orders/${o.id}`}>
+                          <strong className="num">{o.number}</strong>
+                        </RowLink>
+                        <div className="small muted">{date(o.createdAt, true)}</div>
+                      </td>
+                      <td>{o.customer.fullName}</td>
+                      <td className="num end">{money(o.total)}</td>
+                      <td>
+                        <PaymentPill status={o.paymentStatus} />
+                      </td>
+                      <td>
+                        <OrderStatusPill status={o.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrap>
+          )}
         </section>
 
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>
@@ -101,6 +105,7 @@ export function DashboardPage() {
 
           <section className="panel stack">
             <h2 className="admin-card-title">{t.admin.dash.recentB2B}</h2>
+            {b2b.length === 0 && <p className="small muted">{t.admin.nothingYet}</p>}
             {b2b.map((r) => (
               <Link key={r.id} to="/admin/b2b" className="spread small" style={{ textDecoration: 'none' }}>
                 <span>

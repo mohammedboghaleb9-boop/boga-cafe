@@ -2,19 +2,21 @@ import { formatSize } from '@/core/format';
 import { useState } from 'react';
 import { PACK_SIZES, type Settings } from '@/core/types';
 import { api } from '@/data/api';
-import { useDb } from '@/data/hooks';
+import { canWrite, useAdminDb } from '@/data/hooks';
 import { DEMO_DATA } from '@/data/mode';
 import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { PERMISSIONS, ROLES, SECTIONS } from '../permissions';
-import { ConfirmButton, SavedFlash, Switch, TableWrap, useSavedFlash } from '../ui';
+import { ComingSoon, ConfirmButton, SavedFlash, Switch, TableWrap, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 import { useAction } from '../useAction';
 
 export function SettingsPage() {
   const role = useAdminRole()!;
   const { t } = useI18n();
-  const db = useDb();
+  const db = useAdminDb();
+  // live site: the rules connect in slice 10
+  const writable = canWrite('settings');
   const [s, setS] = useState<Settings>(db.settings);
   const [saved, flash] = useSavedFlash();
   const [busy, run] = useAction();
@@ -30,6 +32,7 @@ export function SettingsPage() {
           <button
             type="button"
             className="btn btn-primary btn-sm"
+            disabled={!writable}
             aria-disabled={busy || undefined}
             onClick={() =>
               run(async () => {
@@ -43,7 +46,8 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <div className="detail-grid">
+      {!writable && <ComingSoon />}
+      <fieldset className="plain-fieldset detail-grid" disabled={!writable}>
         <section className="panel stack">
           <h2 className="admin-card-title">{t.admin.settings.rules}</h2>
           <label className="field">
@@ -132,7 +136,7 @@ export function SettingsPage() {
             ))}
           </div>
         </section>
-      </div>
+      </fieldset>
 
       <section className="stack">
         <h2 className="admin-card-title">{t.admin.settings.permissions}</h2>

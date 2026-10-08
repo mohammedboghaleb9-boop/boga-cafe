@@ -214,7 +214,8 @@ export interface NotificationLog {
   to: string;
   subject: string;
   body: string;
-  status: 'sent' | 'simulated' | 'failed';
+  /** 'simulated': the prototype; the live site's queue: 'pending' until the sender (phase 4) sends it. */
+  status: 'pending' | 'sent' | 'simulated' | 'failed';
 }
 
 export interface Settings {

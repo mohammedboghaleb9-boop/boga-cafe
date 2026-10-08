@@ -4,21 +4,23 @@ import { isPrice } from '@/core/pricing';
 import { isLowStock } from '@/core/stock';
 import type { Origin, RoastLevel, Species, StockReason } from '@/core/types';
 import { api } from '@/data/api';
-import { useCatalog, useDb } from '@/data/hooks';
+import { canWrite, useAdminCatalog, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { canEditCatalog } from '../permissions';
 import { useAdminRole } from '../session';
-import { LocalizedInput, Switch, TableWrap } from '../ui';
+import { ComingSoon, LocalizedInput, Switch, TableWrap } from '../ui';
 import { useAction } from '../useAction';
 
 export function StockPage() {
   const { t, l, date } = useI18n();
-  const { origins } = useCatalog();
-  const { stockMovements } = useDb();
+  const { origins } = useAdminCatalog();
+  const { stockMovements } = useAdminDb();
   const role = useAdminRole()!;
-  const editable = canEditCatalog(role);
+  // live site: stock moves connect in slice 8, origin details in slice 9
+  const editable = canEditCatalog(role) && canWrite('catalog');
+  const soon = !canWrite('stock') || (canEditCatalog(role) && !canWrite('catalog'));
   const [adjusting, setAdjusting] = useState<string | null>(null);
   const [editing, setEditing] = useState<Origin | 'new' | null>(null);
   const originName = (id: string) => {
@@ -30,12 +32,13 @@ export function StockPage() {
     <>
       <div className="admin-head">
         <h1>{t.admin.nav.stock}</h1>
-        {editable && (
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setEditing('new')}>
+        {canEditCatalog(role) && (
+          <button type="button" className="btn btn-primary btn-sm" disabled={!editable} onClick={() => setEditing('new')}>
             <Icon name="plus" size={16} /> {t.admin.stock.addOrigin}
           </button>
         )}
       </div>
+      {soon && <ComingSoon />}
       <p className="muted">{t.admin.stock.intro}</p>
       <p className="notice small">{t.admin.stock.blendRule}</p>
 
@@ -64,6 +67,7 @@ export function StockPage() {
                 key={o.id}
                 o={o}
                 editable={editable}
+                showEdit={canEditCatalog(role)}
                 adjusting={adjusting === o.id}
                 onAdjust={() => setAdjusting(adjusting === o.id ? null : o.id)}
                 onEdit={() => setEditing(o)}
@@ -75,35 +79,39 @@ export function StockPage() {
 
       <section className="stack">
         <h2 className="admin-card-title">{t.admin.stock.movements}</h2>
-        <TableWrap label={t.admin.stock.movements}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t.common.date}</th>
-                <th>{t.common.origin}</th>
-                <th className="end">kg</th>
-                <th>{t.admin.stock.reason}</th>
-                <th>{t.common.reference}</th>
-                <th>{t.admin.stock.note}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stockMovements.slice(0, 40).map((m) => (
-                <tr key={m.id}>
-                  <td className="small muted num">{date(m.at, true)}</td>
-                  <td>{originName(m.originId)}</td>
-                  <td className={`num end ${m.deltaKg >= 0 ? 'delta-pos' : 'delta-neg'}`}>
-                    {m.deltaKg >= 0 ? '+' : ''}
-                    {formatNumber(m.deltaKg, 3)}
-                  </td>
-                  <td className="small">{t.admin.stock.reasons[m.reason]}</td>
-                  <td className="small num">{m.ref}</td>
-                  <td className="small muted">{m.note}</td>
+        {stockMovements.length === 0 ? (
+          <p className="small muted">{t.admin.nothingYet}</p>
+        ) : (
+          <TableWrap label={t.admin.stock.movements}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t.common.date}</th>
+                  <th>{t.common.origin}</th>
+                  <th className="end">kg</th>
+                  <th>{t.admin.stock.reason}</th>
+                  <th>{t.common.reference}</th>
+                  <th>{t.admin.stock.note}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableWrap>
+              </thead>
+              <tbody>
+                {stockMovements.slice(0, 40).map((m) => (
+                  <tr key={m.id}>
+                    <td className="small muted num">{date(m.at, true)}</td>
+                    <td>{originName(m.originId)}</td>
+                    <td className={`num end ${m.deltaKg >= 0 ? 'delta-pos' : 'delta-neg'}`}>
+                      {m.deltaKg >= 0 ? '+' : ''}
+                      {formatNumber(m.deltaKg, 3)}
+                    </td>
+                    <td className="small">{t.admin.stock.reasons[m.reason]}</td>
+                    <td className="small num">{m.ref}</td>
+                    <td className="small muted">{m.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        )}
       </section>
     </>
   );
@@ -112,12 +120,16 @@ export function StockPage() {
 function OriginRow({
   o,
   editable,
+  showEdit,
   adjusting,
   onAdjust,
   onEdit,
 }: {
   o: Origin;
+  /** May change the origin's details (role, and the live site's slice 9). */
   editable: boolean;
+  /** The role may edit origins: the button shows, off while not connected. */
+  showEdit: boolean;
   adjusting: boolean;
   onAdjust: () => void;
   onEdit: () => void;
@@ -144,6 +156,7 @@ function OriginRow({
         <td>
           <Switch
             checked={o.customBlendEnabled}
+            disabled={!editable}
             onChange={(v) => editable && api.saveOrigin({ ...o, customBlendEnabled: v })}
             label={o.customBlendEnabled && o.stockKg === 0 ? t.admin.stock.empty : ''}
             name={`${t.admin.stock.inBlend} · ${l(o.name)}`}
@@ -152,11 +165,11 @@ function OriginRow({
         <td className="small">{o.restockDate ? date(o.restockDate) : '—'}</td>
         <td>
           <div className="row" style={{ ['--gap' as string]: '6px', flexWrap: 'nowrap' }}>
-            <button type="button" className="btn btn-sm btn-ghost" onClick={onAdjust}>
+            <button type="button" className="btn btn-sm btn-ghost" disabled={!canWrite('stock')} onClick={onAdjust}>
               {t.admin.stock.adjust}
             </button>
-            {editable && (
-              <button type="button" className="btn btn-sm btn-ghost" onClick={onEdit} aria-label={t.common.edit}>
+            {showEdit && (
+              <button type="button" className="btn btn-sm btn-ghost" disabled={!editable} onClick={onEdit} aria-label={t.common.edit}>
                 {t.common.edit}
               </button>
             )}

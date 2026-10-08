@@ -4,8 +4,9 @@ import { answerCatalog, CORS, SUPABASE } from './live';
 
 /**
  * Admin sign-in on the live-site build (VITE_DATA_MODE=supabase, port 4174): Supabase
- * Auth (password, then the authenticator app's code: MFA TOTP) and the two database
- * answers the panel asks for (the account's admin_users row, is_admin() true only at aal2)
+ * Auth (password, then the authenticator app's code: MFA TOTP) and the database answers
+ * the panel asks for (the account's admin_users row, is_admin() true only at aal2, and the
+ * admin tables that row level security opens only to such a session: slice 7, read only)
  * are answered by the test, as the real services answer them. The account's password
  * rules, Auth's rate limits, the real tokens and real TOTP codes are Auth's own and are
  * not tested here: RIGHT_CODE stands for "the code the app shows now".
@@ -41,9 +42,37 @@ function userJson(user: { id: string; email: string }, factors: Factor[]) {
   };
 }
 
+/** A customer's details, as the admin tables hold them: shown in the panel, never kept in the browser. */
+const CUSTOMER = { name: 'Amina E2E', phone: '0611223344' };
+const ORDER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+const L = (s: string) => ({ ar: s, fr: s, en: s });
+/** The tables only an admin at aal2 reads (row level security). */
+const ADMIN_TABLES: Record<string, unknown[]> = {
+  orders: [
+    { id: ORDER_ID, number: 'BC-2026-0007', created_at: '2026-10-08T09:00:00Z', locale: 'fr', customer_name: CUSTOMER.name, phone: CUSTOMER.phone, email: '',
+      city_id: 'oujda', address: 'Rue 7', company: '', notes: '', weight_kg: '0.250', subtotal: '65.00', shipping_fee: '20.00', total: '85.00',
+      lines: [{ productId: 'boga-signature', name: L('BOGA Signature'), size: 250, qty: 1, unitPrice: 65, lineTotal: 65, composition: [{ originId: 'brazil', percent: 100, grams: 250 }] }],
+      payment_method: 'cashplus', payment_status: 'awaiting_verification', payment_ref: 'CP-123', status: 'new',
+      stock_deductions: [{ originId: 'brazil', kg: 0.25 }], stock_returned: false,
+      order_events: [{ at: '2026-10-08T10:00:00Z', label: 'payment.reported' }, { at: '2026-10-08T09:00:00Z', label: 'order.created' }] },
+  ],
+  quote_requests: [
+    { id: 'quote-1', number: 'QR-2026-0003', created_at: '2026-10-08T08:00:00Z', business_type: 'cafe', company: 'Café E2E', contact_name: CUSTOMER.name,
+      phone: CUSTOMER.phone, email: '', city_id: 'oujda', lines: [], weight_kg: '30.000', indicative_total: '6000.00', notes: '', status: 'new', final_price: null, admin_notes: '' },
+  ],
+  stock_movements: [{ id: 1, at: '2026-10-08T09:00:00Z', origin_id: 'brazil', delta_kg: '-0.250', reason: 'order', ref: 'BC-2026-0007', note: '', actor: null }],
+  notification_outbox: [
+    { id: 1, created_at: '2026-10-08T09:00:00Z', channel: 'email', event: 'order.created', recipient: 'team@example.test', subject: 'Nouvelle commande BC-2026-0007',
+      body: `${CUSTOMER.name} ${CUSTOMER.phone}`, status: 'pending', attempts: 0, last_error: null, sent_at: null },
+  ],
+  admin_config: [{ id: 1, admin_whatsapp: '212600000000', admin_email: 'team@example.test', whatsapp_on: true, email_on: true }],
+};
+
 interface Server {
   /** Auth's answer to every sign-in: by default the right password of ADMIN or OTHER signs in */
   signIn?: 'rate_limited';
+  /** an admin table that refuses the read (an error, not empty rows) */
+  failing?: string | null;
   /** account ids is_admin() accepts at aal2, with their admin_users role */
   admins?: Record<string, string>;
   /** ADMIN's authenticator apps: one set up by default */
@@ -106,8 +135,19 @@ async function fakeSupabase(page: Page, server: Server = {}) {
     }
     if (url.pathname === '/rest/v1/rpc/is_admin') {
       asked.push('is_admin');
-      // the database's rule (migration 20261008154205): an admin, and the second factor passed
-      return json(200, !!(user && admins[user] && claims?.aal === 'aal2'));
+      // the database's rule (migration 20261008205033): an admin (of one of the roles asked), and the second factor passed
+      const allowed = (req.postDataJSON() as { allowed?: string[] } | null)?.allowed;
+      return json(200, !!(user && admins[user] && (!allowed || allowed.includes(admins[user])) && claims?.aal === 'aal2'));
+    }
+    const table = url.pathname.match(/^\/rest\/v1\/(\w+)$/)?.[1] ?? '';
+    if (table in ADMIN_TABLES) {
+      asked.push(`read ${table}`);
+      // a refusal PostgREST does not retry (supabase-js retries a GET that got 503 or no answer, with pauses)
+      if (server.failing === table) return json(403, { code: '42501', message: `permission denied for table ${table}` });
+      // row level security: an admin past the second factor reads every row, any other session none (and no error)
+      const rows = user && admins[user] && claims?.aal === 'aal2' ? ADMIN_TABLES[table] : [];
+      const single = (req.headers()['accept'] ?? '').includes('vnd.pgrst.object');
+      return json(200, single ? (rows[0] ?? null) : rows);
     }
     if (url.pathname === '/rest/v1/admin_users') {
       // row level security: an account reads its own row, at any level
@@ -169,12 +209,15 @@ test.describe('admin sign-in on the live site', () => {
     await enterCode(page, RIGHT_CODE);
     await expect(page.getByRole('heading', { level: 1, name: 'Commandes' })).toBeVisible();
     await expect(page).toHaveURL(/\/admin\/orders$/);
-    expect([...asked]).toEqual(['sign-in', 'code', 'code', 'is_admin']);
+    // the panel's place, then its data (read as this session), confirmed by is_admin() again
+    expect(asked.filter((a) => !a.startsWith('read '))).toEqual(['sign-in', 'code', 'code', 'is_admin', 'is_admin']);
+    expect(asked).toContain('read orders');
     // manager: no payments nor settings
     const nav = page.getByRole('navigation', { name: 'Panel Admin' });
     await expect(nav.getByRole('link', { name: 'Commandes' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Paiements' })).toHaveCount(0);
-    await expect(page.locator('.admin-main > .notice-warn')).toContainText('pas encore les commandes');
+    await expect(page.locator('.admin-live-bar .notice-warn')).toContainText('lecture seule');
+    await expect(page.getByRole('link', { name: 'BC-2026-0007' })).toBeVisible();
     await expect(page.getByRole('button', { name: /démo/i })).toHaveCount(0);
 
     await page.reload();
@@ -249,6 +292,69 @@ test.describe('admin sign-in on the live site', () => {
     await open(page, '/admin');
     await expect(page.getByRole('heading', { level: 1, name: 'Accès refusé' })).toBeVisible();
     expect(asked).toContain('sign-out');
+  });
+
+  test('the panel shows the live data at aal2, and every change is off with a "coming soon" note', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const asked = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
+    await open(page, '/admin/orders');
+    const row = page.getByRole('row', { name: /BC-2026-0007/ });
+    await expect(row).toContainText(CUSTOMER.name);
+    await expect(row).toContainText(CUSTOMER.phone);
+    expect(asked.filter((a) => a.startsWith('read '))).toEqual(
+      expect.arrayContaining(['read orders', 'read quote_requests', 'read stock_movements', 'read notification_outbox', 'read admin_config']),
+    );
+
+    await open(page, `/admin/orders/${ORDER_ID}`);
+    await expect(page.getByRole('heading', { level: 1, name: 'BC-2026-0007' })).toBeVisible();
+    await expect(page.locator('.history li')).toHaveText([/signalé un paiement/, /Commande passée/]); // newest first
+    await expect(page.getByRole('button', { name: /Marquer payé/ })).toBeDisabled();
+
+    // on every page: the "coming soon" note where something could be changed, and no control left on
+    // but reading tools (refresh, tabs, search, the delivery simulator)
+    const readingTools = '.admin-live-bar button, [role=tab], input[type=search], .shipping-sim *';
+    for (const path of ['', '/orders', `/orders/${ORDER_ID}`, '/b2b', '/products', '/products/boga-signature', '/stock', '/shipping', '/payments', '/notifications', '/content', '/settings']) {
+      await open(page, `/admin${path}`);
+      const on = await page.locator('.admin-main').evaluate(
+        (main, tools) =>
+          // and no link to a form that would create something
+          [...main.querySelectorAll<HTMLInputElement>('input, select, textarea, button, a[href$="/new"], a[href*="/new?"]')]
+            .filter((c) => !c.matches(':disabled') && !c.matches(tools))
+            .map((c) => c.outerHTML.slice(0, 80)),
+        readingTools,
+      );
+      expect(on, `${path || '/'}: ${on.join(' | ')}`).toEqual([]);
+      if (!['', '/orders'].includes(path)) await expect(page.locator('.coming-soon').first(), path).toHaveText('Bientôt : les modifications ici ne sont pas encore branchées.');
+      await scanA11y(page, `admin${path}`);
+      if (path === '/b2b') await expect(page.getByText('QR-2026-0003')).toBeVisible();
+      if (path === '/notifications') await expect(page.locator('.log-item .pill')).toHaveText('pas encore envoyé'); // the queue, not "sent"
+    }
+
+    // customer details stay in the page: nothing kept in the browser's storage
+    const stored = JSON.stringify(await page.evaluate(() => ({ ...localStorage, ...sessionStorage })));
+    expect(stored).not.toContain(CUSTOMER.phone);
+    expect(stored).not.toContain(CUSTOMER.name);
+  });
+
+  test('a failed read, or a session the database no longer counts as an admin, shows an error: never an empty list', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const server: Server = { admins: { [ADMIN.id]: 'owner' }, failing: 'orders' };
+    await fakeSupabase(page, server);
+    await page.goto('/admin/orders');
+    const failed = page.getByRole('alert');
+    await expect(failed).toContainText('n’ont pas pu être chargées');
+    await expect(page.getByText('Aucune commande')).toHaveCount(0);
+    await scanA11y(page, 'admin data failed');
+
+    server.failing = null;
+    await page.getByRole('button', { name: 'Réessayer' }).click();
+    await expect(page.getByRole('link', { name: 'BC-2026-0007' })).toBeVisible();
+
+    // the account loses its admin rights while the panel is open: the next read shows no empty list, and the account is out
+    delete server.admins![ADMIN.id];
+    await page.getByRole('button', { name: 'Actualiser' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Accès refusé' })).toBeVisible();
+    await expect(page.getByText('BC-2026-0007')).toHaveCount(0);
   });
 
   for (const [locale, title, denied, setUp] of [

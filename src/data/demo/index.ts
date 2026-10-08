@@ -1,9 +1,10 @@
-import type { AdminAuth, Backend, DataStatus } from '../types';
+import { ADMIN_WRITE_AREAS, type AdminAuth, type Backend, type DataStatus } from '../types';
 import { demoApi } from './api';
 import { demoAdmin } from './session';
 import { db } from './store';
 
 const ready: DataStatus = 'ready';
+const readyStatus = { get: () => ready, subscribe: () => () => {} };
 
 /** The browser-only real site has no Admin Panel (src/app/App.tsx): nobody signs in, and no demo password ships. */
 const noAdmin: AdminAuth = {
@@ -18,7 +19,10 @@ const noAdmin: AdminAuth = {
 export const demoBackend: Backend = {
   db,
   api: demoApi,
-  status: { get: () => ready, subscribe: () => () => {} },
+  status: readyStatus,
   retry: () => {},
   admin: import.meta.env.VITE_DATA_MODE === 'demo' ? demoAdmin : noAdmin,
+  // the prototype's panel reads and changes the same browser store
+  adminData: { db, status: readyStatus, reload: () => {} },
+  adminWrites: ADMIN_WRITE_AREAS,
 };

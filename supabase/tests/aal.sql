@@ -1,4 +1,4 @@
--- Admin rights need the second factor (P5 slice 6, migration 20261008154205_admin_aal2):
+-- Admin rights need the second factor (P5 slice 6, migration 20261008205033_admin_aal2):
 -- an admin_users member at aal1 reads and writes like a visitor; at aal2 it is an admin.
 -- pgTAP, run by run-local.sh on a fresh database; finish(true) fails the run on any "not ok".
 \set ON_ERROR_STOP on

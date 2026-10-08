@@ -146,6 +146,23 @@ export interface ReadStore<T> {
 /** Where the first data load stands: the browser store is ready at once, a server answers later. */
 export type DataStatus = 'loading' | 'ready' | 'error';
 
+/** What the Admin Panel can change; on the live site each part connects in its own slice (8-10). */
+export type AdminWriteArea = 'orders' | 'b2b' | 'catalog' | 'stock' | 'shipping' | 'payments' | 'settings' | 'content' | 'notifications';
+export const ADMIN_WRITE_AREAS: readonly AdminWriteArea[] = ['orders', 'b2b', 'catalog', 'stock', 'shipping', 'payments', 'settings', 'content', 'notifications'];
+
+/**
+ * What the Admin Panel reads, apart from the shop's copy: on the live site the
+ * admin's own session reads every order, request, movement and inactive product
+ * (row level security, aal2). 'error' when a read failed or the database did not
+ * count the session as an admin: never an empty list in place of the real one.
+ */
+export interface AdminData {
+  db: ReadStore<DbState>;
+  status: ReadStore<DataStatus>;
+  /** Reads everything again (the "refresh" button, "try again" after an error). */
+  reload(): void;
+}
+
 export interface Backend {
   db: ReadStore<DbState>;
   api: Api;
@@ -154,4 +171,8 @@ export interface Backend {
   retry(): void;
   /** Admin sign-in (the Admin Panel only). */
   admin: AdminAuth;
+  /** The Admin Panel's data, once signed in. */
+  adminData: AdminData;
+  /** What the Admin Panel can save; every other button is off, with a "coming soon" note. */
+  adminWrites: readonly AdminWriteArea[];
 }
