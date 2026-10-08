@@ -9,13 +9,14 @@ supabase/functions/*/dist
 *.local
 # Local settings and secrets (Gmail App Password, CallMeBot key…) never go to git.
 # Defaults live in the code; examples in .env.example; the demo build uses .env.demo,
-# the browser-test builds .env.e2e and .env.e2e-supabase.
+# the browser-test builds .env.e2e and .env.e2e-supabase, Workers Builds previews .env.workers-preview.
 .env
 .env.*
 !.env.example
 !.env.demo
 !.env.e2e
 !.env.e2e-supabase
+!.env.workers-preview
 .DS_Store
 coverage
 
