@@ -122,7 +122,8 @@ export function useCaptcha(): Captcha {
     token,
     missing: CAPTCHA_ON && token === '',
     widget: CAPTCHA_ON ? (
-      <div className="captcha span-all">
+      // data-solved: the token has reached the form (what the browser tests wait for before sending)
+      <div className="captcha span-all" data-solved={token !== '' || undefined}>
         {/* a new box on "try again": the effect renders a new widget in it */}
         <div key={attempt} ref={setEl} className="captcha-box" hidden={failed} />
         {failed && (

@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-07 (P5 step 3: slices 1-3b and deploy config merged, `main` = `a778b66`; slice 4 Turnstile on `feat/p5-s4-turnstile`). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-08 (P5 step 3: slices 1-4 and deploy config merged, `main` = `5acfad6`; slice 5 admin sign-in on `feat/p5-s5-admin-signin`). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -14,22 +14,19 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
   the site is not connected yet: 7-10 days left (**Estimated**: slices 4-11 = 6.75 d + outbox sender 1-1.5 d; 3b took ~1 d).
-- `main` = `a778b66`, merge of the deploy config (owner approved 2026-10-07; production build 9587e73b success; slice 3b = `344952f`). Merged branches deleted by the owner. Rollback of the config = `git revert -m 1 a778b66`.
-- **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
-  yet). **Every merge into `main` is a release.** Dashboard (owner): Build command `npm run build`; Deploy command (main)
-  `npx wrangler deploy`. Previews **fail on every branch** (known, ignore until the design phase, decided there): "name must
-  match" (bug https://github.com/cloudflare/workers-sdk/issues/15682); the `env -u WRANGLER_CI_MATCH_TAG` command saved in Previews Base
-  is NOT used (old preview model runs plain `npx wrangler versions upload`, build 9322a28f); fix = Worker Previews, irreversible. Repo: `wrangler.jsonc` (assets `./dist`,
-  SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked). The Supabase switch =
-  `VITE_DATA_MODE`/URL/key + `VITE_TURNSTILE_SITE_KEY` as Cloudflare build variables (owner, slice 11). Workers Builds does not wait for GitHub CI: merge only on green.
+- `main` = `5acfad6`, merge of slice 4 Turnstile (owner approved 2026-10-07; CI run 112; production build b902f276 success; deploy config = `a778b66`). Merged branches deleted by the owner.
+- **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables yet). **Every merge into `main` is a release.**
+  Dashboard (owner): Build command `npm run build`; Deploy command (main) `npx wrangler deploy`. Repo: `wrangler.jsonc` (assets `./dist`, SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked).
+  The Supabase switch = `VITE_DATA_MODE`/URL/key + `VITE_TURNSTILE_SITE_KEY` as Cloudflare build variables (slice 11: the dashboard's variables never reached a preview build, so likely from the repo too, see Previews). Workers Builds does not wait for GitHub CI: merge only on green.
   Deployed today: browser store, seed catalog, no admin, no payment method, **not on Supabase**, **no notifications** (Known issues).
+- **Previews** (other branches): failed until 2026-10-07 ("name must match", workers-sdk#15682), fixed by `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload` (the dashboard preview command set on 2026-10-07; **keep it**); they **pass with URLs** (build d6e0c6cb: a Version Preview URL and the alias `feat-p5-s5-admin-signin-boga-cafe.mohammedboghaleb9.workers.dev`).
+  Version URLs were already on (`preview_urls: true` only states it); the Cloudflare bot's "No Preview URL" is wrong: **the build log is the source of truth**. Later edits to the Previews Base fields (Build command, Preview command, Variables) never reached a build: 35dba62d, bbe92d7c and their retries all ran `npm run build` + that `env -u` upload with "Build variables: None".
+  So the preview values come from the repo: in Workers Builds (`WORKERS_CI=1`) on a branch other than `main` (`WORKERS_CI_BRANCH`; `main` is hard-coded in `vite.config.ts`), the default build uses mode `workers-preview` = `.env.workers-preview` (live Supabase URL, publishable key, Turnstile test site key; public only; a `VITE_*` already in the environment wins) and logs "Workers Builds: preview values ON|OFF (branch …)" (no line = not detected). Production, GitHub CI, local builds: same dist byte for byte (checked 2026-10-08). **Needs verification** on Workers Builds: the first preview log says ON, the first `main` build after the merge says OFF. Previews run unmerged code on the live database: once admin writes exist (slices 8-10), signing in there writes real data.
 - **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b),
-  catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v5** = 3b build (no Turnstile: slice 4 not deployed), no `save_product` yet. Rollout: migrations, then the function.
-
-## Open branches
-Not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
+  catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v6** = slice 4 build (`5acfad6`), no `TURNSTILE_SECRET_KEY`: every form refused (500) until slice 11, no `save_product` yet. Rollout: migrations, then the function.
 
 ## Stack
+Open branches: not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
 Node 24 (`.node-version`, `engines 24.x`), React 19.3, Vite 8.3, React Router 8.4 (declarative), TypeScript 7, Vitest 5, Oxlint, Playwright 1.63 + axe-core.
 `api/notify.ts`: Vercel function (nodemailer for Gmail, CallMeBot for WhatsApp). Database: Supabase (PostgreSQL + RLS, Edge Functions on Deno, `@supabase/supabase-js` 2.117, bundled with `rolldown`).
 Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it does not run there (Known issues). CI: GitHub Actions (`web`, `e2e`, `database`).
@@ -41,7 +38,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - `src/features/` one folder per section: home, shop, product, single-origin, custom-blend, b2b, cart, checkout, contact, admin.
 - `src/services/` notifications and payments adapters; `src/shared/` layout, UI, cart state; `src/i18n/` AR/FR/EN dictionaries.
 - `src/server/` storefront server logic (parse, guard = limits + Turnstile, prepare, storefront), unit tested; bundled into `supabase/functions/storefront/dist/index.js` by `scripts/build-functions.mjs` (not committed).
-- `src/data/supabase/` types, row mappers, catalog loader (shared with the function); `store.ts`, `index.ts`, `api.ts`, `storefront.ts`, `orderCache.ts`: the site's Supabase backend (catalog, orders, B2B; admin calls throw "not wired yet").
+- `src/data/supabase/` types, row mappers, catalog loader (shared with the function); `store.ts`, `index.ts`, `api.ts`, `storefront.ts`, `orderCache.ts`, `adminAuth.ts`: the site's Supabase backend (catalog, orders, B2B, admin sign-in; admin data calls throw "not wired yet").
 - `api/` notification function + tests. `supabase/migrations/` schema, `supabase/tests/` smoke, parity, race, `supabase/seed.sql` (from `scripts/seed-sql.mjs`), `supabase/config.toml`.
 - `e2e/` Playwright; `tests/` architecture (section boundaries), SQL parity generator, notify contract.
 - `scripts/check-real-build.mjs`, `docs/` (Arabic, 01-10), `brand/`, `public/`.
@@ -79,14 +76,16 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   refused that function's text, and one row per bucket is simpler anyway.
 - **Card stored off in the live database** until the CMI callback exists, so `check_order` itself refuses a card
   order nobody could pay; the server also never offers it. **Turnstile (slice 4)**: the function checks the token first (nothing read or counted
-  before); no secret, or a Cloudflare test secret, = every form refused (500). Widget only in `supabase` mode (`src/shared/ui/Captcha.tsx`, dark, compact under 300 px, "try again"); a resend needs a fresh token.
+  before); no secret, or a Cloudflare test secret, = every form refused (500). Widget only in `supabase` mode (`src/shared/ui/Captcha.tsx`, dark, compact under 300 px, "try again"); a resend needs a fresh token. E2E waits for `.captcha[data-solved]` before a submit (it raced the token: CI flake 2026-10-07).
 - **Starting data = the examples the site already shows** (products, prices, stock are examples; payment details
   empty). `seed-sql.mjs` refuses to run if `seed/config.ts` holds payment details (the repo is public).
 - **Data contract** (2026-10-05): pages see data only through `src/data/api.ts` (async `Api`, `types.ts`) and the hooks;
   `tests/architecture.test.ts` refuses a page importing a backend. The Supabase backend fills the same `DbState`
   (store approach from `map-test`, owner approved), so storefront pages stay unchanged. Admin save buttons go through
   `useAction` (one call at a time); busy = `aria-disabled`, not `disabled`, so keyboard focus stays (a review found it lost).
-- **Workflow**: branch `fix/*` or `feat/*`, independent read-only review, CI green, `merge --no-ff` into main. No pull requests unless asked. No secrets in the repo (Gmail App Password and CallMeBot key go in Vercel settings only).
+- **Admin sign-in (slice 5)**: `Backend.admin`. Demo: role picker (`src/data/demo/session.ts`). Live: Supabase Auth email + password, own client (`boga-admin-auth`: the shop stays a visitor);
+  admin = `is_admin()` true + own `admin_users` role, else signed out and "no access"; one message for every refused email/password. No sign-up/reset UI; 2FA = slice 6. Sign-out = this browser only (scope local; removed by hand when supabase-js cannot). Browser-only build: no-admin stub, no demo password (`check-real-build`).
+- **Workflow**: `fix/*`/`feat/*` branch, read-only review, CI green, `merge --no-ff`. No PRs unless asked. No secrets in the repo (Gmail/CallMeBot keys: Vercel settings only).
 - **Audit rule**: a rule counts as tested only if breaking it makes a test fail. The audit's own faults were re-run (code 3 of 58 survive, SQL 3 of 31; `docs/10` section 6).
 
 ## Known issues (evidence in PROJECT_STATUS.html section 17)
@@ -133,10 +132,11 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
-   1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile (branch `feat/p5-s4-turnstile`) · 5 Supabase Auth
-   sign-in · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
+   1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile (merged) · 5 Supabase Auth
+   sign-in (branch `feat/p5-s5-admin-signin`) · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
    (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, drop `commit_order_before_3b`, the live
-   same-key success test with payee details, deploy from `main`. 3b (merged): unavailable products, order key (B2B: none yet), order page by link.
+   same-key success test with payee details, real Turnstile keys (widget + `TURNSTILE_SECRET_KEY` + `VITE_TURNSTILE_SITE_KEY`),
+   siteverify `hostname` + `action` check, a build check that the site key variable holds no secret, deploy from `main`. 3b (merged): unavailable products, order key (B2B: none yet), order page by link.
    Then Turnstile keys and the outbox sender (phase 4). Before launch: the privacy page (P7) mentions the order copy kept in the tab (sessionStorage).
 2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 18-25 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
 
@@ -146,5 +146,5 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   order built by `src/core` and refuses closed methods, the storefront function end to end. Anon over HTTP (2026-10-06): 10 products, 6 origins, 20 cities, 2 methods, 1 config; 0 orders/requests/messages/admins; the supabase build in a
   browser shows the live shop and reads an order by its link. Not checked: admin reads (slice 7).
 - Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only. Q1 "yes" read as the default (roasted stock); Q21 Vercel free plan for a commercial site; Q23/Q24 Cash Plus beneficiary data, can a bank transfer be recalled after it lands.
-- Turnstile: the real widget and a real siteverify answer were never seen from here (Cloudflare is blocked; e2e uses a stand-in); Arabic in the widget unconfirmed.
+- Turnstile: real widget and siteverify never seen from here (Cloudflare blocked; e2e stand-in). Admin sign-in: Auth faked in the browser only; the owners' live sign-in is the owner's test.
 - The Stop hook firing in a real session was not observed (script tested by hand). `map-test` @ `f9ba067`: donor only (still to port: `save_product`, admin mappers; `Captcha.tsx` ported in slice 4).

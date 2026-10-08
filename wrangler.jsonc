@@ -5,6 +5,12 @@
 {
   "name": "boga-cafe",
   "compatibility_date": "2026-10-06",
+  // Version URLs (<version>-boga-cafe.<subdomain>.workers.dev, and the branch alias) for the
+  // preview builds' `wrangler versions upload`. Applied by the next `wrangler deploy` (main);
+  // omitted, Wrangler leaves the Worker's setting as it is. The production workers.dev URL is
+  // unchanged (workers_dev defaults to true without routes).
+  // https://developers.cloudflare.com/workers/versions-and-deployments/version-urls/
+  "preview_urls": true,
   "observability": {
     "enabled": true
   },

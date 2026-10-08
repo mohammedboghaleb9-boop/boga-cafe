@@ -5,6 +5,8 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import type { Backend } from '../types';
+import { createAdminAuth } from './adminAuth';
+import type { Client } from './client';
 import { createSupabaseApi } from './api';
 import type { Database } from './database.types';
 import { createCatalogStore } from './store';
@@ -12,6 +14,16 @@ import { createCatalogStore } from './store';
 /** A stalled connection ends in the error screen (with "try again") instead of waiting forever. */
 const READ_TIMEOUT_MS = 15_000;
 const fetchWithTimeout: typeof fetch = (input, init) => fetch(input, { ...init, signal: init?.signal ?? AbortSignal.timeout(READ_TIMEOUT_MS) });
+
+/** Where supabase-js keeps the admin's session (localStorage), and its companion keys. */
+const ADMIN_SESSION_KEY = 'boga-admin-auth';
+function forgetAdminSession() {
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith(ADMIN_SESSION_KEY)) localStorage.removeItem(k);
+  } catch {
+    // no storage: nothing kept
+  }
+}
 
 export function createSupabaseBackend(): Backend {
   const url = import.meta.env.VITE_SUPABASE_URL ?? '';
@@ -25,5 +37,16 @@ export function createSupabaseBackend(): Backend {
   const store = createCatalogStore(client);
   void store.load();
   const api = createSupabaseApi({ client, store, storefront: { url, key } });
-  return { db: store.db, status: store.status, api, retry: () => void store.load() };
+  // the admin's session lives in its own client: the shop keeps reading as a visitor
+  // (an admin's session would show it the inactive products too)
+  let adminClient: Client | undefined;
+  const admin = createAdminAuth(
+    () =>
+      (adminClient ??= createClient<Database>(url, key, {
+        auth: { storageKey: ADMIN_SESSION_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+        global: { fetch: fetchWithTimeout },
+      })),
+    forgetAdminSession,
+  );
+  return { db: store.db, status: store.status, api, retry: () => void store.load(), admin };
 }

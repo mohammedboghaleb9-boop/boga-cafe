@@ -9,8 +9,10 @@ const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const all = (re, text) => [...text.matchAll(re)].map((m) => m[1]);
 
 const activity = src('src/data/seed/activity.ts');
+const password = all(/DEMO_PASSWORD = '([^']+)'/g, src('src/data/demo/session.ts'));
+if (password.length !== 1) throw new Error('check-real-build: the demo password was not found in src/data/demo/session.ts');
 const forbidden = [
-  ...all(/DEMO_PASSWORD = '([^']+)'/g, src('src/features/admin/session.ts')),
+  ...password,
   ...all(/customer\('([^']+)'/g, activity), // example customers
   ...all(/(?:company|contactName): '([^']+)'/g, activity), // example B2B requests
   ...all(/(?:holder|bankName|rib|beneficiary): '([^']+)'/g, activity.slice(activity.indexOf('DEMO_PAYEE'))),

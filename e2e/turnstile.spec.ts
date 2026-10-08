@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Request } from '@playwright/test';
 import { clippedContent, expectNoSideScroll, open } from './helpers';
+import { answerCatalog, CORS, SUPABASE } from './live';
 
 /**
  * Turnstile on the live-site build (VITE_DATA_MODE=supabase, .env.e2e-supabase), served on
@@ -11,25 +12,6 @@ import { clippedContent, expectNoSideScroll, open } from './helpers';
  */
 const SITE_KEY = '1x00000000000000000000AA';
 const DUMMY_TOKEN = 'XXXX.DUMMY.TOKEN.XXXX';
-const SUPABASE = 'https://e2e.supabase.test';
-
-const L = (s: string) => ({ ar: s, fr: s, en: s });
-const tables: Record<string, unknown[]> = {
-  origins: [
-    { id: 'brazil', name: L('Brésil'), country_code: 'BR', species: 'arabica', region: '', roast_level: 'medium', tasting_notes: L(''),
-      stock_kg: 80, low_stock_kg: 5, price_per_kg: 200, custom_blend_enabled: true, restock_date: null, active: true, updated_at: '' },
-  ],
-  products: [
-    { id: 'boga-signature', slug: 'boga-signature', kind: 'signature', name: L('BOGA Signature'), tagline: L(''), description: L(''), roast_level: 'medium',
-      tasting_notes: L(''), prices: { 250: 65, 500: 120, 1000: 220 }, image_url: null, featured: true, active: true, sort_order: 1, updated_at: '',
-      product_recipes: [{ origin_id: 'brazil', percent: 100 }] },
-  ],
-  shipping_rates: [{ id: 'oujda', city: L('Oujda'), distance_km: 0, base_fee: 20, included_kg: 3, extra_per_kg: 5, delivery_days: '1', active: true }],
-  payment_methods: [{ id: 'cashplus', enabled: true, label: L('Cash Plus'), instructions: L('') }],
-  // a payee, so Cash Plus can be chosen and the form reaches the server
-  site_config: [{ settings: { cashplus: { beneficiary: 'BOGA E2E' } }, content: {} }],
-};
-
 /** Cloudflare's script, replaced: render() draws a box of the documented size and solves it unless held. */
 const TURNSTILE_STUB = `
 window.tsStub = { renders: [], resets: 0, widgets: {}, issued: 0 };
@@ -51,7 +33,6 @@ window.turnstile = {
 };`;
 
 type Answer = Record<string, unknown>;
-const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
 
 /** Answers the catalog and the storefront function; returns the bodies the forms sent, by route. */
 async function fakeServer(page: Page, opts: { answer?: Answer; turnstile?: 'stub' | 'blocked'; cart: object[] }) {
@@ -69,10 +50,7 @@ async function fakeServer(page: Page, opts: { answer?: Answer; turnstile?: 'stub
       sent.push({ route: fn[1], body: req.postDataJSON() as Answer });
       return r.fulfill({ headers: CORS, contentType: 'application/json', json: opts.answer ?? { ok: false, errors: ['too_many'] } });
     }
-    const rows = tables[url.pathname.split('/').at(-1) ?? ''];
-    if (!rows) return r.fulfill({ status: 404, headers: CORS, json: { message: 'not in the e2e catalog' } });
-    const single = (req.headers()['accept'] ?? '').includes('vnd.pgrst.object');
-    return r.fulfill({ headers: CORS, contentType: 'application/json', json: single ? rows[0] : rows });
+    return answerCatalog(r);
   });
   return sent;
 }
@@ -90,6 +68,8 @@ async function fillCheckout(page: Page) {
   await page.locator('input[value=cashplus]').check();
 }
 const placeOrder = (page: Page) => page.locator('form.checkout button[type=submit]').click();
+/** The form holds a token (the widget's answer reached it): only then does a submit send. */
+const tokenReady = (page: Page) => expect(page.locator('.captcha[data-solved]')).toBeAttached();
 const renders = (page: Page) => page.evaluate(() => (window as unknown as { tsStub: { renders: object[] } }).tsStub.renders);
 const resets = (page: Page) => page.evaluate(() => (window as unknown as { tsStub: { resets: number } }).tsStub.resets);
 
@@ -107,11 +87,13 @@ test.describe('Turnstile on the live site', () => {
     const sent = await fakeServer(page, { cart: bag });
     await fillCheckout(page);
     await expect.poll(() => renders(page)).toEqual([{ sitekey: SITE_KEY, language: 'fr', size: 'flexible', theme: 'dark' }]);
+    await tokenReady(page);
     await placeOrder(page);
     await expect(page.locator('.checkout-errors')).toContainText('Trop de demandes');
     expect(sent.map((s) => [s.route, s.body.captchaToken])).toEqual([['order', `${DUMMY_TOKEN}-1`]]);
     // a token works once: the widget is reset and the resend carries the new one, with the same order key
     expect(await resets(page)).toBe(1);
+    await tokenReady(page);
     await placeOrder(page);
     await expect.poll(() => sent.length).toBe(2);
     expect(sent[1].body.captchaToken).toBe(`${DUMMY_TOKEN}-2`);
@@ -132,6 +114,7 @@ test.describe('Turnstile on the live site', () => {
       w.tsHold = false;
       Object.values(w.tsStub.widgets).forEach((x) => x.solve());
     });
+    await tokenReady(page);
     await placeOrder(page);
     await expect.poll(() => sent.length).toBe(1);
     expect(sent[0].body.captchaToken).toBe(`${DUMMY_TOKEN}-1`);
@@ -150,6 +133,7 @@ test.describe('Turnstile on the live site', () => {
     await page.locator('.captcha').getByRole('button', { name: 'Réessayer' }).click();
     await expect(page.locator('.ts-stub')).toBeVisible();
     await expect(page.locator('#co-name')).toHaveValue('Client Test');
+    await tokenReady(page);
     await placeOrder(page);
     await expect.poll(() => sent.length).toBe(1);
     expect(sent[0].body.captchaToken).toBe(`${DUMMY_TOKEN}-1`);
@@ -184,6 +168,7 @@ test.describe('Turnstile on the live site', () => {
           await expectWidgetInside(page);
           await expectNoSideScroll(page);
           expect(await clippedContent(page)).toEqual([]);
+          await tokenReady(page);
           await page.locator('.b2b-box button[type=submit]').click();
           await expect(page.locator('.b2b-box [role=alert]')).toContainText(tooMany);
           expect(sent.map((s) => [s.route, s.body.captchaToken])).toEqual([['quote', `${DUMMY_TOKEN}-1`]]);

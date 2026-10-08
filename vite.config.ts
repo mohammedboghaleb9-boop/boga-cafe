@@ -18,7 +18,21 @@ function isPublishableKey(key: string): boolean {
   }
 }
 
-export default defineConfig(({ command, mode }) => {
+/**
+ * A Workers Builds preview build (a branch other than main) gets the live-site values of .env.workers-preview:
+ * this Worker never passes the dashboard's preview settings to the build. Production (main), GitHub CI and
+ * local builds stay as they are. Workers Builds injects WORKERS_CI=1 and WORKERS_CI_BRANCH:
+ * https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#environment-variables
+ */
+const PREVIEW_MODE = 'workers-preview';
+
+export default defineConfig(({ command, mode: asked }) => {
+  // only the default build: `--mode demo|e2e…` builds stay what they ask for
+  const inWorkersBuilds = command === 'build' && asked === 'production' && process.env.WORKERS_CI === '1';
+  const branch = process.env.WORKERS_CI_BRANCH ?? '';
+  const preview = inWorkersBuilds && branch !== '' && branch !== 'main';
+  if (inWorkersBuilds) console.log(`Workers Builds: preview values ${preview ? 'ON' : 'OFF'} (branch "${branch}")`);
+  const mode = preview ? PREVIEW_MODE : asked;
   const demo = mode === 'demo';
   // the simulated card page must never reach real customers (docs/09, .env.example)
   const env = { ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env };
@@ -36,6 +50,7 @@ export default defineConfig(({ command, mode }) => {
     if (!env.VITE_TURNSTILE_SITE_KEY?.trim()) throw new Error('VITE_DATA_MODE=supabase needs VITE_TURNSTILE_SITE_KEY (.env.example): without it no order or B2B request can be sent.');
   }
   return {
+    ...(preview ? { mode: PREVIEW_MODE } : {}),
     base: demo ? './' : '/',
     plugins: [react(), ...(demo ? [viteSingleFile()] : [])],
     resolve: {

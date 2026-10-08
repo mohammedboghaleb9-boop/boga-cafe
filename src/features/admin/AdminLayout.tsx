@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
-import { api } from '@/data/api';
+import { adminAuth, api } from '@/data/api';
+import { DEMO_DATA, SERVER_DATA } from '@/data/mode';
 import { useDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { LanguageSwitcher } from '@/shared/layout/Header';
@@ -8,7 +9,7 @@ import { Logo } from '@/shared/layout/Logo';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { isLowStock } from '@/core/stock';
 import { PERMISSIONS, type Section } from './permissions';
-import { adminSession, useAdminRole } from './session';
+import { useAdminRole } from './session';
 import { ConfirmButton } from './ui';
 import { SkipLink } from '@/shared/layout/SkipLink';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
@@ -73,18 +74,22 @@ export function AdminLayout() {
           <Link to="/" className="btn btn-ghost btn-sm">
             <Icon name="external" size={14} /> {t.admin.viewSite}
           </Link>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={adminSession.signOut}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => void adminAuth.signOut()}>
             {t.admin.signOut}
           </button>
-          <ConfirmButton
-            label={t.admin.resetDemo}
-            confirmLabel={t.admin.resetConfirm}
-            onConfirm={() => void api.resetDemo()}
-            className="btn btn-sm btn-link"
-          />
+          {DEMO_DATA && (
+            <ConfirmButton
+              label={t.admin.resetDemo}
+              confirmLabel={t.admin.resetConfirm}
+              onConfirm={() => void api.resetDemo()}
+              className="btn btn-sm btn-link"
+            />
+          )}
         </div>
       </aside>
       <main className="admin-main" id="main" tabIndex={-1}>
+        {/* live site: signed in, but the admin reads and writes connect in slices 7-10 */}
+        {SERVER_DATA && <p className="notice notice-warn">{t.admin.liveDataSoon}</p>}
         <Outlet />
       </main>
     </div>
