@@ -47,8 +47,10 @@ const tables: Record<string, unknown[]> = {
 
 interface Fake {
   failing?: Set<string>;
-  /** what is_admin() answers for the session that read */
+  /** what is_admin() answers for the session that read (default: true for the role asked) */
   isAdmin?: boolean;
+  /** the role the database holds for this account, when is_admin() is asked for a list of roles */
+  role?: string;
   /** answers wait for this before resolving */
   gate?: Promise<void>;
 }
@@ -72,10 +74,10 @@ function fakeClient(f: Fake) {
     });
     return q;
   };
-  const rpc = async (name: string) => {
-    asked.push(name);
+  const rpc = async (name: string, args?: { allowed?: string[] }) => {
+    asked.push(`${name} ${args?.allowed?.join(',') ?? ''}`.trim());
     await f.gate;
-    return { data: f.isAdmin ?? true, error: null };
+    return { data: f.isAdmin ?? (!f.role || !args?.allowed || args.allowed.includes(f.role)), error: null };
   };
   return { client: { from, rpc } as unknown as Client, asked };
 }
@@ -90,16 +92,23 @@ function fakeAuth(start: AdminSession) {
     dismiss: vi.fn(),
     retry: vi.fn(),
   };
-  return { auth, set: (s: AdminSession) => ((session = s), listeners.forEach((l) => l())) };
+  const set = (s: AdminSession) => ((session = s), listeners.forEach((l) => l()));
+  // like the real one: "checking", then placed again (by default where it was)
+  let placeAgain: AdminSession = start;
+  vi.mocked(auth.retry).mockImplementation(() => {
+    set({ state: 'loading' });
+    setTimeout(() => set(placeAgain), 0);
+  });
+  return { auth, set, placeAt: (s: AdminSession) => (placeAgain = s) };
 }
 
 /** The data store as the panel uses it: listened to, which starts the reads. */
 function opened(f: Fake = {}, start: AdminSession = { state: 'signed_in', role: 'owner' }) {
   const fake = fakeClient(f);
-  const { auth, set } = fakeAuth(start);
+  const { auth, set, placeAt } = fakeAuth(start);
   const data = createAdminData(() => fake.client, auth);
   data.status.subscribe(() => {});
-  return { ...fake, auth, set, data };
+  return { ...fake, auth, set, placeAt, data };
 }
 
 beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
@@ -119,7 +128,7 @@ describe('admin data (live site)', () => {
     expect(s.notifications[0]).toMatchObject({ id: '3', channel: 'whatsapp', event: 'order.created', status: 'pending' });
     expect(s.products.map((p) => p.active)).toEqual([false]);
     expect(s.settings.notifications).toMatchObject({ adminEmail: 'team@example.test', emailEnabled: false }); // owner: admin_config
-    expect(asked.at(-1)).toBe('is_admin'); // asked after the reads
+    expect(asked.at(-1)).toBe('is_admin owner'); // asked after the reads, for the role shown
   });
 
   it('reads only what the role may read: staff no messages nor recipients, a manager no recipients', async () => {
@@ -133,13 +142,34 @@ describe('admin data (live site)', () => {
   });
 
   it('shows an error, not empty lists, when the database does not count the session as an admin; the sign-in is checked again once', async () => {
-    const { data, auth } = opened({ isAdmin: false });
+    const { data, auth, asked } = opened({ isAdmin: false });
+    await vi.waitFor(() => expect(auth.retry).toHaveBeenCalledTimes(1));
+    // the check placed it back in the panel (they disagree): read again, then the error, no loop
+    await vi.waitFor(() => expect(asked.filter((a) => a.startsWith('is_admin'))).toHaveLength(2));
     await vi.waitFor(() => expect(data.status.get()).toBe('error'));
     expect(data.db.get().orders).toEqual([]);
+    await new Promise((r) => setTimeout(r, 10));
     expect(auth.retry).toHaveBeenCalledTimes(1);
-    data.reload();
-    await vi.waitFor(() => expect(data.status.get()).toBe('error'));
-    expect(auth.retry).toHaveBeenCalledTimes(1); // no loop when they disagree
+  });
+
+  it('an owner made manager meanwhile reads no recipients: an error, and the role is read again', async () => {
+    const { data, auth, placeAt, asked } = opened({ role: 'manager' });
+    placeAt({ state: 'signed_in', role: 'manager' });
+    await vi.waitFor(() => expect(auth.retry).toHaveBeenCalledTimes(1));
+    expect(asked).toContain('is_admin owner');
+    await vi.waitFor(() => expect(data.status.get()).toBe('ready'));
+    expect(asked.at(-1)).toBe('is_admin manager');
+    expect(asked.filter((a) => a === 'admin_config')).toHaveLength(1); // the second read, as manager, skips it
+  });
+
+  it('after a new sign-in, a disagreement checks the sign-in again (aal1 back to the code)', async () => {
+    const f: Fake = { isAdmin: false };
+    const { data, auth, set, placeAt } = opened(f);
+    placeAt({ state: 'second_factor', enrolled: true });
+    await vi.waitFor(() => expect(auth.retry).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(data.status.get()).toBe('loading')); // the code screen: nothing kept
+    set({ state: 'signed_in', role: 'owner' });
+    await vi.waitFor(() => expect(auth.retry).toHaveBeenCalledTimes(2));
   });
 
   it('shows an error when a read fails, logs no customer detail, and reads again on "try again"', async () => {

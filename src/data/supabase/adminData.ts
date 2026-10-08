@@ -2,9 +2,10 @@
  * The Admin Panel's data on the live site (slice 7: reads only), read with the
  * admin's own session once it passed the second factor (aal2). Row level security
  * answers a session that is not (or no longer) an admin with empty lists, not an
- * error: so after the reads the same session asks is_admin(), and false is shown
- * as an error, never as "no orders", while the sign-in is checked again (an aal1
- * session goes back to the code). Customer details stay in this memory only:
+ * error: so after the reads the same session asks is_admin() for the role the panel
+ * shows (an owner made manager would read no recipients), and false is shown as an
+ * error, never as "no orders", while the sign-in is checked again (an aal1 session
+ * goes back to the code, a changed role is read again). Customer details stay in this memory only:
  * never logged, never kept in the browser's storage, dropped at sign-out.
  */
 import type { AdminRole } from '@/core/orderFlow';
@@ -93,8 +94,8 @@ export function createAdminData(client: () => Client, auth: AdminAuth): AdminDat
     try {
       const db = client();
       const next = await readAll(db, session.role);
-      // asked after the reads: a session that lost aal2 meanwhile cannot pass for an admin
-      const admin = must(await db.rpc('is_admin'));
+      // asked after the reads: a session that lost aal2, or this role, meanwhile cannot pass for it
+      const admin = must(await db.rpc('is_admin', { allowed: [session.role] }));
       if (mine !== run) return;
       if (admin !== true) {
         state = empty();
@@ -131,7 +132,10 @@ export function createAdminData(client: () => Client, auth: AdminAuth): AdminDat
     watching = true;
     signedIn = auth.session.get().state === 'signed_in';
     auth.session.subscribe(() => {
-      const now = auth.session.get().state === 'signed_in';
+      const at = auth.session.get().state;
+      const now = at === 'signed_in';
+      // a new sign-in (not the check again, which passes through 'loading') may check again once more
+      if (at === 'signed_out' || at === 'denied' || at === 'second_factor') rechecked = false;
       if (now && !signedIn) void load();
       if (!now && signedIn) clear();
       signedIn = now;

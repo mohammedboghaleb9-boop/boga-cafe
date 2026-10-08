@@ -135,8 +135,9 @@ async function fakeSupabase(page: Page, server: Server = {}) {
     }
     if (url.pathname === '/rest/v1/rpc/is_admin') {
       asked.push('is_admin');
-      // the database's rule (migration 20261008205033): an admin, and the second factor passed
-      return json(200, !!(user && admins[user] && claims?.aal === 'aal2'));
+      // the database's rule (migration 20261008205033): an admin (of one of the roles asked), and the second factor passed
+      const allowed = (req.postDataJSON() as { allowed?: string[] } | null)?.allowed;
+      return json(200, !!(user && admins[user] && (!allowed || allowed.includes(admins[user])) && claims?.aal === 'aal2'));
     }
     const table = url.pathname.match(/^\/rest\/v1\/(\w+)$/)?.[1] ?? '';
     if (table in ADMIN_TABLES) {
@@ -316,7 +317,8 @@ test.describe('admin sign-in on the live site', () => {
       await open(page, `/admin${path}`);
       const on = await page.locator('.admin-main').evaluate(
         (main, tools) =>
-          [...main.querySelectorAll<HTMLInputElement>('input, select, textarea, button')]
+          // and no link to a form that would create something
+          [...main.querySelectorAll<HTMLInputElement>('input, select, textarea, button, a[href$="/new"], a[href*="/new?"]')]
             .filter((c) => !c.matches(':disabled') && !c.matches(tools))
             .map((c) => c.outerHTML.slice(0, 80)),
         readingTools,
