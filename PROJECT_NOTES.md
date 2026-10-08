@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-07 (P5 step 3: slices 1-4 and deploy config merged, `main` = `5acfad6`; slice 5 admin sign-in on `feat/p5-s5-admin-signin`). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-08 (P5 step 3: slices 1-4 and deploy config merged, `main` = `5acfad6`; slice 5 admin sign-in on `feat/p5-s5-admin-signin`). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -15,13 +15,13 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
   the site is not connected yet: 7-10 days left (**Estimated**: slices 4-11 = 6.75 d + outbox sender 1-1.5 d; 3b took ~1 d).
 - `main` = `5acfad6`, merge of slice 4 Turnstile (owner approved 2026-10-07; CI run 112; production build b902f276 success; deploy config = `a778b66`). Merged branches deleted by the owner.
-- **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
-  yet). **Every merge into `main` is a release.** Dashboard (owner): Build command `npm run build`; Deploy command (main)
-  `npx wrangler deploy`. Previews: failed on every branch ("name must match", workers-sdk#15682) until 2026-10-07, then
-  **pass** (Workers Builds success on `a557226` and `94816b7`) but give no URL: Version URLs off on the Worker; `preview_urls: true` in `wrangler.jsonc` (2026-10-08) turns them on at the next `wrangler deploy` from `main`. Repo: `wrangler.jsonc` (assets `./dist`,
-  SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked). The Supabase switch =
-  `VITE_DATA_MODE`/URL/key + `VITE_TURNSTILE_SITE_KEY` as Cloudflare build variables (owner, slice 11). Workers Builds does not wait for GitHub CI: merge only on green.
+- **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables yet). **Every merge into `main` is a release.**
+  Dashboard (owner): Build command `npm run build`; Deploy command (main) `npx wrangler deploy`. Repo: `wrangler.jsonc` (assets `./dist`, SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked).
+  The Supabase switch = `VITE_DATA_MODE`/URL/key + `VITE_TURNSTILE_SITE_KEY` as Cloudflare build variables (owner, slice 11; check they reach the build, see Previews). Workers Builds does not wait for GitHub CI: merge only on green.
   Deployed today: browser store, seed catalog, no admin, no payment method, **not on Supabase**, **no notifications** (Known issues).
+- **Previews** (other branches): failed everywhere until 2026-10-07 ("name must match", workers-sdk#15682), now **pass with URLs**: build d6e0c6cb (`7716826`) printed a Version Preview URL and the alias
+  `feat-p5-s5-admin-signin-boga-cafe.mohammedboghaleb9.workers.dev` (Version URLs were already on; `preview_urls: true` in `wrangler.jsonc` only states it). The Cloudflare bot's "No Preview URL" on the PR is wrong: **the build log is the source of truth**.
+  Their `VITE_*` values (data mode, Supabase URL, publishable key, Turnstile test site key; public only) are in the Previews Base **Build command** (owner, dashboard); Previews Base "Variables and secrets" did not reach the build ("Build variables: None"). "Retry build" reuses the old build config: push a commit after a dashboard change.
 - **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b),
   catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v6** = slice 4 build (`5acfad6`), no `TURNSTILE_SECRET_KEY`: every form refused (500) until slice 11, no `save_product` yet. Rollout: migrations, then the function.
 
