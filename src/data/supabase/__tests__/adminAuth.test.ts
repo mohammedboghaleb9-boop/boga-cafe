@@ -139,6 +139,19 @@ describe('admin sign-in (live site)', () => {
     expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(SECRET);
   });
 
+  it('forgets a setup left by a sign-out: the next admin\'s code goes to its own app', async () => {
+    const f: Fake = { role: 'owner' };
+    const { admin, mfa, calls } = await started(f);
+    await admin.signIn(creds);
+    const setting = mfa.setUp();
+    await admin.signOut(); // while the setup is on its way
+    expect(await setting).toBe('server');
+    f.factors = withApp();
+    await admin.signIn(creds);
+    expect(await mfa.verify('123456')).toBe('ok');
+    expect(calls).toContain('code app 123456');
+  });
+
   it('answers the same for a wrong, expired or unknown code; a code that cannot be right never reaches Auth', async () => {
     const answers = [];
     for (const error of [

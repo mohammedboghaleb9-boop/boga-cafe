@@ -110,6 +110,7 @@ export function createAdminAuth(client: () => Client, forget: () => void): Admin
       const factors = await db.auth.mfa.listFactors();
       if (factors.error) throw factors.error;
       userId = id;
+      settingUp = null;
       set({ state: 'second_factor', enrolled: factors.data.totp.length > 0 });
       return 'ok';
     }
@@ -215,6 +216,7 @@ export function createAdminAuth(client: () => Client, forget: () => void): Admin
     secondFactor: {
       async setUp(): Promise<TotpSetup | 'too_many' | 'server'> {
         if (session.state !== 'second_factor' || session.enrolled) return 'server';
+        const id = userId;
         const mfa = client().auth.mfa;
         try {
           // an app set up but never confirmed (a reload, a closed tab) is dropped first
@@ -227,6 +229,8 @@ export function createAdminAuth(client: () => Client, forget: () => void): Admin
           }
           const { data, error } = await mfa.enroll({ factorType: 'totp', issuer: TOTP_ISSUER });
           if (error) return authProblem(error) ?? 'server';
+          // signed out (or another account) meanwhile: this setup is not theirs; dropped at the next one
+          if (userId !== id || session.state !== 'second_factor') return 'server';
           settingUp = data.id;
           return { qrCode: data.totp.qr_code, secret: data.totp.secret };
         } catch (e) {
@@ -247,7 +251,11 @@ export function createAdminAuth(client: () => Client, forget: () => void): Admin
           const factorId = await factorForCode();
           if (!factorId) return 'server';
           const { error } = await client().auth.mfa.challengeAndVerify({ factorId, code });
-          if (error) return codeError(error);
+          if (error) {
+            // a refusal other than a wrong code (code only: nothing secret) leaves a trace
+            if (error.code !== 'mfa_verification_failed') console.error('admin code:', error.code ?? error.status);
+            return codeError(error);
+          }
           return await place(id);
         } catch (e) {
           // past the code but its place could not be read: the session (aal2) stays, "try again"

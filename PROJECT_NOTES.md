@@ -80,11 +80,12 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - **Workflow**: `fix/*`/`feat/*` branch, read-only review, CI green, `merge --no-ff`. No PRs unless asked. No secrets in the repo (Gmail/CallMeBot keys: Vercel settings only).
 - **Audit rule**: a rule counts as tested only if breaking it makes a test fail. The audit's own faults were re-run (code 3 of 58 survive, SQL 3 of 31; `docs/10` section 6).
 
-## Admin two-step verification: lost phone (owner steps)
-Supabase gives no recovery codes: at setup, scan the QR code on a second device too (the site says so). If every device is lost:
-1. supabase.com/dashboard → project `boga-cafe` → Authentication → Users → search the admin's email → open that user.
-2. In the user's panel, remove the MFA factor ("Remove MFA factors", then confirm). **Needs verification**: that button name is not in Supabase's docs; the documented way is the admin API `auth.admin.mfa.deleteFactor({ id, userId })` with the secret key, run from a trusted machine, never from the repo or a browser. Removing a verified factor signs that user out everywhere.
-3. The admin signs in with the password right away: the site shows the app setup (new QR code); scan it (two devices) and enter the code. Until then anyone with that password can set up their own app: change the password first if it may be known.
+## Admin two-step verification: lost phone, rollout (owner steps)
+Recovery codes are not used (experimental in supabase-js): at setup, scan the QR code on a second device too (the site says so). If every device is lost:
+1. If the phone or the password may be in someone else's hands, change that admin's password **first** (Dashboard → Authentication → Users → the user): per Auth's source this ends all their sessions; removing a factor only drops sessions to aal1, and an aal1 session with no factor may set up its own app. Tokens already issued stay valid until they expire (1 h by default; source, not checked on the project).
+2. Dashboard → project `boga-cafe` → Authentication → Users → search the email → open the user → remove the MFA factor ("Remove MFA factors", confirm). **Needs verification**: that button name is not in Supabase's docs; the documented way is the admin API `auth.admin.mfa.deleteFactor({ id, userId })` with the secret key, from a trusted machine, never from the repo or a browser.
+3. The admin signs in right away: the site shows the app setup (new QR code); scan it (two devices), enter the code.
+Rollout of migration `20261008154205_admin_aal2` (at merge): check first that TOTP is on (Dashboard → Authentication → Multi-Factor), else admins are locked out. Whoever sets up first owns an account's app: both owners set up right after, then check each has exactly one verified factor. Rollback = the old `is_admin()` body (`20260927000000_init.sql`, `is_admin`).
 
 ## Known issues (evidence in PROJECT_STATUS.html section 17)
 - **Hosting mismatch**: the site runs on Cloudflare Workers, `api/notify` is a Vercel function, so no message reaches WhatsApp/Gmail from the deployed site.
