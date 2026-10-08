@@ -1,4 +1,6 @@
 -- Smoke test of the BOGA CAFÉ schema. Every block raises an exception if a rule is broken.
+-- A signed-in user = request.jwt.claims, as the API sets it: the user (sub) and, for an
+-- admin, aal2 (second factor passed; supabase/tests/aal.sql tests aal1).
 \set ON_ERROR_STOP on
 set client_min_messages = warning;
 
@@ -128,7 +130,7 @@ select 'ok 4 - anon: catalog yes, orders no, own order page yes' as result;
 
 -- 5. Staff: cannot change prices, can cancel (stock returns once) ---------
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000002';
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000002", "aal": "aal2"}';
 do $$
 declare v_id uuid;
 begin
@@ -152,7 +154,7 @@ select 'ok 5 - staff cannot edit prices; cancel returns stock exactly once' as r
 
 -- 6. Owner adjusts stock; low-stock alert is queued ------------------------
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}';
 select public.adjust_stock('vietnam', -0.7, 'correction', 'inventaire');
 reset role;
 do $$ begin
@@ -196,7 +198,7 @@ select 'ok 7 - no negative, empty or free orders; numbering past 9999' as result
 
 -- 8. Stock moves only through the functions (never a direct UPDATE) ---------
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}';
 do $$ begin
   begin
     update public.origins set stock_kg = 999 where id = 'brazil';
@@ -217,7 +219,7 @@ do $$
 declare v_id uuid;
 begin
   select id into v_id from public.orders where number like 'BC-%-10000';
-  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true); -- staff
+  perform set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000002", "aal": "aal2"}', true); -- staff
   set local role authenticated;
   perform public.set_order_status(v_id, 'confirmed');
   begin perform public.set_order_status(v_id, 'in_production'); raise exception 'TEST FAILED: produced unpaid';
@@ -226,10 +228,10 @@ begin
   exception when others then if sqlerrm <> 'not_next' then raise; end if; end;
   begin perform public.set_payment_status(v_id, 'paid'); raise exception 'TEST FAILED: staff marked paid';
   exception when others then if sqlerrm <> 'forbidden' then raise; end if; end;
-  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', true); -- manager
+  perform set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000003", "aal": "aal2"}', true); -- manager
   begin perform public.set_payment_status(v_id, 'paid'); raise exception 'TEST FAILED: manager marked paid';
   exception when others then if sqlerrm <> 'forbidden' then raise; end if; end;
-  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true); -- owner
+  perform set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}', true); -- owner
   begin perform public.set_payment_status(v_id, 'refunded'); raise exception 'TEST FAILED: refunded unpaid';
   exception when others then if sqlerrm <> 'invalid_transition' then raise; end if; end;
   perform public.set_payment_status(v_id, 'paid');
@@ -243,7 +245,7 @@ select 'ok 9 - no production before payment; only the owner records payments' as
 
 -- 10. Bank details and rules: owner only; managers keep editing texts ---------
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000003';
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "aal": "aal2"}';
 do $$ begin
   begin
     update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"ATTACKER-RIB"') where id = 1;
@@ -253,7 +255,7 @@ do $$ begin
   end;
   update public.site_config set content = '{"heroTitle": {"fr": "Nouveau"}}' where id = 1;
 end $$;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}';
 update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"NEW-OWNER-RIB"') where id = 1;
 reset role;
 do $$ begin
@@ -286,7 +288,7 @@ select 'ok 11 - unpaid orders expire, stock returns once, server-only' as result
 
 -- 12. adjust_stock logs the change that really happened (never under 0) ------
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}';
 select public.adjust_stock('vietnam', -5, 'correction', 'casse');
 reset role;
 do $$ begin
@@ -301,7 +303,7 @@ do $$
 declare v_id uuid;
 begin
   select id into v_id from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer', 'Annule'), '', '', '');
-  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true); -- owner
+  perform set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}', true); -- owner
   set local role authenticated;
   perform public.set_order_status(v_id, 'cancelled');
   -- the cancel opened the stock gate for itself only: it is closed again right after
@@ -331,7 +333,7 @@ select 'ok 13 - cancelled orders: no late report, one refund, none mid-productio
 
 -- 14. Managers change the free-shipping threshold, never the contact details ----
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000003';
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "aal": "aal2"}';
 do $$ begin
   update public.site_config set settings = settings || '{"freeShippingOver": 600}' where id = 1;
   begin
@@ -350,7 +352,7 @@ select 'ok 14 - managers: free shipping yes, contact details no' as result;
 
 -- 15. A new origin created from the admin starts at 0 kg ----------------------
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000003';
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "aal": "aal2"}';
 do $$ begin
   begin
     insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg)
@@ -376,7 +378,7 @@ declare v_id uuid; v_before numeric;
 begin
   select id into v_id from public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'card', 'Rembourse'), '', '', '');
   v_before := (select stock_kg from public.origins where id = 'brazil');
-  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true); -- owner
+  perform set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}', true); -- owner
   set local role authenticated;
   perform public.set_payment_status(v_id, 'paid');      -- new → confirmed
   perform public.set_payment_status(v_id, 'refunded');  -- customer changed their mind
@@ -389,7 +391,7 @@ select 'ok 16 - a refund before production cancels the order and returns the sto
 
 -- 17. The free-shipping threshold stays a number ------------------------------
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000003'; -- manager
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "aal": "aal2"}'; -- manager
 do $$
 declare bad text;
 begin
@@ -438,7 +440,7 @@ select 'ok 18 - "I have paid" reaches the team once; unknown events cannot be qu
 
 -- 19. Staff cannot change an origin's price per kg (it prices every blend) ------
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000002'; -- staff
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000002", "aal": "aal2"}'; -- staff
 update public.origins set price_per_kg = 1 where id = 'brazil';
 do $$ begin
   begin
@@ -492,7 +494,7 @@ select 'ok 20 - B2B requests have the same length limits as orders; origins have
 -- 21. Stock and amounts are real numbers: 'NaN' is a valid numeric that sorts above
 --     every number, so "stock_kg >= 0" alone accepted it (audit H1) ---------------
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000002'; -- staff
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000002", "aal": "aal2"}'; -- staff
 do $$
 declare v text; before numeric := (select stock_kg from public.origins where id = 'vietnam');
 begin
@@ -668,7 +670,7 @@ begin
 end $$;
 
 -- Custom Blend: price recomputed from the origins, and the blend rules
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001'; -- owner changes the settings
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}'; -- owner changes the settings
 -- free delivery from the threshold itself (src/core/shipping.ts: subtotal >= freeShippingOver)
 update public.site_config set settings = settings || '{"freeShippingOver": 120}';
 do $$
@@ -769,7 +771,7 @@ set role authenticated;
 do $$
 declare r text;
 begin
-  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true); -- staff
+  perform set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000002", "aal": "aal2"}', true); -- staff
   perform public.set_order_status((select id from t23 where k = 'confirmed'), 'confirmed');
   -- staff cannot record money, nor cancel an order the customer says is paid
   begin perform public.set_payment_status((select id from t23 where k = 'reported'), 'paid'); r := 'accepted';
@@ -778,7 +780,7 @@ begin
   begin perform public.set_order_status((select id from t23 where k = 'reported'), 'cancelled'); r := 'accepted';
   exception when others then r := sqlerrm; end;
   if r <> 'owner_only' then raise exception 'TEST FAILED: staff cancelled a reported payment (%)', r; end if;
-  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true); -- owner
+  perform set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}', true); -- owner
   perform public.set_payment_status((select id from t23 where k = 'paid'), 'paid');
   perform public.set_payment_status((select id from t23 where k = 'refused'), 'failed');  -- found nothing on the account
   -- even the owner ends a paid order with a refund, not a plain cancel
@@ -910,7 +912,7 @@ begin
   -- each refused case must be a query that works for the owner: a typo or a missing
   -- row would otherwise pass as "refused"
   for c in select * from t24 where sane order by n loop
-    perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+    perform set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}', true);
     begin
       execute c.q into got;
       outcome := case when coalesce(got, 0) > 0 then 'some' else 'none' end;
@@ -921,8 +923,9 @@ begin
     if outcome <> 'some' then raise exception 'TEST BROKEN: "%" does nothing even for the owner (%)', c.q, outcome; end if;
   end loop;
   for c in select * from t24 order by n loop
-    perform set_config('request.jwt.claim.sub', case c.who when 'staff' then '00000000-0000-0000-0000-000000000002'
-      when 'manager' then '00000000-0000-0000-0000-000000000003' when 'customer' then '00000000-0000-0000-0000-000000000009' else '' end, true);
+    perform set_config('request.jwt.claims', case c.who when 'staff' then '{"sub": "00000000-0000-0000-0000-000000000002", "aal": "aal2"}'
+      when 'manager' then '{"sub": "00000000-0000-0000-0000-000000000003", "aal": "aal2"}'
+      when 'customer' then '{"sub": "00000000-0000-0000-0000-000000000009", "aal": "aal2"}' else '' end, true);
     execute case when c.who = 'anon' then 'set local role anon' else 'set local role authenticated' end;
     begin
       execute c.q into got;
@@ -1002,7 +1005,7 @@ do $$ begin
 end $$;
 reset role;
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001'; -- owner
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}'; -- owner
 do $$ begin
   begin
     perform public.admin_role();
@@ -1055,7 +1058,7 @@ select 'ok 26 - internal helpers closed to the API; B2B requests and rate limits
 -- 27. Slice 3b: the same order sent again with its key gives back the first order
 --     (no second row, stock deduction or message); without a key, as before ---------
 set role authenticated;
-set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001'; -- owner
+set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}'; -- owner
 select public.adjust_stock('brazil', 5, 'restock', 'test 27');
 reset role;
 do $$
