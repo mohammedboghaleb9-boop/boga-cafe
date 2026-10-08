@@ -122,6 +122,25 @@
 .admin-login-title {
   font-size: 1.35rem;
 }
+/* the authenticator app's setup: the QR code keeps its white quiet zone in the dark theme */
+.totp-qr {
+  align-self: center;
+  inline-size: 180px;
+  block-size: 180px;
+  padding: 8px;
+  background: #fff;
+  border-radius: 8px;
+}
+.totp-key {
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.totp-code {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2em;
+}
 
 .kpis {
   display: grid;

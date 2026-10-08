@@ -82,13 +82,16 @@ export interface Api {
 
 /**
  * Where the admin's sign-in stands. 'denied' = the password was right but the account
- * is not an admin (is_admin() false): it has been signed out again. `problem` on
+ * is not an admin: it has been signed out again. 'second_factor' = an admin account
+ * past its password (aal1): the panel waits for the authenticator app's code, after
+ * setting the app up when the account has none yet (`enrolled` false). `problem` on
  * 'signed_out': a kept session could not be checked (no connection); it stays kept.
  */
 export type AdminSession =
   | { state: 'loading' }
   | { state: 'signed_out'; problem?: 'server' }
   | { state: 'denied' }
+  | { state: 'second_factor'; enrolled: boolean }
   | { state: 'signed_in'; role: AdminRole };
 
 /** Prototype: a role and the public demo password. Live site: the admin's own account. */
@@ -101,6 +104,25 @@ export type SignInInput = { role: AdminRole; password: string } | { email: strin
  */
 export type SignInResult = 'ok' | 'denied' | 'credentials' | 'too_many' | 'server';
 
+/** The authenticator app to set up: shown once, kept nowhere (not stored, never logged). */
+export interface TotpSetup {
+  /** The QR code, an image URL (data:image/svg+xml). */
+  qrCode: string;
+  /** The same secret as text, for an app that cannot scan. */
+  secret: string;
+}
+
+/** One answer for every refused code (wrong, expired, unknown), as for the password. */
+export type CodeResult = 'ok' | 'denied' | 'wrong_code' | 'too_many' | 'server';
+
+/** The second sign-in step (live site): the panel opens only at aal2. */
+export interface SecondFactor {
+  /** At 'second_factor' with `enrolled` false: a new app setup (an unfinished one is dropped). */
+  setUp(): Promise<TotpSetup | 'too_many' | 'server'>;
+  /** The 6-digit code: finishes the setup, or the sign-in when the app was set up before. */
+  verify(code: string): Promise<CodeResult>;
+}
+
 export interface AdminAuth {
   session: ReadStore<AdminSession>;
   signIn(input: SignInInput): Promise<SignInResult>;
@@ -111,6 +133,8 @@ export interface AdminAuth {
   retry(): void;
   /** The prototype's public password (demo build only). */
   demoPassword?: string;
+  /** Live site only: the prototype has no second step. */
+  secondFactor?: SecondFactor;
 }
 
 /** Read side of a backend: the whole state, and a way to hear about changes. */

@@ -22,8 +22,8 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 - **Previews** (other branches): failed until 2026-10-07 ("name must match", workers-sdk#15682), fixed by `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload` (the dashboard preview command set on 2026-10-07; **keep it**); they **pass with URLs** (build d6e0c6cb: a Version Preview URL and the alias `feat-p5-s5-admin-signin-boga-cafe.mohammedboghaleb9.workers.dev`).
   Version URLs were already on (`preview_urls: true` only states it); the Cloudflare bot's "No Preview URL" is wrong: **the build log is the source of truth**. Later edits to the Previews Base fields (Build command, Preview command, Variables) never reached a build: 35dba62d, bbe92d7c and their retries all ran `npm run build` + that `env -u` upload with "Build variables: None".
   So the preview values come from the repo: in Workers Builds (`WORKERS_CI=1`) on a branch other than `main` (`WORKERS_CI_BRANCH`; `main` is hard-coded in `vite.config.ts`), the default build uses mode `workers-preview` = `.env.workers-preview` (live Supabase URL, publishable key, Turnstile test site key; public only; a `VITE_*` already in the environment wins) and logs "Workers Builds: preview values ON|OFF (branch …)" (no line = not detected). Production, GitHub CI, local builds: same dist byte for byte (checked 2026-10-08). Confirmed on Workers Builds: the slice 5 preview ran on the live project (owner signed in there) and production build da4f77e8 logged OFF. The Previews Base dashboard fields are not used. Previews run unmerged code on the live database: once admin writes exist (slices 8-10), signing in there writes real data (decision due before slice 8, What is next).
-- **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b),
-  catalog from `seed.sql`, two owners (one signed in on the slice 5 preview, 2026-10-08; no 2FA yet), `storefront` **v6** = slice 4 build (`5acfad6`), no `TURNSTILE_SECRET_KEY`: every form refused (500) until slice 11, no `save_product` yet. Rollout: migrations, then the function.
+- **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = the first 9 of `supabase/migrations` (2 from slice 3b),
+  catalog from `seed.sql`, two owners (one signed in on the slice 5 preview, 2026-10-08; no 2FA yet), `storefront` **v6** = slice 4 build (`5acfad6`), no `TURNSTILE_SECRET_KEY`: every form refused (500) until slice 11, no `save_product` yet. Rollout: migrations, then the function. Slice 6 migration `20261008154205_admin_aal2` **not applied** (at merge, after approval): from then on a session without the code has no admin rights. Auth (2026-10-08): 0 MFA factors, 2 owners in `admin_users`.
 
 ## Stack
 Open branches: not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
@@ -55,25 +55,17 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - **"I paid" is a claim, not money.** Only the owner marks paid. A paid order ends with a refund, not a plain cancel; a reported payment can be cancelled only by the owner.
 - **Payment methods stay closed until real details exist** (`payeeReady`, `invalid_order:payment_details`). Nothing is invented for the RIB or Cash Plus.
 - **One B2B threshold** in settings; texts read it. **Samples are paid bags, not a request form** (owner, 2026-09-30): a B2B blend's 250 g / 500 g bag is an ordinary order (paid before prep, delivery as usual); its 1 kg bag is refused in a cart at or under the threshold (`isBulkOnly` in `src/core/cart.ts`, line problem `bulk_only`; `check_order` raises `invalid_order:bulk_only`, since an order is never above the threshold). Why: no free-sample abuse to police, one payment path, ~26 files of sample flow removed. The 250 g prices (55 / 45 / 65 DH) are examples like the rest of the catalog. **Page titles, skip link, Escape closes the menu** (a11y findings).
-- **Orders and B2B requests go through the server** (`storefront` function, `POST …/storefront/order|quote`): it
-  rebuilds every figure from the database with `src/core`, then `check_order` checks them again and `commit_*` saves,
-  numbers and queues the messages in one transaction. B2B request building lives in `src/core/requests.ts` so the site
-  and the server build the same thing. Answers: 400 for bodies the forms never send (texts over `TEXT_MAX` included),
-  200 `{ok:false, errors}` for what the customer can fix, `too_many`, `captcha`.
-- **Limits against fake orders** (an unpaid order holds stock 48 h, `src/server/guard.ts`): a per-connection
-  budget of 120 requests/h before the catalog is read; once an order passes every check, 5/h per phone, 10/h and
-  20/day per connection (B2B requests: 3/day per phone, 20/day per connection). An IPv6 visitor counts by its /64.
-  No cap on open unpaid orders per phone (tried, then removed after the second review): phones are not verified, so
-  two cheap orders would lock a real customer out for 48 h, unseen; a fake order is visible and the owner frees its
-  stock by cancelling it. What this does not stop: many phones and many connections. Turnstile is the real defence
-  (slice 4: checked before anything else); the 48 h expiry bounds the damage of what gets through.
-  The visitor IP is Cloudflare's `cf-connecting-ip` only (no header = no per-connection limit, logged); checked on the
-  live project: requests land in one bucket with or without a forged `x-forwarded-for`, and a forged
-  `cf-connecting-ip` is refused by Cloudflare (403). Buckets carry an HMAC of the IP keyed with the server secret key
-  (rotating that key resets the buckets; a separate secret would need the owner to add it in the dashboard).
-  One row per bucket (`rate_limits`), the upsert locks it: 20 parallel calls with limit 5 let exactly 5 through
-  (`race.sh`, in CI). Why not one row per hit with an advisory lock: the tool that applies SQL to the live project
-  refused that function's text, and one row per bucket is simpler anyway.
+- **Orders and B2B requests go through the server** (`storefront` function, `POST …/storefront/order|quote`): it rebuilds every figure from the database with `src/core`, then `check_order` checks them again and
+  `commit_*` saves, numbers and queues the messages in one transaction. B2B request building lives in `src/core/requests.ts` so the site and the server build the same thing. Answers: 400 for bodies the forms
+  never send (texts over `TEXT_MAX` included), 200 `{ok:false, errors}` for what the customer can fix, `too_many`, `captcha`.
+- **Limits against fake orders** (an unpaid order holds stock 48 h, `src/server/guard.ts`): a per-connection budget of 120 requests/h before the catalog is read; once an order passes every check, 5/h per phone,
+  10/h and 20/day per connection (B2B requests: 3/day per phone, 20/day per connection). An IPv6 visitor counts by its /64. No cap on open unpaid orders per phone (tried, then removed after the second review):
+  phones are not verified, so two cheap orders would lock a real customer out for 48 h, unseen; a fake order is visible and the owner frees its stock by cancelling it. What this does not stop: many phones and
+  many connections. Turnstile is the real defence (slice 4: checked before anything else); the 48 h expiry bounds the damage of what gets through. The visitor IP is Cloudflare's `cf-connecting-ip` only (no
+  header = no per-connection limit, logged); checked on the live project: requests land in one bucket with or without a forged `x-forwarded-for`, and a forged `cf-connecting-ip` is refused by Cloudflare (403).
+  Buckets carry an HMAC of the IP keyed with the server secret key (rotating that key resets the buckets; a separate secret would need the owner to add it in the dashboard). One row per bucket (`rate_limits`),
+  the upsert locks it: 20 parallel calls with limit 5 let exactly 5 through (`race.sh`, in CI). Why not one row per hit with an advisory lock: the tool that applies SQL to the live project refused that
+  function's text, and one row per bucket is simpler anyway.
 - **Card stored off in the live database** until the CMI callback exists, so `check_order` itself refuses a card
   order nobody could pay; the server also never offers it. **Turnstile (slice 4)**: the function checks the token first (nothing read or counted
   before); no secret, or a Cloudflare test secret, = every form refused (500). Widget only in `supabase` mode (`src/shared/ui/Captcha.tsx`, dark, compact under 300 px, "try again"); a resend needs a fresh token. E2E waits for `.captcha[data-solved]` before a submit (it raced the token: CI flake 2026-10-07).
@@ -83,10 +75,16 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   `tests/architecture.test.ts` refuses a page importing a backend. The Supabase backend fills the same `DbState`
   (store approach from `map-test`, owner approved), so storefront pages stay unchanged. Admin save buttons go through
   `useAction` (one call at a time); busy = `aria-disabled`, not `disabled`, so keyboard focus stays (a review found it lost).
-- **Admin sign-in (slice 5)**: `Backend.admin`. Demo: role picker (`src/data/demo/session.ts`). Live: Supabase Auth email + password, own client (`boga-admin-auth`: the shop stays a visitor);
-  admin = `is_admin()` true + own `admin_users` role, else signed out and "no access"; one message for every refused email/password. No sign-up/reset UI; 2FA = slice 6. Tested live by the owner on the preview (2026-10-08): real owner account, kept after reload, sign-out, wrong password = generic message. Sign-out = this browser only (scope local; removed by hand when supabase-js cannot). Browser-only build: no-admin stub, no demo password (`check-real-build`).
+- **Admin sign-in (slices 5-6)**: `Backend.admin`. Demo: role picker (`src/data/demo/session.ts`). Live: Supabase Auth email + password, own client (`boga-admin-auth`: the shop stays a visitor);
+  an account with no own `admin_users` row (readable at aal1) is signed out at once ("no access"); an admin gets the TOTP step (slice 6, `AdminSecondFactor.tsx`): the app setup (QR code + key, shown once, kept nowhere; an unfinished setup is dropped) or the code; the panel opens only at `aal2` with `is_admin()` true (migration `20261008154205_admin_aal2`: `is_admin()` needs `aal = 'aal2'`, and every admin policy and function goes through it). One message for every refused email/password, one for every refused code; a code that is not 6 digits never reaches Auth. No sign-up/reset UI. Tested live by the owner on the preview (2026-10-08): real owner account, kept after reload, sign-out, wrong password = generic message. Sign-out = this browser only (scope local; removed by hand when supabase-js cannot). Browser-only build: no-admin stub, no demo password (`check-real-build`).
 - **Workflow**: `fix/*`/`feat/*` branch, read-only review, CI green, `merge --no-ff`. No PRs unless asked. No secrets in the repo (Gmail/CallMeBot keys: Vercel settings only).
 - **Audit rule**: a rule counts as tested only if breaking it makes a test fail. The audit's own faults were re-run (code 3 of 58 survive, SQL 3 of 31; `docs/10` section 6).
+
+## Admin two-step verification: lost phone (owner steps)
+Supabase gives no recovery codes: at setup, scan the QR code on a second device too (the site says so). If every device is lost:
+1. supabase.com/dashboard → project `boga-cafe` → Authentication → Users → search the admin's email → open that user.
+2. In the user's panel, remove the MFA factor ("Remove MFA factors", then confirm). **Needs verification**: that button name is not in Supabase's docs; the documented way is the admin API `auth.admin.mfa.deleteFactor({ id, userId })` with the secret key, run from a trusted machine, never from the repo or a browser. Removing a verified factor signs that user out everywhere.
+3. The admin signs in with the password right away: the site shows the app setup (new QR code); scan it (two devices) and enter the code. Until then anyone with that password can set up their own app: change the password first if it may be known.
 
 ## Known issues (evidence in PROJECT_STATUS.html section 17)
 - **Hosting mismatch**: the site runs on Cloudflare Workers, `api/notify` is a Vercel function, so no message reaches WhatsApp/Gmail from the deployed site.
@@ -147,4 +145,5 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   browser shows the live shop and reads an order by its link. Not checked: admin reads (slice 7).
 - Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only. Q1 "yes" read as the default (roasted stock); Q21 Vercel free plan for a commercial site; Q23/Q24 Cash Plus beneficiary data, can a bank transfer be recalled after it lands.
 - Turnstile: real widget and siteverify never seen from here (Cloudflare blocked; e2e stand-in). Admin sign-in: tested live by the owner on the preview (2026-10-08); the second owner's sign-in not reported.
+- TOTP (slice 6): Supabase docs say TOTP MFA is on by default on every project; my tools cannot read Auth's MFA settings (owner: Dashboard → Authentication → Multi-Factor). A real authenticator app never used here (Auth faked in the browser).
 - The Stop hook firing in a real session was not observed (script tested by hand). `map-test` @ `f9ba067`: donor only (still to port: `save_product`, admin mappers; `Captcha.tsx` ported in slice 4).

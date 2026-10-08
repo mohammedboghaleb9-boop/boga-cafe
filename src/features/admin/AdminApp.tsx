@@ -1,12 +1,14 @@
 /**
  * Admin Panel: sign-in, layout and one route per section.
  * Each section is a folder next to this file. Signed out, any /admin address shows
- * the sign-in form (then that page); an account that is not an admin gets "no access".
+ * the sign-in form (then that page); an account that is not an admin gets "no access";
+ * on the live site an admin past the password gets the authenticator app's code first.
  */
 import { Navigate, Route, Routes } from 'react-router';
 import { AdminLayout } from './AdminLayout';
 import { AdminDenied } from './AdminDenied';
 import { AdminLogin } from './AdminLogin';
+import { AdminSecondFactor } from './AdminSecondFactor';
 import { B2BRequestsPage } from './b2b/B2BRequestsPage';
 import { ContentPage } from './content/ContentPage';
 import { DashboardPage } from './dashboard/DashboardPage';
@@ -54,6 +56,7 @@ export function AdminApp() {
   // the kept session is being checked: no form flashing by
   if (session.state === 'loading') return <AdminChecking />;
   if (session.state === 'denied') return <AdminDenied />;
+  if (session.state === 'second_factor') return <AdminSecondFactor />;
   if (session.state !== 'signed_in') return <AdminLogin />;
   return (
     <Routes>
