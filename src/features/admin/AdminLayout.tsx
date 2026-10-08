@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { adminAuth, api } from '@/data/api';
 import { DEMO_DATA, SERVER_DATA } from '@/data/mode';
-import { useDb } from '@/data/hooks';
+import { useAdminDataStatus, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { LanguageSwitcher } from '@/shared/layout/Header';
 import { Logo } from '@/shared/layout/Logo';
@@ -30,7 +30,8 @@ const icons: Record<Section, IconName> = {
 export function AdminLayout() {
   const { t } = useI18n();
   const role = useAdminRole()!;
-  const db = useDb();
+  const db = useAdminDb();
+  const { status, reload } = useAdminDataStatus();
   const { pathname } = useLocation();
   const current = pathname.split('/')[2] as Section | undefined;
   usePageTitle(`${(current && t.admin.nav[current]) || t.admin.nav.dashboard} · ${t.nav.admin}`);
@@ -88,9 +89,30 @@ export function AdminLayout() {
         </div>
       </aside>
       <main className="admin-main" id="main" tabIndex={-1}>
-        {/* live site: signed in, but the admin reads and writes connect in slices 7-10 */}
-        {SERVER_DATA && <p className="notice notice-warn">{t.admin.liveDataSoon}</p>}
-        <Outlet />
+        {/* live site: the admin's data is read (slice 7); changes connect in slices 8-10 */}
+        {SERVER_DATA && (
+          <div className="admin-live-bar">
+            <p className="notice notice-warn small">{t.admin.liveReadOnly}</p>
+            <button type="button" className="btn btn-ghost btn-sm" aria-disabled={status === 'loading' || undefined} onClick={() => status !== 'loading' && reload()}>
+              {t.admin.refresh}
+            </button>
+          </div>
+        )}
+        {status === 'ready' ? (
+          <Outlet />
+        ) : status === 'loading' ? (
+          <p className="muted" role="status">
+            {t.common.loading}
+          </p>
+        ) : (
+          // a failed read or a session the database no longer counts as an admin: never an empty list
+          <div className="stack" role="alert">
+            <p className="notice notice-bad">{t.admin.dataFailed}</p>
+            <button type="button" className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={reload}>
+              {t.common.retry}
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );

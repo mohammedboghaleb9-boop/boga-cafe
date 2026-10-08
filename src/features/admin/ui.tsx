@@ -170,6 +170,7 @@ export function ConfirmButton({
   onConfirm,
   className = 'btn btn-danger btn-sm',
   busy = false,
+  disabled = false,
 }: {
   label: string;
   confirmLabel: string;
@@ -177,12 +178,15 @@ export function ConfirmButton({
   className?: string;
   /** A call is saving: the button keeps its focus (aria-disabled, not disabled) and ignores clicks. */
   busy?: boolean;
+  /** Off: not possible here (see ComingSoon). */
+  disabled?: boolean;
 }) {
   const [armed, setArmed] = useState(false);
   return (
     <button
       type="button"
       className={className}
+      disabled={disabled}
       aria-disabled={busy || undefined}
       onClick={() => !busy && (armed ? (setArmed(false), onConfirm()) : setArmed(true))}
       onBlur={() => setArmed(false)}
@@ -208,12 +212,35 @@ export function useSavedFlash(): [boolean, () => void] {
   ];
 }
 
-export function Switch({ checked, onChange, label, name, id }: { checked: boolean; onChange: (v: boolean) => void; label: string; name?: string; id?: string }) {
+export function Switch({
+  checked,
+  onChange,
+  label,
+  name,
+  id,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  name?: string;
+  id?: string;
+  disabled?: boolean;
+}) {
   return (
     <label className="switch">
-      <input id={id} type="checkbox" checked={checked} aria-label={name && label ? `${name} · ${label}` : name} onChange={(e) => onChange(e.target.checked)} />
+      <input id={id} type="checkbox" checked={checked} disabled={disabled} aria-label={name && label ? `${name} · ${label}` : name} onChange={(e) => onChange(e.target.checked)} />
       <span className="switch-track" />
       <span className="small">{label}</span>
     </label>
   );
+}
+
+/**
+ * Next to changes the live site cannot save yet (slices 8-10): their controls are
+ * off (disabled), so nothing looks active and silently does nothing.
+ */
+export function ComingSoon() {
+  const { t } = useI18n();
+  return <p className="notice small coming-soon">{t.admin.comingSoon}</p>;
 }

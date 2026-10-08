@@ -4,8 +4,12 @@
  */
 import {
   PACK_SIZES,
+  type BusinessType,
   type Locale,
   type Localized,
+  type NotificationChannel,
+  type NotificationEvent,
+  type NotificationLog,
   type Order,
   type OrderLine,
   type OrderStatus,
@@ -15,10 +19,14 @@ import {
   type PaymentMethodId,
   type PaymentStatus,
   type Product,
+  type QuoteRequest,
+  type QuoteStatus,
   type Settings,
   type ShippingRate,
   type SiteContent,
   type StockDeduction,
+  type StockMovement,
+  type StockReason,
 } from '@/core/types';
 import type { FunctionReturns, Json, Tables } from './database.types';
 
@@ -173,15 +181,60 @@ export const publicOrderFromRow = (id: string, r: PublicOrderRow): Order => ({
   stockDeductions: [],
 });
 
+export type OrderEventRow = Pick<Tables<'order_events'>, 'at' | 'label'>;
+
 /**
  * A whole order row, as the server reads it with its secret key (the storefront
- * function gives a repeated submission its saved order). Its events are not read.
+ * function gives a repeated submission its saved order) or an admin reads it
+ * with its events (oldest first, as the order page lists them).
  */
-export const orderFromRow = (r: Tables<'orders'>): Order => ({
+export const orderFromRow = (r: Tables<'orders'>, events: OrderEventRow[] = []): Order => ({
   ...orderFigures(r),
   id: r.id,
   locale: r.locale as Locale,
   customer: { fullName: r.customer_name, phone: r.phone, email: r.email, cityId: r.city_id, address: r.address, company: r.company, notes: r.notes },
   paymentRef: r.payment_ref ?? undefined,
   stockDeductions: (r.stock_deductions as unknown as StockDeduction[]).map((d) => ({ originId: d.originId, kg: Number(d.kg) })),
+  history: events.map((e) => ({ at: e.at, label: e.label })).sort((a, b) => a.at.localeCompare(b.at)),
+});
+
+export const quoteFromRow = (r: Tables<'quote_requests'>): QuoteRequest => ({
+  id: r.id,
+  number: r.number,
+  createdAt: r.created_at,
+  businessType: r.business_type as BusinessType,
+  company: r.company,
+  contactName: r.contact_name,
+  phone: r.phone,
+  email: r.email,
+  cityId: r.city_id,
+  lines: r.lines as unknown as OrderLine[],
+  weightKg: Number(r.weight_kg),
+  indicativeTotal: Number(r.indicative_total),
+  notes: r.notes,
+  status: r.status as QuoteStatus,
+  finalPrice: r.final_price === null ? null : Number(r.final_price),
+  adminNotes: r.admin_notes,
+});
+
+export const stockMovementFromRow = (r: Tables<'stock_movements'>): StockMovement => ({
+  id: String(r.id),
+  at: r.at,
+  originId: r.origin_id,
+  deltaKg: Number(r.delta_kg),
+  reason: r.reason as StockReason,
+  ref: r.ref,
+  note: r.note,
+});
+
+/** A message the database queued for the team (notification_outbox): the sender (phase 4) sends it. */
+export const notificationFromRow = (r: Tables<'notification_outbox'>): NotificationLog => ({
+  id: String(r.id),
+  at: r.created_at,
+  channel: r.channel as NotificationChannel,
+  event: r.event as NotificationEvent,
+  to: r.recipient,
+  subject: r.subject,
+  body: r.body,
+  status: r.status as NotificationLog['status'],
 });

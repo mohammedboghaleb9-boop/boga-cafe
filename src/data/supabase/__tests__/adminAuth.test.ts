@@ -7,7 +7,7 @@
 import { AuthApiError, AuthRetryableFetchError } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdminSession } from '../../types';
-import { createAdminAuth } from '../adminAuth';
+import { createAdminAuth, tokenLevel } from '../adminAuth';
 import type { Client } from '../client';
 
 const USER = 'c5f75f59-d8cc-4e9b-abb1-b1062867d558';
@@ -38,7 +38,7 @@ interface Fake {
 
 function fakeClient(f: Fake) {
   const calls: string[] = [];
-  let onChange: ((event: string, s: { user: { id: string } } | null) => void) | undefined;
+  let onChange: ((event: string, s: { user: { id: string }; access_token?: string } | null) => void) | undefined;
   const user = { id: USER };
   f.factors ??= [];
   const totp = (all: Factor[]) => all.map((x) => ({ ...x, factor_type: 'totp' }));
@@ -92,7 +92,7 @@ function fakeClient(f: Fake) {
       return q;
     }),
   } as unknown as Client;
-  return { client, auth, calls, fire: (event: string, id?: string) => onChange?.(event, id ? { user: { id } } : null) };
+  return { client, auth, calls, fire: (event: string, id?: string, token?: string) => onChange?.(event, id ? { user: { id }, access_token: token } : null) };
 }
 
 /** The admin auth, already listened to (which starts the check of a kept session). */
@@ -310,6 +310,23 @@ describe('kept session (next visit)', () => {
       fire('SIGNED_OUT');
       expect(admin.session.get()).toEqual({ state: 'signed_out' });
     }
+  });
+
+  it('closes the panel when a refreshed token lost the second factor (the app removed), not at aal2', async () => {
+    const token = (aal: string) => ['e30', btoa(JSON.stringify({ sub: USER, aal })).replace(/=+$/, ''), 'c2ln'].join('.');
+    expect(tokenLevel(token('aal1'))).toBe('aal1');
+    expect(tokenLevel('not a token')).toBeNull();
+    const f: Fake = { kept: true, aal: 'aal2', role: 'owner', factors: withApp() };
+    const { admin, fire, calls } = await started(f);
+    expect(admin.session.get()).toEqual({ state: 'signed_in', role: 'owner' });
+    const asked = calls.length;
+    fire('TOKEN_REFRESHED', USER, token('aal2'));
+    await new Promise((r) => setTimeout(r, 5));
+    expect(calls.length).toBe(asked); // still aal2: nothing to check
+    expect(admin.session.get()).toEqual({ state: 'signed_in', role: 'owner' });
+    f.aal = 'aal1';
+    fire('TOKEN_REFRESHED', USER, token('aal1'));
+    await vi.waitFor(() => expect(admin.session.get()).toEqual({ state: 'second_factor', enrolled: true }));
   });
 
   it('starts no Auth client for a visitor who never opens the panel', () => {

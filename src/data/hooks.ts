@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { indexOrigins } from '@/core/recipe';
 import { backend } from './backend';
 import { SERVER_DATA } from './mode';
+import type { AdminWriteArea } from './types';
+import type { DbState } from './state';
 
-const { db, status } = backend;
+const { db, status, adminData } = backend;
 
 /** Whole state; re-renders when anything changes. */
 export const useDb = () => useSyncExternalStore(db.subscribe, db.get, db.get);
 
-export function useCatalog() {
-  const s = useDb();
+function useCatalogOf(s: DbState) {
   return useMemo(
     () => ({
       products: [...s.products].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -20,7 +21,25 @@ export function useCatalog() {
   );
 }
 
+export const useCatalog = () => useCatalogOf(useDb());
+
 export const useSettings = () => useDb().settings;
+
+/**
+ * The Admin Panel's state: on the live site, what the admin's session reads
+ * (every order, inactive products…), apart from the shop's copy; in the
+ * prototype, the same browser store.
+ */
+export const useAdminDb = () => useSyncExternalStore(adminData.db.subscribe, adminData.db.get, adminData.db.get);
+export const useAdminCatalog = () => useCatalogOf(useAdminDb());
+
+/** Whether the admin data has arrived, and a way to read it again. */
+export function useAdminDataStatus() {
+  return { status: useSyncExternalStore(adminData.status.subscribe, adminData.status.get, adminData.status.get), reload: adminData.reload };
+}
+
+/** Whether the panel can save this part yet (live site: slices 8-10). */
+export const canWrite = (area: AdminWriteArea) => backend.adminWrites.includes(area);
 
 /** The admin's sign-in state (starts the live session check on first use). */
 export const useAdminSession = () => useSyncExternalStore(backend.admin.session.subscribe, backend.admin.session.get, backend.admin.session.get);

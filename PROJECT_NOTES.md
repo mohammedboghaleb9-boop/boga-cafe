@@ -38,7 +38,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - `src/features/` one folder per section: home, shop, product, single-origin, custom-blend, b2b, cart, checkout, contact, admin.
 - `src/services/` notifications and payments adapters; `src/shared/` layout, UI, cart state; `src/i18n/` AR/FR/EN dictionaries.
 - `src/server/` storefront server logic (parse, guard = limits + Turnstile, prepare, storefront), unit tested; bundled into `supabase/functions/storefront/dist/index.js` by `scripts/build-functions.mjs` (not committed).
-- `src/data/supabase/` types, row mappers, catalog loader (shared with the function); `store.ts`, `index.ts`, `api.ts`, `storefront.ts`, `orderCache.ts`, `adminAuth.ts`: the site's Supabase backend (catalog, orders, B2B, admin sign-in; admin data calls throw "not wired yet").
+- `src/data/supabase/` types, row mappers, catalog loader (shared with the function); `store.ts`, `index.ts`, `api.ts`, `storefront.ts`, `orderCache.ts`, `adminAuth.ts`, `adminData.ts`: the site's Supabase backend (catalog, orders, B2B, admin sign-in, admin reads; admin writes throw "not wired yet").
 - `api/` notification function + tests. `supabase/migrations/` schema, `supabase/tests/` smoke, parity, race, `supabase/seed.sql` (from `scripts/seed-sql.mjs`), `supabase/config.toml`.
 - `e2e/` Playwright; `tests/` architecture (section boundaries), SQL parity generator, notify contract.
 - `scripts/check-real-build.mjs`, `docs/` (Arabic, 01-10), `brand/`, `public/`.
@@ -77,6 +77,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   `useAction` (one call at a time); busy = `aria-disabled`, not `disabled`, so keyboard focus stays (a review found it lost).
 - **Admin sign-in (slices 5-6)**: `Backend.admin`. Demo: role picker (`src/data/demo/session.ts`). Live: Supabase Auth email + password, own client (`boga-admin-auth`: the shop stays a visitor);
   an account with no own `admin_users` row (readable at aal1) is signed out at once ("no access"); an admin gets the TOTP step (slice 6, `AdminSecondFactor.tsx`): the app setup (QR code + key, shown once, kept nowhere; an unfinished setup is dropped) or the code; the panel opens only at `aal2` with `is_admin()` true (migration `20261008205033_admin_aal2`, live: `is_admin()` needs `aal = 'aal2'`, and every admin policy and function goes through it). One message for every refused email/password, one for every refused code; a code that is not 6 digits never reaches Auth. No sign-up/reset UI. Tested live by the owner on the preview (2026-10-08): real owner account, kept after reload, sign-out, wrong password = generic message. Sign-out = this browser only (scope local; removed by hand when supabase-js cannot). Browser-only build: no-admin stub, no demo password (`check-real-build`).
+- **Admin reads (slice 7)**: `Backend.adminData` (`adminData.ts`), apart from the shop's copy: at `signed_in` (aal2) the admin's own session reads orders + `order_events` (embedded), `quote_requests`, `stock_movements`, the catalog incl. inactive, `notification_outbox` (owner/manager), `admin_config` (owner); newest 1000 orders/requests, 200 movements/messages. RLS answers a non-admin with **empty rows, not an error** (checked live: owner at aal1 reads 0 orders), so `is_admin()` is asked **after** the reads: false = error screen + one `retry()` of the sign-in (aal1 → code, no row → "no access"). A refreshed token without `aal2` (`TOKEN_REFRESHED`) sends the panel back to the code. Data cleared at sign-out, kept in memory only; errors log code + message only. Pages read `useAdminDb`/`useAdminCatalog`; layout shows loading / error ("try again") / page, plus "Refresh" (no realtime). Writes: `Backend.adminWrites` (demo: all, live: none) → `canWrite(area)`; every control off (`disabled`, or a disabled fieldset) with the `ComingSoon` note; e2e checks no enabled control is left on any live page.
 - **Workflow**: `fix/*`/`feat/*` branch, read-only review, CI green, `merge --no-ff`. No PRs unless asked. No secrets in the repo (Gmail/CallMeBot keys: Vercel settings only).
 - **Audit rule**: a rule counts as tested only if breaking it makes a test fail. The audit's own faults were re-run (code 3 of 58 survive, SQL 3 of 31; `docs/10` section 6).
 
@@ -97,7 +98,6 @@ Rollout of migration `20261008205033_admin_aal2` (done 2026-10-08): TOTP was on 
   for HTTP checks (the container's network policy now refuses `*.supabase.co`, 2026-10-07: the owner can allow it in the environment settings).
 - pg_net (in `public`, advisor warning): Supabase grants `net.*` to PUBLIC as `supabase_admin`; `postgres` cannot revoke it (`pg_net_private` had no effect).
   `net` is not exposed through the API. Moving it needs a DROP the tool here cannot run: owner can toggle pg_net off/on (Dashboard → Database → Extensions).
-- Leaked password protection: Pro plan only, skipped (long passwords + 2FA). `skip locked` (expiry): untested under load.
 - Supabase mode (slice 3): orders/B2B via `storefront` (network/4xx/5xx/unreadable = `server`); order page: tab copy (sessionStorage) else
   `get_order_public` (no phone: no message); "I have paid" = RPC; `deliver` off. Real orders refused today (`payment_method`, correct). A lost answer
   shows `server`; 3b's key makes the retry get the saved order (`orderKey.ts`: per tab, kept 24 h). supabase-js retries a failed GET.
@@ -105,7 +105,7 @@ Rollout of migration `20261008205033_admin_aal2` (done 2026-10-08): TOTP was on 
   B2B form replaced by a notice (a crafted B2B body just drops the line). Origin emptied between check and commit = `out_of_stock`.
 - Before the Supabase writes (slices 8-10): admin "saved" flash shows even when refused; a failed `useAction` call is unhandled; shipping rows,
   B2B notes and the stock blend switch save on every change without waiting (would race over the network). No Storage slice (owner, below).
-- `api/notify` rate limit is in memory per instance. Messages are written by the browser; the server checks shape only.
+- `api/notify` rate limit is in memory per instance. Messages are written by the browser; the server checks shape only. Leaked password protection: Pro plan only, skipped (long passwords + 2FA). `skip locked` (expiry): untested under load.
 - A lone surrogate or NUL in a customer text: the storefront function refuses it (400, `src/server/parse.ts`, tested); the browser-only demo build does not check it.
 - The status hook treats `CLAUDE.md`, `README.md`, `docs/*` as code. Browser tests: Chromium only, English not in a browser, 768 px never checked.
 
@@ -143,7 +143,7 @@ Rollout of migration `20261008205033_admin_aal2` (done 2026-10-08): TOTP was on 
 - Paid samples: tested in core (3 mutants caught), SQL (2 mutants caught), parity (42 orders, 11 B2B 250/500 g lines) and browser screenshots at 390 px (fr, ar); the `bulk_only` text in English was not seen in a browser.
 - On real Supabase, checked: schema byte-identical to the files, `set_order_status` as the owner cancels and returns stock, `check_order` accepts an
   order built by `src/core` and refuses closed methods, the storefront function end to end. Anon over HTTP (2026-10-06): 10 products, 6 origins, 20 cities, 2 methods, 1 config; 0 orders/requests/messages/admins; the supabase build in a
-  browser shows the live shop and reads an order by its link. Not checked: admin reads (slice 7).
+  browser shows the live shop and reads an order by its link. Admin reads (slice 7): live grants + RLS checked with an owner's claims in a rolled-back transaction (aal2: 1 order, 2 events, 2 requests, 13 movements, 6 messages; aal1: 0 everywhere, `is_admin()` false); the real panel on the preview not seen yet (owner).
 - Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only. Q1 "yes" read as the default (roasted stock); Q21 Vercel free plan for a commercial site; Q23/Q24 Cash Plus beneficiary data, can a bank transfer be recalled after it lands.
 - Turnstile: real widget and siteverify never seen from here (Cloudflare blocked; e2e stand-in). Admin sign-in + TOTP: tested live by both owners on the `feat/p5-s6-totp` preview (2026-10-08).
 - TOTP (slice 6): on (owner, dashboard); my tools cannot read Auth's MFA settings. A real authenticator app never used here (owners used theirs on the preview).

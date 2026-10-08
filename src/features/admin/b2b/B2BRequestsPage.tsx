@@ -1,18 +1,18 @@
 import { formatKg, formatSize } from '@/core/format';
 import type { QuoteRequest, QuoteStatus } from '@/core/types';
 import { api } from '@/data/api';
-import { useDb } from '@/data/hooks';
+import { canWrite, useAdminDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
-import { TableWrap } from '../ui';
+import { ComingSoon, TableWrap } from '../ui';
 
 const QUOTE_STATUSES: QuoteStatus[] = ['new', 'negotiating', 'confirmed', 'closed'];
 
 /** Carts above the B2B threshold. Samples are ordinary paid 250 g / 500 g bags now (owner, 2026-09-30): they arrive as orders. */
 export function B2BRequestsPage() {
   const { t } = useI18n();
-  const { quotes, settings } = useDb();
+  const { quotes, settings } = useAdminDb();
   return (
     <>
       <div className="admin-head">
@@ -30,7 +30,7 @@ export function B2BRequestsPage() {
 
 function Head({ number, createdAt, company, contactName, phone, cityId, businessType }: QuoteRequest) {
   const { t, l, date } = useI18n();
-  const { shippingRates } = useDb();
+  const { shippingRates } = useAdminDb();
   const city = shippingRates.find((r) => r.id === cityId);
   return (
     <div className="spread">
@@ -89,7 +89,9 @@ function QuoteCard({ q }: { q: QuoteRequest }) {
           </div>
         )}
       </dl>
-      <div className="form-grid">
+      {/* live site: the team's follow-up connects in slice 8 */}
+      {!canWrite('b2b') && <ComingSoon />}
+      <fieldset className="plain-fieldset form-grid" disabled={!canWrite('b2b')}>
         <label className="field">
           <span className="label">{t.common.status}</span>
           <select className="select" value={q.status} onChange={(e) => set({ status: e.target.value as QuoteStatus })}>
@@ -114,7 +116,7 @@ function QuoteCard({ q }: { q: QuoteRequest }) {
           <span className="label">{t.admin.b2b.adminNotes}</span>
           <input className="input" value={q.adminNotes} onChange={(e) => set({ adminNotes: e.target.value })} />
         </label>
-      </div>
+      </fieldset>
     </article>
   );
 }

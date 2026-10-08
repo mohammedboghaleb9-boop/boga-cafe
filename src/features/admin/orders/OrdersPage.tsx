@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { formatKg } from '@/core/format';
 import type { Order } from '@/core/types';
-import { useDb } from '@/data/hooks';
+import { useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { OrderStatusPill, PaymentPill, RowLink, TableWrap, Tabs, rowClick } from '../ui';
 
@@ -20,7 +20,7 @@ const inView: Record<View, (o: Order) => boolean> = {
 
 export function OrdersPage() {
   const { t, l, money, date } = useI18n();
-  const { orders, shippingRates, paymentMethods } = useDb();
+  const { orders, shippingRates, paymentMethods } = useAdminDb();
   const navigate = useNavigate();
   // the tab is part of the address (?view=verify, linked from the dashboard); unknown values show All
   const [params, setParams] = useSearchParams();

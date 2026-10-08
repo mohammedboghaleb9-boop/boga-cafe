@@ -96,6 +96,17 @@
   flex-direction: column;
   gap: 20px;
 }
+/* live site: "read only for now" and the refresh button, on one line when it fits */
+.admin-live-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.admin-live-bar .notice {
+  flex: 1 1 240px;
+  margin: 0;
+}
 .admin-head {
   display: flex;
   justify-content: space-between;

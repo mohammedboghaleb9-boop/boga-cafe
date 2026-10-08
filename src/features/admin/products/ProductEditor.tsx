@@ -6,11 +6,11 @@ import { recipeTotal, speciesSplit } from '@/core/recipe';
 import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type Product, type ProductKind, type RoastLevel } from '@/core/types';
 import { api } from '@/data/api';
-import { useCatalog, useSettings } from '@/data/hooks';
+import { canWrite, useAdminCatalog, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { SpeciesBar } from '@/shared/ui/bits';
-import { ConfirmButton, LocalizedInput, Switch } from '../ui';
+import { ComingSoon, ConfirmButton, LocalizedInput, Switch } from '../ui';
 import { useAction } from '../useAction';
 
 const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
@@ -26,8 +26,10 @@ function ProductForm({ id }: { id: string | undefined }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { t, l } = useI18n();
-  const { products, origins, originIndex } = useCatalog();
-  const settings = useSettings();
+  const { products, origins, originIndex } = useAdminCatalog();
+  const { settings } = useAdminDb();
+  // live site: products connect in slice 9; until then the form shows the product, read only
+  const writable = canWrite('catalog');
   const isNew = id === 'new';
   const existing = products.find((p) => p.id === id);
 
@@ -85,6 +87,7 @@ function ProductForm({ id }: { id: string | undefined }) {
               label={t.common.delete}
               confirmLabel={t.common.confirmDelete}
               busy={busy}
+              disabled={!writable}
               onConfirm={() =>
                 run(async () => {
                   await api.deleteProduct(p.id);
@@ -93,14 +96,15 @@ function ProductForm({ id }: { id: string | undefined }) {
               }
             />
           )}
-          <button type="button" className="btn btn-primary btn-sm" disabled={!valid} aria-disabled={busy || undefined} onClick={save}>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!valid || !writable} aria-disabled={busy || undefined} onClick={save}>
             {t.common.save}
           </button>
         </div>
       </div>
 
+      {!writable && <ComingSoon />}
       {refused && <p className="field-error">{t.admin.saveRefused}</p>}
-      <div className="detail-grid">
+      <fieldset className="plain-fieldset detail-grid" disabled={!writable}>
         <section className="panel stack">
           <div className="form-grid">
             <label className="field">
@@ -240,7 +244,7 @@ function ProductForm({ id }: { id: string | undefined }) {
             </label>
           </section>
         </div>
-      </div>
+      </fieldset>
     </>
   );
 }

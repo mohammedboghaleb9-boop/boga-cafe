@@ -1,22 +1,25 @@
 import { useState } from 'react';
 import type { NotificationChannel } from '@/core/types';
 import { api } from '@/data/api';
-import { useDb } from '@/data/hooks';
+import { canWrite, useAdminDb } from '@/data/hooks';
+import { SERVER_DATA } from '@/data/mode';
 import { useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
-import { SavedFlash, Switch, Tabs, useSavedFlash } from '../ui';
+import { ComingSoon, SavedFlash, Switch, Tabs, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 import { useAction } from '../useAction';
 
 export function NotificationsPage() {
   const { t, date } = useI18n();
-  const { notifications, settings } = useDb();
+  const { notifications, settings } = useAdminDb();
   const [n, setN] = useState(settings.notifications);
   const [saved, flash] = useSavedFlash();
   const [busy, run] = useAction();
   const role = useAdminRole()!;
   const owner = role === 'owner';
+  // live site: the recipients connect in slice 10
+  const writable = owner && canWrite('notifications');
   const [channel, setChannel] = useState<'all' | NotificationChannel>('all');
   const list = notifications.filter((x) => channel === 'all' || x.channel === channel);
 
@@ -25,11 +28,12 @@ export function NotificationsPage() {
       <div className="admin-head">
         <h1>{t.admin.nav.notifications}</h1>
       </div>
-      <p className="muted">{t.admin.notif.intro}</p>
+      <p className="muted">{SERVER_DATA ? t.admin.notif.introLive : t.admin.notif.intro}</p>
 
       <section className="panel stack">
         {!owner && <p className="small muted">{t.admin.ownerOnly}</p>}
-        <fieldset className="plain-fieldset stack" disabled={!owner}>
+        {owner && !writable && <ComingSoon />}
+        <fieldset className="plain-fieldset stack" disabled={!writable}>
           <div className="form-grid">
             <label className="field">
               <span className="label">{t.admin.notif.adminWhatsapp}</span>
@@ -45,7 +49,7 @@ export function NotificationsPage() {
               <Switch checked={n.whatsappEnabled} onChange={(v) => setN({ ...n, whatsappEnabled: v })} label={t.admin.notif.whatsappOn} />
               <Switch checked={n.emailEnabled} onChange={(v) => setN({ ...n, emailEnabled: v })} label={t.admin.notif.emailOn} />
             </div>
-            {owner && (
+            {writable && (
               <div className="row">
                 <SavedFlash show={saved} />
                 <button
@@ -78,6 +82,7 @@ export function NotificationsPage() {
             { id: 'email', label: 'Email', count: notifications.filter((x) => x.channel === 'email').length },
           ]}
         />
+        {list.length === 0 && <p className="small muted">{t.admin.nothingYet}</p>}
         <div className="stack" style={{ ['--gap' as string]: '8px' }}>
           {list.slice(0, 60).map((log) => (
             <details key={log.id} className="log-item">
@@ -93,7 +98,7 @@ export function NotificationsPage() {
                 </span>
                 <span className="stack small muted" style={{ ['--gap' as string]: '2px', alignItems: 'flex-end' }}>
                   <span className="num">{date(log.at, true)}</span>
-                  <span className="pill">{t.admin.notif.simulated}</span>
+                  <span className={`pill ${log.status === 'failed' ? 'pill-bad' : log.status === 'sent' ? 'pill-ok' : ''}`}>{t.admin.notif.status[log.status]}</span>
                 </span>
               </summary>
               <pre>{log.body}</pre>

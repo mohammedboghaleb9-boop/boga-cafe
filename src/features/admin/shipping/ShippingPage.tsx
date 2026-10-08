@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { shippingFee } from '@/core/shipping';
 import type { ShippingRate } from '@/core/types';
 import { api } from '@/data/api';
-import { useDb } from '@/data/hooks';
+import { canWrite, useAdminDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
-import { ConfirmButton, Switch, TableWrap } from '../ui';
+import { ComingSoon, ConfirmButton, Switch, TableWrap } from '../ui';
 import { useAdminRole } from '../session';
 
 export function ShippingPage() {
@@ -13,7 +13,9 @@ export function ShippingPage() {
   const { t, l, money } = useI18n();
   // "Distance (km) · Oujda"; a new city without a name yet gives just the field name
   const rowLabel = (field: string, r: ShippingRate) => (l(r.city).trim() ? `${field} · ${l(r.city).trim()}` : field);
-  const { shippingRates, settings } = useDb();
+  const { shippingRates, settings } = useAdminDb();
+  // live site: delivery prices connect in slice 10; the simulator works on what is read
+  const writable = canWrite('shipping');
   const [simCity, setSimCity] = useState(shippingRates[0]?.id ?? '');
   const [simKg, setSimKg] = useState(4);
   const [simSubtotal, setSimSubtotal] = useState(300);
@@ -38,14 +40,16 @@ export function ShippingPage() {
     <>
       <div className="admin-head">
         <h1>{t.admin.nav.shipping}</h1>
-        <button type="button" className="btn btn-primary btn-sm" onClick={addCity}>
+        <button type="button" className="btn btn-primary btn-sm" disabled={!writable} onClick={addCity}>
           <Icon name="plus" size={16} /> {t.admin.shipping.addCity}
         </button>
       </div>
       <p className="muted">{t.admin.shipping.intro}</p>
+      {!writable && <ComingSoon />}
 
       <div className="detail-grid">
-        <section className="panel stack">
+        {/* works on what is read: no change is saved */}
+        <section className="panel stack shipping-sim">
           <h2 className="admin-card-title">{t.admin.shipping.simulator}</h2>
           <div className="form-grid">
             <label className="field">
@@ -73,7 +77,7 @@ export function ShippingPage() {
             </strong>
           )}
         </section>
-        <section className="panel stack">
+        <fieldset className="plain-fieldset panel stack" disabled={!writable}>
           <label className="field">
             <span className="label">{t.admin.shipping.freeOver}</span>
             <input
@@ -84,7 +88,7 @@ export function ShippingPage() {
               onChange={(e) => api.saveSettings({ ...settings, freeShippingOver: num(e.target.value) }, role)}
             />
           </label>
-        </section>
+        </fieldset>
       </div>
 
       <TableWrap label={t.admin.nav.shipping}>
@@ -109,6 +113,7 @@ export function ShippingPage() {
               <tr key={r.id}>
                 <td>
                   <input
+                    disabled={!writable}
                     className="input input-wide"
                     value={r.city.fr}
                     aria-label={`${t.admin.shipping.city} FR`}
@@ -117,6 +122,7 @@ export function ShippingPage() {
                 </td>
                 <td>
                   <input
+                    disabled={!writable}
                     className="input input-wide"
                     dir="rtl"
                     value={r.city.ar}
@@ -125,25 +131,25 @@ export function ShippingPage() {
                   />
                 </td>
                 <td>
-                  <input className="input num" type="number" min={0} value={r.distanceKm} aria-label={rowLabel(t.admin.shipping.distance, r)} onChange={(e) => save(r, { distanceKm: num(e.target.value) })} />
+                  <input disabled={!writable} className="input num" type="number" min={0} value={r.distanceKm} aria-label={rowLabel(t.admin.shipping.distance, r)} onChange={(e) => save(r, { distanceKm: num(e.target.value) })} />
                 </td>
                 <td>
-                  <input className="input num" type="number" min={0} value={r.baseFee} aria-label={rowLabel(t.admin.shipping.base, r)} onChange={(e) => save(r, { baseFee: num(e.target.value) })} />
+                  <input disabled={!writable} className="input num" type="number" min={0} value={r.baseFee} aria-label={rowLabel(t.admin.shipping.base, r)} onChange={(e) => save(r, { baseFee: num(e.target.value) })} />
                 </td>
                 <td>
-                  <input className="input num" type="number" min={0} value={r.includedKg} aria-label={rowLabel(t.admin.shipping.included, r)} onChange={(e) => save(r, { includedKg: num(e.target.value) })} />
+                  <input disabled={!writable} className="input num" type="number" min={0} value={r.includedKg} aria-label={rowLabel(t.admin.shipping.included, r)} onChange={(e) => save(r, { includedKg: num(e.target.value) })} />
                 </td>
                 <td>
-                  <input className="input num" type="number" min={0} value={r.extraPerKg} aria-label={rowLabel(t.admin.shipping.extra, r)} onChange={(e) => save(r, { extraPerKg: num(e.target.value) })} />
+                  <input disabled={!writable} className="input num" type="number" min={0} value={r.extraPerKg} aria-label={rowLabel(t.admin.shipping.extra, r)} onChange={(e) => save(r, { extraPerKg: num(e.target.value) })} />
                 </td>
                 <td>
-                  <input className="input" value={r.deliveryDays} aria-label={rowLabel(t.admin.shipping.days, r)} onChange={(e) => save(r, { deliveryDays: e.target.value })} />
+                  <input disabled={!writable} className="input" value={r.deliveryDays} aria-label={rowLabel(t.admin.shipping.days, r)} onChange={(e) => save(r, { deliveryDays: e.target.value })} />
                 </td>
                 <td>
-                  <Switch checked={r.active} onChange={(v) => save(r, { active: v })} label="" name={rowLabel(t.admin.payments.enabled, r)} />
+                  <Switch disabled={!writable} checked={r.active} onChange={(v) => save(r, { active: v })} label="" name={rowLabel(t.admin.payments.enabled, r)} />
                 </td>
                 <td>
-                  <ConfirmButton label={t.common.delete} confirmLabel={t.common.confirmDelete} onConfirm={() => api.deleteShippingRate(r.id)} />
+                  <ConfirmButton disabled={!writable} label={t.common.delete} confirmLabel={t.common.confirmDelete} onConfirm={() => api.deleteShippingRate(r.id)} />
                 </td>
               </tr>
             ))}
