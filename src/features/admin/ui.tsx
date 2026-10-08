@@ -237,10 +237,21 @@ export function Switch({
 }
 
 /**
- * Next to changes the live site cannot save yet (slices 8-10): their controls are
- * off (disabled), so nothing looks active and silently does nothing.
+ * Next to changes the live site cannot save yet (slices 9-10): their controls are
+ * off (disabled), so nothing looks active and silently does nothing. `text` says
+ * which part when the rest of the page works.
  */
-export function ComingSoon() {
+export function ComingSoon({ text }: { text?: string }) {
   const { t } = useI18n();
-  return <p className="notice small coming-soon">{t.admin.comingSoon}</p>;
+  return <p className="notice small coming-soon">{text ?? t.admin.comingSoon}</p>;
+}
+
+/** The last change was refused or got no answer (useAction's `failed`): said, never the "saved" flash. */
+export function WriteError({ show }: { show: boolean }) {
+  const { t } = useI18n();
+  return show ? (
+    <p className="notice notice-bad small write-error" role="alert">
+      {t.admin.writeFailed}
+    </p>
+  ) : null;
 }

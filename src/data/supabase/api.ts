@@ -4,6 +4,7 @@
  * Turnstile; an order carries an idempotency key, orderKey.ts); an order is read back by its link with get_order_public, and
  * "I have paid" is report_offline_payment. The team's messages are queued by
  * the database (notification_outbox), so nothing is sent from the browser.
+ * The admin's writes for orders, stock and B2B requests: ./adminWrites.ts (slice 8).
  * Every other call says which slice brings it (P5 step 3, PROJECT_NOTES.md).
  */
 import { CHECKOUT_ERRORS } from '@/core/order';
@@ -12,6 +13,7 @@ import type { Order, QuoteRequest } from '@/core/types';
 import { quoteMessage } from '@/services/notifications';
 import { templateContext } from '../context';
 import { GUARD_ERRORS, type Api, type GuardError, type PlaceOrderResult, type QuoteResult } from '../types';
+import { createAdminWrites } from './adminWrites';
 import type { Client } from './client';
 import { cachedOrder, rememberOrder } from './orderCache';
 import { orderKey, orderSent } from './orderKey';
@@ -41,9 +43,11 @@ export interface SupabaseApiDeps {
   client: Client;
   store: CatalogStore;
   storefront: StorefrontTarget;
+  /** The Admin Panel's writes (./adminWrites.ts): the admin's own client and data. */
+  admin?: Parameters<typeof createAdminWrites>;
 }
 
-export function createSupabaseApi({ client, store, storefront }: SupabaseApiDeps): Api {
+export function createSupabaseApi({ client, store, storefront, admin }: SupabaseApiDeps): Api {
   const known = (id: string) => store.db.get().orders.find((o) => o.id === id) ?? cachedOrder(id);
 
   /** The order as anyone with its link may see it; null when there is none. Throws on a failed read. */
@@ -120,20 +124,22 @@ export function createSupabaseApi({ client, store, storefront }: SupabaseApiDeps
     completeCardPayment: notYet('card payment (CMI, after launch)'),
     // pg_cron runs expire_unpaid_orders() every 15 minutes on the server
     expireUnpaidOrders: async () => 0,
-    setOrderStatus: notYet('order status (slice 8)'),
-    setPaymentStatus: notYet('payment status (slice 8)'),
+    setOrderStatus: notYet('order status (no admin client)'),
+    setPaymentStatus: notYet('payment status (no admin client)'),
     createProduct: notYet('products (slice 9)'),
     saveProduct: notYet('products (slice 9)'),
     deleteProduct: notYet('products (slice 9)'),
     createOrigin: notYet('origins (slice 9)'),
     saveOrigin: notYet('origins (slice 9)'),
-    adjustStock: notYet('stock (slice 8)'),
+    adjustStock: notYet('stock (no admin client)'),
     saveShippingRate: notYet('shipping (slice 10)'),
     deleteShippingRate: notYet('shipping (slice 10)'),
     savePaymentMethod: notYet('payment methods (slice 10)'),
     saveSettings: notYet('settings (slice 10)'),
     saveContent: notYet('content (slice 10)'),
-    updateQuote: notYet('B2B requests (slice 8)'),
+    updateQuote: notYet('B2B requests (no admin client)'),
     resetDemo: notYet('resetting the demo (demo only)'),
+    // orders, stock and B2B follow-up (slice 8)
+    ...(admin && createAdminWrites(...admin)),
   };
 }

@@ -10,8 +10,8 @@ import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { canEditCatalog } from '../permissions';
 import { useAdminRole } from '../session';
-import { ComingSoon, LocalizedInput, Switch, TableWrap } from '../ui';
-import { useAction } from '../useAction';
+import { ComingSoon, LocalizedInput, Switch, TableWrap, WriteError } from '../ui';
+import { refuse, useAction } from '../useAction';
 
 export function StockPage() {
   const { t, l, date } = useI18n();
@@ -38,7 +38,7 @@ export function StockPage() {
           </button>
         )}
       </div>
-      {soon && <ComingSoon />}
+      {soon && <ComingSoon text={canWrite('stock') ? t.admin.soonOrigins : undefined} />}
       <p className="muted">{t.admin.stock.intro}</p>
       <p className="notice small">{t.admin.stock.blendRule}</p>
 
@@ -136,6 +136,7 @@ function OriginRow({
 }) {
   const { t, l, money, date } = useI18n();
   const low = isLowStock(o);
+  const [busy, run, failed] = useAction();
   return (
     <>
       <tr>
@@ -156,8 +157,13 @@ function OriginRow({
         <td>
           <Switch
             checked={o.customBlendEnabled}
-            disabled={!editable}
-            onChange={(v) => editable && api.saveOrigin({ ...o, customBlendEnabled: v })}
+            disabled={!editable || busy}
+            onChange={(v) =>
+              editable &&
+              run(async () => {
+                if (!(await api.saveOrigin({ ...o, customBlendEnabled: v }))) refuse('origin');
+              })
+            }
             label={o.customBlendEnabled && o.stockKg === 0 ? t.admin.stock.empty : ''}
             name={`${t.admin.stock.inBlend} · ${l(o.name)}`}
           />
@@ -176,6 +182,13 @@ function OriginRow({
           </div>
         </td>
       </tr>
+      {failed && (
+        <tr>
+          <td colSpan={8}>
+            <WriteError show />
+          </td>
+        </tr>
+      )}
       {adjusting && (
         <tr>
           <td colSpan={8}>
@@ -192,7 +205,7 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
   const [delta, setDelta] = useState('');
   const [reason, setReason] = useState<StockReason>('restock');
   const [note, setNote] = useState('');
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   const value = Number(delta.replace(',', '.'));
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -204,6 +217,7 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
   }
   return (
     <form className="row" onSubmit={submit} style={{ alignItems: 'flex-end' }}>
+      <WriteError show={failed} />
       <label className="field">
         <span className="label">{t.admin.stock.delta}</span>
         {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- opened by the "adjust" button: this is the field the user asked for */}
@@ -218,7 +232,7 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
       </label>
       <label className="field" style={{ flex: '1 1 200px' }}>
         <span className="label">{t.admin.stock.note}</span>
-        <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
+        <input className="input" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
       <button type="submit" className="btn btn-primary btn-sm" disabled={!Number.isFinite(value) || value === 0} aria-disabled={busy || undefined}>
         {t.admin.stock.apply}

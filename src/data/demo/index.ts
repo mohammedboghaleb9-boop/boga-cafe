@@ -23,6 +23,6 @@ export const demoBackend: Backend = {
   retry: () => {},
   admin: import.meta.env.VITE_DATA_MODE === 'demo' ? demoAdmin : noAdmin,
   // the prototype's panel reads and changes the same browser store
-  adminData: { db, status: readyStatus, reload: () => {} },
+  adminData: { db, status: readyStatus, reload: () => {}, refresh: async () => {} },
   adminWrites: ADMIN_WRITE_AREAS,
 };

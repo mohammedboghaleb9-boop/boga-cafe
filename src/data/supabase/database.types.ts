@@ -500,6 +500,10 @@ export type Database = {
       report_offline_payment: { Args: { p_order_id: string; p_ref: string }; Returns: undefined };
       set_order_status: { Args: { p_order_id: string; p_status: string }; Returns: undefined };
       set_payment_status: { Args: { p_order_id: string; p_status: string }; Returns: undefined };
+      update_quote_request: {
+        Args: { p_admin_notes: string; p_final_price: number | null; p_id: string; p_status: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;

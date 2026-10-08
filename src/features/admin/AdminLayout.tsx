@@ -89,10 +89,10 @@ export function AdminLayout() {
         </div>
       </aside>
       <main className="admin-main" id="main" tabIndex={-1}>
-        {/* live site: the admin's data is read (slice 7); changes connect in slices 8-10 */}
+        {/* live site: orders, stock and B2B can be changed (slice 8); the rest connects in slices 9-10 */}
         {SERVER_DATA && (
           <div className="admin-live-bar">
-            <p className="notice notice-warn small">{t.admin.liveReadOnly}</p>
+            <p className="notice notice-warn small">{t.admin.liveData}</p>
             <button type="button" className="btn btn-ghost btn-sm" aria-disabled={status === 'loading' || undefined} onClick={() => status !== 'loading' && reload()}>
               {t.admin.refresh}
             </button>

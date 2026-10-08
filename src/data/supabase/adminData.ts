@@ -85,12 +85,15 @@ export function createAdminData(client: () => Client, auth: AdminAuth): AdminDat
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((l) => l());
 
-  async function load() {
+  /** `quiet`: after a write, the page stays on screen while it reads again (a failure still shows the error). */
+  async function load(quiet = false) {
     const session = auth.session.get();
     if (session.state !== 'signed_in') return;
     const mine = ++run;
-    status = 'loading';
-    emit();
+    if (!quiet) {
+      status = 'loading';
+      emit();
+    }
     try {
       const db = client();
       const next = await readAll(db, session.role);
@@ -155,5 +158,6 @@ export function createAdminData(client: () => Client, auth: AdminAuth): AdminDat
     db: { get: () => state, subscribe },
     status: { get: () => status, subscribe },
     reload: () => void load(),
+    refresh: () => load(true),
   };
 }

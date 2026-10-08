@@ -10,8 +10,8 @@ import { whatsappLink } from '@/services/notifications';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { useAdminRole } from '../session';
-import { ComingSoon, ConfirmButton, OrderStatusPill, PaymentPill, TableWrap } from '../ui';
-import { useAction } from '../useAction';
+import { ComingSoon, ConfirmButton, OrderStatusPill, PaymentPill, TableWrap, WriteError } from '../ui';
+import { refuse, useAction } from '../useAction';
 
 export function OrderDetail() {
   const { id } = useParams();
@@ -20,7 +20,7 @@ export function OrderDetail() {
   // live site: status and payment changes connect in slice 8
   const writable = canWrite('orders');
   const role = useAdminRole()!;
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   const order = orders.find((o) => o.id === id);
   if (!order) return <p className="muted">{t.order.notFound}</p>;
 
@@ -35,11 +35,12 @@ export function OrderDetail() {
   const pay = (status: PaymentStatus) => canSetPayment(order, status, role);
   const setStatus = (status: OrderStatus) =>
     run(async () => {
-      await api.setOrderStatus(order.id, status, role);
+      const refusal = await api.setOrderStatus(order.id, status, role);
+      if (refusal) refuse(refusal);
     });
   const setPayment = (status: PaymentStatus) =>
     run(async () => {
-      await api.setPaymentStatus(order.id, status, role);
+      if (!(await api.setPaymentStatus(order.id, status, role))) refuse('payment');
     });
   const c = order.customer;
 
@@ -88,6 +89,7 @@ export function OrderDetail() {
         </div>
       </div>
       {!writable && <ComingSoon />}
+      <WriteError show={failed} />
 
       <div className="detail-grid">
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>
