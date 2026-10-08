@@ -459,7 +459,7 @@ export const fr: Dict = {
     qrAlt: 'QR code à scanner avec l’application d’authentification',
     lostPhone: 'Téléphone perdu ? Un propriétaire peut réinitialiser cette vérification depuis Supabase.',
     liveData: 'Données réelles. Les commandes, le stock et les demandes B2B se modifient ici ; les autres sections arrivent dans les prochaines étapes.',
-    writeFailed: 'La modification n’a pas été confirmée : refusée, ou pas de réponse du serveur. Cliquez sur « Actualiser » pour voir les données actuelles avant de réessayer.',
+    writeFailed: 'La modification n’a pas été confirmée : refusée, ou pas de réponse du serveur. La page montre maintenant ce qui est enregistré : vérifiez avant de réessayer.',
     soonOrigins: 'Bientôt : ajouter ou modifier une origine et l’interrupteur Custom Blend ne sont pas encore branchés. Les ajustements de stock fonctionnent.',
     soonPayments: 'Bientôt : les moyens de paiement et les coordonnées du bénéficiaire ne sont pas encore branchés. « Marquer payé » fonctionne.',
     comingSoon: 'Bientôt : les modifications ici ne sont pas encore branchées.',

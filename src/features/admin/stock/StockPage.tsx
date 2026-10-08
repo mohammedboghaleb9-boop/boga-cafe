@@ -69,7 +69,8 @@ export function StockPage() {
                 editable={editable}
                 showEdit={canEditCatalog(role)}
                 adjusting={adjusting === o.id}
-                onAdjust={() => setAdjusting(adjusting === o.id ? null : o.id)}
+                onAdjust={() => setAdjusting((cur) => (cur === o.id ? null : o.id))}
+                onAdjusted={() => setAdjusting((cur) => (cur === o.id ? null : cur))}
                 onEdit={() => setEditing(o)}
               />
             ))}
@@ -123,6 +124,7 @@ function OriginRow({
   showEdit,
   adjusting,
   onAdjust,
+  onAdjusted,
   onEdit,
 }: {
   o: Origin;
@@ -132,6 +134,8 @@ function OriginRow({
   showEdit: boolean;
   adjusting: boolean;
   onAdjust: () => void;
+  /** The adjustment was saved: this row's form closes (not another row's, opened meanwhile). */
+  onAdjusted: () => void;
   onEdit: () => void;
 }) {
   const { t, l, money, date } = useI18n();
@@ -192,7 +196,7 @@ function OriginRow({
       {adjusting && (
         <tr>
           <td colSpan={8}>
-            <AdjustForm origin={o} onDone={onAdjust} />
+            <AdjustForm origin={o} onDone={onAdjusted} />
           </td>
         </tr>
       )}
@@ -263,7 +267,7 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
   );
   const set = <K extends keyof Origin>(k: K, v: Origin[K]) => setO((cur) => ({ ...cur, [k]: v }));
   const [refused, setRefused] = useState(false);
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   const priced = isPrice(o.pricePerKg);
   const valid = o.name.fr.trim() && o.countryCode.trim().length === 2 && priced;
   const save = () =>
@@ -288,6 +292,7 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
         </div>
       </div>
       {refused && <p className="field-error">{t.admin.saveRefused}</p>}
+      <WriteError show={failed} />
       <div className="detail-grid">
         <div className="stack">
           <LocalizedInput id="o-name" label={t.admin.products.name} value={o.name} onChange={(v) => set('name', v)} />

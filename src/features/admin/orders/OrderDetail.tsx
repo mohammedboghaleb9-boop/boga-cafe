@@ -13,8 +13,13 @@ import { useAdminRole } from '../session';
 import { ComingSoon, ConfirmButton, OrderStatusPill, PaymentPill, TableWrap, WriteError } from '../ui';
 import { refuse, useAction } from '../useAction';
 
+/** A fresh page for each order: one order's "not confirmed" never shows on the next one. */
 export function OrderDetail() {
   const { id } = useParams();
+  return <OrderView key={id} id={id} />;
+}
+
+function OrderView({ id }: { id: string | undefined }) {
   const { t, l, money, date } = useI18n();
   const { orders, origins, shippingRates, paymentMethods, settings } = useAdminDb();
   // live site: status and payment changes connect in slice 8

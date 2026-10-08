@@ -189,6 +189,8 @@ export interface QuoteRequest {
   /** Final price decided by the administration. */
   finalPrice: number | null;
   adminNotes: string;
+  /** Live site: when the follow-up last changed (a save from an older copy is refused). */
+  updatedAt?: string;
 }
 
 export type StockReason = 'order' | 'order_cancelled' | 'restock' | 'correction';

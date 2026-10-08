@@ -461,7 +461,7 @@ export const en = {
     qrAlt: 'QR code to scan with the authenticator app',
     lostPhone: 'Lost your phone? An owner can reset this verification from Supabase.',
     liveData: 'Live data. Orders, stock and B2B requests can be changed here; the other sections connect in the next steps.',
-    writeFailed: 'The change was not confirmed: refused, or no answer from the server. Press “Refresh” to see the current data before trying again.',
+    writeFailed: 'The change was not confirmed: refused, or no answer from the server. The page now shows what is saved: check it before trying again.',
     soonOrigins: 'Coming soon: adding or editing origins and the Custom Blend switch are not connected yet. Stock adjustments work.',
     soonPayments: 'Coming soon: payment methods and payee details are not connected yet. “Mark as paid” works.',
     comingSoon: 'Coming soon: changes here are not connected yet.',

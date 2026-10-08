@@ -58,7 +58,8 @@ const ADMIN_TABLES: Record<string, unknown[]> = {
   ],
   quote_requests: [
     { id: 'quote-1', number: 'QR-2026-0003', created_at: '2026-10-08T08:00:00Z', business_type: 'cafe', company: 'Café E2E', contact_name: CUSTOMER.name,
-      phone: CUSTOMER.phone, email: '', city_id: 'oujda', lines: [], weight_kg: '30.000', indicative_total: '6000.00', notes: '', status: 'new', final_price: null, admin_notes: '' },
+      phone: CUSTOMER.phone, email: '', city_id: 'oujda', lines: [], weight_kg: '30.000', indicative_total: '6000.00', notes: '', status: 'new', final_price: null, admin_notes: '',
+      updated_at: '2026-10-08T08:00:00.000001+00:00', updated_by: null },
   ],
   stock_movements: [{ id: 1, at: '2026-10-08T09:00:00Z', origin_id: 'brazil', delta_kg: '-0.250', reason: 'order', ref: 'BC-2026-0007', note: '', actor: null }],
   notification_outbox: [
@@ -162,7 +163,11 @@ async function fakeSupabase(page: Page, server: Server = {}) {
         (order.order_events as unknown[]).push({ at: now, label: `payment.${args.p_status}` });
       }
       if (write === 'adjust_stock') db.stock_movements.unshift({ id: 99, at: now, origin_id: args.p_origin_id, delta_kg: args.p_delta_kg, reason: args.p_reason, ref: '', note: args.p_note, actor: user });
-      if (write === 'update_quote_request') Object.assign(db.quote_requests[0], { status: args.p_status, final_price: args.p_final_price, admin_notes: args.p_admin_notes });
+      if (write === 'update_quote_request') {
+        // the database's version check: a save from an older copy is refused
+        if (db.quote_requests[0].updated_at !== args.p_seen_at) return json(400, { code: 'P0001', message: 'stale', details: null, hint: null });
+        Object.assign(db.quote_requests[0], { status: args.p_status, final_price: args.p_final_price, admin_notes: args.p_admin_notes, updated_at: now });
+      }
       return json(200, null);
     }
     const table = url.pathname.match(/^\/rest\/v1\/(\w+)$/)?.[1] ?? '';
@@ -184,7 +189,7 @@ async function fakeSupabase(page: Page, server: Server = {}) {
     shopAs.push(user);
     return answerCatalog(r);
   });
-  return Object.assign(asked, { shopAs, writes });
+  return Object.assign(asked, { shopAs, writes, db });
 }
 
 async function signIn(page: Page, account: { email: string; password: string }) {
@@ -427,8 +432,22 @@ test.describe('admin sign-in on the live site', () => {
       { fn: 'set_order_status', args: { p_order_id: ORDER_ID, p_status: 'confirmed' }, aal: 'aal2' },
       { fn: 'set_payment_status', args: { p_order_id: ORDER_ID, p_status: 'paid' }, aal: 'aal2' },
       { fn: 'adjust_stock', args: { p_origin_id: 'brazil', p_delta_kg: 2.5, p_reason: 'restock', p_note: 'TEST lot' }, aal: 'aal2' },
-      { fn: 'update_quote_request', args: { p_id: 'quote-1', p_status: 'new', p_final_price: null, p_admin_notes: 'TEST rappeler lundi' }, aal: 'aal2' },
+      { fn: 'update_quote_request', args: { p_id: 'quote-1', p_status: 'new', p_final_price: null, p_admin_notes: 'TEST rappeler lundi', p_seen_at: '2026-10-08T08:00:00.000001+00:00' }, aal: 'aal2' },
     ]);
+  });
+
+  test('the B2B form follows what another admin saved; an older copy is never saved over it', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const { db, writes } = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
+    await open(page, '/admin/b2b');
+    await page.getByLabel('Prix final (MAD)').fill('5800');
+    // meanwhile another admin saves a note
+    Object.assign(db.quote_requests[0], { admin_notes: 'TEST note de Mohammed', updated_at: '2026-10-08T09:00:00.000001+00:00' });
+    await page.getByRole('button', { name: 'Enregistrer · QR-2026-0003' }).click();
+    await expect(page.locator('.write-error')).toBeVisible(); // 'stale': nothing written over the note
+    await expect(page.getByLabel('Notes internes')).toHaveValue('TEST note de Mohammed'); // read again, the form shows it
+    expect(db.quote_requests[0].admin_notes).toBe('TEST note de Mohammed');
+    expect(writes).toHaveLength(1);
   });
 
   test('a refused write says so and never shows "saved"; staff never gets the owner\'s payment buttons', async ({ page }) => {
@@ -437,7 +456,7 @@ test.describe('admin sign-in on the live site', () => {
     await fakeSupabase(page, server);
     await open(page, '/admin/b2b');
     await page.getByRole('button', { name: 'Enregistrer · QR-2026-0003' }).click();
-    await expect(page.getByRole('alert')).toHaveText('La modification n’a pas été confirmée : refusée, ou pas de réponse du serveur. Cliquez sur « Actualiser » pour voir les données actuelles avant de réessayer.');
+    await expect(page.getByRole('alert')).toHaveText('La modification n’a pas été confirmée : refusée, ou pas de réponse du serveur. La page montre maintenant ce qui est enregistré : vérifiez avant de réessayer.');
     await expect(page.locator('.pill-ok', { hasText: 'Enregistré' })).toHaveCount(0);
     await scanA11y(page, 'write refused');
 
@@ -446,6 +465,10 @@ test.describe('admin sign-in on the live site', () => {
     await page.getByRole('button', { name: 'Passer à : Confirmée' }).click();
     await expect(page.locator('.write-error')).toBeVisible();
     await expect(page.locator('.history li')).toHaveCount(2); // nothing recorded
+    server.refuse = { fn: 'set_payment_status', message: 'forbidden' };
+    await page.getByRole('button', { name: 'Marquer payé' }).click();
+    await expect(page.locator('.write-error')).toBeVisible();
+    await expect(page.locator('.history li')).toHaveCount(2);
 
     const staff = await page.context().newPage();
     await staff.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);

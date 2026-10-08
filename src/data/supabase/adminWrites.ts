@@ -33,8 +33,9 @@ export function createAdminWrites(client: () => Client, data: AdminData): Writes
     if (error) {
       const code = error.message && /^[a-z_]+$/.test(error.message) ? error.message : 'failed';
       console.error(`admin write ${fn}:`, code, error.code ?? '');
-      // refused: the panel was showing something out of date, so it reads again too
-      if (code !== 'failed') await data.refresh();
+      // refused (the page was out of date) or no answer (it may have been saved all the same):
+      // the panel reads again, so a second try starts from what is really saved
+      await data.refresh();
       throw new WriteFailed(code);
     }
     await data.refresh();
@@ -68,13 +69,15 @@ export function createAdminWrites(client: () => Client, data: AdminData): Writes
 
     async updateQuote(id, patch: Partial<QuoteRequest>) {
       const current = data.db.get().quotes.find((q) => q.id === id);
-      if (!current) throw new WriteFailed('not_found');
+      if (!current?.updatedAt) throw new WriteFailed('not_found');
       const next = { ...current, ...patch };
       await call('update_quote_request', {
         p_id: id,
         p_status: next.status,
         p_final_price: next.finalPrice,
         p_admin_notes: next.adminNotes.slice(0, 500),
+        // refused ('stale') when another admin changed it since this page read it
+        p_seen_at: current.updatedAt,
       });
     },
   };

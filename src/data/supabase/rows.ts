@@ -215,6 +215,7 @@ export const quoteFromRow = (r: Tables<'quote_requests'>): QuoteRequest => ({
   status: r.status as QuoteStatus,
   finalPrice: r.final_price === null ? null : Number(r.final_price),
   adminNotes: r.admin_notes,
+  updatedAt: r.updated_at,
 });
 
 export const stockMovementFromRow = (r: Tables<'stock_movements'>): StockMovement => ({

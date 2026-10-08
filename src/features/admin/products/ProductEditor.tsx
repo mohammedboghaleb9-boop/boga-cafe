@@ -10,7 +10,7 @@ import { canWrite, useAdminCatalog, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { SpeciesBar } from '@/shared/ui/bits';
-import { ComingSoon, ConfirmButton, LocalizedInput, Switch } from '../ui';
+import { ComingSoon, ConfirmButton, LocalizedInput, Switch, WriteError } from '../ui';
 import { useAction } from '../useAction';
 
 const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
@@ -53,7 +53,7 @@ function ProductForm({ id }: { id: string | undefined }) {
   );
 
   const [refused, setRefused] = useState(false);
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
 
   if (!isNew && !existing) return <p className="muted">404</p>;
 
@@ -104,6 +104,7 @@ function ProductForm({ id }: { id: string | undefined }) {
 
       {!writable && <ComingSoon />}
       {refused && <p className="field-error">{t.admin.saveRefused}</p>}
+      <WriteError show={failed} />
       <fieldset className="plain-fieldset detail-grid" disabled={!writable}>
         <section className="panel stack">
           <div className="form-grid">

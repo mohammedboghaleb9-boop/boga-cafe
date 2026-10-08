@@ -55,7 +55,15 @@ function Head({ number, createdAt, company, contactName, phone, cityId, business
 function QuoteCard({ q }: { q: QuoteRequest }) {
   const { t, l, money } = useI18n();
   // the follow-up is edited here and saved by the button, not on every keystroke
-  const [form, setForm] = useState({ status: q.status, finalPrice: q.finalPrice, adminNotes: q.adminNotes });
+  const current = { status: q.status, finalPrice: q.finalPrice, adminNotes: q.adminNotes };
+  const [form, setForm] = useState(current);
+  // what is saved changed (this save, another admin's, a refresh): the form starts again from it
+  const version = q.updatedAt ?? JSON.stringify(current);
+  const [seen, setSeen] = useState(version);
+  if (seen !== version) {
+    setSeen(version);
+    setForm(current);
+  }
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
   const [busy, run, failed] = useAction();
   const [saved, flash] = useSavedFlash();

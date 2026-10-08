@@ -10,15 +10,15 @@ import type { AdminData } from '../../types';
 import { createAdminWrites, WriteFailed } from '../adminWrites';
 import type { Client } from '../client';
 
-const quote = { id: 'q1', status: 'new', finalPrice: null, adminNotes: 'old note' } as unknown as QuoteRequest;
+const quote = { id: 'q1', status: 'new', finalPrice: null, adminNotes: 'old note', updatedAt: '2026-10-08T10:00:00.123456+00:00' } as unknown as QuoteRequest;
 
-function setup(answer: { error: { message: string; code?: string } | null } = { error: null }) {
+function setup(answer: { error: { message: string; code?: string } | null } = { error: null }, refresh: () => Promise<void> = async () => {}) {
   const rpc = vi.fn(async () => ({ data: null, ...answer }));
   const data: AdminData = {
     db: { get: () => ({ version: STATE_VERSION, quotes: [quote] }) as unknown as DbState, subscribe: () => () => {} },
     status: { get: () => 'ready', subscribe: () => () => {} },
     reload: vi.fn(),
-    refresh: vi.fn(async () => {}),
+    refresh: vi.fn(refresh),
   };
   const writes = createAdminWrites(() => ({ rpc }) as unknown as Client, data);
   return { writes, rpc, data };
@@ -38,8 +38,8 @@ describe('admin writes (live site)', () => {
       ['set_order_status', { p_order_id: 'o1', p_status: 'confirmed' }],
       ['set_payment_status', { p_order_id: 'o1', p_status: 'paid' }],
       ['adjust_stock', { p_origin_id: 'brazil', p_delta_kg: -1.5, p_reason: 'correction', p_note: 'TEST' }],
-      // the follow-up is sent whole: what was not changed keeps its saved value
-      ['update_quote_request', { p_id: 'q1', p_status: 'negotiating', p_final_price: 5500, p_admin_notes: 'old note' }],
+      // the follow-up is sent whole, with the version the page read (a newer one in the database = 'stale')
+      ['update_quote_request', { p_id: 'q1', p_status: 'negotiating', p_final_price: 5500, p_admin_notes: 'old note', p_seen_at: quote.updatedAt }],
     ]);
     expect(data.refresh).toHaveBeenCalledTimes(4);
   });
@@ -57,6 +57,19 @@ describe('admin writes (live site)', () => {
     await expect(offline.writes.setOrderStatus('o1', 'confirmed', 'owner')).rejects.toThrow(WriteFailed);
     await expect(offline.writes.setPaymentStatus('o1', 'paid', 'owner')).rejects.toThrow(WriteFailed);
     await expect(offline.writes.updateQuote('q1', { adminNotes: 'x' })).rejects.toThrow(WriteFailed);
-    expect(offline.data.refresh).not.toHaveBeenCalled();
+    // it may have been saved all the same: the panel reads again before a second try
+    expect(offline.data.refresh).toHaveBeenCalledTimes(3);
+  });
+
+  it('a write ends only once the panel has read the saved data again', async () => {
+    let done!: () => void;
+    const { writes } = setup({ error: null }, () => new Promise<void>((r) => (done = r)));
+    let finished = false;
+    const write = writes.adjustStock('brazil', 1, 'restock', '').then(() => (finished = true));
+    await new Promise((r) => setTimeout(r, 5));
+    expect(finished).toBe(false); // no "saved" before the page shows it
+    done();
+    await write;
+    expect(finished).toBe(true);
   });
 });

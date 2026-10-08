@@ -98,7 +98,7 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
   const { t, l } = useI18n();
   const [m, setM] = useState(method);
   const [saved, flash] = useSavedFlash();
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   const writable = canWrite('payments');
   return (
     <fieldset className="plain-fieldset panel stack" disabled={!writable}>
@@ -124,6 +124,7 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
           </button>
         </div>
       </div>
+      <WriteError show={failed} />
       {m.id === 'card' && !methodAvailable({ id: 'card', enabled: true }, settings) && <p className="notice small">{t.admin.payments.cardOff}</p>}
       {m.id !== 'card' && !payeeReady(m.id, settings) && <p className="notice small">{t.admin.payments.payeeMissing}</p>}
       <div className="detail-grid">
@@ -145,9 +146,10 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
   const [bank, setBank] = useState(settings.bank);
   const [cashplus, setCashplus] = useState(settings.cashplus);
   const [saved, flash] = useSavedFlash();
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   return (
     <fieldset className="plain-fieldset panel stack" disabled={!canWrite('payments')}>
+      <WriteError show={failed} />
       <div className="spread">
         <h2 className="admin-card-title">{t.admin.payments.bankTitle}</h2>
         <div className="row">

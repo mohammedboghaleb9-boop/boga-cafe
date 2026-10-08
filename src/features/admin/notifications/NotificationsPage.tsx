@@ -6,7 +6,7 @@ import { SERVER_DATA } from '@/data/mode';
 import { useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
-import { ComingSoon, SavedFlash, Switch, Tabs, useSavedFlash } from '../ui';
+import { ComingSoon, SavedFlash, Switch, Tabs, WriteError, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 import { useAction } from '../useAction';
 
@@ -15,7 +15,7 @@ export function NotificationsPage() {
   const { notifications, settings } = useAdminDb();
   const [n, setN] = useState(settings.notifications);
   const [saved, flash] = useSavedFlash();
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   const role = useAdminRole()!;
   const owner = role === 'owner';
   // live site: the recipients connect in slice 10
@@ -33,6 +33,7 @@ export function NotificationsPage() {
       <section className="panel stack">
         {!owner && <p className="small muted">{t.admin.ownerOnly}</p>}
         {owner && !writable && <ComingSoon />}
+        <WriteError show={failed} />
         <fieldset className="plain-fieldset stack" disabled={!writable}>
           <div className="form-grid">
             <label className="field">
