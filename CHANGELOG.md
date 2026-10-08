@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-08
+- 2026-10-08 [feat/p5-s5-admin-signin] `wrangler.jsonc`: `preview_urls: true`. Preview builds (`versions upload`) succeeded with "No Preview URL": wrangler 4.148.0 prints a Version URL only when the Worker's Version URL setting is on, a setting only `wrangler deploy` applies, and left untouched while `preview_urls` is absent. Production unchanged (workers_dev stays true).
 - 2026-10-08 [feat/p5-s5-admin-signin] Flaky Turnstile e2e fixed: tests clicked submit before the stand-in's token reached the form (CI run on 4ddc906 failed); the widget now marks `data-solved` and tests wait for it. Reproduced with a 300 ms widget delay (6 failed), then 5 full e2e runs (52/52 each) and the Turnstile spec ×20 (140/140).
 
 ## 2026-10-07

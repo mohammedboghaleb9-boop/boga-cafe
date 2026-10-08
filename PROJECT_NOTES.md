@@ -18,7 +18,7 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables
   yet). **Every merge into `main` is a release.** Dashboard (owner): Build command `npm run build`; Deploy command (main)
   `npx wrangler deploy`. Previews: failed on every branch ("name must match", workers-sdk#15682) until 2026-10-07, then
-  **pass** (Workers Builds success on `a557226` and `94816b7`; cause of the change not known to me). Repo: `wrangler.jsonc` (assets `./dist`,
+  **pass** (Workers Builds success on `a557226` and `94816b7`) but give no URL: Version URLs off on the Worker; `preview_urls: true` in `wrangler.jsonc` (2026-10-08) turns them on at the next `wrangler deploy` from `main`. Repo: `wrangler.jsonc` (assets `./dist`,
   SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked). The Supabase switch =
   `VITE_DATA_MODE`/URL/key + `VITE_TURNSTILE_SITE_KEY` as Cloudflare build variables (owner, slice 11). Workers Builds does not wait for GitHub CI: merge only on green.
   Deployed today: browser store, seed catalog, no admin, no payment method, **not on Supabase**, **no notifications** (Known issues).
