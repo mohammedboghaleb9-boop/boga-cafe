@@ -4,6 +4,9 @@ One dated line per meaningful change, newest first. Built from `git log`. Hashes
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
+## 2026-10-08
+- 2026-10-08 [feat/p5-s5-admin-signin] Flaky Turnstile e2e fixed: tests clicked submit before the stand-in's token reached the form (CI run on 4ddc906 failed); the widget now marks `data-solved` and tests wait for it. Reproduced with a 300 ms widget delay (6 failed), then 5 full e2e runs (52/52 each) and the Turnstile spec ×20 (140/140).
+
 ## 2026-10-07
 - 2026-10-07 [feat/p5-s5-admin-signin] Notes: admin sign-out scope (this browser only) and the browser-only build's no-admin stub recorded as decisions.
 - 2026-10-07 [feat/p5-s5-admin-signin] Review: the browser-only build no longer ships the demo password (it did on the branch; check-real-build fixed to see it), sign-out removes the kept session even offline, other tabs' sign-ins re-checked, "try again" for an unchecked session.

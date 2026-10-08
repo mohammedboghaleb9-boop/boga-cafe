@@ -68,6 +68,8 @@ async function fillCheckout(page: Page) {
   await page.locator('input[value=cashplus]').check();
 }
 const placeOrder = (page: Page) => page.locator('form.checkout button[type=submit]').click();
+/** The form holds a token (the widget's answer reached it): only then does a submit send. */
+const tokenReady = (page: Page) => expect(page.locator('.captcha[data-solved]')).toBeAttached();
 const renders = (page: Page) => page.evaluate(() => (window as unknown as { tsStub: { renders: object[] } }).tsStub.renders);
 const resets = (page: Page) => page.evaluate(() => (window as unknown as { tsStub: { resets: number } }).tsStub.resets);
 
@@ -85,11 +87,13 @@ test.describe('Turnstile on the live site', () => {
     const sent = await fakeServer(page, { cart: bag });
     await fillCheckout(page);
     await expect.poll(() => renders(page)).toEqual([{ sitekey: SITE_KEY, language: 'fr', size: 'flexible', theme: 'dark' }]);
+    await tokenReady(page);
     await placeOrder(page);
     await expect(page.locator('.checkout-errors')).toContainText('Trop de demandes');
     expect(sent.map((s) => [s.route, s.body.captchaToken])).toEqual([['order', `${DUMMY_TOKEN}-1`]]);
     // a token works once: the widget is reset and the resend carries the new one, with the same order key
     expect(await resets(page)).toBe(1);
+    await tokenReady(page);
     await placeOrder(page);
     await expect.poll(() => sent.length).toBe(2);
     expect(sent[1].body.captchaToken).toBe(`${DUMMY_TOKEN}-2`);
@@ -110,6 +114,7 @@ test.describe('Turnstile on the live site', () => {
       w.tsHold = false;
       Object.values(w.tsStub.widgets).forEach((x) => x.solve());
     });
+    await tokenReady(page);
     await placeOrder(page);
     await expect.poll(() => sent.length).toBe(1);
     expect(sent[0].body.captchaToken).toBe(`${DUMMY_TOKEN}-1`);
@@ -128,6 +133,7 @@ test.describe('Turnstile on the live site', () => {
     await page.locator('.captcha').getByRole('button', { name: 'Réessayer' }).click();
     await expect(page.locator('.ts-stub')).toBeVisible();
     await expect(page.locator('#co-name')).toHaveValue('Client Test');
+    await tokenReady(page);
     await placeOrder(page);
     await expect.poll(() => sent.length).toBe(1);
     expect(sent[0].body.captchaToken).toBe(`${DUMMY_TOKEN}-1`);
@@ -162,6 +168,7 @@ test.describe('Turnstile on the live site', () => {
           await expectWidgetInside(page);
           await expectNoSideScroll(page);
           expect(await clippedContent(page)).toEqual([]);
+          await tokenReady(page);
           await page.locator('.b2b-box button[type=submit]').click();
           await expect(page.locator('.b2b-box [role=alert]')).toContainText(tooMany);
           expect(sent.map((s) => [s.route, s.body.captchaToken])).toEqual([['quote', `${DUMMY_TOKEN}-1`]]);

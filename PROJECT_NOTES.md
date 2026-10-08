@@ -76,7 +76,7 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   refused that function's text, and one row per bucket is simpler anyway.
 - **Card stored off in the live database** until the CMI callback exists, so `check_order` itself refuses a card
   order nobody could pay; the server also never offers it. **Turnstile (slice 4)**: the function checks the token first (nothing read or counted
-  before); no secret, or a Cloudflare test secret, = every form refused (500). Widget only in `supabase` mode (`src/shared/ui/Captcha.tsx`, dark, compact under 300 px, "try again"); a resend needs a fresh token.
+  before); no secret, or a Cloudflare test secret, = every form refused (500). Widget only in `supabase` mode (`src/shared/ui/Captcha.tsx`, dark, compact under 300 px, "try again"); a resend needs a fresh token. E2E waits for `.captcha[data-solved]` before a submit (it raced the token: CI flake 2026-10-07).
 - **Starting data = the examples the site already shows** (products, prices, stock are examples; payment details
   empty). `seed-sql.mjs` refuses to run if `seed/config.ts` holds payment details (the repo is public).
 - **Data contract** (2026-10-05): pages see data only through `src/data/api.ts` (async `Api`, `types.ts`) and the hooks;
