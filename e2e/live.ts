@@ -5,7 +5,7 @@ import type { Route } from '@playwright/test';
  * nothing leaves the browser, each test answers what it needs.
  */
 export const SUPABASE = 'https://e2e.supabase.test';
-export const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
+export const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS' };
 
 const L = (s: string) => ({ ar: s, fr: s, en: s });
 export const tables: Record<string, unknown[]> = {

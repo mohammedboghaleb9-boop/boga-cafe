@@ -2,7 +2,7 @@
 
 Read this first. Update it before finishing any session that changed code. Sources: `PROJECT_STATUS.html`
 (status; the owner reads it live at https://claude.ai/artifact/ULj6DPP9wF7bMdfWpjuFDH, republished on every change, see `CLAUDE.md`), `git log` (history), the code. Anything I could not check is under "Needs verification".
-Last updated: 2026-10-08 (P5 step 3: slices 1-4 and deploy config merged, `main` = `5acfad6`; slice 5 admin sign-in on `feat/p5-s5-admin-signin`). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
+Last updated: 2026-10-08 (P5 step 3: slices 1-5 and deploy config merged, `main` = `bf5133d`; slice 6 admin TOTP on `feat/p5-s6-admin-totp`). Repo: `mohammedboghaleb9-boop/boga-cafe` (GitHub), working copy `/home/user/boga-cafe`.
 
 ## What it is
 Website + online shop for BOGA CAFÉ, a whole-bean coffee brand from Oujda (Morocco). B2C and B2B:
@@ -14,16 +14,16 @@ French, English. Admin roles owner / manager / staff. No cash on delivery: every
 ## Status (2026-10-06; numbers from PROJECT_STATUS.html)
 - **Estimated** 66 % by item count: (27 done + 3 partial × 0.5) / 43. P5 is in progress: server side done and merged,
   the site is not connected yet: 7-10 days left (**Estimated**: slices 4-11 = 6.75 d + outbox sender 1-1.5 d; 3b took ~1 d).
-- `main` = `5acfad6`, merge of slice 4 Turnstile (owner approved 2026-10-07; CI run 112; production build b902f276 success; deploy config = `a778b66`). Merged branches deleted by the owner.
+- `main` = `bf5133d`, merge of slice 5 admin sign-in (owner approved 2026-10-08; CI run 128; production build da4f77e8 success, its log says "preview values OFF (branch "main")" (owner); live bundle `index-BUfp3Opf.js` = the plain build). Slice 4 = `5acfad6`, deploy config = `a778b66`. Merged branches deleted by the owner.
 - **Releases**: `main` auto-deploys to Cloudflare Workers (Workers Builds, production branch = `main`, no build variables yet). **Every merge into `main` is a release.**
   Dashboard (owner): Build command `npm run build`; Deploy command (main) `npx wrangler deploy`. Repo: `wrangler.jsonc` (assets `./dist`, SPA fallback, auto-setup's values) + wrangler 4.148.0 pinned, no Vite plugin (same 35 served files, checked).
   The Supabase switch = `VITE_DATA_MODE`/URL/key + `VITE_TURNSTILE_SITE_KEY` as Cloudflare build variables (slice 11: the dashboard's variables never reached a preview build, so likely from the repo too, see Previews). Workers Builds does not wait for GitHub CI: merge only on green.
   Deployed today: browser store, seed catalog, no admin, no payment method, **not on Supabase**, **no notifications** (Known issues).
-- **Previews** (other branches): failed until 2026-10-07 ("name must match", workers-sdk#15682), fixed by `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload` (the dashboard preview command set on 2026-10-07; **keep it**); they **pass with URLs** (build d6e0c6cb: a Version Preview URL and the alias `feat-p5-s5-admin-signin-boga-cafe.mohammedboghaleb9.workers.dev`).
-  Version URLs were already on (`preview_urls: true` only states it); the Cloudflare bot's "No Preview URL" is wrong: **the build log is the source of truth**. Later edits to the Previews Base fields (Build command, Preview command, Variables) never reached a build: 35dba62d, bbe92d7c and their retries all ran `npm run build` + that `env -u` upload with "Build variables: None".
-  So the preview values come from the repo: in Workers Builds (`WORKERS_CI=1`) on a branch other than `main` (`WORKERS_CI_BRANCH`; `main` is hard-coded in `vite.config.ts`), the default build uses mode `workers-preview` = `.env.workers-preview` (live Supabase URL, publishable key, Turnstile test site key; public only; a `VITE_*` already in the environment wins) and logs "Workers Builds: preview values ON|OFF (branch …)" (no line = not detected). Production, GitHub CI, local builds: same dist byte for byte (checked 2026-10-08). **Needs verification** on Workers Builds: the first preview log says ON, the first `main` build after the merge says OFF. Previews run unmerged code on the live database: once admin writes exist (slices 8-10), signing in there writes real data.
-- **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = `supabase/migrations` (2 from slice 3b),
-  catalog from `seed.sql`, two owners (never signed in, no 2FA), `storefront` **v6** = slice 4 build (`5acfad6`), no `TURNSTILE_SECRET_KEY`: every form refused (500) until slice 11, no `save_product` yet. Rollout: migrations, then the function.
+- **Previews** (other branches): failed until 2026-10-07 ("name must match", workers-sdk#15682), fixed by the Previews Base **Preview command** `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload` (**keep exactly this short line**); they **pass with URLs** (build d6e0c6cb: a Version Preview URL and the alias `feat-p5-s5-admin-signin-boga-cafe.mohammedboghaleb9.workers.dev`).
+  Version URLs were already on (`preview_urls: true` only states it); the Cloudflare bot's "No Preview URL" is wrong: **the build log is the source of truth**. The Previews Base **Preview command is applied** (build 29320152 on `abf544f` ran an old long `VITE_…` line saved there: a space after `VITE_SUPABASE_PUBLISHABLE_KEY=` made /bin/sh run the key as a command, "not found", deploy step failed). Its Build command and Variables were never seen to apply ("Build variables: None"). **"Retry build" reuses the original build's config** (retry 52f56246 ran that old line again after the owner reset it): a dashboard change needs a new push.
+  So the preview values come from the repo: in Workers Builds (`WORKERS_CI=1`) on a branch other than `main` (`WORKERS_CI_BRANCH`; `main` is hard-coded in `vite.config.ts`), the default build uses mode `workers-preview` = `.env.workers-preview` (live Supabase URL, publishable key, Turnstile test site key; public only; a `VITE_*` already in the environment wins) and logs "Workers Builds: preview values ON|OFF (branch …)" (no line = not detected). Production, GitHub CI, local builds: same dist byte for byte (checked 2026-10-08). Confirmed on Workers Builds: the slice 5 preview ran on the live project (owner signed in there) and production build da4f77e8 logged OFF. No preview values in the dashboard: they come from the repo. Previews run unmerged code on the live database: once admin writes exist (slices 8-10), signing in there writes real data (decision due before slice 8, What is next).
+- **Live Supabase** `boga-cafe` (ref `ldzagzskfmnjbkizbayr`, eu-west-3, free plan): 9 migrations = the first 9 of `supabase/migrations` (2 from slice 3b),
+  catalog from `seed.sql`, two owners (one signed in on the slice 5 preview, 2026-10-08; no 2FA yet), `storefront` **v6** = slice 4 build (`5acfad6`), no `TURNSTILE_SECRET_KEY`: every form refused (500) until slice 11, no `save_product` yet. Rollout: migrations, then the function. Slice 6 migration `20261008154205_admin_aal2` **not applied** (at merge, after approval): from then on a session without the code has no admin rights. Auth (2026-10-08): 0 MFA factors, 2 owners in `admin_users`.
 
 ## Stack
 Open branches: not listed here (owner, 2026-10-06): run `git branch -a` at session start; the owner tracks them in Notion.
@@ -55,25 +55,17 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 - **"I paid" is a claim, not money.** Only the owner marks paid. A paid order ends with a refund, not a plain cancel; a reported payment can be cancelled only by the owner.
 - **Payment methods stay closed until real details exist** (`payeeReady`, `invalid_order:payment_details`). Nothing is invented for the RIB or Cash Plus.
 - **One B2B threshold** in settings; texts read it. **Samples are paid bags, not a request form** (owner, 2026-09-30): a B2B blend's 250 g / 500 g bag is an ordinary order (paid before prep, delivery as usual); its 1 kg bag is refused in a cart at or under the threshold (`isBulkOnly` in `src/core/cart.ts`, line problem `bulk_only`; `check_order` raises `invalid_order:bulk_only`, since an order is never above the threshold). Why: no free-sample abuse to police, one payment path, ~26 files of sample flow removed. The 250 g prices (55 / 45 / 65 DH) are examples like the rest of the catalog. **Page titles, skip link, Escape closes the menu** (a11y findings).
-- **Orders and B2B requests go through the server** (`storefront` function, `POST …/storefront/order|quote`): it
-  rebuilds every figure from the database with `src/core`, then `check_order` checks them again and `commit_*` saves,
-  numbers and queues the messages in one transaction. B2B request building lives in `src/core/requests.ts` so the site
-  and the server build the same thing. Answers: 400 for bodies the forms never send (texts over `TEXT_MAX` included),
-  200 `{ok:false, errors}` for what the customer can fix, `too_many`, `captcha`.
-- **Limits against fake orders** (an unpaid order holds stock 48 h, `src/server/guard.ts`): a per-connection
-  budget of 120 requests/h before the catalog is read; once an order passes every check, 5/h per phone, 10/h and
-  20/day per connection (B2B requests: 3/day per phone, 20/day per connection). An IPv6 visitor counts by its /64.
-  No cap on open unpaid orders per phone (tried, then removed after the second review): phones are not verified, so
-  two cheap orders would lock a real customer out for 48 h, unseen; a fake order is visible and the owner frees its
-  stock by cancelling it. What this does not stop: many phones and many connections. Turnstile is the real defence
-  (slice 4: checked before anything else); the 48 h expiry bounds the damage of what gets through.
-  The visitor IP is Cloudflare's `cf-connecting-ip` only (no header = no per-connection limit, logged); checked on the
-  live project: requests land in one bucket with or without a forged `x-forwarded-for`, and a forged
-  `cf-connecting-ip` is refused by Cloudflare (403). Buckets carry an HMAC of the IP keyed with the server secret key
-  (rotating that key resets the buckets; a separate secret would need the owner to add it in the dashboard).
-  One row per bucket (`rate_limits`), the upsert locks it: 20 parallel calls with limit 5 let exactly 5 through
-  (`race.sh`, in CI). Why not one row per hit with an advisory lock: the tool that applies SQL to the live project
-  refused that function's text, and one row per bucket is simpler anyway.
+- **Orders and B2B requests go through the server** (`storefront` function, `POST …/storefront/order|quote`): it rebuilds every figure from the database with `src/core`, then `check_order` checks them again and
+  `commit_*` saves, numbers and queues the messages in one transaction. B2B request building lives in `src/core/requests.ts` so the site and the server build the same thing. Answers: 400 for bodies the forms
+  never send (texts over `TEXT_MAX` included), 200 `{ok:false, errors}` for what the customer can fix, `too_many`, `captcha`.
+- **Limits against fake orders** (an unpaid order holds stock 48 h, `src/server/guard.ts`): a per-connection budget of 120 requests/h before the catalog is read; once an order passes every check, 5/h per phone,
+  10/h and 20/day per connection (B2B requests: 3/day per phone, 20/day per connection). An IPv6 visitor counts by its /64. No cap on open unpaid orders per phone (tried, then removed after the second review):
+  phones are not verified, so two cheap orders would lock a real customer out for 48 h, unseen; a fake order is visible and the owner frees its stock by cancelling it. What this does not stop: many phones and
+  many connections. Turnstile is the real defence (slice 4: checked before anything else); the 48 h expiry bounds the damage of what gets through. The visitor IP is Cloudflare's `cf-connecting-ip` only (no
+  header = no per-connection limit, logged); checked on the live project: requests land in one bucket with or without a forged `x-forwarded-for`, and a forged `cf-connecting-ip` is refused by Cloudflare (403).
+  Buckets carry an HMAC of the IP keyed with the server secret key (rotating that key resets the buckets; a separate secret would need the owner to add it in the dashboard). One row per bucket (`rate_limits`),
+  the upsert locks it: 20 parallel calls with limit 5 let exactly 5 through (`race.sh`, in CI). Why not one row per hit with an advisory lock: the tool that applies SQL to the live project refused that
+  function's text, and one row per bucket is simpler anyway.
 - **Card stored off in the live database** until the CMI callback exists, so `check_order` itself refuses a card
   order nobody could pay; the server also never offers it. **Turnstile (slice 4)**: the function checks the token first (nothing read or counted
   before); no secret, or a Cloudflare test secret, = every form refused (500). Widget only in `supabase` mode (`src/shared/ui/Captcha.tsx`, dark, compact under 300 px, "try again"); a resend needs a fresh token. E2E waits for `.captcha[data-solved]` before a submit (it raced the token: CI flake 2026-10-07).
@@ -83,10 +75,17 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   `tests/architecture.test.ts` refuses a page importing a backend. The Supabase backend fills the same `DbState`
   (store approach from `map-test`, owner approved), so storefront pages stay unchanged. Admin save buttons go through
   `useAction` (one call at a time); busy = `aria-disabled`, not `disabled`, so keyboard focus stays (a review found it lost).
-- **Admin sign-in (slice 5)**: `Backend.admin`. Demo: role picker (`src/data/demo/session.ts`). Live: Supabase Auth email + password, own client (`boga-admin-auth`: the shop stays a visitor);
-  admin = `is_admin()` true + own `admin_users` role, else signed out and "no access"; one message for every refused email/password. No sign-up/reset UI; 2FA = slice 6. Sign-out = this browser only (scope local; removed by hand when supabase-js cannot). Browser-only build: no-admin stub, no demo password (`check-real-build`).
+- **Admin sign-in (slices 5-6)**: `Backend.admin`. Demo: role picker (`src/data/demo/session.ts`). Live: Supabase Auth email + password, own client (`boga-admin-auth`: the shop stays a visitor);
+  an account with no own `admin_users` row (readable at aal1) is signed out at once ("no access"); an admin gets the TOTP step (slice 6, `AdminSecondFactor.tsx`): the app setup (QR code + key, shown once, kept nowhere; an unfinished setup is dropped) or the code; the panel opens only at `aal2` with `is_admin()` true (migration `20261008154205_admin_aal2`: `is_admin()` needs `aal = 'aal2'`, and every admin policy and function goes through it). One message for every refused email/password, one for every refused code; a code that is not 6 digits never reaches Auth. No sign-up/reset UI. Tested live by the owner on the preview (2026-10-08): real owner account, kept after reload, sign-out, wrong password = generic message. Sign-out = this browser only (scope local; removed by hand when supabase-js cannot). Browser-only build: no-admin stub, no demo password (`check-real-build`).
 - **Workflow**: `fix/*`/`feat/*` branch, read-only review, CI green, `merge --no-ff`. No PRs unless asked. No secrets in the repo (Gmail/CallMeBot keys: Vercel settings only).
 - **Audit rule**: a rule counts as tested only if breaking it makes a test fail. The audit's own faults were re-run (code 3 of 58 survive, SQL 3 of 31; `docs/10` section 6).
+
+## Admin two-step verification: lost phone, rollout (owner steps)
+Recovery codes are not used (experimental in supabase-js): at setup, scan the QR code on a second device too (the site says so). If every device is lost:
+1. If the phone or the password may be in someone else's hands, change that admin's password **first** (Dashboard → Authentication → Users → the user): per Auth's source this ends all their sessions; removing a factor only drops sessions to aal1, and an aal1 session with no factor may set up its own app. Tokens already issued stay valid until they expire (1 h by default; source, not checked on the project).
+2. Dashboard → project `boga-cafe` → Authentication → Users → search the email → open the user → remove the MFA factor ("Remove MFA factors", confirm). **Needs verification**: that button name is not in Supabase's docs; the documented way is the admin API `auth.admin.mfa.deleteFactor({ id, userId })` with the secret key, from a trusted machine, never from the repo or a browser.
+3. The admin signs in right away: the site shows the app setup (new QR code); scan it (two devices), enter the code.
+Rollout of migration `20261008154205_admin_aal2` (at merge): check first that TOTP is on (Dashboard → Authentication → Multi-Factor), else admins are locked out. Whoever sets up first owns an account's app: both owners set up right after, then check each has exactly one verified factor. Rollback = the old `is_admin()` body (`20260927000000_init.sql`, `is_admin`).
 
 ## Known issues (evidence in PROJECT_STATUS.html section 17)
 - **Hosting mismatch**: the site runs on Cloudflare Workers, `api/notify` is a Vercel function, so no message reaches WhatsApp/Gmail from the deployed site.
@@ -133,9 +132,9 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
 ## What is next
 1. P5 step 3, one branch per slice, each merged before the next; the live site stays on the browser backend until 11:
    1 async contract (merged) · 2 catalog read from Supabase (merged) · 3 orders via `storefront` (merged) · 4 Turnstile (merged) · 5 Supabase Auth
-   sign-in (branch `feat/p5-s5-admin-signin`) · 6 TOTP 2FA + `aal2` in `is_admin()` · 7 admin reads · 8 order/stock/B2B writes · 9 catalog + `save_product`
-   (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, drop `commit_order_before_3b`, the live
-   same-key success test with payee details, real Turnstile keys (widget + `TURNSTILE_SECRET_KEY` + `VITE_TURNSTILE_SITE_KEY`),
+   sign-in (merged) · 6 TOTP 2FA + `aal2` in `is_admin()` (branch `feat/p5-s6-admin-totp`) · 7 admin reads, and every admin write button not wired yet disabled with a visible
+   "coming soon" note (owner, 2026-10-08: today they look active and do nothing) · 8 order/stock/B2B writes (before it, owner decision 2026-10-08: decide how previews may write to the live database) · 9 catalog + `save_product`
+   (from `map-test`) · 10 settings/payments/content/shipping · 11 live checks, test rows deleted, drop `commit_order_before_3b`, the live same-key success test with payee details, real Turnstile keys (widget + `TURNSTILE_SECRET_KEY` + `VITE_TURNSTILE_SITE_KEY`),
    siteverify `hostname` + `action` check, a build check that the site key variable holds no secret, deploy from `main`. 3b (merged): unavailable products, order key (B2B: none yet), order page by link.
    Then Turnstile keys and the outbox sender (phase 4). Before launch: the privacy page (P7) mentions the order copy kept in the tab (sessionStorage).
 2. P6 SEO, P7 legal pages + consent banner, P9 final QA + review on real Supabase, P10 launch: 10-14 days. All remaining technical work 18-25 days (**Estimated**, PROJECT_STATUS.html §8; not a promise).
@@ -146,5 +145,6 @@ Hosting: Cloudflare Workers, but `api/notify.ts` is a **Vercel** function: it do
   order built by `src/core` and refuses closed methods, the storefront function end to end. Anon over HTTP (2026-10-06): 10 products, 6 origins, 20 cities, 2 methods, 1 config; 0 orders/requests/messages/admins; the supabase build in a
   browser shows the live shop and reads an order by its link. Not checked: admin reads (slice 7).
 - Performance: Lighthouse never run; "about 150 KB gzip" comes from the build output only. Q1 "yes" read as the default (roasted stock); Q21 Vercel free plan for a commercial site; Q23/Q24 Cash Plus beneficiary data, can a bank transfer be recalled after it lands.
-- Turnstile: real widget and siteverify never seen from here (Cloudflare blocked; e2e stand-in). Admin sign-in: Auth faked in the browser only; the owners' live sign-in is the owner's test.
+- Turnstile: real widget and siteverify never seen from here (Cloudflare blocked; e2e stand-in). Admin sign-in: tested live by the owner on the preview (2026-10-08); the second owner's sign-in not reported.
+- TOTP (slice 6): Supabase docs say TOTP MFA is on by default on every project; my tools cannot read Auth's MFA settings (owner: Dashboard → Authentication → Multi-Factor). A real authenticator app never used here (Auth faked in the browser).
 - The Stop hook firing in a real session was not observed (script tested by hand). `map-test` @ `f9ba067`: donor only (still to port: `save_product`, admin mappers; `Captcha.tsx` ported in slice 4).

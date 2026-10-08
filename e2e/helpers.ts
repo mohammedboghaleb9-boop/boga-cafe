@@ -1,4 +1,12 @@
+import { AxeBuilder } from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
+
+/** WCAG 2.2 level A and AA rules: no violation on the page as it is now. */
+export async function scanA11y(page: Page, where: string) {
+  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  const found = r.violations.map((v) => `${where}: ${v.id} (${v.impact}) × ${v.nodes.length} — ${v.nodes[0]?.target.join(' ')}`);
+  expect(found, found.join('\n')).toEqual([]);
+}
 
 /** Fails the test on any page error or console error (a missing image or API is allowed). */
 export function watchErrors(page: Page) {
