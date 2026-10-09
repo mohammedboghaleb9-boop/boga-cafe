@@ -5,12 +5,12 @@ import { api } from '@/data/api';
 import { canWrite, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
-import { ComingSoon, LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, useSavedFlash } from '../ui';
+import { ComingSoon, LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import type { Role } from '../permissions';
 import { payeeReady } from '@/core/orderFlow';
 import { methodAvailable } from '@/services/payments';
 import { useAdminRole } from '../session';
-import { useAction } from '../useAction';
+import { refuse, useAction } from '../useAction';
 
 const icons: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
 
@@ -18,7 +18,7 @@ export function PaymentsPage() {
   const role = useAdminRole()!;
   const { t, money, l } = useI18n();
   const { paymentMethods, orders, settings } = useAdminDb();
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   const toVerify = orders.filter(
     (o) => o.status !== 'cancelled' && (o.paymentStatus === 'awaiting_verification' || (o.paymentStatus === 'pending' && o.paymentMethod !== 'card')),
   );
@@ -29,11 +29,12 @@ export function PaymentsPage() {
         <h1>{t.admin.nav.payments}</h1>
       </div>
       <p className="muted">{t.admin.payments.intro}</p>
-      {/* live site: "paid" connects in slice 8, methods and payee details in slice 10 */}
-      {(!canWrite('orders') || !canWrite('payments')) && <ComingSoon />}
+      {/* live site: "paid" works (slice 8), methods and payee details connect in slice 10 */}
+      {!canWrite('payments') && <ComingSoon text={canWrite('orders') ? t.admin.soonPayments : undefined} />}
 
       <section className="stack">
         <h2 className="admin-card-title">{t.admin.payments.toVerify}</h2>
+        <WriteError show={failed} />
         {toVerify.length === 0 ? (
           <p className="small muted">{t.admin.payments.noneToVerify}</p>
         ) : (
@@ -64,7 +65,7 @@ export function PaymentsPage() {
                         aria-disabled={busy || undefined}
                         onClick={() =>
                           run(async () => {
-                            await api.setPaymentStatus(o.id, 'paid', role);
+                            if (!(await api.setPaymentStatus(o.id, 'paid', role))) refuse('payment');
                           })
                         }
                       >
@@ -97,7 +98,7 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
   const { t, l } = useI18n();
   const [m, setM] = useState(method);
   const [saved, flash] = useSavedFlash();
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   const writable = canWrite('payments');
   return (
     <fieldset className="plain-fieldset panel stack" disabled={!writable}>
@@ -123,6 +124,7 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
           </button>
         </div>
       </div>
+      <WriteError show={failed} />
       {m.id === 'card' && !methodAvailable({ id: 'card', enabled: true }, settings) && <p className="notice small">{t.admin.payments.cardOff}</p>}
       {m.id !== 'card' && !payeeReady(m.id, settings) && <p className="notice small">{t.admin.payments.payeeMissing}</p>}
       <div className="detail-grid">
@@ -144,9 +146,10 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
   const [bank, setBank] = useState(settings.bank);
   const [cashplus, setCashplus] = useState(settings.cashplus);
   const [saved, flash] = useSavedFlash();
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   return (
     <fieldset className="plain-fieldset panel stack" disabled={!canWrite('payments')}>
+      <WriteError show={failed} />
       <div className="spread">
         <h2 className="admin-card-title">{t.admin.payments.bankTitle}</h2>
         <div className="row">

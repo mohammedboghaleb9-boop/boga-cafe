@@ -3,7 +3,7 @@ import type { Settings, SiteContent } from '@/core/types';
 import { api } from '@/data/api';
 import { canWrite, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
-import { ComingSoon, LocalizedInput, SavedFlash, useSavedFlash } from '../ui';
+import { ComingSoon, LocalizedInput, SavedFlash, WriteError, useSavedFlash } from '../ui';
 import { cleanProfileUrl } from '@/shared/contact';
 import { useAdminRole } from '../session';
 import { useAction } from '../useAction';
@@ -16,7 +16,7 @@ export function ContentPage() {
   const [content, setContent] = useState<SiteContent>(db.content);
   const [contact, setContact] = useState<Settings['contact']>(db.settings.contact);
   const [saved, flash] = useSavedFlash();
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   const role = useAdminRole()!;
   const ownsContact = role === 'owner';
   const setC = <K extends keyof SiteContent>(k: K, v: SiteContent[K]) => setContent((c) => ({ ...c, [k]: v }));
@@ -41,6 +41,7 @@ export function ContentPage() {
         </div>
       </div>
       <p className="muted">{t.admin.content.intro}</p>
+      <WriteError show={failed} />
       {!writable && <ComingSoon />}
       <div className="detail-grid">
         <fieldset className="plain-fieldset panel stack" disabled={!writable}>

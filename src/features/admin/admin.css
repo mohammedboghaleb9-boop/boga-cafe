@@ -406,3 +406,14 @@ a.kpi:hover {
 .perm-table th:first-child {
   text-align: start;
 }
+
+/* the stock adjust form sits in a table row that scrolls sideways: on a phone or tablet
+   (no side menu) it stays in the visible width and wraps, so "Apply" is reachable without
+   scrolling the table */
+@media (max-width: 979px) {
+  .adjust-form {
+    position: sticky;
+    inset-inline-start: 0;
+    max-inline-size: calc(100vw - 2 * var(--gutter) - 32px);
+  }
+}

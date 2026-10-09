@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { formatKg, formatSize } from '@/core/format';
 import type { QuoteRequest, QuoteStatus } from '@/core/types';
 import { api } from '@/data/api';
@@ -5,7 +6,8 @@ import { canWrite, useAdminDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
-import { ComingSoon, TableWrap } from '../ui';
+import { ComingSoon, SavedFlash, TableWrap, WriteError, useSavedFlash } from '../ui';
+import { useAction } from '../useAction';
 
 const QUOTE_STATUSES: QuoteStatus[] = ['new', 'negotiating', 'confirmed', 'closed'];
 
@@ -52,7 +54,26 @@ function Head({ number, createdAt, company, contactName, phone, cityId, business
 
 function QuoteCard({ q }: { q: QuoteRequest }) {
   const { t, l, money } = useI18n();
-  const set = (patch: Partial<QuoteRequest>) => api.updateQuote(q.id, patch);
+  // the follow-up is edited here and saved by the button, not on every keystroke
+  const current = { status: q.status, finalPrice: q.finalPrice, adminNotes: q.adminNotes };
+  const [form, setForm] = useState(current);
+  // what is saved changed (this save, another admin's, a refresh): the form starts again from it
+  const version = q.updatedAt ?? JSON.stringify(current);
+  const [seen, setSeen] = useState(version);
+  if (seen !== version) {
+    setSeen(version);
+    setForm(current);
+  }
+  const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
+  const [busy, run, failed] = useAction();
+  const [saved, flash] = useSavedFlash();
+  const writable = canWrite('b2b');
+  const priceOk = form.finalPrice === null || (Number.isFinite(form.finalPrice) && form.finalPrice >= 0);
+  const save = () =>
+    run(async () => {
+      await api.updateQuote(q.id, form);
+      flash();
+    });
   return (
     <article className="panel stack">
       <Head {...q} />
@@ -89,12 +110,11 @@ function QuoteCard({ q }: { q: QuoteRequest }) {
           </div>
         )}
       </dl>
-      {/* live site: the team's follow-up connects in slice 8 */}
-      {!canWrite('b2b') && <ComingSoon />}
-      <fieldset className="plain-fieldset form-grid" disabled={!canWrite('b2b')}>
+      {!writable && <ComingSoon />}
+      <fieldset className="plain-fieldset form-grid" disabled={!writable}>
         <label className="field">
           <span className="label">{t.common.status}</span>
-          <select className="select" value={q.status} onChange={(e) => set({ status: e.target.value as QuoteStatus })}>
+          <select className="select" value={form.status} onChange={(e) => set({ status: e.target.value as QuoteStatus })}>
             {QUOTE_STATUSES.map((st) => (
               <option key={st} value={st}>
                 {t.admin.b2b.quoteStatus[st]}
@@ -108,15 +128,29 @@ function QuoteCard({ q }: { q: QuoteRequest }) {
             className="input num"
             type="number"
             min={0}
-            value={q.finalPrice ?? ''}
+            value={form.finalPrice ?? ''}
             onChange={(e) => set({ finalPrice: e.target.value === '' ? null : Number(e.target.value) })}
           />
         </label>
         <label className="field span-all">
           <span className="label">{t.admin.b2b.adminNotes}</span>
-          <input className="input" value={q.adminNotes} onChange={(e) => set({ adminNotes: e.target.value })} />
+          <input className="input" maxLength={500} value={form.adminNotes} onChange={(e) => set({ adminNotes: e.target.value })} />
         </label>
+        <div className="row span-all">
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={!priceOk}
+            aria-disabled={busy || undefined}
+            aria-label={`${t.common.save} · ${q.number}`}
+            onClick={save}
+          >
+            {t.common.save}
+          </button>
+          <SavedFlash show={saved} />
+        </div>
       </fieldset>
+      <WriteError show={failed} />
     </article>
   );
 }

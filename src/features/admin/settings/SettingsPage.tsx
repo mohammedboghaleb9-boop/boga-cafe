@@ -7,7 +7,7 @@ import { DEMO_DATA } from '@/data/mode';
 import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { PERMISSIONS, ROLES, SECTIONS } from '../permissions';
-import { ComingSoon, ConfirmButton, SavedFlash, Switch, TableWrap, useSavedFlash } from '../ui';
+import { ComingSoon, ConfirmButton, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 import { useAction } from '../useAction';
 
@@ -19,7 +19,7 @@ export function SettingsPage() {
   const writable = canWrite('settings');
   const [s, setS] = useState<Settings>(db.settings);
   const [saved, flash] = useSavedFlash();
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   const num = (v: string) => Math.max(0, Number(v) || 0);
   const cb = s.customBlend;
 
@@ -47,6 +47,7 @@ export function SettingsPage() {
       </div>
 
       {!writable && <ComingSoon />}
+      <WriteError show={failed} />
       <fieldset className="plain-fieldset detail-grid" disabled={!writable}>
         <section className="panel stack">
           <h2 className="admin-card-title">{t.admin.settings.rules}</h2>

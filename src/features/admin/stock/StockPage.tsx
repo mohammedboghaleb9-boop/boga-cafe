@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { formatNumber } from '@/core/format';
+import { formatKg, formatNumber } from '@/core/format';
 import { isPrice } from '@/core/pricing';
 import { isLowStock } from '@/core/stock';
 import type { Origin, RoastLevel, Species, StockReason } from '@/core/types';
@@ -10,8 +10,8 @@ import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { canEditCatalog } from '../permissions';
 import { useAdminRole } from '../session';
-import { ComingSoon, LocalizedInput, Switch, TableWrap } from '../ui';
-import { useAction } from '../useAction';
+import { ComingSoon, LocalizedInput, Switch, TableWrap, WriteError } from '../ui';
+import { refuse, useAction } from '../useAction';
 
 export function StockPage() {
   const { t, l, date } = useI18n();
@@ -38,7 +38,7 @@ export function StockPage() {
           </button>
         )}
       </div>
-      {soon && <ComingSoon />}
+      {soon && <ComingSoon text={canWrite('stock') ? t.admin.soonOrigins : undefined} />}
       <p className="muted">{t.admin.stock.intro}</p>
       <p className="notice small">{t.admin.stock.blendRule}</p>
 
@@ -69,7 +69,8 @@ export function StockPage() {
                 editable={editable}
                 showEdit={canEditCatalog(role)}
                 adjusting={adjusting === o.id}
-                onAdjust={() => setAdjusting(adjusting === o.id ? null : o.id)}
+                onAdjust={() => setAdjusting((cur) => (cur === o.id ? null : o.id))}
+                onAdjusted={() => setAdjusting((cur) => (cur === o.id ? null : cur))}
                 onEdit={() => setEditing(o)}
               />
             ))}
@@ -123,6 +124,7 @@ function OriginRow({
   showEdit,
   adjusting,
   onAdjust,
+  onAdjusted,
   onEdit,
 }: {
   o: Origin;
@@ -132,10 +134,13 @@ function OriginRow({
   showEdit: boolean;
   adjusting: boolean;
   onAdjust: () => void;
+  /** The adjustment was saved: this row's form closes (not another row's, opened meanwhile). */
+  onAdjusted: () => void;
   onEdit: () => void;
 }) {
   const { t, l, money, date } = useI18n();
   const low = isLowStock(o);
+  const [busy, run, failed] = useAction();
   return (
     <>
       <tr>
@@ -156,8 +161,13 @@ function OriginRow({
         <td>
           <Switch
             checked={o.customBlendEnabled}
-            disabled={!editable}
-            onChange={(v) => editable && api.saveOrigin({ ...o, customBlendEnabled: v })}
+            disabled={!editable || busy}
+            onChange={(v) =>
+              editable &&
+              run(async () => {
+                if (!(await api.saveOrigin({ ...o, customBlendEnabled: v }))) refuse('origin');
+              })
+            }
             label={o.customBlendEnabled && o.stockKg === 0 ? t.admin.stock.empty : ''}
             name={`${t.admin.stock.inBlend} · ${l(o.name)}`}
           />
@@ -176,10 +186,17 @@ function OriginRow({
           </div>
         </td>
       </tr>
+      {failed && (
+        <tr>
+          <td colSpan={8}>
+            <WriteError show />
+          </td>
+        </tr>
+      )}
       {adjusting && (
         <tr>
           <td colSpan={8}>
-            <AdjustForm origin={o} onDone={onAdjust} />
+            <AdjustForm origin={o} onDone={onAdjusted} />
           </td>
         </tr>
       )}
@@ -187,27 +204,57 @@ function OriginRow({
   );
 }
 
+type Direction = 'add' | 'remove';
+
+/**
+ * The stock change the form sends: +amount or -amount, or null until both the direction and
+ * a real amount above 0 are given. A positive amount and two buttons, not a signed number:
+ * a phone's decimal keypad (inputMode decimal, iOS) has no minus key. A comma works as the point.
+ */
+export function stockChange(direction: Direction | null, amount: string): number | null {
+  const kg = Number(amount.trim().replace(',', '.'));
+  if (!direction || !amount.trim() || !Number.isFinite(kg) || kg <= 0) return null;
+  return direction === 'add' ? kg : -kg;
+}
+
 function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) {
   const { t } = useI18n();
-  const [delta, setDelta] = useState('');
+  // no default: the admin says whether it is a delivery or a withdrawal
+  const [direction, setDirection] = useState<Direction | null>(null);
+  const [amount, setAmount] = useState('');
   const [reason, setReason] = useState<StockReason>('restock');
   const [note, setNote] = useState('');
-  const [busy, run] = useAction();
-  const value = Number(delta.replace(',', '.'));
+  const [busy, run, failed] = useAction();
+  const delta = stockChange(direction, amount);
+  // as the database applies it: stock never goes under 0
+  const after = delta === null ? null : Math.max(0, origin.stockKg + delta);
+  function choose(d: Direction) {
+    setDirection(d);
+    // a withdrawal is a correction, never a "delivery from the roaster"; either can still be changed
+    setReason(d === 'add' ? 'restock' : 'correction');
+  }
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (!Number.isFinite(value) || value === 0) return;
+    if (delta === null) return;
     void run(async () => {
-      await api.adjustStock(origin.id, value, reason, note);
+      await api.adjustStock(origin.id, delta, reason, note);
       onDone();
     });
   }
   return (
-    <form className="row" onSubmit={submit} style={{ alignItems: 'flex-end' }}>
+    <form className="row adjust-form" onSubmit={submit} style={{ alignItems: 'flex-end' }}>
+      <WriteError show={failed} />
+      <div className="seg" role="group" aria-label={t.admin.stock.direction}>
+        {(['add', 'remove'] as const).map((d) => (
+          <button key={d} type="button" aria-pressed={direction === d} onClick={() => choose(d)}>
+            {d === 'add' ? t.admin.stock.add : t.admin.stock.remove}
+          </button>
+        ))}
+      </div>
       <label className="field">
-        <span className="label">{t.admin.stock.delta}</span>
+        <span className="label">{t.admin.stock.amount}</span>
         {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- opened by the "adjust" button: this is the field the user asked for */}
-        <input className="input num" inputMode="decimal" value={delta} onChange={(e) => setDelta(e.target.value)} placeholder="+20 / -1.5" autoFocus />
+        <input className="input num" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="10" autoFocus />
       </label>
       <label className="field">
         <span className="label">{t.admin.stock.reason}</span>
@@ -218,9 +265,15 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
       </label>
       <label className="field" style={{ flex: '1 1 200px' }}>
         <span className="label">{t.admin.stock.note}</span>
-        <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
+        <input className="input" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
-      <button type="submit" className="btn btn-primary btn-sm" disabled={!Number.isFinite(value) || value === 0} aria-disabled={busy || undefined}>
+      {after !== null && (
+        <p className="small stock-result" aria-live="polite">
+          {t.admin.stock.result} <span className="num">{formatKg(origin.stockKg)}</span> <span className="dir-arrow" aria-hidden="true">→</span>{' '}
+          <strong className="num">{formatKg(after)}</strong>
+        </p>
+      )}
+      <button type="submit" className="btn btn-primary btn-sm" disabled={delta === null} aria-disabled={busy || undefined}>
         {t.admin.stock.apply}
       </button>
     </form>
@@ -249,7 +302,7 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
   );
   const set = <K extends keyof Origin>(k: K, v: Origin[K]) => setO((cur) => ({ ...cur, [k]: v }));
   const [refused, setRefused] = useState(false);
-  const [busy, run] = useAction();
+  const [busy, run, failed] = useAction();
   const priced = isPrice(o.pricePerKg);
   const valid = o.name.fr.trim() && o.countryCode.trim().length === 2 && priced;
   const save = () =>
@@ -274,6 +327,7 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
         </div>
       </div>
       {refused && <p className="field-error">{t.admin.saveRefused}</p>}
+      <WriteError show={failed} />
       <div className="detail-grid">
         <div className="stack">
           <LocalizedInput id="o-name" label={t.admin.products.name} value={o.name} onChange={(v) => set('name', v)} />

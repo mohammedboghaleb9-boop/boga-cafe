@@ -85,11 +85,12 @@ Catalog index for Claude to read: https://docs.aitmpl.com/llms.txt
 
 ## Which tool for which task
 - Website / landing page / UI: skills `frontend-design`, `ui-ux-pro-max`; agent `ui-ux-designer`.
-- Next.js or React code: agent `nextjs-developer` or `frontend-developer`; skill `senior-frontend`.
+- React code (this project is Vite + React, not Next.js): agent `frontend-developer`; skill `senior-frontend`.
 - Backend / API / database: skills `senior-backend`, `senior-architect`; agent `database-architect`.
 - SEO for a site: agents `seo-specialist`, `seo-analyzer`.
 - Before finishing a real code change: agent `code-reviewer`.
 - Login, payments, user data, anything exposed online: agent `security-auditor`.
+- Installed in this project (`.claude/agents/`, `model: sonnet`): `code-reviewer`, `security-auditor`, `supabase-schema-architect`. One independent review pass per slice, with these agents only; never a general-purpose subagent on the main model.
 - New library or framework question: MCP `context7` (current docs), do not guess.
 - A workflow I keep repeating: propose it as a skill (skill-creator).
 

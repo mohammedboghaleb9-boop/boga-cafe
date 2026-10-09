@@ -37,7 +37,6 @@ export function createSupabaseBackend(): Backend {
   });
   const store = createCatalogStore(client);
   void store.load();
-  const api = createSupabaseApi({ client, store, storefront: { url, key } });
   // the admin's session lives in its own client: the shop keeps reading as a visitor
   // (an admin's session would show it the inactive products too)
   let adminClient: Client | undefined;
@@ -48,6 +47,7 @@ export function createSupabaseBackend(): Backend {
     }));
   const admin = createAdminAuth(adminDb, forgetAdminSession);
   const adminData = createAdminData(adminDb, admin);
-  // slice 7 reads only: the panel's writes connect in slices 8-10 (api.ts says which)
-  return { db: store.db, status: store.status, api, retry: () => void store.load(), admin, adminData, adminWrites: [] };
+  const api = createSupabaseApi({ client, store, storefront: { url, key }, admin: [adminDb, adminData] });
+  // orders, stock and B2B follow-up (slice 8); catalog, settings, payments, content, shipping: slices 9-10
+  return { db: store.db, status: store.status, api, retry: () => void store.load(), admin, adminData, adminWrites: ['orders', 'stock', 'b2b'] };
 }

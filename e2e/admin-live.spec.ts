@@ -58,7 +58,8 @@ const ADMIN_TABLES: Record<string, unknown[]> = {
   ],
   quote_requests: [
     { id: 'quote-1', number: 'QR-2026-0003', created_at: '2026-10-08T08:00:00Z', business_type: 'cafe', company: 'Café E2E', contact_name: CUSTOMER.name,
-      phone: CUSTOMER.phone, email: '', city_id: 'oujda', lines: [], weight_kg: '30.000', indicative_total: '6000.00', notes: '', status: 'new', final_price: null, admin_notes: '' },
+      phone: CUSTOMER.phone, email: '', city_id: 'oujda', lines: [], weight_kg: '30.000', indicative_total: '6000.00', notes: '', status: 'new', final_price: null, admin_notes: '',
+      updated_at: '2026-10-08T08:00:00.000001+00:00', updated_by: null },
   ],
   stock_movements: [{ id: 1, at: '2026-10-08T09:00:00Z', origin_id: 'brazil', delta_kg: '-0.250', reason: 'order', ref: 'BC-2026-0007', note: '', actor: null }],
   notification_outbox: [
@@ -73,6 +74,8 @@ interface Server {
   signIn?: 'rate_limited';
   /** an admin table that refuses the read (an error, not empty rows) */
   failing?: string | null;
+  /** a write function the database refuses, with its exception text */
+  refuse?: { fn: string; message: string };
   /** account ids is_admin() accepts at aal2, with their admin_users role */
   admins?: Record<string, string>;
   /** ADMIN's authenticator apps: one set up by default */
@@ -82,6 +85,10 @@ interface Server {
 /** Answers Auth (password and TOTP), is_admin() and admin_users like Supabase; returns what the browser asked for. */
 async function fakeSupabase(page: Page, server: Server = {}) {
   const admins = server.admins ?? { [ADMIN.id]: 'manager' };
+  // this test's own copy: writes change it, and the next read shows them
+  const db = structuredClone(ADMIN_TABLES) as Record<string, Record<string, unknown>[]>;
+  /** the write functions called: name, arguments, and the level of the session that called */
+  const writes: { fn: string; args: Record<string, unknown>; aal?: Aal }[] = [];
   let factors = server.factors ?? [{ id: 'app-1', status: 'verified' }];
   const asked: string[] = [];
   /** the account each catalog read was made as (null = a visitor) */
@@ -139,13 +146,37 @@ async function fakeSupabase(page: Page, server: Server = {}) {
       const allowed = (req.postDataJSON() as { allowed?: string[] } | null)?.allowed;
       return json(200, !!(user && admins[user] && (!allowed || allowed.includes(admins[user])) && claims?.aal === 'aal2'));
     }
+    const write = url.pathname.match(/^\/rest\/v1\/rpc\/(set_order_status|set_payment_status|adjust_stock|update_quote_request)$/)?.[1];
+    if (write) {
+      const args = req.postDataJSON() as Record<string, unknown>;
+      writes.push({ fn: write, args, aal: claims?.aal });
+      // what PostgREST answers to a function that raised an exception
+      if (server.refuse?.fn === write) return json(400, { code: 'P0001', message: server.refuse.message, details: null, hint: null });
+      const now = new Date().toISOString();
+      const order = db.orders.find((o) => o.id === args.p_order_id);
+      if (write === 'set_order_status' && order) {
+        order.status = args.p_status;
+        (order.order_events as unknown[]).push({ at: now, label: `status.${args.p_status}` });
+      }
+      if (write === 'set_payment_status' && order) {
+        order.payment_status = args.p_status;
+        (order.order_events as unknown[]).push({ at: now, label: `payment.${args.p_status}` });
+      }
+      if (write === 'adjust_stock') db.stock_movements.unshift({ id: 99, at: now, origin_id: args.p_origin_id, delta_kg: args.p_delta_kg, reason: args.p_reason, ref: '', note: args.p_note, actor: user });
+      if (write === 'update_quote_request') {
+        // the database's version check: a save from an older copy is refused
+        if (db.quote_requests[0].updated_at !== args.p_seen_at) return json(400, { code: 'P0001', message: 'stale', details: null, hint: null });
+        Object.assign(db.quote_requests[0], { status: args.p_status, final_price: args.p_final_price, admin_notes: args.p_admin_notes, updated_at: now });
+      }
+      return json(200, null);
+    }
     const table = url.pathname.match(/^\/rest\/v1\/(\w+)$/)?.[1] ?? '';
-    if (table in ADMIN_TABLES) {
+    if (table in db) {
       asked.push(`read ${table}`);
       // a refusal PostgREST does not retry (supabase-js retries a GET that got 503 or no answer, with pauses)
       if (server.failing === table) return json(403, { code: '42501', message: `permission denied for table ${table}` });
       // row level security: an admin past the second factor reads every row, any other session none (and no error)
-      const rows = user && admins[user] && claims?.aal === 'aal2' ? ADMIN_TABLES[table] : [];
+      const rows = user && admins[user] && claims?.aal === 'aal2' ? db[table] : [];
       const single = (req.headers()['accept'] ?? '').includes('vnd.pgrst.object');
       return json(200, single ? (rows[0] ?? null) : rows);
     }
@@ -158,7 +189,7 @@ async function fakeSupabase(page: Page, server: Server = {}) {
     shopAs.push(user);
     return answerCatalog(r);
   });
-  return Object.assign(asked, { shopAs });
+  return Object.assign(asked, { shopAs, writes, db });
 }
 
 async function signIn(page: Page, account: { email: string; password: string }) {
@@ -216,7 +247,7 @@ test.describe('admin sign-in on the live site', () => {
     const nav = page.getByRole('navigation', { name: 'Panel Admin' });
     await expect(nav.getByRole('link', { name: 'Commandes' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Paiements' })).toHaveCount(0);
-    await expect(page.locator('.admin-live-bar .notice-warn')).toContainText('lecture seule');
+    await expect(page.locator('.admin-live-bar .notice-warn')).toContainText('Les commandes, le stock et les demandes B2B se modifient ici');
     await expect(page.getByRole('link', { name: 'BC-2026-0007' })).toBeVisible();
     await expect(page.getByRole('button', { name: /démo/i })).toHaveCount(0);
 
@@ -294,7 +325,8 @@ test.describe('admin sign-in on the live site', () => {
     expect(asked).toContain('sign-out');
   });
 
-  test('the panel shows the live data at aal2, and every change is off with a "coming soon" note', async ({ page }) => {
+  test('the panel shows the live data at aal2; what is not connected yet is off, with a "coming soon" note', async ({ page }) => {
+    test.setTimeout(60_000); // 12 pages, each with an axe scan: near the 30 s default on a slow runner
     await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
     const asked = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
     await open(page, '/admin/orders');
@@ -308,12 +340,27 @@ test.describe('admin sign-in on the live site', () => {
     await open(page, `/admin/orders/${ORDER_ID}`);
     await expect(page.getByRole('heading', { level: 1, name: 'BC-2026-0007' })).toBeVisible();
     await expect(page.locator('.history li')).toHaveText([/signalé un paiement/, /Commande passée/]); // newest first
-    await expect(page.getByRole('button', { name: /Marquer payé/ })).toBeDisabled();
 
-    // on every page: the "coming soon" note where something could be changed, and no control left on
-    // but reading tools (refresh, tabs, search, the delivery simulator)
-    const readingTools = '.admin-live-bar button, [role=tab], input[type=search], .shipping-sim *';
-    for (const path of ['', '/orders', `/orders/${ORDER_ID}`, '/b2b', '/products', '/products/boga-signature', '/stock', '/shipping', '/payments', '/notifications', '/content', '/settings']) {
+    // on every page: the "coming soon" note where something could be changed, and no control left on but
+    // reading tools (refresh, tabs, search, the delivery simulator) and the writes of slice 8 (orders, stock, B2B)
+    const SOON = 'Bientôt : les modifications ici ne sont pas encore branchées.';
+    const pages: [path: string, wired: string, note: string | null][] = [
+      ['', '', null],
+      ['/orders', '', null],
+      [`/orders/${ORDER_ID}`, 'button', null],
+      ['/b2b', 'fieldset *', null],
+      ['/products', '', SOON],
+      ['/products/boga-signature', '', SOON],
+      // adjusting stock works; adding or editing an origin (slice 9) does not
+      ['/stock', 'button.btn-ghost:not([aria-label])', 'Bientôt : ajouter ou modifier une origine et l’interrupteur Custom Blend ne sont pas encore branchés. Les ajustements de stock fonctionnent.'],
+      ['/shipping', '', SOON],
+      ['/payments', 'tbody button', 'Bientôt : les moyens de paiement et les coordonnées du bénéficiaire ne sont pas encore branchés. « Marquer payé » fonctionne.'],
+      ['/notifications', '', SOON],
+      ['/content', '', SOON],
+      ['/settings', '', SOON],
+    ];
+    for (const [path, wired, note] of pages) {
+      const readingTools = ['.admin-live-bar button, [role=tab], input[type=search], .shipping-sim *', wired].filter(Boolean).join(', ');
       await open(page, `/admin${path}`);
       const on = await page.locator('.admin-main').evaluate(
         (main, tools) =>
@@ -324,7 +371,8 @@ test.describe('admin sign-in on the live site', () => {
         readingTools,
       );
       expect(on, `${path || '/'}: ${on.join(' | ')}`).toEqual([]);
-      if (!['', '/orders'].includes(path)) await expect(page.locator('.coming-soon').first(), path).toHaveText('Bientôt : les modifications ici ne sont pas encore branchées.');
+      if (note) await expect(page.locator('.coming-soon').first(), path).toHaveText(note);
+      else await expect(page.locator('.coming-soon'), path).toHaveCount(0);
       await scanA11y(page, `admin${path}`);
       if (path === '/b2b') await expect(page.getByText('QR-2026-0003')).toBeVisible();
       if (path === '/notifications') await expect(page.locator('.log-item .pill')).toHaveText('pas encore envoyé'); // the queue, not "sent"
@@ -355,6 +403,104 @@ test.describe('admin sign-in on the live site', () => {
     await page.getByRole('button', { name: 'Actualiser' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Accès refusé' })).toBeVisible();
     await expect(page.getByText('BC-2026-0007')).toHaveCount(0);
+  });
+
+  test('orders, payments, stock and B2B follow-up are saved through the database functions, then read again', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const { writes } = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
+
+    await open(page, `/admin/orders/${ORDER_ID}`);
+    await page.getByRole('button', { name: 'Passer à : Confirmée' }).click();
+    await expect(page.locator('.history li').first()).toContainText('Statut : confirmée'); // read again after the write
+    await page.getByRole('button', { name: 'Marquer payé' }).click();
+    await expect(page.locator('.history li').first()).toContainText('Paiement confirmé');
+    await expect(page.locator('.write-error')).toHaveCount(0);
+
+    await open(page, '/admin/stock');
+    await page.getByRole('button', { name: 'Ajuster le stock' }).click();
+    await page.getByRole('button', { name: 'Ajouter', exact: true }).click();
+    await page.getByLabel('Quantité (kg)').fill('2,5');
+    await page.getByLabel('Note').fill('TEST lot');
+    await page.getByRole('button', { name: 'Appliquer' }).click();
+    await expect(page.getByRole('cell', { name: 'TEST lot' })).toBeVisible();
+
+    await open(page, '/admin/b2b');
+    await page.getByLabel('Notes internes').fill('TEST rappeler lundi');
+    expect(writes.map((w) => w.fn)).not.toContain('update_quote_request'); // typing saves nothing
+    await page.getByRole('button', { name: 'Enregistrer · QR-2026-0003' }).click();
+    await expect(page.locator('.pill-ok', { hasText: 'Enregistré' })).toBeVisible();
+
+    expect(writes).toEqual([
+      { fn: 'set_order_status', args: { p_order_id: ORDER_ID, p_status: 'confirmed' }, aal: 'aal2' },
+      { fn: 'set_payment_status', args: { p_order_id: ORDER_ID, p_status: 'paid' }, aal: 'aal2' },
+      { fn: 'adjust_stock', args: { p_origin_id: 'brazil', p_delta_kg: 2.5, p_reason: 'restock', p_note: 'TEST lot' }, aal: 'aal2' },
+      { fn: 'update_quote_request', args: { p_id: 'quote-1', p_status: 'new', p_final_price: null, p_admin_notes: 'TEST rappeler lundi', p_seen_at: '2026-10-08T08:00:00.000001+00:00' }, aal: 'aal2' },
+    ]);
+  });
+
+  test('stock: "Remove 10" sends -10 (a phone keypad has no minus key); Apply waits for a choice and an amount above 0', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const { writes } = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
+    await open(page, '/admin/stock');
+    await page.getByRole('button', { name: 'Ajuster le stock' }).click();
+    const apply = page.getByRole('button', { name: 'Appliquer' });
+    await expect(apply).toBeDisabled(); // no choice, no amount
+    await page.getByLabel('Quantité (kg)').fill('10');
+    await expect(apply).toBeDisabled(); // an amount, still no choice
+    await page.getByRole('button', { name: 'Retirer' }).click();
+    await expect(page.getByRole('button', { name: 'Retirer' })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByLabel('Quantité (kg)').fill('0');
+    await expect(apply).toBeDisabled(); // 0 kg changes nothing
+    await page.getByLabel('Quantité (kg)').fill('10');
+    await expect(page.locator('.stock-result')).toHaveText(/Stock :.*80 kg.*→.*70 kg/); // shown before applying
+    await page.getByLabel('Note').fill('TEST');
+    await apply.click();
+    await expect(page.getByRole('cell', { name: 'TEST', exact: true })).toBeVisible();
+    // a withdrawal is recorded as a correction, never as a delivery
+    expect(writes).toEqual([{ fn: 'adjust_stock', args: { p_origin_id: 'brazil', p_delta_kg: -10, p_reason: 'correction', p_note: 'TEST' }, aal: 'aal2' }]);
+  });
+
+  test('the B2B form follows what another admin saved; an older copy is never saved over it', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const { db, writes } = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
+    await open(page, '/admin/b2b');
+    await page.getByLabel('Prix final (MAD)').fill('5800');
+    // meanwhile another admin saves a note
+    Object.assign(db.quote_requests[0], { admin_notes: 'TEST note de Mohammed', updated_at: '2026-10-08T09:00:00.000001+00:00' });
+    await page.getByRole('button', { name: 'Enregistrer · QR-2026-0003' }).click();
+    await expect(page.locator('.write-error')).toBeVisible(); // 'stale': nothing written over the note
+    await expect(page.getByLabel('Notes internes')).toHaveValue('TEST note de Mohammed'); // read again, the form shows it
+    expect(db.quote_requests[0].admin_notes).toBe('TEST note de Mohammed');
+    expect(writes).toHaveLength(1);
+  });
+
+  test('a refused write says so and never shows "saved"; staff never gets the owner\'s payment buttons', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const server: Server = { admins: { [ADMIN.id]: 'owner' }, refuse: { fn: 'update_quote_request', message: 'invalid_status' } };
+    await fakeSupabase(page, server);
+    await open(page, '/admin/b2b');
+    await page.getByRole('button', { name: 'Enregistrer · QR-2026-0003' }).click();
+    await expect(page.getByRole('alert')).toHaveText('La modification n’a pas été confirmée : refusée, ou pas de réponse du serveur. La page montre maintenant ce qui est enregistré : vérifiez avant de réessayer.');
+    await expect(page.locator('.pill-ok', { hasText: 'Enregistré' })).toHaveCount(0);
+    await scanA11y(page, 'write refused');
+
+    server.refuse = { fn: 'set_order_status', message: 'needs_payment' };
+    await open(page, `/admin/orders/${ORDER_ID}`);
+    await page.getByRole('button', { name: 'Passer à : Confirmée' }).click();
+    await expect(page.locator('.write-error')).toBeVisible();
+    await expect(page.locator('.history li')).toHaveCount(2); // nothing recorded
+    server.refuse = { fn: 'set_payment_status', message: 'forbidden' };
+    await page.getByRole('button', { name: 'Marquer payé' }).click();
+    await expect(page.locator('.write-error')).toBeVisible();
+    await expect(page.locator('.history li')).toHaveCount(2);
+
+    const staff = await page.context().newPage();
+    await staff.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    await fakeSupabase(staff, { admins: { [ADMIN.id]: 'staff' } });
+    await open(staff, `/admin/orders/${ORDER_ID}`);
+    await expect(staff.getByText('Seul le propriétaire enregistre les paiements.')).toBeVisible();
+    await expect(staff.getByRole('button', { name: 'Marquer payé' })).toHaveCount(0);
+    await expect(staff.getByRole('navigation', { name: 'Panel Admin' }).getByRole('link', { name: 'Paiements' })).toHaveCount(0);
   });
 
   for (const [locale, title, denied, setUp] of [

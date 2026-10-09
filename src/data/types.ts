@@ -161,6 +161,8 @@ export interface AdminData {
   status: ReadStore<DataStatus>;
   /** Reads everything again (the "refresh" button, "try again" after an error). */
   reload(): void;
+  /** Reads everything again after a write, the page staying on screen. */
+  refresh(): Promise<void>;
 }
 
 export interface Backend {

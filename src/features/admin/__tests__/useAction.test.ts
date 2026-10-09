@@ -2,7 +2,7 @@
  * Admin calls are async (src/data/types.ts): a second click while the first
  * call is still saving must not send the same change twice.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { exclusive } from '../useAction';
 
 describe('one admin call at a time', () => {
@@ -45,5 +45,22 @@ describe('one admin call at a time', () => {
       ran = true;
     });
     expect(ran).toBe(true);
+  });
+
+  it('with onFailed, a failed call is reported (never thrown) and cleared when the next one starts', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failed: boolean[] = [];
+    const run = exclusive(() => {}, (f) => failed.push(f));
+    let flashed = false;
+    const write = async () => {
+      throw new Error('refused: needs_payment');
+    };
+    await run(async () => {
+      await write();
+      flashed = true; // the "saved" flash after the write is never reached
+    });
+    expect(flashed).toBe(false);
+    await run(async () => {});
+    expect(failed).toEqual([false, true, false]);
   });
 });
