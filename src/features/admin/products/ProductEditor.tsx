@@ -1,7 +1,7 @@
 import { formatSize } from '@/core/format';
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { offeredSizes } from '@/core/pricing';
+import { isPrice, MAX_PRICE, offeredSizes } from '@/core/pricing';
 import { isProductRecipe, MAX_RECIPE_LINES, recipeTotal, speciesSplit } from '@/core/recipe';
 import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type Product, type ProductKind, type RoastLevel } from '@/core/types';
@@ -15,6 +15,7 @@ import { ComingSoon, ConfirmButton, LocalizedInput, Switch, WriteError } from '.
 import { refuse, useAction } from '../useAction';
 
 const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
+const KINDS: ProductKind[] = ['signature', 'single-origin', 'b2b'];
 const empty = { ar: '', fr: '', en: '' };
 
 /** A fresh form for each product: moving from one product to another never keeps the previous one's fields. */
@@ -38,7 +39,7 @@ function ProductForm({ id }: { id: string | undefined }) {
       existing ?? {
         id: '',
         slug: '',
-        kind: (params.get('kind') as ProductKind) || 'signature',
+        kind: KINDS.find((k) => k === params.get('kind')) ?? 'signature',
         name: { ...empty },
         tagline: { ...empty },
         description: { ...empty },
@@ -69,7 +70,12 @@ function ProductForm({ id }: { id: string | undefined }) {
   const set = <K extends keyof Product>(k: K, v: Product[K]) => setP((cur) => ({ ...cur, [k]: v }));
   // an active product needs at least one size at a real price (0 or empty = not offered)
   const priced = offeredSizes(p).length > 0;
-  const valid = recipeOk && p.name.fr.trim() !== '' && (priced || !p.active);
+  // empty or 0 = not offered; anything else a real price, as the database saves it
+  const pricesOk = PACK_SIZES.every((s) => p.prices[s] === undefined || p.prices[s] === 0 || (isPrice(p.prices[s]) && p.prices[s]! <= MAX_PRICE));
+  // a shown product is made of shown origins only (save_product: 'hidden_origin')
+  const originsShown = !p.active || p.recipe.every((r) => originIndex[r.originId]?.active);
+  const sortOk = Number.isInteger(p.sortOrder) && Math.abs(p.sortOrder) <= 1_000_000;
+  const valid = recipeOk && p.name.fr.trim() !== '' && (priced || !p.active) && pricesOk && originsShown && sortOk;
 
   const save = () =>
     run(async () => {
@@ -118,7 +124,7 @@ function ProductForm({ id }: { id: string | undefined }) {
             <label className="field">
               <span className="label">{t.admin.products.kind}</span>
               <select className="select" value={p.kind} onChange={(e) => set('kind', e.target.value as ProductKind)}>
-                {(['signature', 'single-origin', 'b2b'] as ProductKind[]).map((k) => (
+                {KINDS.map((k) => (
                   <option key={k} value={k}>
                     {t.kind[k]}
                   </option>
@@ -217,6 +223,7 @@ function ProductForm({ id }: { id: string | undefined }) {
           <section className="panel stack">
             <span className="label">{t.admin.products.pricesHint}</span>
             {p.active && !priced && <p className="field-error">{t.admin.products.needsPrice}</p>}
+            {!pricesOk && <p className="field-error">{t.admin.products.priceRange}</p>}
             <div className="form-grid">
               {PACK_SIZES.map((s) => (
                 <label key={s} className="field">
@@ -230,6 +237,7 @@ function ProductForm({ id }: { id: string | undefined }) {
                     className="input num"
                     type="number"
                     min={1}
+                    max={MAX_PRICE}
                     step={1}
                     value={p.prices[s] ?? ''}
                     onChange={(e) =>
@@ -244,12 +252,14 @@ function ProductForm({ id }: { id: string | undefined }) {
           <section className="panel stack">
             <Switch checked={p.active} disabled={isNew} onChange={(v) => set('active', v)} label={t.admin.products.active} />
             {isNew && <p className="small muted">{t.admin.products.createdHidden}</p>}
+            {!originsShown && <p className="field-error">{t.admin.products.hiddenOrigin}</p>}
             <Switch checked={p.featured} onChange={(v) => set('featured', v)} label={t.admin.products.featured} />
             <label className="field">
               <span className="label">{t.admin.products.sortOrder}</span>
               <input
                 className="input num"
                 type="number"
+                step={1}
                 value={p.sortOrder}
                 onChange={(e) => set('sortOrder', Number(e.target.value))}
               />

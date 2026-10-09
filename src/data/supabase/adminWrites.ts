@@ -49,6 +49,18 @@ function originJson(o: Origin): Json {
   return { id, name, countryCode, species, region, roastLevel, tastingNotes, lowStockKg, pricePerKg, customBlendEnabled };
 }
 
+/**
+ * No answer to a creation, but the read that followed shows the new row: it was saved. Said so,
+ * since a second click would pick the next free id and create a copy.
+ */
+async function creating(write: () => Promise<void>, isThere: () => boolean): Promise<void> {
+  try {
+    await write();
+  } catch (e) {
+    if (!(e instanceof WriteFailed && e.code === 'failed' && isThere())) throw e;
+  }
+}
+
 /** A refusal (the database's reason) is answered `refused`; no answer is thrown: it may have been saved. */
 async function unlessRefused<T>(write: () => Promise<T>, refused: T): Promise<T> {
   try {
@@ -115,7 +127,10 @@ export function createAdminWrites(client: () => Client, data: AdminData): Writes
     async createProduct(draft) {
       const id = newProductId(draft.name.fr, data.db.get().products);
       const product = { ...draft, id, slug: id, active: false };
-      await call('save_product', { p_product: productJson(product), p_recipe: recipeJson(product), p_seen_at: null });
+      await creating(
+        () => call('save_product', { p_product: productJson(product), p_recipe: recipeJson(product), p_seen_at: null }),
+        () => data.db.get().products.some((p) => p.id === id),
+      );
       return product;
     },
 
@@ -132,7 +147,10 @@ export function createAdminWrites(client: () => Client, data: AdminData): Writes
       unlessRefused(async () => {
         if (!isPrice(draft.pricePerKg)) return null;
         const origin = { ...draft, id: newOriginId(draft.name.fr, data.db.get().origins), stockKg: 0, active: false };
-        await call('save_origin', { p_origin: originJson(origin), p_seen_at: null });
+        await creating(
+          () => call('save_origin', { p_origin: originJson(origin), p_seen_at: null }),
+          () => data.db.get().origins.some((o) => o.id === origin.id),
+        );
         return origin;
       }, null),
 

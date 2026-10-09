@@ -162,4 +162,16 @@ describe('admin writes (live site)', () => {
     expect(await unread.writes.saveOrigin({ ...origin, pricePerKg: 0 })).toBe(false);
     expect(unread.rpc).not.toHaveBeenCalled();
   });
+
+  it('a creation with no answer that the next read shows is saved: a second click never makes a copy', async () => {
+    const created = { ...product, id: 'nouveau', slug: 'nouveau' };
+    const products = [product];
+    const { writes, data } = setup({ error: { message: 'TypeError: Failed to fetch' } }, async () => {
+      products.push(created); // the insert went through, its answer was lost
+    });
+    data.db.get = () => ({ version: STATE_VERSION, quotes: [], products, origins: [origin] }) as unknown as DbState;
+    expect(await writes.createProduct({ ...product, name: loc('Nouveau'), updatedAt: undefined })).toMatchObject({ id: 'nouveau' });
+    // not there after the read: no answer stays an error
+    await expect(writes.createProduct({ ...product, name: loc('Autre'), updatedAt: undefined })).rejects.toThrow(WriteFailed);
+  });
 });

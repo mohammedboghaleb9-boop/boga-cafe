@@ -24,17 +24,30 @@ create table public.catalog_changes (
 create index catalog_changes_item_idx on public.catalog_changes (item, item_id, at desc);
 alter table public.catalog_changes enable row level security;
 create policy "admins read" on public.catalog_changes for select using (public.is_admin());
-revoke all on public.catalog_changes from anon;
-revoke insert, update, delete, truncate on public.catalog_changes from authenticated;
+revoke all on public.catalog_changes from anon, authenticated;
+grant select on public.catalog_changes to authenticated;
 
 -- Clock time, not the transaction's: each change gets its own mark, so a second save
 -- from the same old copy is told apart (the stale checks below compare it).
+-- (search_path kept as 20261001165327_harden set it: create or replace drops it otherwise)
 create or replace function public.touch_updated_at() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = public as $$
 begin
   new.updated_at := clock_timestamp();
   return new;
 end $$;
+
+-- An origin's version (updated_at, compared by save_origin) moves with its details, not with
+-- its stock: an order or a stock line between reading and saving never refuses the save.
+-- CREATE OR REPLACE, not DROP: the tool that applies migrations to the live project hangs on DROP.
+create or replace trigger origins_touch before update on public.origins
+  for each row
+  when ((old.id, old.name, old.country_code, old.species, old.region, old.roast_level, old.tasting_notes, old.low_stock_kg,
+         old.price_per_kg, old.custom_blend_enabled, old.restock_date, old.active)
+        is distinct from
+        (new.id, new.name, new.country_code, new.species, new.region, new.roast_level, new.tasting_notes, new.low_stock_kg,
+         new.price_per_kg, new.custom_blend_enabled, new.restock_date, new.active))
+  execute function public.touch_updated_at();
 
 -- An address-like id: "boga-signature", "ethiopie-2". 'new' is the panel's add-product address.
 create or replace function public.catalog_id_ok(p_id text) returns boolean
@@ -86,12 +99,13 @@ begin
      or not public.catalog_text_ok(coalesce(p_product -> 'tastingNotes', '{}'), 200) then
     raise exception 'invalid_text';
   end if;
-  -- a price is a real amount of at least 1 DH (src/core/pricing.ts isPrice), only for the sold sizes
+  -- a price is a real amount from 1 to 100 000 DH (src/core/pricing.ts isPrice, MAX_PRICE), only for the sold sizes
   -- (SQL does not promise the order of OR: a malformed value fails a cast, caught here)
   begin
     if jsonb_typeof(v_prices) <> 'object'
        or exists (select 1 from jsonb_each(v_prices) e
-                  where e.key not in ('250', '500', '1000') or jsonb_typeof(e.value) <> 'number' or (e.value #>> '{}')::numeric < 1) then
+                  where e.key not in ('250', '500', '1000') or jsonb_typeof(e.value) <> 'number'
+                     or (e.value #>> '{}')::numeric not between 1 and 100000) then
       raise exception 'invalid_price';
     end if;
   exception when others then
@@ -125,6 +139,10 @@ begin
   exception when others then
     raise exception 'invalid_recipe';
   end;
+  -- a shown product is made of shown origins only (a hidden one is new, or out of the range)
+  if v_active and exists (select 1 from jsonb_array_elements(p_recipe) l join public.origins o on o.id = l ->> 'originId' where not o.active) then
+    raise exception 'hidden_origin';
+  end if;
 
   if v_new then
     if exists (select 1 from public.products where id = v_id or slug = v_id) then
@@ -185,11 +203,11 @@ begin
   exception when others then
     raise exception 'invalid_origin';
   end;
-  -- a blend is never free (src/core/pricing.ts isPrice); 'NaN' and 'Infinity' are valid numeric values
-  if v_price is null or v_price < 1 or v_price in ('NaN', 'Infinity') then
+  -- a blend is never free (src/core/pricing.ts isPrice, MAX_PRICE); 'NaN' and 'Infinity' are valid numeric values
+  if v_price is null or v_price in ('NaN', 'Infinity') or v_price not between 1 and 100000 then
     raise exception 'invalid_price';
   end if;
-  if v_low < 0 or v_low in ('NaN', 'Infinity') then
+  if v_low in ('NaN', 'Infinity') or v_low not between 0 and 100000 then
     raise exception 'invalid_low_stock';
   end if;
 
@@ -238,6 +256,7 @@ alter policy "catalog read" on public.product_recipes
   using (public.is_admin() or exists (select 1 from public.products p where p.id = product_id and p.active));
 
 -- The catalog changes only through the functions above and adjust_stock(), which run as
--- the tables' owner: the API roles lose the direct write privileges, as orders and B2B
--- requests did in slice 8 ("catalog write" stays, without effect).
-revoke insert, update, delete, truncate on public.products, public.product_recipes, public.origins from anon, authenticated;
+-- the tables' owner: the API roles keep reading it (row level security), nothing else
+-- ("catalog write" stays, without effect).
+revoke all on public.products, public.product_recipes, public.origins from anon, authenticated;
+grant select on public.products, public.product_recipes, public.origins to anon, authenticated;

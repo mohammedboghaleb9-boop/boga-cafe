@@ -571,10 +571,13 @@ export const en = {
       bagsLeft: 'Bags possible with current stock',
       invalidRecipe: 'The recipe: 1 to 8 different origins, whole percentages, 100% in total.',
       createdHidden: 'A new product is created hidden: show it afterwards, once checked.',
+      priceRange: 'Price: 1 to 100,000 DH (empty or 0 = size not offered).',
+      hiddenOrigin: 'A visible product uses visible origins only.',
       hidden: 'Hidden',
     },
     stock: {
-      needsPrice: 'Price per kg: at least 1 DH.',
+      needsPrice: 'Price per kg: 1 to 100,000 DH.',
+      lowStockRange: 'Alert: 0 to 100,000 kg.',
       intro:
         'Stock is counted in kilograms per origin. Orders deduct it automatically, cancellations give it back.',
       species: 'Species',

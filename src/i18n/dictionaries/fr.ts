@@ -569,10 +569,13 @@ export const fr: Dict = {
       bagsLeft: 'Sachets possibles avec le stock actuel',
       invalidRecipe: 'La recette : 1 à 8 origines différentes, des pourcentages entiers, total 100 %.',
       createdHidden: 'Un nouveau produit est créé masqué : affichez-le ensuite, après vérification.',
+      priceRange: 'Prix : de 1 à 100 000 DH (vide ou 0 = format non proposé).',
+      hiddenOrigin: 'Un produit visible n’utilise que des origines visibles.',
       hidden: 'Masqué',
     },
     stock: {
-      needsPrice: 'Prix au kilo : au moins 1 DH.',
+      needsPrice: 'Prix au kilo : de 1 à 100 000 DH.',
+      lowStockRange: 'Alerte : de 0 à 100 000 kg.',
       intro:
         'Le stock est compté en kilogrammes par origine. Les commandes le déduisent automatiquement, les annulations le rendent.',
       species: 'Espèce',

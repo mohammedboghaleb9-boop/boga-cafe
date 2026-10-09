@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { formatKg, formatNumber } from '@/core/format';
-import { isPrice } from '@/core/pricing';
+import { isPrice, MAX_PRICE } from '@/core/pricing';
 import { isLowStock } from '@/core/stock';
 import type { Origin, RoastLevel, Species, StockReason } from '@/core/types';
 import { api } from '@/data/api';
@@ -307,8 +307,9 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
       active: false,
     },
   );
-  // what is saved changed (read again after a refused save): the form starts again from it
-  const version = origin ? (origin.updatedAt ?? JSON.stringify(origin)) : null;
+  // what is saved changed (read again after a refused save): the form starts again from it.
+  // Its details, not its stock: a stock line meanwhile keeps what is being typed
+  const version = origin ? (origin.updatedAt ?? JSON.stringify({ ...origin, stockKg: 0 })) : null;
   const [seen, setSeen] = useState(version);
   if (origin && seen !== version) {
     setSeen(version);
@@ -316,8 +317,9 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
   }
   const set = <K extends keyof Origin>(k: K, v: Origin[K]) => setO((cur) => ({ ...cur, [k]: v }));
   const [busy, run, failed] = useAction();
-  const priced = isPrice(o.pricePerKg);
-  const valid = o.name.fr.trim() && /^[a-z]{2}$/i.test(o.countryCode) && priced && Number.isFinite(o.lowStockKg) && o.lowStockKg >= 0;
+  const priced = isPrice(o.pricePerKg) && o.pricePerKg <= MAX_PRICE;
+  const lowOk = Number.isFinite(o.lowStockKg) && o.lowStockKg >= 0 && o.lowStockKg <= 100_000;
+  const valid = o.name.fr.trim() && /^[a-z]{2}$/i.test(o.countryCode) && priced && lowOk;
   const save = () =>
     run(async () => {
       if (!valid) return;
@@ -374,12 +376,13 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
           </label>
           <label className="field">
             <span className="label">{t.admin.stock.pricePerKg}</span>
-            <input className="input num" type="number" min={1} step={1} value={o.pricePerKg} onChange={(e) => set('pricePerKg', Number(e.target.value))} />
+            <input className="input num" type="number" min={1} max={MAX_PRICE} step={1} value={o.pricePerKg} onChange={(e) => set('pricePerKg', Number(e.target.value))} />
             {!priced && <span className="field-error">{t.admin.stock.needsPrice}</span>}
           </label>
           <label className="field">
             <span className="label">{t.admin.stock.lowAt}</span>
-            <input className="input num" type="number" min={0} value={o.lowStockKg} onChange={(e) => set('lowStockKg', Number(e.target.value))} />
+            <input className="input num" type="number" min={0} max={100_000} value={o.lowStockKg} onChange={(e) => set('lowStockKg', Number(e.target.value))} />
+            {!lowOk && <span className="field-error">{t.admin.stock.lowStockRange}</span>}
           </label>
           <label className="field">
             <span className="label">{t.admin.stock.restock}</span>

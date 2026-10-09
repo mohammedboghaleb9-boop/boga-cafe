@@ -7,7 +7,7 @@ set client_min_messages = warning;
 create extension if not exists pgtap;
 
 begin;
-select plan(32);
+select plan(36);
 
 insert into auth.users values
   ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000002'), ('00000000-0000-0000-0000-000000000003');
@@ -91,6 +91,16 @@ select is((select string_agg(item || ' ' || item_id || ' ' || action || ' ' || a
           'origin test-origine create 00000000-0000-0000-0000-000000000003, origin test-origine edit 00000000-0000-0000-0000-000000000003',
           'each save is recorded once, with who did it; a refused one leaves no line');
 
+-- an order or a stock line in between does not make the page's copy old: the version follows the details only
+create temp table seen_o as select pg_temp.seen_origin('test-origine') as at;
+select public.adjust_stock('test-origine', 5, 'restock');
+select lives_ok($$select public.save_origin(pg_temp.origin('test-origine', '{"pricePerKg": 130}'), (select at from seen_o))$$,
+                'a stock change since the page read the origin does not refuse its save');
+select throws_ok($$select public.save_product(pg_temp.product('test-produit', '{"prices": {"250": 100001}}'), pg_temp.recipe(), pg_temp.seen_product('test-produit'))$$,
+                 'P0001', 'invalid_price', 'a price above 100 000 DH is refused');
+select throws_ok($$select public.save_product(pg_temp.product('test-produit'), '[{"originId": "test-origine", "percent": 100}]', pg_temp.seen_product('test-produit'))$$,
+                 'P0001', 'hidden_origin', 'a shown product is made of shown origins only');
+
 -- no role writes the catalog directly through the API
 select pg_temp.token('00000000-0000-0000-0000-000000000001', 'aal2');
 select throws_ok($$update public.products set active = true$$, '42501', null, 'owner: a product cannot be changed directly');
@@ -108,6 +118,13 @@ select is((select count(*)::int from public.product_recipes where product_id = '
           'visitor: neither its recipe nor a hidden origin is read');
 select throws_ok($$select count(*) from public.catalog_changes$$, '42501', null, 'visitor: who changed the catalog is not read');
 
+-- every function of the schema keeps a fixed search_path (this migration replaces touch_updated_at)
 reset role;
+select is((select string_agg(p.proname, ', ') from pg_proc p
+            where p.pronamespace = 'public'::regnamespace
+              and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+              and not exists (select 1 from unnest(p.proconfig) c where c like 'search_path=%')), null,
+          'every function keeps a fixed search_path');
+
 select * from finish(true);
 rollback;
