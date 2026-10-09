@@ -4,6 +4,9 @@ One dated line per meaningful change, newest first. Built from `git log`. Hashes
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
+## 2026-10-09
+- 2026-10-09 [feat/p5-s8-admin-writes] Stock adjust: "Add"/"Remove" buttons (no default) and a positive amount in kg instead of a signed number (an iPhone's decimal keypad has no minus key, so stock could be added but never removed); the result ("80 kg → 70 kg") shows before "Apply", which waits for a choice and an amount above 0; the form stays in the visible width on a phone. Other admin number fields checked: none needs a negative value.
+
 ## 2026-10-08
 - 2026-10-08 [feat/p5-s8-admin-writes] Review fixes (security-auditor + code-reviewer, sonnet): a B2B follow-up saved from an older copy is refused (`updated_at`, `stale`) and records who saved it; direct writes on orders, history, stock lines, queue and B2B revoked from the API roles (SQL tests now apply Supabase's default grants first); the panel reads again after every failed write too; the B2B form follows the saved data; each order page starts without the previous one's error; every page that writes shows a refusal. pgTAP `writes.sql` 23, e2e 59.
 - 2026-10-08 [feat/p5-s8-admin-writes] Admin writes on the live site for orders (status, payment owner only), stock (`adjust_stock`, actor recorded) and B2B follow-up (new `update_quote_request`; restrictive policies close direct writes on `quote_requests`; migration `20261008230000_quote_follow_up`, not applied live). Every write awaited then read again; a refusal or no answer shows an error, never "saved"; B2B follow-up saved by a button. Tests: pgTAP `writes.sql` 17, unit (adminWrites 2, useAction +1), e2e 2 new.

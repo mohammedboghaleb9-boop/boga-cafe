@@ -326,6 +326,7 @@ test.describe('admin sign-in on the live site', () => {
   });
 
   test('the panel shows the live data at aal2; what is not connected yet is off, with a "coming soon" note', async ({ page }) => {
+    test.setTimeout(60_000); // 12 pages, each with an axe scan: near the 30 s default on a slow runner
     await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
     const asked = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
     await open(page, '/admin/orders');
@@ -417,7 +418,8 @@ test.describe('admin sign-in on the live site', () => {
 
     await open(page, '/admin/stock');
     await page.getByRole('button', { name: 'Ajuster le stock' }).click();
-    await page.getByLabel('Variation (kg, négatif pour retirer)').fill('2,5');
+    await page.getByRole('button', { name: 'Ajouter', exact: true }).click();
+    await page.getByLabel('Quantité (kg)').fill('2,5');
     await page.getByLabel('Note').fill('TEST lot');
     await page.getByRole('button', { name: 'Appliquer' }).click();
     await expect(page.getByRole('cell', { name: 'TEST lot' })).toBeVisible();
@@ -434,6 +436,28 @@ test.describe('admin sign-in on the live site', () => {
       { fn: 'adjust_stock', args: { p_origin_id: 'brazil', p_delta_kg: 2.5, p_reason: 'restock', p_note: 'TEST lot' }, aal: 'aal2' },
       { fn: 'update_quote_request', args: { p_id: 'quote-1', p_status: 'new', p_final_price: null, p_admin_notes: 'TEST rappeler lundi', p_seen_at: '2026-10-08T08:00:00.000001+00:00' }, aal: 'aal2' },
     ]);
+  });
+
+  test('stock: "Remove 10" sends -10 (a phone keypad has no minus key); Apply waits for a choice and an amount above 0', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const { writes } = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
+    await open(page, '/admin/stock');
+    await page.getByRole('button', { name: 'Ajuster le stock' }).click();
+    const apply = page.getByRole('button', { name: 'Appliquer' });
+    await expect(apply).toBeDisabled(); // no choice, no amount
+    await page.getByLabel('Quantité (kg)').fill('10');
+    await expect(apply).toBeDisabled(); // an amount, still no choice
+    await page.getByRole('button', { name: 'Retirer' }).click();
+    await expect(page.getByRole('button', { name: 'Retirer' })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByLabel('Quantité (kg)').fill('0');
+    await expect(apply).toBeDisabled(); // 0 kg changes nothing
+    await page.getByLabel('Quantité (kg)').fill('10');
+    await expect(page.locator('.stock-result')).toHaveText(/Stock :.*80 kg.*→.*70 kg/); // shown before applying
+    await page.getByLabel('Note').fill('TEST');
+    await apply.click();
+    await expect(page.getByRole('cell', { name: 'TEST', exact: true })).toBeVisible();
+    // a withdrawal is recorded as a correction, never as a delivery
+    expect(writes).toEqual([{ fn: 'adjust_stock', args: { p_origin_id: 'brazil', p_delta_kg: -10, p_reason: 'correction', p_note: 'TEST' }, aal: 'aal2' }]);
   });
 
   test('the B2B form follows what another admin saved; an older copy is never saved over it', async ({ page }) => {
