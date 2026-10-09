@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-09
+- 2026-10-09 [feat/p5-s9-catalog-writes] Slice 8 merged and verified (`4d3c528`; migration live as `20261009165916`, file renamed to match, content unchanged); stock TEST rows of 2026-10-09 listed in the notes; the project agent `code-reviewer` is read-only (no Write/Edit tools).
 - 2026-10-09 [feat/p5-s8-admin-writes] Stock adjust: "Add"/"Remove" buttons (no default) and a positive amount in kg instead of a signed number (an iPhone's decimal keypad has no minus key, so stock could be added but never removed); the result ("80 kg → 70 kg") shows before "Apply", which waits for a choice and an amount above 0; the form stays in the visible width on a phone. Other admin number fields checked: none needs a negative value.
 
 ## 2026-10-08
