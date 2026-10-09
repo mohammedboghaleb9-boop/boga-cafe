@@ -15,7 +15,7 @@ EXPECTED=$(grep -c "^select 'ok " tests/smoke.sql)
 # admin rights need the second factor, admin writes stay within each role (pgTAP; CI installs
 # postgresql-16-pgtap). finish(true) fails on a "not ok" but not on a test that never ran: the
 # count is checked against plan() here
-for T in aal writes; do
+for T in aal writes catalog; do
   dropdb --if-exists "$DB" && createdb "$DB"
   cat tests/00-local-auth-stub.sql tests/01-default-grants-like-supabase.sql migrations/*.sql | psql -q -v ON_ERROR_STOP=1 -d "$DB"
   OUT=$(psql -q -t -A -v ON_ERROR_STOP=1 -d "$DB" -f "tests/$T.sql" 2>&1) || { echo "$OUT" | grep -E '^(not )?ok|^#|ERROR'; exit 1; }

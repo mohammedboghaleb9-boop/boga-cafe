@@ -122,12 +122,15 @@ export function LocalizedInput({
   value,
   onChange,
   multiline,
+  maxLength,
 }: {
   id: string;
   label: string;
   value: Localized;
   onChange: (v: Localized) => void;
   multiline?: boolean;
+  /** Characters per language, as the database saves them. */
+  maxLength?: number;
 }) {
   const langs: { key: keyof Localized; tag: string; dir: 'rtl' | 'ltr' }[] = [
     { key: 'ar', tag: 'ع', dir: 'rtl' },
@@ -145,6 +148,7 @@ export function LocalizedInput({
               id={`${id}-${lg.key}`}
               className="textarea"
               dir={lg.dir}
+              maxLength={maxLength}
               value={value[lg.key]}
               onChange={(e) => onChange({ ...value, [lg.key]: e.target.value })}
             />
@@ -153,6 +157,7 @@ export function LocalizedInput({
               id={`${id}-${lg.key}`}
               className="input"
               dir={lg.dir}
+              maxLength={maxLength}
               value={value[lg.key]}
               onChange={(e) => onChange({ ...value, [lg.key]: e.target.value })}
             />

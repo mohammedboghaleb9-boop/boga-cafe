@@ -11,11 +11,11 @@ const L = (s: string) => ({ ar: s, fr: s, en: s });
 export const tables: Record<string, unknown[]> = {
   origins: [
     { id: 'brazil', name: L('Brésil'), country_code: 'BR', species: 'arabica', region: '', roast_level: 'medium', tasting_notes: L(''),
-      stock_kg: 80, low_stock_kg: 5, price_per_kg: 200, custom_blend_enabled: true, restock_date: null, active: true, updated_at: '' },
+      stock_kg: 80, low_stock_kg: 5, price_per_kg: 200, custom_blend_enabled: true, restock_date: null, active: true, updated_at: '2026-10-09T08:00:00.000001+00:00' },
   ],
   products: [
     { id: 'boga-signature', slug: 'boga-signature', kind: 'signature', name: L('BOGA Signature'), tagline: L(''), description: L(''), roast_level: 'medium',
-      tasting_notes: L(''), prices: { 250: 65, 500: 120, 1000: 220 }, image_url: null, featured: true, active: true, sort_order: 1, updated_at: '',
+      tasting_notes: L(''), prices: { 250: 65, 500: 120, 1000: 220 }, image_url: null, featured: true, active: true, sort_order: 1, updated_at: '2026-10-09T08:00:00.000002+00:00',
       product_recipes: [{ origin_id: 'brazil', percent: 100 }] },
   ],
   shipping_rates: [{ id: 'oujda', city: L('Oujda'), distance_km: 0, base_fee: 20, included_kg: 3, extra_per_kg: 5, delivery_days: '1', active: true }],

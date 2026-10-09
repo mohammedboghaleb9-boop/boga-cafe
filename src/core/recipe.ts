@@ -8,6 +8,17 @@ export const indexOrigins = (origins: Origin[]): OriginIndex =>
 export const recipeTotal = (lines: RecipeLine[]): number =>
   lines.reduce((sum, l) => sum + l.percent, 0);
 
+/** At most this many origins in a product's recipe. */
+export const MAX_RECIPE_LINES = 8;
+
+/** A product's recipe as the database saves it (save_product): 1 to 8 different known origins, whole percentages adding up to 100. */
+export const isProductRecipe = (lines: RecipeLine[], origins: OriginIndex): boolean =>
+  lines.length >= 1 &&
+  lines.length <= MAX_RECIPE_LINES &&
+  lines.every((l) => origins[l.originId] && Number.isInteger(l.percent) && l.percent >= 1 && l.percent <= 100) &&
+  new Set(lines.map((l) => l.originId)).size === lines.length &&
+  recipeTotal(lines) === 100;
+
 /** Arabica / Robusta share of a recipe, derived from each origin's species. */
 export function speciesSplit(lines: RecipeLine[], origins: OriginIndex) {
   let arabica = 0;

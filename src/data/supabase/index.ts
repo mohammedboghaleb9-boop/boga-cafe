@@ -48,6 +48,6 @@ export function createSupabaseBackend(): Backend {
   const admin = createAdminAuth(adminDb, forgetAdminSession);
   const adminData = createAdminData(adminDb, admin);
   const api = createSupabaseApi({ client, store, storefront: { url, key }, admin: [adminDb, adminData] });
-  // orders, stock and B2B follow-up (slice 8); catalog, settings, payments, content, shipping: slices 9-10
-  return { db: store.db, status: store.status, api, retry: () => void store.load(), admin, adminData, adminWrites: ['orders', 'stock', 'b2b'] };
+  // orders, stock and B2B follow-up (slice 8), products and origins (slice 9); settings, payments, content, shipping: slice 10
+  return { db: store.db, status: store.status, api, retry: () => void store.load(), admin, adminData, adminWrites: ['orders', 'stock', 'b2b', 'catalog'] };
 }

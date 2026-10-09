@@ -3,7 +3,7 @@ import { balanceBlend, validateBlend } from '../blend';
 import { summarizeCart } from '../cart';
 import { buildOrder, validateCustomer } from '../order';
 import { customBlendPrice } from '../pricing';
-import { composition, speciesSplit } from '../recipe';
+import { composition, isProductRecipe, speciesSplit } from '../recipe';
 import { shippingFee } from '../shipping';
 import { applyStock, findShortages, maxBags, stockRequirements } from '../stock';
 import { normalizePhone } from '../validation';
@@ -24,6 +24,18 @@ describe('recipe', () => {
       { originId: 'vietnam', percent: 20 },
     ];
     expect(composition(lines, 1000).map((c) => c.grams)).toEqual([500, 300, 200]);
+  });
+
+  it('a product recipe is saved as the database checks it: known, different origins, whole percentages, 100 in total', () => {
+    expect(isProductRecipe(product.recipe, originIndex)).toBe(true);
+    const bad = [
+      [{ originId: 'brazil', percent: 99 }],
+      [{ originId: 'brazil', percent: 50.5 }, { originId: 'colombia', percent: 49.5 }],
+      [{ originId: 'brazil', percent: 50 }, { originId: 'brazil', percent: 50 }],
+      [{ originId: 'ghost', percent: 100 }],
+      [],
+    ];
+    for (const lines of bad) expect(isProductRecipe(lines, originIndex), JSON.stringify(lines)).toBe(false);
   });
 });
 

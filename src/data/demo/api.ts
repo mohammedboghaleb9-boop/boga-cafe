@@ -24,14 +24,13 @@ import type {
 import { draftsToLogs, lowStockMessage, orderMessage, paymentReportMessage, quoteMessage } from '@/services/notifications';
 import { deliver } from '@/services/notifications/deliver';
 import { checkoutContext, storefrontCheckoutContext, templateContext } from '../context';
-import { newReference, uid, uniqueSlug } from '../ids';
+import { newOriginId, newProductId, newReference, uid } from '../ids';
 import type { DbState } from '../state';
 import type { Api } from '../types';
 import { db } from './store';
 import { awaitsPayment, canReportPayment, canSetPayment, refundCancelsOrder, settingsChangeRefused, statusChangeRefusal, type AdminRole } from '@/core/orderFlow';
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
-const RESERVED_PRODUCT_IDS = ['new'];
 const now = () => new Date().toISOString();
 
 function withLowStockAlerts(before: Origin[], after: Origin[], s: DbState, at: string) {
@@ -225,9 +224,7 @@ export const demoApi: Api = {
 
   /** New product: its id and address come from the name and never replace an existing product. */
   async createProduct(draft: Product) {
-    // "new" is the admin's address for the add-product form (/admin/products/new)
-    const taken = (id: string) => RESERVED_PRODUCT_IDS.includes(id) || db.get().products.some((p) => p.id === id || p.slug === id);
-    const slug = uniqueSlug(draft.name.fr, taken, 'produit');
+    const slug = newProductId(draft.name.fr, db.get().products);
     const product = { ...draft, id: slug, slug };
     db.update((s) => ({ ...s, products: [...s.products, product] }));
     return product;
@@ -247,8 +244,7 @@ export const demoApi: Api = {
   /** New origin at 0 kg (its first lot goes through adjustStock); never replaces an existing one. Null without a real price per kg. */
   async createOrigin(draft: Origin) {
     if (!isPrice(draft.pricePerKg)) return null;
-    const taken = (id: string) => db.get().origins.some((o) => o.id === id);
-    const origin = { ...draft, id: uniqueSlug(draft.name.fr, taken, 'origine'), stockKg: 0 };
+    const origin = { ...draft, id: newOriginId(draft.name.fr, db.get().origins), stockKg: 0 };
     db.update((s) => ({ ...s, origins: [...s.origins, origin] }));
     return origin;
   },

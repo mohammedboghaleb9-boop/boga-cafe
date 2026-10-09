@@ -51,6 +51,7 @@ export const originFromRow = (r: Tables<'origins'>): Origin => ({
   customBlendEnabled: r.custom_blend_enabled,
   restockDate: r.restock_date ?? undefined,
   active: r.active,
+  updatedAt: r.updated_at,
 });
 
 /** The database keeps no display order for origins: Arabica first, then by name. */
@@ -85,6 +86,7 @@ export const productFromRow = (r: ProductRow): Product => ({
   featured: r.featured,
   active: r.active,
   sortOrder: r.sort_order,
+  updatedAt: r.updated_at,
 });
 
 export const shippingRateFromRow = (r: Tables<'shipping_rates'>): ShippingRate => ({

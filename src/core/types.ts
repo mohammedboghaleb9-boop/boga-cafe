@@ -37,6 +37,8 @@ export interface Origin {
   /** Estimated date when stock comes back (ISO yyyy-mm-dd), shown to customers. */
   restockDate?: string;
   active: boolean;
+  /** Live site: when the origin last changed (a save from an older copy is refused). */
+  updatedAt?: string;
 }
 
 export interface RecipeLine {
@@ -69,6 +71,8 @@ export interface Product {
   featured: boolean;
   active: boolean;
   sortOrder: number;
+  /** Live site: when the product last changed (a save from an older copy is refused). */
+  updatedAt?: string;
 }
 
 export interface CustomBlendSpec {

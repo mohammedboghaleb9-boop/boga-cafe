@@ -22,6 +22,10 @@ create function pg_temp.token(p_sub text, p_aal text) returns text language sql 
   select set_config('request.jwt.claims',
     jsonb_strip_nulls(jsonb_build_object('sub', p_sub, 'aal', p_aal))::text, true)
 $$;
+-- brazil as the panel sends it, with a new alert level
+create function pg_temp.brazil(p_low numeric) returns jsonb language sql as $$
+  select jsonb_build_object('id', 'brazil', 'pricePerKg', 220, 'lowStockKg', p_low, 'customBlendEnabled', true)
+$$;
 set local role authenticated;
 
 -- the rule itself
@@ -42,12 +46,12 @@ select is(public.is_admin(), false, 'account with no admin_users row, at aal2: n
 select pg_temp.token('00000000-0000-0000-0000-000000000001', 'aal1');
 select is((select count(*)::int from public.origins), 1, 'owner at aal1: sees the active catalog only, like a visitor');
 select is((select role from public.admin_users where user_id = '00000000-0000-0000-0000-000000000001'), 'owner', 'owner at aal1: still reads its own admin row (the site asks for the code)');
-update public.origins set low_stock_kg = 3 where id = 'brazil';
-select is((select low_stock_kg from public.origins where id = 'brazil'), 5::numeric, 'owner at aal1: catalog write changes nothing');
+select throws_ok($$select public.save_origin(pg_temp.brazil(3), (select updated_at from public.origins where id = 'brazil'))$$, 'P0001', 'forbidden',
+                 'owner at aal1: catalog write refused');
 select throws_ok($$select public.adjust_stock('brazil', 5, 'restock')$$, 'P0001', 'forbidden', 'owner at aal1: adjust_stock refused');
 select pg_temp.token('00000000-0000-0000-0000-000000000001', 'aal2');
 select is((select count(*)::int from public.origins), 2, 'owner at aal2: sees the hidden origin too');
-update public.origins set low_stock_kg = 3 where id = 'brazil';
+select public.save_origin(pg_temp.brazil(3), (select updated_at from public.origins where id = 'brazil'));
 select is((select low_stock_kg from public.origins where id = 'brazil'), 3::numeric, 'owner at aal2: catalog write goes through');
 select lives_ok($$select public.adjust_stock('brazil', 5, 'restock')$$, 'owner at aal2: adjust_stock allowed');
 

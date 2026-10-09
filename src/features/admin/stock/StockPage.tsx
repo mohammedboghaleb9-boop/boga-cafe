@@ -18,11 +18,12 @@ export function StockPage() {
   const { origins } = useAdminCatalog();
   const { stockMovements } = useAdminDb();
   const role = useAdminRole()!;
-  // live site: stock moves connect in slice 8, origin details in slice 9
   const editable = canEditCatalog(role) && canWrite('catalog');
   const soon = !canWrite('stock') || (canEditCatalog(role) && !canWrite('catalog'));
   const [adjusting, setAdjusting] = useState<string | null>(null);
-  const [editing, setEditing] = useState<Origin | 'new' | null>(null);
+  // the origin's id, so the editor follows what is saved (read again after each save)
+  const [editing, setEditing] = useState<string | null>(null);
+  const edited = editing === 'new' ? null : origins.find((o) => o.id === editing);
   const originName = (id: string) => {
     const o = origins.find((x) => x.id === id);
     return o ? l(o.name) : id;
@@ -38,12 +39,12 @@ export function StockPage() {
           </button>
         )}
       </div>
-      {soon && <ComingSoon text={canWrite('stock') ? t.admin.soonOrigins : undefined} />}
+      {soon && <ComingSoon />}
       <p className="muted">{t.admin.stock.intro}</p>
       <p className="notice small">{t.admin.stock.blendRule}</p>
 
       {/* key: a fresh form for each origin (and for a new one), never the previous one's fields */}
-      {editing && <OriginEditor key={editing === 'new' ? 'new' : editing.id} origin={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {(editing === 'new' || edited) && <OriginEditor key={editing} origin={edited ?? null} onClose={() => setEditing(null)} />}
 
       <TableWrap label={t.admin.nav.stock}>
         <table className="table">
@@ -71,7 +72,7 @@ export function StockPage() {
                 adjusting={adjusting === o.id}
                 onAdjust={() => setAdjusting((cur) => (cur === o.id ? null : o.id))}
                 onAdjusted={() => setAdjusting((cur) => (cur === o.id ? null : cur))}
-                onEdit={() => setEditing(o)}
+                onEdit={() => setEditing(o.id)}
               />
             ))}
           </tbody>
@@ -282,8 +283,14 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
 
 const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
 
+/**
+ * A new origin, or an existing one's price per kg, alert level and Custom Blend switch: what
+ * the database saves (save_origin). Its name, country and the rest are set at creation; it is
+ * created hidden, at 0 kg, and the restock date is not saved from here yet.
+ */
 function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () => void }) {
   const { t } = useI18n();
+  const locked = origin !== null;
   const [o, setO] = useState<Origin>(
     origin ?? {
       id: '',
@@ -297,21 +304,27 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
       lowStockKg: 5,
       pricePerKg: 200,
       customBlendEnabled: true,
-      active: true,
+      active: false,
     },
   );
+  // what is saved changed (read again after a refused save): the form starts again from it
+  const version = origin ? (origin.updatedAt ?? JSON.stringify(origin)) : null;
+  const [seen, setSeen] = useState(version);
+  if (origin && seen !== version) {
+    setSeen(version);
+    setO(origin);
+  }
   const set = <K extends keyof Origin>(k: K, v: Origin[K]) => setO((cur) => ({ ...cur, [k]: v }));
-  const [refused, setRefused] = useState(false);
   const [busy, run, failed] = useAction();
   const priced = isPrice(o.pricePerKg);
-  const valid = o.name.fr.trim() && o.countryCode.trim().length === 2 && priced;
+  const valid = o.name.fr.trim() && /^[a-z]{2}$/i.test(o.countryCode) && priced && Number.isFinite(o.lowStockKg) && o.lowStockKg >= 0;
   const save = () =>
     run(async () => {
       if (!valid) return;
       const next = { ...o, countryCode: o.countryCode.toUpperCase() };
       const done = origin ? await api.saveOrigin(next) : (await api.createOrigin(next)) !== null;
-      if (done) onClose();
-      else setRefused(true); // never close as if it had worked
+      if (!done) refuse('origin'); // never close as if it had worked
+      onClose();
     });
   return (
     <section className="panel stack">
@@ -326,32 +339,32 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
           </button>
         </div>
       </div>
-      {refused && <p className="field-error">{t.admin.saveRefused}</p>}
       <WriteError show={failed} />
+      <p className="small muted">{locked ? t.admin.stock.editLimits : t.admin.stock.createdHidden}</p>
       <div className="detail-grid">
-        <div className="stack">
-          <LocalizedInput id="o-name" label={t.admin.products.name} value={o.name} onChange={(v) => set('name', v)} />
-          <LocalizedInput id="o-notes" label={t.common.tastingNotes} value={o.tastingNotes} onChange={(v) => set('tastingNotes', v)} />
-        </div>
+        <fieldset className="plain-fieldset stack" disabled={locked}>
+          <LocalizedInput id="o-name" label={t.admin.products.name} value={o.name} onChange={(v) => set('name', v)} maxLength={80} />
+          <LocalizedInput id="o-notes" label={t.common.tastingNotes} value={o.tastingNotes} onChange={(v) => set('tastingNotes', v)} maxLength={200} />
+        </fieldset>
         <div className="form-grid">
           <label className="field">
             <span className="label">{t.admin.stock.country}</span>
-            <input className="input" maxLength={2} value={o.countryCode} onChange={(e) => set('countryCode', e.target.value)} />
+            <input className="input" maxLength={2} disabled={locked} value={o.countryCode} onChange={(e) => set('countryCode', e.target.value)} />
           </label>
           <label className="field">
             <span className="label">{t.admin.stock.species}</span>
-            <select className="select" value={o.species} onChange={(e) => set('species', e.target.value as Species)}>
+            <select className="select" disabled={locked} value={o.species} onChange={(e) => set('species', e.target.value as Species)}>
               <option value="arabica">{t.common.arabica}</option>
               <option value="robusta">{t.common.robusta}</option>
             </select>
           </label>
           <label className="field">
             <span className="label">{t.common.region}</span>
-            <input className="input" value={o.region} onChange={(e) => set('region', e.target.value)} />
+            <input className="input" maxLength={80} disabled={locked} value={o.region} onChange={(e) => set('region', e.target.value)} />
           </label>
           <label className="field">
             <span className="label">{t.common.roast}</span>
-            <select className="select" value={o.roastLevel} onChange={(e) => set('roastLevel', e.target.value as RoastLevel)}>
+            <select className="select" disabled={locked} value={o.roastLevel} onChange={(e) => set('roastLevel', e.target.value as RoastLevel)}>
               {ROASTS.map((r) => (
                 <option key={r} value={r}>
                   {t.roast[r]}
@@ -370,11 +383,11 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
           </label>
           <label className="field">
             <span className="label">{t.admin.stock.restock}</span>
-            <input className="input" type="date" value={o.restockDate ?? ''} onChange={(e) => set('restockDate', e.target.value || undefined)} />
+            <input className="input" type="date" disabled value={o.restockDate ?? ''} onChange={(e) => set('restockDate', e.target.value || undefined)} />
           </label>
           <div className="stack span-all">
             <Switch checked={o.customBlendEnabled} onChange={(v) => set('customBlendEnabled', v)} label={t.admin.stock.inBlend} />
-            <Switch checked={o.active} onChange={(v) => set('active', v)} label={t.admin.products.active} />
+            <Switch checked={o.active} disabled onChange={(v) => set('active', v)} label={t.admin.products.active} />
           </div>
         </div>
       </div>

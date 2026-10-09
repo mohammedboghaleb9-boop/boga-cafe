@@ -2,16 +2,17 @@ import { formatSize } from '@/core/format';
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { offeredSizes } from '@/core/pricing';
-import { recipeTotal, speciesSplit } from '@/core/recipe';
+import { isProductRecipe, MAX_RECIPE_LINES, recipeTotal, speciesSplit } from '@/core/recipe';
 import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type Product, type ProductKind, type RoastLevel } from '@/core/types';
 import { api } from '@/data/api';
 import { canWrite, useAdminCatalog, useAdminDb } from '@/data/hooks';
+import { SERVER_DATA } from '@/data/mode';
 import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { SpeciesBar } from '@/shared/ui/bits';
 import { ComingSoon, ConfirmButton, LocalizedInput, Switch, WriteError } from '../ui';
-import { useAction } from '../useAction';
+import { refuse, useAction } from '../useAction';
 
 const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
 const empty = { ar: '', fr: '', en: '' };
@@ -28,7 +29,6 @@ function ProductForm({ id }: { id: string | undefined }) {
   const { t, l } = useI18n();
   const { products, origins, originIndex } = useAdminCatalog();
   const { settings } = useAdminDb();
-  // live site: products connect in slice 9; until then the form shows the product, read only
   const writable = canWrite('catalog');
   const isNew = id === 'new';
   const existing = products.find((p) => p.id === id);
@@ -52,23 +52,30 @@ function ProductForm({ id }: { id: string | undefined }) {
       },
   );
 
-  const [refused, setRefused] = useState(false);
+  // what is saved changed (read again after a refused save): the form starts again from it
+  const version = existing ? (existing.updatedAt ?? JSON.stringify(existing)) : null;
+  const [seen, setSeen] = useState(version);
+  if (existing && seen !== version) {
+    setSeen(version);
+    setP(existing);
+  }
   const [busy, run, failed] = useAction();
 
   if (!isNew && !existing) return <p className="muted">404</p>;
 
   const total = recipeTotal(p.recipe);
+  const recipeOk = isProductRecipe(p.recipe, originIndex);
   const split = speciesSplit(p.recipe, originIndex);
   const set = <K extends keyof Product>(k: K, v: Product[K]) => setP((cur) => ({ ...cur, [k]: v }));
   // an active product needs at least one size at a real price (0 or empty = not offered)
   const priced = offeredSizes(p).length > 0;
-  const valid = total === 100 && p.name.fr.trim() !== '' && p.recipe.every((r) => originIndex[r.originId]) && (priced || !p.active);
+  const valid = recipeOk && p.name.fr.trim() !== '' && (priced || !p.active);
 
   const save = () =>
     run(async () => {
       if (!valid) return;
       if (isNew) await api.createProduct(p);
-      else if (!(await api.saveProduct(p))) return setRefused(true); // never leave as if it had worked
+      else if (!(await api.saveProduct(p))) refuse('product'); // never leave as if it had worked
       navigate('/admin/products');
     });
 
@@ -82,7 +89,8 @@ function ProductForm({ id }: { id: string | undefined }) {
           <h1>{isNew ? t.admin.products.add : l(p.name)}</h1>
         </div>
         <div className="toolbar">
-          {!isNew && (
+          {/* live site: orders keep the productId they were bought with, so a product is hidden, never deleted */}
+          {!isNew && !SERVER_DATA && (
             <ConfirmButton
               label={t.common.delete}
               confirmLabel={t.common.confirmDelete}
@@ -103,7 +111,6 @@ function ProductForm({ id }: { id: string | undefined }) {
       </div>
 
       {!writable && <ComingSoon />}
-      {refused && <p className="field-error">{t.admin.saveRefused}</p>}
       <WriteError show={failed} />
       <fieldset className="plain-fieldset detail-grid" disabled={!writable}>
         <section className="panel stack">
@@ -129,20 +136,22 @@ function ProductForm({ id }: { id: string | undefined }) {
               </select>
             </label>
           </div>
-          <LocalizedInput id="p-name" label={t.admin.products.name} value={p.name} onChange={(v) => set('name', v)} />
-          <LocalizedInput id="p-tagline" label={t.admin.products.tagline} value={p.tagline} onChange={(v) => set('tagline', v)} />
+          <LocalizedInput id="p-name" label={t.admin.products.name} value={p.name} onChange={(v) => set('name', v)} maxLength={80} />
+          <LocalizedInput id="p-tagline" label={t.admin.products.tagline} value={p.tagline} onChange={(v) => set('tagline', v)} maxLength={200} />
           <LocalizedInput
             id="p-desc"
             label={t.admin.products.description}
             value={p.description}
             onChange={(v) => set('description', v)}
             multiline
+            maxLength={1000}
           />
           <LocalizedInput
             id="p-notes"
             label={t.common.tastingNotes}
             value={p.tastingNotes}
             onChange={(v) => set('tastingNotes', v)}
+            maxLength={200}
           />
         </section>
 
@@ -193,13 +202,14 @@ function ProductForm({ id }: { id: string | undefined }) {
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
+                disabled={p.recipe.length >= MAX_RECIPE_LINES}
                 onClick={() => set('recipe', [...p.recipe, { originId: origins[0]?.id ?? '', percent: 0 }])}
               >
                 <Icon name="plus" size={14} /> {t.admin.products.addLine}
               </button>
               <strong className={`num ${total === 100 ? 'ok-text' : 'bad-text'}`}>{total}%</strong>
             </div>
-            {total !== 100 && <p className="field-error">{t.admin.products.invalidRecipe}</p>}
+            {!recipeOk && <p className="field-error">{t.admin.products.invalidRecipe}</p>}
             <span className="small muted">{t.admin.products.computed}</span>
             <SpeciesBar {...split} />
           </section>
@@ -232,7 +242,8 @@ function ProductForm({ id }: { id: string | undefined }) {
           </section>
 
           <section className="panel stack">
-            <Switch checked={p.active} onChange={(v) => set('active', v)} label={t.admin.products.active} />
+            <Switch checked={p.active} disabled={isNew} onChange={(v) => set('active', v)} label={t.admin.products.active} />
+            {isNew && <p className="small muted">{t.admin.products.createdHidden}</p>}
             <Switch checked={p.featured} onChange={(v) => set('featured', v)} label={t.admin.products.featured} />
             <label className="field">
               <span className="label">{t.admin.products.sortOrder}</span>

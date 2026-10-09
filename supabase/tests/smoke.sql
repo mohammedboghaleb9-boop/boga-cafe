@@ -134,7 +134,10 @@ set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000002", "aal":
 do $$
 declare v_id uuid;
 begin
-  update public.products set prices = '{"1000": 1}' where id = 'signature';
+  begin
+    update public.products set prices = '{"1000": 1}' where id = 'signature';
+  exception when insufficient_privilege then null; -- no direct catalog writes since slice 9
+  end;
   if (select prices ->> '1000' from public.products where id = 'signature') <> '225' then raise exception 'TEST FAILED: staff changed price'; end if;
   select id into v_id from public.orders limit 1;
   perform public.set_order_status(v_id, 'cancelled');
@@ -203,12 +206,22 @@ do $$ begin
   begin
     update public.origins set stock_kg = 999 where id = 'brazil';
     raise exception 'TEST FAILED: direct stock update';
+  exception when insufficient_privilege then null; -- the API roles write no catalog table directly (slice 9)
+  end;
+  -- the price changes through save_origin (slice 9), the other fields as they were
+  perform public.save_origin(jsonb_build_object('id', 'brazil', 'pricePerKg', 230, 'lowStockKg', o.low_stock_kg, 'customBlendEnabled', o.custom_blend_enabled), o.updated_at)
+     from public.origins o where o.id = 'brazil';
+end $$;
+reset role;
+-- even the tables' owner changes stock only through the functions (the stock guard)
+do $$ begin
+  begin
+    update public.origins set stock_kg = 999 where id = 'brazil';
+    raise exception 'TEST FAILED: direct stock update by the owner of the table';
   exception when others then
     if sqlerrm <> 'stock_changes_go_through_functions' then raise; end if;
   end;
-  update public.origins set price_per_kg = 230 where id = 'brazil'; -- other catalog fields stay editable
 end $$;
-reset role;
 do $$ begin
   if (select price_per_kg from public.origins where id = 'brazil') <> 230 then raise exception 'TEST FAILED: price not editable'; end if;
 end $$;
@@ -307,12 +320,15 @@ begin
   set local role authenticated;
   perform public.set_order_status(v_id, 'cancelled');
   -- the cancel opened the stock gate for itself only: it is closed again right after
+  -- (checked as the tables' owner: the API roles cannot write stock at all since slice 9)
+  reset role;
   begin
     update public.origins set stock_kg = 999 where id = 'brazil';
     raise exception 'TEST FAILED: stock gate left open after a cancel';
   exception when others then
     if sqlerrm <> 'stock_changes_go_through_functions' then raise; end if;
   end;
+  set local role authenticated;
   set local role anon;
   perform public.report_offline_payment(v_id, 'LATE-REF');
   set local role authenticated;
@@ -354,6 +370,8 @@ select 'ok 14 - managers: free shipping yes, contact details no' as result;
 set role authenticated;
 set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "aal": "aal2"}';
 do $$ begin
+  -- as the tables' owner with a signed-in user's token: the guard refuses a starting stock
+  reset role;
   begin
     insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg)
     values ('ghost', '{"fr": "Fantôme"}', 'ET', 'arabica', 'light', 50, 1, 200);
@@ -361,8 +379,9 @@ do $$ begin
   exception when others then
     if sqlerrm <> 'stock_changes_go_through_functions' then raise; end if;
   end;
-  insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg)
-  values ('ethiopia', '{"fr": "Éthiopie"}', 'ET', 'arabica', 'light', 0, 1, 260);
+  set local role authenticated;
+  -- the admin's way: save_origin creates it at 0 kg (slice 9)
+  perform public.save_origin('{"id": "ethiopia", "name": {"fr": "Éthiopie"}, "countryCode": "ET", "species": "arabica", "roastLevel": "light", "pricePerKg": 260, "lowStockKg": 1}', null);
   perform public.adjust_stock('ethiopia', 5, 'restock', 'premier lot');
 end $$;
 reset role;
@@ -441,7 +460,12 @@ select 'ok 18 - "I have paid" reaches the team once; unknown events cannot be qu
 -- 19. Staff cannot change an origin's price per kg (it prices every blend) ------
 set role authenticated;
 set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000002", "aal": "aal2"}'; -- staff
-update public.origins set price_per_kg = 1 where id = 'brazil';
+do $$ begin
+  begin
+    update public.origins set price_per_kg = 1 where id = 'brazil';
+  exception when insufficient_privilege then null; -- no direct catalog writes since slice 9
+  end;
+end $$;
 do $$ begin
   begin
     insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg)

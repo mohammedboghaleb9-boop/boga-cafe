@@ -425,7 +425,6 @@ export const fr: Dict = {
   },
 
   admin: {
-    saveRefused: 'Non enregistré : cet élément n’existe plus ou son prix n’est pas valide. Rechargez la page et réessayez.',
     ownerOnly: 'Réservé au propriétaire : ces coordonnées reçoivent les commandes et les paiements des clients.',
     title: 'Panel Admin',
     unavailableTitle: 'Panneau d’administration indisponible',
@@ -458,9 +457,8 @@ export const fr: Dict = {
     wrongCode: 'Code incorrect ou expiré. Entrez le code affiché maintenant par l’application.',
     qrAlt: 'QR code à scanner avec l’application d’authentification',
     lostPhone: 'Téléphone perdu ? Un propriétaire peut réinitialiser cette vérification depuis Supabase.',
-    liveData: 'Données réelles. Les commandes, le stock et les demandes B2B se modifient ici ; les autres sections arrivent dans les prochaines étapes.',
+    liveData: 'Données réelles. Les commandes, le stock, les demandes B2B, les produits et les origines se modifient ici ; les autres sections arrivent dans les prochaines étapes.',
     writeFailed: 'La modification n’a pas été confirmée : refusée, ou pas de réponse du serveur. La page montre maintenant ce qui est enregistré : vérifiez avant de réessayer.',
-    soonOrigins: 'Bientôt : ajouter ou modifier une origine et l’interrupteur Custom Blend ne sont pas encore branchés. Les ajustements de stock fonctionnent.',
     soonPayments: 'Bientôt : les moyens de paiement et les coordonnées du bénéficiaire ne sont pas encore branchés. « Marquer payé » fonctionne.',
     comingSoon: 'Bientôt : les modifications ici ne sont pas encore branchées.',
     dataFailed: 'Les données du panneau n’ont pas pu être chargées (problème de connexion, ou la session n’est plus valide). Rien n’est affiché plutôt qu’une liste vide.',
@@ -569,7 +567,8 @@ export const fr: Dict = {
       sortOrder: 'Ordre',
       computed: 'Calculé depuis la recette',
       bagsLeft: 'Sachets possibles avec le stock actuel',
-      invalidRecipe: 'Le total de la recette doit faire 100 %.',
+      invalidRecipe: 'La recette : 1 à 8 origines différentes, des pourcentages entiers, total 100 %.',
+      createdHidden: 'Un nouveau produit est créé masqué : affichez-le ensuite, après vérification.',
       hidden: 'Masqué',
     },
     stock: {
@@ -600,6 +599,8 @@ export const fr: Dict = {
       movements: 'Mouvements de stock',
       addOrigin: 'Nouvelle origine',
       editOrigin: 'Modifier l’origine',
+      editLimits: 'Ici, seuls le prix au kilo, l’alerte et le Custom Blend se modifient. Le nom, le pays et le reste sont fixés à la création.',
+      createdHidden: 'Une nouvelle origine est créée masquée, à 0 kg : son premier lot passe par « Ajuster le stock ».',
       country: 'Code pays (ISO)',
       blendRule:
         'Une origine est proposée dans le Custom Blend quand l’interrupteur est activé et que le stock couvre le sachet. Un stock vide la masque automatiquement, le réapprovisionnement la fait revenir.',

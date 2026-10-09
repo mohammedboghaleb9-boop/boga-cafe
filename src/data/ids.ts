@@ -57,3 +57,11 @@ export function uniqueSlug(name: string, taken: (id: string) => boolean, fallbac
   if (!taken(base)) return base;
   for (let n = 2; ; n++) if (!taken(`${base}-${n}`)) return `${base}-${n}`;
 }
+
+/** A new product's id, also its address: never an existing product's, nor "new" (the add-product form's address, /admin/products/new). */
+export const newProductId = (name: string, products: readonly { id: string; slug: string }[]): string =>
+  uniqueSlug(name, (id) => id === 'new' || products.some((p) => p.id === id || p.slug === id), 'produit');
+
+/** A new origin's id: never an existing origin's, nor "new" (refused by the database for any catalog id). */
+export const newOriginId = (name: string, origins: readonly { id: string }[]): string =>
+  uniqueSlug(name, (id) => id === 'new' || origins.some((o) => o.id === id), 'origine');
