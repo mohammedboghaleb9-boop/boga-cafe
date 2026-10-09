@@ -427,7 +427,6 @@ export const en = {
   },
 
   admin: {
-    saveRefused: 'Not saved: this item no longer exists or its price is not valid. Reload the page and try again.',
     ownerOnly: 'Owner only: these details receive customers’ orders and payments.',
     title: 'Admin Panel',
     unavailableTitle: 'Admin panel unavailable',
@@ -460,9 +459,8 @@ export const en = {
     wrongCode: 'Wrong or expired code. Enter the code the app shows now.',
     qrAlt: 'QR code to scan with the authenticator app',
     lostPhone: 'Lost your phone? An owner can reset this verification from Supabase.',
-    liveData: 'Live data. Orders, stock and B2B requests can be changed here; the other sections connect in the next steps.',
+    liveData: 'Live data. Orders, stock, B2B requests, products and origins can be changed here; the other sections connect in the next steps.',
     writeFailed: 'The change was not confirmed: refused, or no answer from the server. The page now shows what is saved: check it before trying again.',
-    soonOrigins: 'Coming soon: adding or editing origins and the Custom Blend switch are not connected yet. Stock adjustments work.',
     soonPayments: 'Coming soon: payment methods and payee details are not connected yet. “Mark as paid” works.',
     comingSoon: 'Coming soon: changes here are not connected yet.',
     dataFailed: 'The panel’s data could not be loaded (connection problem, or the session is no longer valid). Nothing is shown rather than an empty list.',
@@ -571,11 +569,15 @@ export const en = {
       sortOrder: 'Order',
       computed: 'Calculated from the recipe',
       bagsLeft: 'Bags possible with current stock',
-      invalidRecipe: 'The recipe total must be 100%.',
+      invalidRecipe: 'The recipe: 1 to 8 different origins, whole percentages, 100% in total.',
+      createdHidden: 'A new product is created hidden: show it afterwards, once checked.',
+      priceRange: 'Price: 1 to 100,000 DH (empty or 0 = size not offered).',
+      hiddenOrigin: 'A visible product uses visible origins only.',
       hidden: 'Hidden',
     },
     stock: {
-      needsPrice: 'Price per kg: at least 1 DH.',
+      needsPrice: 'Price per kg: 1 to 100,000 DH.',
+      lowStockRange: 'Alert: 0 to 100,000 kg.',
       intro:
         'Stock is counted in kilograms per origin. Orders deduct it automatically, cancellations give it back.',
       species: 'Species',
@@ -602,6 +604,8 @@ export const en = {
       movements: 'Stock movements',
       addOrigin: 'New origin',
       editOrigin: 'Edit origin',
+      editLimits: 'Only the price per kg, the alert level and Custom Blend change here. The name, the country and the rest are set at creation.',
+      createdHidden: 'A new origin is created hidden, at 0 kg: its first lot goes through “Adjust stock”.',
       country: 'Country code (ISO)',
       blendRule:
         'An origin is offered in the Custom Blend when the switch is on and the stock covers the bag. Empty stock hides it automatically, restocking brings it back.',

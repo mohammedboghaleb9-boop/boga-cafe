@@ -9,6 +9,9 @@ import type { CustomBlendSpec, PackSize, Product, Settings } from './types';
  */
 export const isPrice = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 1;
 
+/** The highest price the catalog saves (a bag, or an origin's kilo), in DH: anything above is a typing slip. */
+export const MAX_PRICE = 100_000;
+
 export const productPrice = (product: Product, size: PackSize): number | undefined => {
   const price = product.prices[size];
   return isPrice(price) ? price : undefined;

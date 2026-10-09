@@ -4,7 +4,8 @@
  * Turnstile; an order carries an idempotency key, orderKey.ts); an order is read back by its link with get_order_public, and
  * "I have paid" is report_offline_payment. The team's messages are queued by
  * the database (notification_outbox), so nothing is sent from the browser.
- * The admin's writes for orders, stock and B2B requests: ./adminWrites.ts (slice 8).
+ * The admin's writes for orders, stock, B2B requests (slice 8), products and origins
+ * (slice 9): ./adminWrites.ts.
  * Every other call says which slice brings it (P5 step 3, PROJECT_NOTES.md).
  */
 import { CHECKOUT_ERRORS } from '@/core/order';
@@ -126,11 +127,12 @@ export function createSupabaseApi({ client, store, storefront, admin }: Supabase
     expireUnpaidOrders: async () => 0,
     setOrderStatus: notYet('order status (no admin client)'),
     setPaymentStatus: notYet('payment status (no admin client)'),
-    createProduct: notYet('products (slice 9)'),
-    saveProduct: notYet('products (slice 9)'),
-    deleteProduct: notYet('products (slice 9)'),
-    createOrigin: notYet('origins (slice 9)'),
-    saveOrigin: notYet('origins (slice 9)'),
+    createProduct: notYet('products (no admin client)'),
+    saveProduct: notYet('products (no admin client)'),
+    // orders keep the productId they were bought with: a product is hidden, never deleted
+    deleteProduct: notYet('deleting a product (demo only)'),
+    createOrigin: notYet('origins (no admin client)'),
+    saveOrigin: notYet('origins (no admin client)'),
     adjustStock: notYet('stock (no admin client)'),
     saveShippingRate: notYet('shipping (slice 10)'),
     deleteShippingRate: notYet('shipping (slice 10)'),
@@ -139,7 +141,7 @@ export function createSupabaseApi({ client, store, storefront, admin }: Supabase
     saveContent: notYet('content (slice 10)'),
     updateQuote: notYet('B2B requests (no admin client)'),
     resetDemo: notYet('resetting the demo (demo only)'),
-    // orders, stock and B2B follow-up (slice 8)
+    // orders, stock and B2B follow-up (slice 8), products and origins (slice 9)
     ...(admin && createAdminWrites(...admin)),
   };
 }

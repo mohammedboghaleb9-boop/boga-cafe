@@ -1,13 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { clippedContent, expectNoSideScroll, open, scanA11y } from './helpers';
-import { answerCatalog, CORS, SUPABASE } from './live';
+import { answerCatalog, CORS, SUPABASE, tables } from './live';
 
 /**
  * Admin sign-in on the live-site build (VITE_DATA_MODE=supabase, port 4174): Supabase
  * Auth (password, then the authenticator app's code: MFA TOTP) and the database answers
- * the panel asks for (the account's admin_users row, is_admin() true only at aal2, and the
- * admin tables that row level security opens only to such a session: slice 7, read only)
- * are answered by the test, as the real services answer them. The account's password
+ * the panel asks for (the account's admin_users row, is_admin() true only at aal2, the
+ * admin tables that row level security opens only to such a session: slice 7, and the
+ * write functions: slices 8-9) are answered by the test, as the real services answer them. The account's password
  * rules, Auth's rate limits, the real tokens and real TOTP codes are Auth's own and are
  * not tested here: RIGHT_CODE stands for "the code the app shows now".
  */
@@ -87,6 +87,8 @@ async function fakeSupabase(page: Page, server: Server = {}) {
   const admins = server.admins ?? { [ADMIN.id]: 'manager' };
   // this test's own copy: writes change it, and the next read shows them
   const db = structuredClone(ADMIN_TABLES) as Record<string, Record<string, unknown>[]>;
+  // the catalog too: products and origins change through save_product and save_origin
+  const catalog = structuredClone({ products: tables.products, origins: tables.origins }) as Record<'products' | 'origins', Record<string, unknown>[]>;
   /** the write functions called: name, arguments, and the level of the session that called */
   const writes: { fn: string; args: Record<string, unknown>; aal?: Aal }[] = [];
   let factors = server.factors ?? [{ id: 'app-1', status: 'verified' }];
@@ -146,7 +148,7 @@ async function fakeSupabase(page: Page, server: Server = {}) {
       const allowed = (req.postDataJSON() as { allowed?: string[] } | null)?.allowed;
       return json(200, !!(user && admins[user] && (!allowed || allowed.includes(admins[user])) && claims?.aal === 'aal2'));
     }
-    const write = url.pathname.match(/^\/rest\/v1\/rpc\/(set_order_status|set_payment_status|adjust_stock|update_quote_request)$/)?.[1];
+    const write = url.pathname.match(/^\/rest\/v1\/rpc\/(set_order_status|set_payment_status|adjust_stock|update_quote_request|save_product|save_origin)$/)?.[1];
     if (write) {
       const args = req.postDataJSON() as Record<string, unknown>;
       writes.push({ fn: write, args, aal: claims?.aal });
@@ -168,6 +170,27 @@ async function fakeSupabase(page: Page, server: Server = {}) {
         if (db.quote_requests[0].updated_at !== args.p_seen_at) return json(400, { code: 'P0001', message: 'stale', details: null, hint: null });
         Object.assign(db.quote_requests[0], { status: args.p_status, final_price: args.p_final_price, admin_notes: args.p_admin_notes, updated_at: now });
       }
+      if (write === 'save_product' || write === 'save_origin') {
+        // the database's rules (migration 20261009200000): created hidden (an origin at 0 kg), an edit from the version read, the id fixed
+        const refused = (message: string) => json(400, { code: 'P0001', message, details: null, hint: null });
+        const item = (write === 'save_product' ? args.p_product : args.p_origin) as Record<string, unknown>;
+        const rows = catalog[write === 'save_product' ? 'products' : 'origins'];
+        const row = rows.find((x) => x.id === item.id);
+        if (args.p_seen_at === null && row) return refused('exists');
+        if (args.p_seen_at !== null && !row) return refused('not_found');
+        if (row && row.updated_at !== args.p_seen_at) return refused('stale');
+        const recipe = (args.p_recipe as { originId: string; percent: number }[] | undefined)?.map((l) => ({ origin_id: l.originId, percent: l.percent }));
+        if (write === 'save_product') {
+          const fields = { kind: item.kind, name: item.name, tagline: item.tagline, description: item.description, roast_level: item.roastLevel, tasting_notes: item.tastingNotes,
+            prices: item.prices, featured: item.featured, sort_order: item.sortOrder, product_recipes: recipe, updated_at: now };
+          if (row) Object.assign(row, fields, { active: item.active });
+          else rows.push({ id: item.id, slug: item.id, image_url: null, ...fields, active: false });
+        } else if (row) Object.assign(row, { price_per_kg: item.pricePerKg, low_stock_kg: item.lowStockKg, custom_blend_enabled: item.customBlendEnabled, updated_at: now });
+        else rows.push({ id: item.id, name: item.name, country_code: item.countryCode, species: item.species, region: item.region, roast_level: item.roastLevel,
+          tasting_notes: item.tastingNotes, stock_kg: 0, low_stock_kg: item.lowStockKg, price_per_kg: item.pricePerKg, custom_blend_enabled: item.customBlendEnabled,
+          restock_date: null, active: false, updated_at: now });
+        return json(200, item.id);
+      }
       return json(200, null);
     }
     const table = url.pathname.match(/^\/rest\/v1\/(\w+)$/)?.[1] ?? '';
@@ -187,9 +210,14 @@ async function fakeSupabase(page: Page, server: Server = {}) {
       return json(200, single ? own : own ? [own] : []);
     }
     shopAs.push(user);
+    if (table === 'products' || table === 'origins') {
+      // row level security: a visitor reads the shown rows only
+      const admin = user && admins[user] && claims?.aal === 'aal2';
+      return json(200, catalog[table].filter((x) => admin || x.active));
+    }
     return answerCatalog(r);
   });
-  return Object.assign(asked, { shopAs, writes, db });
+  return Object.assign(asked, { shopAs, writes, db, catalog });
 }
 
 async function signIn(page: Page, account: { email: string; password: string }) {
@@ -247,7 +275,7 @@ test.describe('admin sign-in on the live site', () => {
     const nav = page.getByRole('navigation', { name: 'Panel Admin' });
     await expect(nav.getByRole('link', { name: 'Commandes' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Paiements' })).toHaveCount(0);
-    await expect(page.locator('.admin-live-bar .notice-warn')).toContainText('Les commandes, le stock et les demandes B2B se modifient ici');
+    await expect(page.locator('.admin-live-bar .notice-warn')).toContainText('Les commandes, le stock, les demandes B2B, les produits et les origines se modifient ici');
     await expect(page.getByRole('link', { name: 'BC-2026-0007' })).toBeVisible();
     await expect(page.getByRole('button', { name: /démo/i })).toHaveCount(0);
 
@@ -342,17 +370,17 @@ test.describe('admin sign-in on the live site', () => {
     await expect(page.locator('.history li')).toHaveText([/signalé un paiement/, /Commande passée/]); // newest first
 
     // on every page: the "coming soon" note where something could be changed, and no control left on but
-    // reading tools (refresh, tabs, search, the delivery simulator) and the writes of slice 8 (orders, stock, B2B)
+    // reading tools (refresh, tabs, search, the delivery simulator) and the writes of slices 8-9 (orders, stock, B2B, catalog)
     const SOON = 'Bientôt : les modifications ici ne sont pas encore branchées.';
     const pages: [path: string, wired: string, note: string | null][] = [
       ['', '', null],
       ['/orders', '', null],
       [`/orders/${ORDER_ID}`, 'button', null],
       ['/b2b', 'fieldset *', null],
-      ['/products', '', SOON],
-      ['/products/boga-signature', '', SOON],
-      // adjusting stock works; adding or editing an origin (slice 9) does not
-      ['/stock', 'button.btn-ghost:not([aria-label])', 'Bientôt : ajouter ou modifier une origine et l’interrupteur Custom Blend ne sont pas encore branchés. Les ajustements de stock fonctionnent.'],
+      ['/products', 'a[href*="/new?"]', null],
+      // the form, its save button; no delete button on the live site (a product is hidden, never deleted)
+      ['/products/boga-signature', 'fieldset *, .admin-head .btn-primary', null],
+      ['/stock', '.admin-head button, tbody button, tbody input[type=checkbox]', null],
       ['/shipping', '', SOON],
       ['/payments', 'tbody button', 'Bientôt : les moyens de paiement et les coordonnées du bénéficiaire ne sont pas encore branchés. « Marquer payé » fonctionne.'],
       ['/notifications', '', SOON],
@@ -472,6 +500,71 @@ test.describe('admin sign-in on the live site', () => {
     await expect(page.getByLabel('Notes internes')).toHaveValue('TEST note de Mohammed'); // read again, the form shows it
     expect(db.quote_requests[0].admin_notes).toBe('TEST note de Mohammed');
     expect(writes).toHaveLength(1);
+  });
+
+  test('a new origin and a new product are created hidden; an edit carries the version read, and the id never changes', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const { writes, catalog } = await fakeSupabase(page);
+
+    await open(page, '/admin/stock');
+    await page.getByRole('button', { name: 'Nouvelle origine' }).click();
+    await expect(page.getByRole('checkbox', { name: 'Visible sur le site' })).toBeDisabled(); // created hidden, at 0 kg
+    await page.locator('#o-name-fr').fill('TEST origine');
+    await page.getByLabel('Code pays (ISO)').fill('et');
+    await page.getByLabel('Prix Custom Blend / kg').fill('100');
+    await page.getByRole('button', { name: 'Enregistrer' }).click();
+    const row = page.getByRole('row', { name: /TEST origine/ });
+    await expect(row).toBeVisible(); // read again after the write
+    // afterwards: the price, the alert level and Custom Blend only
+    await row.getByRole('button', { name: 'Modifier' }).click();
+    await expect(page.locator('#o-name-fr')).toBeDisabled();
+    await expect(page.getByLabel('Code pays (ISO)')).toBeDisabled();
+    await page.getByLabel('Prix Custom Blend / kg').fill('120');
+    await page.getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(row).toContainText('120');
+    await page.getByRole('checkbox', { name: 'Dans le Custom Blend · Brésil' }).click({ force: true }); // the input sits under the drawn switch
+    await expect(page.getByRole('checkbox', { name: 'Dans le Custom Blend · Brésil' })).not.toBeChecked();
+
+    await open(page, '/admin/products/new?kind=signature');
+    await expect(page.getByRole('checkbox', { name: 'Visible sur le site' })).toBeDisabled();
+    await expect(page.getByText('Un nouveau produit est créé masqué')).toBeVisible();
+    await page.locator('#p-name-fr').fill('TEST produit');
+    await page.locator('section', { hasText: 'Prix par sachet' }).locator('input').first().fill('1');
+    await page.getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(page).toHaveURL(/\/admin\/products$/);
+    await expect(page.getByRole('row', { name: /TEST produit/ })).toBeVisible();
+    // no delete button on the live site: orders keep the productId they were bought with
+    await open(page, '/admin/products/test-produit');
+    await expect(page.getByRole('button', { name: 'Supprimer' })).toHaveCount(0);
+
+    const [origin, edit, blend, product] = writes;
+    expect(origin).toEqual({ fn: 'save_origin', aal: 'aal2', args: { p_seen_at: null, p_origin: expect.objectContaining({ id: 'test-origine', countryCode: 'ET', pricePerKg: 100 }) } });
+    // the version the editor read: the one the creation gave it
+    expect(edit.args).toEqual({ p_seen_at: expect.any(String), p_origin: expect.objectContaining({ id: 'test-origine', pricePerKg: 120 }) });
+    expect(blend.args).toEqual({ p_seen_at: '2026-10-09T08:00:00.000001+00:00', p_origin: expect.objectContaining({ id: 'brazil', customBlendEnabled: false }) });
+    expect(product).toEqual({
+      fn: 'save_product',
+      aal: 'aal2',
+      args: { p_seen_at: null, p_recipe: [{ originId: 'brazil', percent: 100 }], p_product: expect.objectContaining({ id: 'test-produit', slug: 'test-produit', active: false, prices: { '250': 1 } }) },
+    });
+    expect(catalog.products.find((x) => x.id === 'test-produit')).toMatchObject({ active: false });
+    expect(catalog.origins.find((x) => x.id === 'test-origine')).toMatchObject({ active: false, stock_kg: 0, price_per_kg: 120 });
+  });
+
+  test('a product saved from an older copy is refused: "not confirmed", the form shows what is saved, never left as if saved', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const { writes, catalog } = await fakeSupabase(page);
+    await open(page, '/admin/products/boga-signature');
+    const price250 = page.locator('section', { hasText: 'Prix par sachet' }).locator('input').first();
+    await price250.fill('70');
+    // meanwhile another admin changes the price
+    Object.assign(catalog.products[0], { prices: { 250: 68, 500: 120, 1000: 220 }, updated_at: '2026-10-09T09:00:00.000001+00:00' });
+    await page.getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(page.locator('.write-error')).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/products\/boga-signature$/); // still on the form
+    await expect(price250).toHaveValue('68'); // read again: the other admin's price, not overwritten
+    expect(writes.map((w) => w.args.p_seen_at)).toEqual(['2026-10-09T08:00:00.000002+00:00']);
+    expect(catalog.products[0].prices).toEqual({ 250: 68, 500: 120, 1000: 220 });
   });
 
   test('a refused write says so and never shows "saved"; staff never gets the owner\'s payment buttons', async ({ page }) => {

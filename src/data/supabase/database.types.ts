@@ -22,6 +22,12 @@ export type Database = {
         Update: { created_at?: string; full_name?: string; role?: string; user_id?: string };
         Relationships: [];
       };
+      catalog_changes: {
+        Row: { action: string; actor: string | null; at: string; id: number; item: string; item_id: string };
+        Insert: { action: string; actor?: string | null; at?: string; id?: never; item: string; item_id: string };
+        Update: { action?: string; actor?: string | null; at?: string; id?: never; item?: string; item_id?: string };
+        Relationships: [];
+      };
       notification_outbox: {
         Row: {
           attempts: number;
@@ -504,6 +510,8 @@ export type Database = {
         Returns: boolean;
       };
       report_offline_payment: { Args: { p_order_id: string; p_ref: string }; Returns: undefined };
+      save_origin: { Args: { p_origin: Json; p_seen_at: string | null }; Returns: string };
+      save_product: { Args: { p_product: Json; p_recipe: Json; p_seen_at: string | null }; Returns: string };
       set_order_status: { Args: { p_order_id: string; p_status: string }; Returns: undefined };
       set_payment_status: { Args: { p_order_id: string; p_status: string }; Returns: undefined };
       update_quote_request: {
