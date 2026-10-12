@@ -15,7 +15,7 @@ describe('Turnstile site key at build time', () => {
   it('refuses a secret key: a test one, or any value as long as a secret key', () => {
     expect(siteKeyProblem('1x0000000000000000000000000000000AA')).toMatch(/test SECRET/);
     expect(siteKeyProblem('2x0000000000000000000000000000000AA')).toMatch(/test SECRET/);
-    expect(siteKeyProblem('0x4AAAAAAAbcdefghijklMNOpqrstuvwxyz12')).toMatch(/35 characters|SECRET/); // 35 characters
+    expect(siteKeyProblem('0x4AAAAAAAbcdefghijklMNOpqrstuvwxy1')).toMatch(/35 characters long.*SECRET/); // exactly 35 characters
     expect(siteKeyProblem('x'.repeat(33))).not.toBeNull();
     expect(siteKeyProblem('x'.repeat(32))).toBeNull(); // the limit is kept as written
   });

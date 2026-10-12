@@ -65,6 +65,12 @@ describe('texts without the spaces at their start and end', () => {
     expect(recipientsOk({ adminWhatsapp: ' +212600000000 ', adminEmail: ' team@example.com ', whatsappEnabled: true, emailEnabled: true })).toBe(true);
   });
 
+  it('a text saved with only some languages (the database allows it) is trimmed, never an error', () => {
+    const partial = { fr: ' Bonjour ' } as unknown as ReturnType<typeof L>;
+    expect(trimmedMethod({ id: 'cashplus', enabled: true, label: partial, instructions: partial })).toMatchObject({ label: { ar: '', fr: 'Bonjour', en: '' } });
+    expect(textOk(partial, 10, true)).toBe(true);
+  });
+
   it('every form part is sent trimmed', () => {
     const padded = (fr: string) => ({ ar: ` ${fr} `, fr: ` ${fr}\n`, en: `\t${fr}` });
     expect(trimmedContent({ announcement: padded('a'), heroTitle: padded('b'), heroSubtitle: padded('c'), aboutTitle: padded('d'), aboutText: padded('e') }).aboutText).toEqual({ ar: 'e', fr: 'e', en: 'e' });

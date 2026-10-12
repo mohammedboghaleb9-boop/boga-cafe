@@ -207,7 +207,8 @@ function PayeeEditor({ settings, role }: { settings: Settings; role: Role }) {
         </label>
         <label className="field span-all">
           <span className="label">{t.admin.payments.rib}</span>
-          <input className="input num" dir="ltr" inputMode="numeric" maxLength={40} value={bank.rib} onChange={(e) => setBank({ ...bank, rib: e.target.value })} />
+          {/* a changed RIB is typed again: the second one never outlives the first */}
+          <input className="input num" dir="ltr" inputMode="numeric" maxLength={40} value={bank.rib} onChange={(e) => setDraft((d) => ({ ...d, bank: { ...d.bank, rib: e.target.value }, ribAgain: '' }))} />
           {payee.bank.rib !== '' && !RIB.test(payee.bank.rib) && <span className="field-error">{t.admin.payments.ribInvalid}</span>}
         </label>
         {ribToConfirm && (

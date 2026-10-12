@@ -49,10 +49,10 @@ export default defineConfig(({ command, mode: asked }) => {
     if (!isPublishableKey(key)) throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY must be the publishable key (sb_publishable_…) or the legacy anon key, with no spaces: anything else would ship to every visitor.');
     // the storefront function refuses every form without a Turnstile token
     if (!env.VITE_TURNSTILE_SITE_KEY?.trim()) throw new Error('VITE_DATA_MODE=supabase needs VITE_TURNSTILE_SITE_KEY (.env.example): without it no order or B2B request can be sent.');
-    // a public key shipped to every visitor: never the secret one (scripts/turnstile-site-key.mjs says what it can and cannot tell)
-    const siteKey = siteKeyProblem(env.VITE_TURNSTILE_SITE_KEY);
-    if (siteKey) throw new Error(`VITE_TURNSTILE_SITE_KEY ${siteKey}`);
   }
+  // a public key shipped to every visitor, whatever the build: never the secret one (scripts/turnstile-site-key.mjs says what it can and cannot tell)
+  const siteKey = env.VITE_TURNSTILE_SITE_KEY ? siteKeyProblem(env.VITE_TURNSTILE_SITE_KEY) : null;
+  if (command === 'build' && siteKey) throw new Error(`VITE_TURNSTILE_SITE_KEY ${siteKey}`);
   return {
     ...(preview ? { mode: PREVIEW_MODE } : {}),
     base: demo ? './' : '/',

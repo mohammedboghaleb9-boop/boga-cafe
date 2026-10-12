@@ -32,7 +32,8 @@ export const sameRib = (a: string, b: string) => digitsOnly(a) === digitsOnly(b)
  * (config_trim_str): only these four characters, and nothing inside the text changes.
  */
 export const trimEnds = (value: string) => value.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '');
-export const trimLocalized = (t: Localized): Localized => ({ ar: trimEnds(t.ar), fr: trimEnds(t.fr), en: trimEnds(t.en) });
+/** A text missing a language (the database accepts one) gets it empty: the form fills all three. */
+export const trimLocalized = (t: Localized): Localized => ({ ar: trimEnds(t.ar ?? ''), fr: trimEnds(t.fr ?? ''), en: trimEnds(t.en ?? '') });
 
 /** A payee as it is checked and kept: names trimmed, the RIB and the phone in digits, these fields only. */
 export const cleanPayee = ({ bank, cashplus }: Payee): Payee => ({

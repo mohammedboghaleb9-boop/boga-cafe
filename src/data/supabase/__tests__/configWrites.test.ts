@@ -66,7 +66,7 @@ describe('settings writes (live site)', () => {
     expect(rpc).toHaveBeenLastCalledWith('save_payment_method', { p_method: { id: 'bank_transfer', enabled: true, label: method.label, instructions: method.instructions }, p_seen: method.updatedAt });
   });
 
-  it('every text is sent trimmed, as the database keeps it (a new city: its id comes from the trimmed name)', async () => {
+  it('every text is sent trimmed, as the database keeps it', async () => {
     const pad = (fr: string) => ({ ar: ` ${fr}`, fr: `${fr}\n `, en: `\t${fr} ` });
     const { writes, rpc } = setup();
     await writes.saveContent({ ...content, heroTitle: pad('BOGA') }, { ...contact, whatsapp: ' +212600000000 ', address: pad('Oujda') }, 'owner');

@@ -7,7 +7,7 @@ set client_min_messages = warning;
 create extension if not exists pgtap;
 
 begin;
-select plan(25);
+select plan(31);
 
 insert into auth.users values ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000003');
 insert into public.admin_users values
@@ -55,6 +55,10 @@ select lives_ok($$select public.save_content(pg_temp.content(jsonb_build_object(
     'aboutText', pg_temp.text(E'\n  Ligne 1\n\n  Ligne 2  \t'))), null, null, null)$$, 'owner: saves texts that start and end with spaces, tabs and line breaks');
 select is((select (content #>> '{heroTitle,fr}') || '|' || (content #>> '{heroTitle,ar}') from public.site_config), E'Titre|عنوان', 'the title is kept without them, in French and in Arabic');
 select is((select content #>> '{aboutText,fr}' from public.site_config), E'Ligne 1\n\n  Ligne 2', 'inside a text the line breaks and the spaces stay');
+-- only these four characters go: a no-break space (U+00A0, pasted from a document) is kept, as the forms keep it (core/config.ts trimEnds)
+select lives_ok($$select public.save_content(pg_temp.content(jsonb_build_object('heroTitle', pg_temp.text(E'\u00a0x\u00a0'))), null, pg_temp.mark('content'), null)$$,
+                'a text between no-break spaces is saved');
+select is((select content #>> '{heroTitle,fr}' from public.site_config), E'\u00a0x\u00a0', 'a no-break space is not trimmed: the same four characters as the forms');
 select lives_ok($$select public.save_content(pg_temp.content(jsonb_build_object('heroTitle', pg_temp.text(repeat(' ', 10) || repeat('x', 120) || repeat(' ', 10)))),
                                               null, pg_temp.mark('content'), null)$$, 'a limit counts what is kept: 120 characters between spaces are saved');
 select throws_ok($$select public.save_content(pg_temp.content(jsonb_build_object('heroTitle', pg_temp.text(repeat(' ', 10) || repeat('x', 121)))),
@@ -106,6 +110,13 @@ select throws_ok($$select public.save_shipping_rate(pg_temp.rate('test-ville', j
                  'P0001', 'invalid_rate', 'a city name made of spaces is refused');
 select throws_ok($$select public.save_shipping_rate(pg_temp.rate('test-ville', jsonb_build_object('deliveryDays', repeat('9', 21))), pg_temp.seen_rate('test-ville'))$$,
                  'P0001', 'invalid_rate', 'delivery days of 21 characters are refused');
+
+-- nothing, an array or a scalar instead of the object: the clean refusal of before, never a raw error
+select pg_temp.token('00000000-0000-0000-0000-000000000001', 'aal2');
+select throws_ok($$select public.save_content(null::jsonb, null, null, null)$$, 'P0001', 'invalid_content', 'no texts at all is refused');
+select throws_ok($$select public.save_recipients(null::jsonb, pg_temp.seen_recipients())$$, 'P0001', 'invalid_recipients', 'no recipients at all is refused');
+select throws_ok($$select public.save_payment_method('[]'::jsonb, pg_temp.seen_method())$$, 'P0001', 'invalid_method', 'a payment method sent as an array is refused');
+select throws_ok($$select public.save_shipping_rate('{"id": "ville-x", "city": 5}'::jsonb, null)$$, 'P0001', 'invalid_rate', 'a city name sent as a number is refused');
 
 -- the helpers are the functions' own: no API role runs them
 select is((select has_function_privilege('authenticated', 'public.config_trim_str(jsonb)', 'execute') or has_function_privilege('anon', 'public.config_trim_text(jsonb)', 'execute')), false,

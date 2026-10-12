@@ -33,6 +33,9 @@ const env = (name: string) => Deno.env.get(name) ?? '';
 const publicKeys = [...keysOf(env('SUPABASE_PUBLISHABLE_KEYS')), env('SUPABASE_ANON_KEY')].filter(Boolean);
 const secretKey = keysOf(env('SUPABASE_SECRET_KEYS'))[0] || env('SUPABASE_SERVICE_ROLE_KEY');
 
+// read once: a typo in the list is logged once, not at every order
+const turnstileHostnames = liveTurnstileHostnames(env('TURNSTILE_HOSTNAMES'));
+
 const db = createClient<Database>(env('SUPABASE_URL'), secretKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
@@ -47,7 +50,7 @@ Deno.serve((req) =>
         ip,
         ipKey: secretKey,
         turnstileSecret: liveTurnstileSecret(env('TURNSTILE_SECRET_KEY')),
-        turnstileHostnames: liveTurnstileHostnames(env('TURNSTILE_HOSTNAMES')),
+        turnstileHostnames,
       }),
   }),
 );

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TEXT_MAX } from '@/core/limits';
 import type { Client } from '@/data/supabase/client';
 import { hashIp, hostnameAllowed, ipBucket, liveTurnstileHostnames, liveTurnstileSecret, verifyTurnstile } from '../guard';
@@ -114,7 +114,10 @@ const SITE_HOST = 'boga-cafe.example.workers.dev';
 let widgetSays: { action?: string; hostname?: string } = {};
 beforeEach(() => {
   widgetSays = {};
+  // the refusals log why (guard.ts): kept out of the test output, and restored even when an assertion fails
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 });
+afterEach(() => vi.restoreAllMocks());
 /** The form being checked, set by each call so that siteverify can answer as Cloudflare does: with the action the widget was given. */
 let formChecked: string = 'order';
 
@@ -448,34 +451,43 @@ describe('storefront: Turnstile first', () => {
     expect(untouched(fake)).toBe(true);
   });
 
-  it('keeps only hostnames that are safe: a wildcard must stay inside one account, a typo widens nothing', () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('keeps only hostnames that are safe: a wildcard stays glued to a dash inside one account, a typo widens nothing', () => {
     expect(liveTurnstileHostnames(' Boga-Cafe.Example.workers.dev , *-boga-cafe.example.workers.dev,,bogacafe.ma')).toEqual([
       'boga-cafe.example.workers.dev',
       '*-boga-cafe.example.workers.dev',
       'bogacafe.ma',
     ]);
-    // dropped: everything under a public suffix, a bare star, a scheme, a port, a path, a space inside
-    expect(liveTurnstileHostnames('*.workers.dev,*,*.com,https://boga.ma,boga.ma:443,boga.ma/x,bo ga.ma,*.co.ma')).toEqual([]);
+    // dropped: everything under a public suffix, a star that is not glued to a dash, a bare star, a scheme, a port, a path, a space inside
+    expect(liveTurnstileHostnames('*.workers.dev,*,*.com,*.example.workers.dev,*.boga-cafe.example.workers.dev,*-x.com,*-.example.workers.dev,https://boga.ma,boga.ma:443,boga.ma/x,bo ga.ma,*.co.ma,boga..ma,.boga.ma')).toEqual([]);
     expect(liveTurnstileHostnames('')).toEqual([]);
-    vi.restoreAllMocks();
   });
 
-  it('matches a hostname exactly, or under a wildcard entry\'s suffix with something before it', () => {
+  it('logs a dropped entry by its place and length, never its text (a secret pasted by mistake stays out of the logs)', () => {
+    const secret = '0x4AAAAAAA_pasted_secret_key_0123456789';
+    expect(liveTurnstileHostnames(`bogacafe.ma,${secret}`)).toEqual(['bogacafe.ma']);
+    const logged = vi.mocked(console.error).mock.calls.flat().join(' ');
+    expect(logged).toContain('entry 2');
+    expect(logged).not.toContain('pasted');
+  });
+
+  it('matches a hostname exactly, or under a wildcard entry\'s suffix with one label start before it', () => {
     const allowed = ['boga-cafe.example.workers.dev', '*-boga-cafe.example.workers.dev'];
     expect(hostnameAllowed('Boga-Cafe.example.workers.dev', allowed)).toBe(true);
     expect(hostnameAllowed('abc123-boga-cafe.example.workers.dev', allowed)).toBe(true);
+    expect(hostnameAllowed('feat-p5-s11-cleanup-turnstile-boga-cafe.example.workers.dev', allowed)).toBe(true);
     expect(hostnameAllowed('-boga-cafe.example.workers.dev', allowed)).toBe(false); // nothing before the suffix
+    expect(hostnameAllowed('a.b-boga-cafe.example.workers.dev', allowed)).toBe(false); // the star never spans a dot
     expect(hostnameAllowed('abc123-boga-cafe.example.workers.dev.evil.com', allowed)).toBe(false);
     expect(hostnameAllowed('evil-boga-cafe.other.workers.dev', allowed)).toBe(false);
+    expect(hostnameAllowed('evil.com/x-boga-cafe.example.workers.dev', allowed)).toBe(false); // not a hostname at all
+    expect(hostnameAllowed('abc 123-boga-cafe.example.workers.dev', allowed)).toBe(false);
+    expect(hostnameAllowed('', allowed)).toBe(false);
     expect(hostnameAllowed('boga-cafe.example.workers.dev', [])).toBe(false);
   });
 
   it('treats a Cloudflare test secret on the live function as no secret', () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
     for (const test of [PASS_SECRET, FAIL_SECRET, '3x0000000000000000000000000000000AA']) expect(liveTurnstileSecret(test)).toBe('');
     expect(liveTurnstileSecret('0x4AAAAAAAreal-looking-secret')).toBe('0x4AAAAAAAreal-looking-secret');
-    vi.restoreAllMocks();
   });
 
   it('refuses a token longer than Cloudflare issues (2048 characters)', async () => {
@@ -501,14 +513,12 @@ describe('storefront: Turnstile answer', () => {
   const good = { success: true, action: 'order', hostname: SITE_HOST };
 
   it('is verified only when Cloudflare says success, for this form, on an allowed hostname', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(await verifyTurnstile('s', 'token', null, expected, answer(good))).toBe(true);
     expect(await verifyTurnstile('s', 'token', null, expected, answer({ ...good, success: false }))).toBe(false);
     expect(await verifyTurnstile('s', 'token', null, expected, answer({ ...good, action: 'quote' }))).toBe(false);
     expect(await verifyTurnstile('s', 'token', null, expected, answer({ success: true, hostname: SITE_HOST }))).toBe(false); // no action
     expect(await verifyTurnstile('s', 'token', null, expected, answer({ success: true, action: 'order' }))).toBe(false); // no hostname
     expect(await verifyTurnstile('s', 'token', null, expected, answer({ ...good, hostname: 'evil.example.com' }))).toBe(false);
-    vi.restoreAllMocks();
   });
 
   it('fails closed: no token, an unreachable Cloudflare or a broken answer', async () => {

@@ -655,16 +655,23 @@ test.describe('admin sign-in on the live site', () => {
     await page.getByLabel('Titulaire').fill('TEST');
     await expect(page.getByText('Remplissez tout le virement')).toBeVisible(); // half a payee is never sent
     await page.getByLabel('Banque', { exact: true }).fill('TEST');
-    await page.getByLabel('RIB', { exact: true }).fill('0000 0000 0000 0000 0000 0000');
-    // a new RIB is typed twice: a wrong second number keeps the button off
     const saveBank = page.getByRole('button', { name: 'Enregistrer · Coordonnées de paiement' });
     const again = page.getByLabel('Saisissez à nouveau le RIB pour confirmer');
+    await expect(again).toHaveCount(0); // nothing to confirm while the RIB is empty
+    await page.getByLabel('RIB', { exact: true }).fill('0000 0000 0000 0000 0000 0000');
+    // a new RIB is typed twice: a wrong second number keeps the button off
     await expect(saveBank).toBeDisabled();
     await again.fill('0000 0000 0000 0000 0000 0001');
     await expect(page.getByText('Les deux numéros ne sont pas identiques')).toBeVisible();
     await expect(saveBank).toBeDisabled();
     await again.fill('0000 0000 0000 0000 0000 0000');
     await expect(page.getByText('Les deux numéros ne sont pas identiques')).toHaveCount(0);
+    // changing the first number clears the second: it has to be typed again
+    await page.getByLabel('RIB', { exact: true }).fill('0000 0000 0000 0000 0000 0002');
+    await expect(again).toHaveValue('');
+    await expect(saveBank).toBeDisabled();
+    await page.getByLabel('RIB', { exact: true }).fill('0000 0000 0000 0000 0000 0000');
+    await again.fill('0000 0000 0000 0000 0000 0000');
     await saveBank.click();
     await expect(page.locator('fieldset', { hasText: 'Coordonnées de paiement' }).locator('.pill-ok')).toBeVisible();
     expect((catalog.site_config[0].settings as { bank: unknown }).bank).toEqual({ holder: 'TEST', bankName: 'TEST', rib: '000000000000000000000000' });
