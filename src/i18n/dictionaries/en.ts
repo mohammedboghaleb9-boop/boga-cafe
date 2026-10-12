@@ -650,6 +650,8 @@ export const en = {
       lastChange: 'Last change: {when} · {who}',
       lastChangeUnknown: 'Last change: unknown (could not be read).',
       ribInvalid: 'A RIB has 24 digits (spaces are removed). Its key is not checked.',
+      ribConfirm: 'Retype the RIB to confirm',
+      ribMismatch: 'The two numbers do not match. Check the RIB certificate from the bank.',
       phoneInvalid: 'Phone: 8 to 15 digits, with a leading + if needed.',
       payeeIncomplete: 'Fill in the whole transfer (holder, bank, RIB) or leave it empty; the same for Cash Plus (name, city, phone).',
       toVerify: 'Payments to verify',

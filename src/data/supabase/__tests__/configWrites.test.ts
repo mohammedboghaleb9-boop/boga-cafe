@@ -66,6 +66,32 @@ describe('settings writes (live site)', () => {
     expect(rpc).toHaveBeenLastCalledWith('save_payment_method', { p_method: { id: 'bank_transfer', enabled: true, label: method.label, instructions: method.instructions }, p_seen: method.updatedAt });
   });
 
+  it('every text is sent trimmed, as the database keeps it (a new city: its id comes from the trimmed name)', async () => {
+    const pad = (fr: string) => ({ ar: ` ${fr}`, fr: `${fr}\n `, en: `\t${fr} ` });
+    const { writes, rpc } = setup();
+    await writes.saveContent({ ...content, heroTitle: pad('BOGA') }, { ...contact, whatsapp: ' +212600000000 ', address: pad('Oujda') }, 'owner');
+    expect(rpc).toHaveBeenLastCalledWith('save_content', {
+      p_content: { ...content, heroTitle: { ar: 'BOGA', fr: 'BOGA', en: 'BOGA' } },
+      p_contact: { ...contact, address: { ar: 'Oujda', fr: 'Oujda', en: 'Oujda' } },
+      p_seen_content: 'c1',
+      p_seen_contact: 'k1',
+    });
+    await writes.saveRecipients({ adminWhatsapp: ' +212600000000 ', adminEmail: ' team@example.com\n', whatsappEnabled: true, emailEnabled: true }, 'owner');
+    expect(rpc).toHaveBeenLastCalledWith('save_recipients', {
+      p_recipients: { adminWhatsapp: '+212600000000', adminEmail: 'team@example.com', whatsappEnabled: true, emailEnabled: true },
+      p_seen: versions.recipients,
+    });
+    await writes.savePaymentMethod({ ...method, label: pad('Virement'), instructions: pad('Merci') }, 'owner');
+    expect(rpc).toHaveBeenLastCalledWith('save_payment_method', {
+      p_method: { id: 'bank_transfer', enabled: true, label: { ar: 'Virement', fr: 'Virement', en: 'Virement' }, instructions: { ar: 'Merci', fr: 'Merci', en: 'Merci' } },
+      p_seen: method.updatedAt,
+    });
+    await writes.saveShippingRate({ ...oujda, city: pad('Oujda'), deliveryDays: ' 2-3 ' }, 'manager');
+    expect(rpc).toHaveBeenLastCalledWith('save_shipping_rate', { p_rate: expect.objectContaining({ city: { ar: 'Oujda', fr: 'Oujda', en: 'Oujda' }, deliveryDays: '2-3' }), p_seen: oujda.updatedAt });
+    const created = await writes.createShippingRate({ ...oujda, id: '', city: pad('Nador'), deliveryDays: ' 3 ', updatedAt: undefined }, 'manager');
+    expect(created).toMatchObject({ id: 'nador', city: { fr: 'Nador' }, deliveryDays: '3', active: false });
+  });
+
   it('a refusal (an older copy: stale) is "not saved"; no answer is an error; nothing unread is sent', async () => {
     const stale = setup({ error: { message: 'stale' } });
     expect(await stale.writes.saveRules({ ...({} as Settings), customBlend: { enabled: true, minPercent: 5, maxOrigins: 4, feeBySize: { 250: 1, 500: 1, 1000: 1 } } }, 'owner')).toBe(false);

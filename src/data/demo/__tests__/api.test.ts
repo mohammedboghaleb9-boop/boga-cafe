@@ -59,6 +59,27 @@ describe('demo data layer', () => {
     expect(await api.savePaymentMethod({ ...card, enabled: true }, 'owner')).toBe(false);
   });
 
+  it('keeps every text without the spaces at its start and end, as the live site does', async () => {
+    const { api, db } = t;
+    const pad = (v: string) => ({ ar: ` ${v}`, fr: `${v}\n `, en: `\t${v} ` });
+    const clean = (v: string) => ({ ar: v, fr: v, en: v });
+    const s = db.get().settings;
+    expect(await api.saveContent({ ...db.get().content, heroTitle: pad('BOGA') }, { ...s.contact, whatsapp: ' +212700000000 ', address: pad('Oujda') }, 'owner')).toBe(true);
+    expect(db.get().content.heroTitle).toEqual(clean('BOGA'));
+    expect(db.get().settings.contact).toMatchObject({ whatsapp: '+212700000000', address: clean('Oujda') });
+    expect(await api.saveRecipients({ ...s.notifications, adminEmail: ' team@example.com ' }, 'owner')).toBe(true);
+    expect(db.get().settings.notifications.adminEmail).toBe('team@example.com');
+    const method = db.get().paymentMethods.find((m) => m.id === 'bank_transfer')!;
+    expect(await api.savePaymentMethod({ ...method, label: pad('Virement') }, 'owner')).toBe(true);
+    expect(db.get().paymentMethods.find((m) => m.id === 'bank_transfer')!.label).toEqual(clean('Virement'));
+    const created = await api.createShippingRate({ ...db.get().shippingRates[0], id: '', city: pad('Ville'), deliveryDays: ' 2 ' }, 'manager');
+    expect(created).toMatchObject({ city: clean('Ville'), deliveryDays: '2', active: false });
+    const rate = db.get().shippingRates[0];
+    expect(await api.saveShippingRate({ ...rate, city: pad('Autre') }, 'manager')).toBe(true);
+    expect(db.get().shippingRates[0].city).toEqual(clean('Autre'));
+    expect(await api.saveShippingRate({ ...rate, city: { ar: '', fr: '   ', en: '' } }, 'manager')).toBe(false); // only spaces: no French name
+  });
+
   it('logs the stock change that really happened', async () => {
     const { api, db } = t;
     const id = db.get().origins[0].id;
