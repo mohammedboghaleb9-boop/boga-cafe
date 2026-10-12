@@ -1,5 +1,4 @@
 import { formatSize } from '@/core/format';
-import { useState } from 'react';
 import { rulesOk, type BusinessRules } from '@/core/config';
 import { PACK_SIZES, type Settings } from '@/core/types';
 import { api } from '@/data/api';
@@ -11,6 +10,7 @@ import { PERMISSIONS, ROLES, SECTIONS } from '../permissions';
 import { ComingSoon, ConfirmButton, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
+import { useSavedDraft } from '../useSavedDraft';
 
 const rulesOf = ({ b2bThresholdKg, roastLossPercent, unpaidOrderTimeoutHours, paymentCheckTimeoutHours, customBlend }: Settings): BusinessRules => ({
   b2bThresholdKg,
@@ -26,14 +26,7 @@ export function SettingsPage() {
   const db = useAdminDb();
   const writable = canWrite('settings');
   const current = rulesOf(db.settings);
-  const [s, setS] = useState<BusinessRules>(current);
-  // what is saved changed (read again after a refused save): the form starts again from it
-  const version = db.configVersions?.rules ?? JSON.stringify(current);
-  const [seen, setSeen] = useState(version);
-  if (seen !== version) {
-    setSeen(version);
-    setS(current);
-  }
+  const [s, setS] = useSavedDraft<BusinessRules>(current, db.configVersions?.rules ?? JSON.stringify(current));
   const valid = rulesOk(s);
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();

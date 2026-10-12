@@ -620,6 +620,7 @@ export const fr: Dict = {
       days: 'Délai (jours)',
       addCity: 'Ajouter une ville',
       freeOver: 'Livraison offerte dès (MAD, 0 = jamais)',
+      freeOverInvalid: 'Livraison offerte : de 0 à 100 000 DH (0 = jamais).',
       simulator: 'Simulateur de frais',
       simWeight: 'Poids (kg)',
       simResult: 'Frais de livraison : {fee}',

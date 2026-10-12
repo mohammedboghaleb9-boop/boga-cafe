@@ -3,7 +3,7 @@
  * here, on the visitor's own copy of the data (./store). Each function maps to
  * one server call of the Supabase backend — same inputs, same results.
  */
-import { contactOk, contentOk, MAX_FREE_SHIPPING, methodOk, payeeProblem, recipientsOk, rulesOk, shippingRateOk, type BusinessRules, type Payee } from '@/core/config';
+import { cleanPayee, contactOk, contentOk, MAX_FREE_SHIPPING, methodOk, payeeProblem, recipientsOk, rulesOk, shippingRateOk, type BusinessRules, type Payee } from '@/core/config';
 import { buildOrder, expiredUnpaidOrders, type CheckoutInput } from '@/core/order';
 import { buildQuoteRequest, type QuoteInput } from '@/core/requests';
 import { isPrice } from '@/core/pricing';
@@ -24,6 +24,7 @@ import type {
 } from '@/core/types';
 import { draftsToLogs, lowStockMessage, orderMessage, paymentReportMessage, quoteMessage } from '@/services/notifications';
 import { deliver } from '@/services/notifications/deliver';
+import { methodAvailable } from '@/services/payments';
 import { checkoutContext, storefrontCheckoutContext, templateContext } from '../context';
 import { newOriginId, newProductId, newReference, newShippingId, uid } from '../ids';
 import type { DbState } from '../state';
@@ -298,7 +299,7 @@ export const demoApi: Api = {
   },
 
   async savePaymentMethod(method: PaymentMethodConfig, role: AdminRole) {
-    if (role !== 'owner' || !methodOk(method) || !db.get().paymentMethods.some((m) => m.id === method.id)) return false;
+    if (role !== 'owner' || !methodOk(method, methodAvailable({ id: 'card', enabled: true }, db.get().settings)) || !db.get().paymentMethods.some((m) => m.id === method.id)) return false;
     db.update((s) => ({ ...s, paymentMethods: s.paymentMethods.map((m) => (m.id === method.id ? method : m)) }));
     return true;
   },
@@ -312,7 +313,8 @@ export const demoApi: Api = {
   },
 
   async savePayee(payee: Payee, role: AdminRole) {
-    return savePart(payee, role, payeeProblem(payee) === null);
+    const clean = cleanPayee(payee);
+    return savePart(clean, role, payeeProblem(clean) === null);
   },
 
   async saveRecipients(recipients: Settings['notifications'], role: AdminRole) {

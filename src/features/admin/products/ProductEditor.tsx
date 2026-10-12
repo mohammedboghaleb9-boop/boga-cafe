@@ -1,5 +1,4 @@
 import { formatSize } from '@/core/format';
-import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { isPrice, MAX_PRICE, offeredSizes } from '@/core/pricing';
 import { isProductRecipe, MAX_RECIPE_LINES, recipeTotal, speciesSplit } from '@/core/recipe';
@@ -13,6 +12,7 @@ import { Icon } from '@/shared/ui/Icon';
 import { SpeciesBar } from '@/shared/ui/bits';
 import { ComingSoon, ConfirmButton, LocalizedInput, Switch, WriteError } from '../ui';
 import { refuse, useAction } from '../useAction';
+import { useSavedDraft } from '../useSavedDraft';
 
 const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
 const KINDS: ProductKind[] = ['signature', 'single-origin', 'b2b'];
@@ -34,9 +34,8 @@ function ProductForm({ id }: { id: string | undefined }) {
   const isNew = id === 'new';
   const existing = products.find((p) => p.id === id);
 
-  const [p, setP] = useState<Product>(
-    () =>
-      existing ?? {
+  const [p, setP] = useSavedDraft<Product>(
+    existing ?? {
         id: '',
         slug: '',
         kind: KINDS.find((k) => k === params.get('kind')) ?? 'signature',
@@ -51,15 +50,8 @@ function ProductForm({ id }: { id: string | undefined }) {
         active: false,
         sortOrder: products.length + 1,
       },
+    existing ? (existing.updatedAt ?? JSON.stringify(existing)) : null,
   );
-
-  // what is saved changed (read again after a refused save): the form starts again from it
-  const version = existing ? (existing.updatedAt ?? JSON.stringify(existing)) : null;
-  const [seen, setSeen] = useState(version);
-  if (existing && seen !== version) {
-    setSeen(version);
-    setP(existing);
-  }
   const [busy, run, failed] = useAction();
 
   if (!isNew && !existing) return <p className="muted">404</p>;

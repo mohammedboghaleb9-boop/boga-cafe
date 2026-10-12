@@ -894,8 +894,11 @@ begin
   alter table public.site_config disable trigger site_config_guard_settings;
   update public.site_config set settings = settings || '{"unpaidOrderTimeoutHours": 48}';
   alter table public.site_config enable trigger site_config_guard_settings;
-  -- no payment details, no order to pay into nowhere
+  -- no payment details, no order to pay into nowhere (half a payee, as a row written before
+  -- guard_payee existed: check_order refuses it all the same)
+  alter table public.site_config disable trigger site_config_guard_payee;
   update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"  "');
+  alter table public.site_config enable trigger site_config_guard_payee;
   begin
     perform public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '');
     raise exception 'TEST FAILED: transfer order without a RIB';

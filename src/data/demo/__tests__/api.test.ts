@@ -46,6 +46,19 @@ describe('demo data layer', () => {
     expect(db.get().settings.contact.whatsapp).toBe('+212700000000');
   });
 
+  it('keeps a payee as the live site does: trimmed, in digits, whole or empty; the card follows its gateway', async () => {
+    const { api, db } = t;
+    const payee = { bank: { holder: ' TEST ', bankName: 'TEST', rib: '0000 0000 0000 0000 0000 0000' }, cashplus: { beneficiary: '', city: '', phone: '' } };
+    expect(await api.savePayee(payee, 'owner')).toBe(true);
+    expect(db.get().settings.bank).toEqual({ holder: 'TEST', bankName: 'TEST', rib: '000000000000000000000000' });
+    expect(await api.savePayee({ ...payee, bank: { ...payee.bank, bankName: '' } }, 'owner')).toBe(false); // half a transfer
+    // the card follows its gateway: none in this build (VITE_CARD_GATEWAY unset), so it can be
+    // switched off, not on again (the prototype's simulated gateway: src/core/__tests__/config.test.ts)
+    const card = db.get().paymentMethods.find((m) => m.id === 'card')!;
+    expect(await api.savePaymentMethod({ ...card, enabled: false }, 'owner')).toBe(true);
+    expect(await api.savePaymentMethod({ ...card, enabled: true }, 'owner')).toBe(false);
+  });
+
   it('logs the stock change that really happened', async () => {
     const { api, db } = t;
     const id = db.get().origins[0].id;

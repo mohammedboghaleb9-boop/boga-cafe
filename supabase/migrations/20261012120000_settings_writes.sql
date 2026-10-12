@@ -36,27 +36,31 @@ create table public.config_changes (
 );
 create index config_changes_area_idx on public.config_changes (area, at desc);
 alter table public.config_changes enable row level security;
-create policy "admins read" on public.config_changes for select using (public.is_admin());
+-- the owner's: who changed the payee, the rules or the recipients is not staff's business
+create policy "owner reads" on public.config_changes for select using (public.is_admin(array['owner']));
 revoke all on public.config_changes from anon, authenticated;
 grant select on public.config_changes to authenticated;
 
 -- A JSON number from p_min to p_max (JSON has no NaN or Infinity); false when missing.
+-- (CASE, not AND: SQL does not promise the order of AND, and the cast must follow the type check)
 create or replace function public.config_number_ok(p_value jsonb, p_min numeric, p_max numeric) returns boolean
 language sql immutable set search_path = public, pg_temp as $$
-  select coalesce(jsonb_typeof(p_value) = 'number' and (p_value #>> '{}')::numeric between p_min and p_max, false)
+  select case when jsonb_typeof(p_value) = 'number' then (p_value #>> '{}')::numeric between p_min and p_max else false end
 $$;
 
--- The same, a whole number.
+-- The same, a whole number (10.0 included: it is cast through numeric).
 create or replace function public.config_integer_ok(p_value jsonb, p_min numeric, p_max numeric) returns boolean
 language sql immutable set search_path = public, pg_temp as $$
-  select public.config_number_ok(p_value, p_min, p_max) and (p_value #>> '{}')::numeric = trunc((p_value #>> '{}')::numeric)
+  select case when public.config_number_ok(p_value, p_min, p_max)
+              then (p_value #>> '{}')::numeric = trunc((p_value #>> '{}')::numeric) else false end
 $$;
 
 -- A JSON string of at most p_max characters, empty or matching p_pattern; false when missing.
 create or replace function public.config_string_ok(p_value jsonb, p_max integer, p_pattern text default null) returns boolean
 language sql immutable set search_path = public, pg_temp as $$
-  select coalesce(jsonb_typeof(p_value) = 'string' and char_length(p_value #>> '{}') <= p_max
-                  and (p_pattern is null or p_value #>> '{}' = '' or (p_value #>> '{}') ~ p_pattern), false)
+  select case when jsonb_typeof(p_value) = 'string'
+              then char_length(p_value #>> '{}') <= p_max and (p_pattern is null or p_value #>> '{}' = '' or (p_value #>> '{}') ~ p_pattern)
+              else false end
 $$;
 
 -- A text in three languages (catalog_text_ok), with a French one when p_required; false when missing.
@@ -147,7 +151,8 @@ end $$;
 
 -- p_payee: {"bank": {holder, bankName, rib}, "cashplus": {beneficiary, city, phone}}. Shown to
 -- the customers who pay by transfer or Cash Plus (src/features/checkout/PaymentPanel.tsx): a
--- method is offered once its payee is complete (payeeReady, check_order). The RIB: 24 digits
+-- method is offered once its payee is complete (payeeReady; check_order, whose Cash Plus test
+-- reads the beneficiary alone: guard_payee below keeps every payee whole). The RIB: 24 digits
 -- (its check key is not verified: no official source for the Moroccan rule was found).
 create or replace function public.save_payee(p_payee jsonb, p_seen text) returns void
 language plpgsql security definer set search_path = public, pg_temp as $$
@@ -317,11 +322,11 @@ begin
       raise exception 'exists';
     end if;
     insert into public.shipping_rates (id, city, distance_km, base_fee, included_kg, extra_per_kg, delivery_days, active)
-    values (v_id, p_rate -> 'city', (p_rate ->> 'distanceKm')::integer, (p_rate ->> 'baseFee')::numeric, (p_rate ->> 'includedKg')::numeric,
+    values (v_id, p_rate -> 'city', (p_rate ->> 'distanceKm')::numeric::integer, (p_rate ->> 'baseFee')::numeric, (p_rate ->> 'includedKg')::numeric,
             (p_rate ->> 'extraPerKg')::numeric, p_rate ->> 'deliveryDays', false);
   else
     update public.shipping_rates
-       set city = p_rate -> 'city', distance_km = (p_rate ->> 'distanceKm')::integer, base_fee = (p_rate ->> 'baseFee')::numeric,
+       set city = p_rate -> 'city', distance_km = (p_rate ->> 'distanceKm')::numeric::integer, base_fee = (p_rate ->> 'baseFee')::numeric,
            included_kg = (p_rate ->> 'includedKg')::numeric, extra_per_kg = (p_rate ->> 'extraPerKg')::numeric,
            delivery_days = p_rate ->> 'deliveryDays', active = (p_rate ->> 'active')::boolean
      where id = v_id and updated_at = p_seen;
@@ -337,6 +342,24 @@ begin
   return v_id;
 end $$;
 
+-- A payee is whole or empty in every write, through save_payee or directly as the table's
+-- owner: check_order offers a method only with its payee filled in, and tests Cash Plus by its
+-- beneficiary alone, so a beneficiary is never kept without its city and phone.
+create or replace function public.guard_payee() returns trigger
+language plpgsql set search_path = public, pg_temp as $$
+begin
+  if (select count(*) from unnest(array[new.settings #>> '{bank,holder}', new.settings #>> '{bank,bankName}', new.settings #>> '{bank,rib}']) v
+       where coalesce(btrim(v), '') <> '') not in (0, 3)
+     or (select count(*) from unnest(array[new.settings #>> '{cashplus,beneficiary}', new.settings #>> '{cashplus,city}', new.settings #>> '{cashplus,phone}']) v
+          where coalesce(btrim(v), '') <> '') not in (0, 3) then
+    raise exception 'incomplete_payee';
+  end if;
+  return new;
+end $$;
+create trigger site_config_guard_payee before insert or update of settings on public.site_config
+  for each row execute function public.guard_payee();
+
+revoke all on function public.guard_payee() from public, anon, authenticated;
 revoke all on function public.config_number_ok(jsonb, numeric, numeric) from public, anon, authenticated;
 revoke all on function public.config_integer_ok(jsonb, numeric, numeric) from public, anon, authenticated;
 revoke all on function public.config_string_ok(jsonb, integer, text) from public, anon, authenticated;
@@ -362,6 +385,9 @@ grant execute on function public.save_shipping_rate(jsonb, timestamptz) to authe
 -- roles keep reading them (row level security), nothing else ("config write", "catalog
 -- write" and "owner only" stay, without effect; guard_settings stays as a second check).
 -- Who receives the messages is read by the owner's session only: anon loses even SELECT.
+-- A visitor reads the settings and the texts, not when each part changed (versions).
 revoke all on public.site_config, public.payment_methods, public.shipping_rates, public.admin_config from anon, authenticated;
-grant select on public.site_config, public.payment_methods, public.shipping_rates to anon, authenticated;
+grant select on public.payment_methods, public.shipping_rates to anon, authenticated;
+grant select (id, settings, content) on public.site_config to anon;
+grant select on public.site_config to authenticated;
 grant select on public.admin_config to authenticated;

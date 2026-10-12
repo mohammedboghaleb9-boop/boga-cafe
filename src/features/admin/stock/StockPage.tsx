@@ -12,6 +12,7 @@ import { canEditCatalog } from '../permissions';
 import { useAdminRole } from '../session';
 import { ComingSoon, LocalizedInput, Switch, TableWrap, WriteError } from '../ui';
 import { refuse, useAction } from '../useAction';
+import { useSavedDraft } from '../useSavedDraft';
 
 export function StockPage() {
   const { t, l, date } = useI18n();
@@ -291,7 +292,7 @@ const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
 function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () => void }) {
   const { t } = useI18n();
   const locked = origin !== null;
-  const [o, setO] = useState<Origin>(
+  const [o, setO] = useSavedDraft<Origin>(
     origin ?? {
       id: '',
       name: { ar: '', fr: '', en: '' },
@@ -306,15 +307,9 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
       customBlendEnabled: true,
       active: false,
     },
+    // its details, not its stock: a stock line meanwhile keeps what is being typed
+    origin ? (origin.updatedAt ?? JSON.stringify({ ...origin, stockKg: 0 })) : null,
   );
-  // what is saved changed (read again after a refused save): the form starts again from it.
-  // Its details, not its stock: a stock line meanwhile keeps what is being typed
-  const version = origin ? (origin.updatedAt ?? JSON.stringify({ ...origin, stockKg: 0 })) : null;
-  const [seen, setSeen] = useState(version);
-  if (origin && seen !== version) {
-    setSeen(version);
-    setO(origin);
-  }
   const set = <K extends keyof Origin>(k: K, v: Origin[K]) => setO((cur) => ({ ...cur, [k]: v }));
   const [busy, run, failed] = useAction();
   const priced = isPrice(o.pricePerKg) && o.pricePerKg <= MAX_PRICE;

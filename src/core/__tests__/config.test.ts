@@ -35,9 +35,10 @@ describe('admin settings, checked as the database checks them', () => {
     expect(contactOk({ ...contact, facebook: 'http://facebook.com/x' })).toBe(false);
     expect(contactOk({ ...contact, whatsapp: '06 00 00' })).toBe(false);
     const method = { id: 'bank_transfer' as const, enabled: true, label: L('Virement'), instructions: L('') };
-    expect(methodOk(method)).toBe(true);
-    expect(methodOk({ ...method, label: L(' ') })).toBe(false);
-    expect(methodOk({ ...method, id: 'card', enabled: true })).toBe(false);
+    expect(methodOk(method, false)).toBe(true);
+    expect(methodOk({ ...method, label: L(' ') }, false)).toBe(false);
+    expect(methodOk({ ...method, id: 'card', enabled: true }, false)).toBe(false); // no gateway yet: the card stays off
+    expect(methodOk({ ...method, id: 'card', enabled: true }, true)).toBe(true); // the prototype's simulated gateway
     const rate = { id: 'oujda', city: L('Oujda'), distanceKm: 0, baseFee: 20, includedKg: 3, extraPerKg: 5, deliveryDays: '1', active: true };
     expect(shippingRateOk(rate)).toBe(true);
     expect(shippingRateOk({ ...rate, baseFee: 1001 })).toBe(false);

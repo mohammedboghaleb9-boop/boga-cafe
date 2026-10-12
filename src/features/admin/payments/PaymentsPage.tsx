@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { Link } from 'react-router';
-import { digitsOnly, methodOk, payeeProblem, PHONE, RIB, type Payee } from '@/core/config';
+import { cleanPayee, methodOk, payeeProblem, PHONE, RIB, type Payee } from '@/core/config';
 import type { PaymentMethodConfig, PaymentMethodId, Settings } from '@/core/types';
 import { api } from '@/data/api';
 import { canWrite, useAdminDb } from '@/data/hooks';
@@ -12,6 +11,7 @@ import { payeeReady } from '@/core/orderFlow';
 import { methodAvailable } from '@/services/payments';
 import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
+import { useSavedDraft } from '../useSavedDraft';
 
 const icons: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
 
@@ -97,18 +97,13 @@ export function PaymentsPage() {
 function MethodEditor({ method, settings }: { method: PaymentMethodConfig; settings: Settings }) {
   const { t, l } = useI18n();
   const role = useAdminRole()!;
-  const [m, setM] = useState(method);
-  // what is saved changed (read again after a refused save): the form starts again from it
-  const version = method.updatedAt ?? JSON.stringify(method);
-  const [seen, setSeen] = useState(version);
-  if (seen !== version) {
-    setSeen(version);
-    setM(method);
-  }
+  const [m, setM] = useSavedDraft(method, method.updatedAt ?? JSON.stringify(method));
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
   const writable = canWrite('payments');
-  const valid = methodOk(m);
+  // the card is offered only once a card payment can be taken (the prototype's simulated gateway)
+  const cardGateway = methodAvailable({ id: 'card', enabled: true }, settings);
+  const valid = methodOk(m, cardGateway);
   return (
     <fieldset className="plain-fieldset panel stack" disabled={!writable}>
       <div className="spread">
@@ -118,7 +113,7 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
         <div className="row">
           <SavedFlash show={saved} />
           {/* the card stays off until its gateway exists: it can be switched off, never on */}
-          <Switch checked={m.enabled} disabled={m.id === 'card' && !method.enabled} onChange={(v) => setM({ ...m, enabled: v })} label={t.admin.payments.enabled} name={l(method.label)} />
+          <Switch checked={m.enabled} disabled={m.id === 'card' && !method.enabled && !cardGateway} onChange={(v) => setM({ ...m, enabled: v })} label={t.admin.payments.enabled} name={l(method.label)} />
           <button
             type="button"
             className="btn btn-primary btn-sm"
@@ -155,27 +150,15 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
   );
 }
 
-/** As the database keeps them: spaces, dots and dashes out of the RIB and the phone number. */
-const normalized = ({ bank, cashplus }: Payee): Payee => ({
-  bank: { ...bank, rib: digitsOnly(bank.rib) },
-  cashplus: { ...cashplus, phone: digitsOnly(cashplus.phone) },
-});
-
 function PayeeEditor({ settings, role }: { settings: Settings; role: Role }) {
   const { t, date } = useI18n();
   const { configVersions, payeeChange } = useAdminDb();
   const current: Payee = { bank: settings.bank, cashplus: settings.cashplus };
-  const [bank, setBank] = useState(current.bank);
-  const [cashplus, setCashplus] = useState(current.cashplus);
-  // what is saved changed (read again after a refused save): the form starts again from it
-  const version = configVersions?.payee ?? JSON.stringify(current);
-  const [seen, setSeen] = useState(version);
-  if (seen !== version) {
-    setSeen(version);
-    setBank(current.bank);
-    setCashplus(current.cashplus);
-  }
-  const payee = normalized({ bank, cashplus });
+  const [draft, setDraft] = useSavedDraft(current, configVersions?.payee ?? JSON.stringify(current));
+  const { bank, cashplus } = draft;
+  const setBank = (next: Payee['bank']) => setDraft((d) => ({ ...d, bank: next }));
+  const setCashplus = (update: (c: Payee['cashplus']) => Payee['cashplus']) => setDraft((d) => ({ ...d, cashplus: update(d.cashplus) }));
+  const payee = cleanPayee(draft);
   const problem = payeeProblem(payee);
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();

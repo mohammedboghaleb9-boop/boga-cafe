@@ -10,6 +10,7 @@ import { Icon } from '@/shared/ui/Icon';
 import { ComingSoon, ConfirmButton, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
+import { useSavedDraft } from '../useSavedDraft';
 
 const num = (v: string) => Math.max(0, Number(v) || 0);
 
@@ -122,14 +123,7 @@ function FreeShippingForm({ writable }: { writable: boolean }) {
   const { t } = useI18n();
   const role = useAdminRole()!;
   const { settings, configVersions } = useAdminDb();
-  const [amount, setAmount] = useState(settings.freeShippingOver);
-  // what is saved changed (read again after a refused save): the form starts again from it
-  const version = configVersions?.freeShipping ?? String(settings.freeShippingOver);
-  const [seen, setSeen] = useState(version);
-  if (seen !== version) {
-    setSeen(version);
-    setAmount(settings.freeShippingOver);
-  }
+  const [amount, setAmount] = useSavedDraft(settings.freeShippingOver, configVersions?.freeShipping ?? String(settings.freeShippingOver));
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
   const valid = amount <= MAX_FREE_SHIPPING;
@@ -139,6 +133,7 @@ function FreeShippingForm({ writable }: { writable: boolean }) {
       <label className="field">
         <span className="label">{t.admin.shipping.freeOver}</span>
         <input className="input num" type="number" min={0} max={MAX_FREE_SHIPPING} value={amount} onChange={(e) => setAmount(num(e.target.value))} />
+        {!valid && <span className="field-error">{t.admin.shipping.freeOverInvalid}</span>}
       </label>
       <div className="row">
         <button
@@ -206,14 +201,7 @@ function RateRow({ rate, writable }: { rate: ShippingRate; writable: boolean }) 
   const { t } = useI18n();
   const role = useAdminRole()!;
   const rowLabel = useRowLabel();
-  const [r, setR] = useState(rate);
-  // what is saved changed (read again after a refused save): the row starts again from it
-  const version = rate.updatedAt ?? JSON.stringify(rate);
-  const [seen, setSeen] = useState(version);
-  if (seen !== version) {
-    setSeen(version);
-    setR(rate);
-  }
+  const [r, setR] = useSavedDraft(rate, rate.updatedAt ?? JSON.stringify(rate));
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
   const valid = shippingRateOk(r);
@@ -293,6 +281,7 @@ function NewCityForm({ onClose }: { onClose: () => void }) {
       </div>
       <WriteError show={failed} />
       <p className="small muted">{t.admin.shipping.createdHidden}</p>
+      {!valid && <p className="field-error">{t.admin.shipping.rowInvalid}</p>}
       <TableWrap label={t.admin.shipping.addCity}>
         <table className="table">
           <thead>

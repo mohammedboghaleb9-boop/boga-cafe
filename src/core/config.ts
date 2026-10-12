@@ -24,6 +24,12 @@ const HTTPS = /^https:\/\/\S+$/;
 /** Spaces, dots and dashes out, as the database keeps a phone number or a RIB. */
 export const digitsOnly = (value: string) => value.replace(/[\s.-]/g, '');
 
+/** A payee as it is checked and kept: names trimmed, the RIB and the phone in digits, these fields only. */
+export const cleanPayee = ({ bank, cashplus }: Payee): Payee => ({
+  bank: { holder: bank.holder.trim(), bankName: bank.bankName.trim(), rib: digitsOnly(bank.rib) },
+  cashplus: { beneficiary: cashplus.beneficiary.trim(), city: cashplus.city.trim(), phone: digitsOnly(cashplus.phone) },
+});
+
 /** A text in three languages of at most `max` characters each, with a French one when `required`. */
 export const textOk = (text: Localized, max: number, required = false) =>
   Object.values(text).every((v) => v.length <= max) && (!required || text.fr.trim() !== '');
@@ -80,7 +86,9 @@ export const contactOk = (c: Settings['contact']) =>
 
 export const recipientsOk = (n: Settings['notifications']) => optional(n.adminWhatsapp, 16, PHONE) && optional(n.adminEmail, 120, EMAIL);
 
-export const methodOk = (m: PaymentMethodConfig) => textOk(m.label, 40, true) && textOk(m.instructions, 600) && !(m.id === 'card' && m.enabled);
+/** `cardGateway`: a card payment can be taken (services/payments): until then the card stays off. */
+export const methodOk = (m: PaymentMethodConfig, cardGateway: boolean) =>
+  textOk(m.label, 40, true) && textOk(m.instructions, 600) && !(m.id === 'card' && m.enabled && !cardGateway);
 
 export const shippingRateOk = (r: ShippingRate) =>
   textOk(r.city, 60, true) &&

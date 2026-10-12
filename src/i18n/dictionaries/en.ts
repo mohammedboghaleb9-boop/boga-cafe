@@ -622,6 +622,7 @@ export const en = {
       days: 'Delay (days)',
       addCity: 'Add a city',
       freeOver: 'Free delivery from (MAD, 0 = never)',
+      freeOverInvalid: 'Free delivery: 0 to 100,000 DH (0 = never).',
       simulator: 'Fee simulator',
       simWeight: 'Weight (kg)',
       simResult: 'Delivery fee: {fee}',

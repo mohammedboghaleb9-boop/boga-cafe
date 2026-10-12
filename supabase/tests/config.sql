@@ -7,7 +7,7 @@ set client_min_messages = warning;
 create extension if not exists pgtap;
 
 begin;
-select plan(40);
+select plan(49);
 
 insert into auth.users values
   ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000002'), ('00000000-0000-0000-0000-000000000003');
@@ -118,6 +118,10 @@ select throws_ok($$select public.save_recipients('{"adminWhatsapp": "", "adminEm
                  'P0001', 'invalid_recipients', 'a recipient that is not an email address is refused');
 select lives_ok($$select public.save_recipients('{"adminWhatsapp": "+212600000000", "adminEmail": "team@example.com", "whatsappEnabled": false, "emailEnabled": true}', pg_temp.seen_recipients())$$,
                 'owner: switches the WhatsApp messages off');
+select throws_ok($$select public.save_recipients('{"adminWhatsapp": "", "adminEmail": "", "whatsappEnabled": true, "emailEnabled": true}', '2026-01-01')$$,
+                 'P0001', 'stale', 'recipients from an older copy are refused');
+select throws_ok($$select public.save_rules(pg_temp.rules('{"b2bThresholdKg": "onze"}'), pg_temp.mark('rules'))$$, 'P0001', 'invalid_settings',
+                 'a number sent as text is refused, never a raw cast error');
 select throws_ok($$select public.save_payment_method('{"id": "card", "enabled": true, "label": {"fr": "Carte"}, "instructions": {}}', pg_temp.seen_method('card'))$$,
                  'P0001', 'card_unavailable', 'the card cannot be switched on before its gateway exists');
 select throws_ok($$select public.save_payment_method('{"id": "bank_transfer", "enabled": true, "label": {"fr": "TEST"}, "instructions": {}}', '2026-01-01')$$,
@@ -125,25 +129,40 @@ select throws_ok($$select public.save_payment_method('{"id": "bank_transfer", "e
 
 -- delivery: a new city hidden, its id fixed, its prices checked
 select pg_temp.token('00000000-0000-0000-0000-000000000003', 'aal2');
-select is(public.save_shipping_rate(pg_temp.rate('test-ville'), null), 'test-ville', 'manager: adds a city');
+select is(public.save_shipping_rate(pg_temp.rate('test-ville', '{"distanceKm": 10.0}'), null), 'test-ville', 'manager: adds a city (a whole distance written 10.0 too)');
 select is((select active from public.shipping_rates where id = 'test-ville'), false, 'a new city is created hidden, whatever is asked');
 select lives_ok($$select public.save_shipping_rate(pg_temp.rate('test-ville', '{"baseFee": 35, "active": false}'), pg_temp.seen_rate('test-ville'))$$, 'manager: edits the city from the copy read');
 select throws_ok($$select public.save_shipping_rate(pg_temp.rate('test-ville', '{"baseFee": 2000}'), pg_temp.seen_rate('test-ville'))$$, 'P0001', 'invalid_rate', 'a delivery fee above 1000 DH is refused');
 select throws_ok($$select public.save_shipping_rate(pg_temp.rate('other-ville'), pg_temp.seen_rate('test-ville'))$$, 'P0001', 'not_found', 'an edit under another id renames nothing');
+select throws_ok($$select public.save_shipping_rate(pg_temp.rate('test-ville'), '2026-01-01')$$, 'P0001', 'stale', 'a city from an older copy is refused');
+select throws_ok($$select public.save_shipping_rate(pg_temp.rate('oujda'), null)$$, 'P0001', 'exists', 'a new city never replaces an existing one');
+select lives_ok($$select public.save_shipping_rate(pg_temp.rate('test-ville', '{"distanceKm": 10.0}'), pg_temp.seen_rate('test-ville'))$$,
+                'a whole distance written 10.0 is saved, never a raw cast error');
 
--- every save recorded once, with who did it; a refused one leaves no line
+-- every save recorded once, with who did it; a refused one leaves no line (read by the owner)
+select pg_temp.token('00000000-0000-0000-0000-000000000001', 'aal2');
 select is((select string_agg(area || ':' || substr(actor::text, 36), ' ' order by id) from public.config_changes),
-          'rules:1 payee:1 content:3 rules:1 content:1 contact:1 free_shipping:3 recipients:1 shipping_rate:3 shipping_rate:3', 'each save is recorded once, with who did it');
+          'rules:1 payee:1 content:3 rules:1 content:1 contact:1 free_shipping:3 recipients:1 shipping_rate:3 shipping_rate:3 shipping_rate:3',
+          'each save is recorded once, with who did it');
 
 -- no role writes these tables directly through the API
 select pg_temp.token('00000000-0000-0000-0000-000000000001', 'aal2');
 select throws_ok($$update public.site_config set settings = settings || '{"bank": {"holder": "ATTACKER", "bankName": "X", "rib": "1"}}'$$, '42501', null,
                  'owner: the payee cannot be changed directly');
 select throws_ok($$update public.shipping_rates set base_fee = 0$$, '42501', null, 'owner: delivery prices cannot be changed directly');
+-- a payee is whole even in a direct write, as the table's owner (check_order reads the beneficiary alone)
+reset role;
+select throws_ok($$update public.site_config set settings = jsonb_set(settings, '{cashplus}', '{"beneficiary": "X"}')$$, 'P0001', 'incomplete_payee',
+                 'half a Cash Plus payee is refused even outside save_payee');
+set local role authenticated;
+select pg_temp.token('00000000-0000-0000-0000-000000000002', 'aal2');
+select is((select count(*)::int from public.config_changes), 0, 'staff: who changed the settings is the owner''s to read');
 reset role;
 select set_config('request.jwt.claims', '', true);
 set local role anon;
 select throws_ok($$select count(*) from public.admin_config$$, '42501', null, 'visitor: who receives the messages is not read');
+select throws_ok($$select versions from public.site_config$$, '42501', null, 'visitor: when each setting changed is not read');
+select is((select settings ->> 'b2bThresholdKg' from public.site_config), '12', 'visitor: the settings themselves are still read');
 
 reset role;
 select * from finish(true);

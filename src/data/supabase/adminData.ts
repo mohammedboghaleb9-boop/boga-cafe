@@ -70,24 +70,26 @@ async function readAll(db: Client, role: AdminRole): Promise<DbState> {
     role === 'staff' ? null : db.from('notification_outbox').select('*').order('created_at', { ascending: false }).limit(RECENT_ROWS),
     // who receives the messages: owner only
     role === 'owner' ? db.from('admin_config').select('*').eq('id', 1).maybeSingle() : null,
-    // the version marks the save functions compare (slice 10)
+    // the settings, the texts and their version marks from one read of one row (slice 10): a
+    // mark read apart from its values could pass the stale check over another admin's save
     db.from('site_config').select('*').eq('id', 1).maybeSingle(),
     role === 'owner' ? readPayeeChange(db) : undefined,
   ]);
   const recipients = adminConfig ? must(adminConfig) : null;
+  const siteRow = must(site);
   return {
     ...empty(),
     origins: catalog.origins,
     products: catalog.products,
     shippingRates: catalog.shippingRates,
     paymentMethods: catalog.paymentMethods,
-    settings: settingsFromRows(catalog.siteSettings, recipients, seedSettings),
-    content: contentFromRow(catalog.content, seedContent),
+    settings: settingsFromRows(siteRow?.settings, recipients, seedSettings),
+    content: contentFromRow(siteRow?.content, seedContent),
     orders: rows(orders).map(({ order_events, ...order }) => orderFromRow(order, order_events)),
     quotes: rows(quotes).map(quoteFromRow),
     stockMovements: rows(movements).map(stockMovementFromRow),
     notifications: outbox ? rows(outbox).map(notificationFromRow) : [],
-    configVersions: { ...versionsFrom(must(site)?.versions), ...(recipients?.updated_at && { recipients: recipients.updated_at }) },
+    configVersions: { ...versionsFrom(siteRow?.versions), ...(recipients?.updated_at && { recipients: recipients.updated_at }) },
     payeeChange,
   };
 }

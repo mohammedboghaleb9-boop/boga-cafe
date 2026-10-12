@@ -615,6 +615,7 @@ export const ar: Dict = {
       days: 'المدة (أيام)',
       addCity: 'إضافة مدينة',
       freeOver: 'توصيل مجاني ابتداءً من (درهم، 0 = أبداً)',
+      freeOverInvalid: 'التوصيل المجاني: من 0 إلى 100000 درهم (0 = أبداً).',
       simulator: 'حاسبة التكلفة',
       simWeight: 'الوزن (كلغ)',
       simResult: 'تكلفة التوصيل: {fee}',

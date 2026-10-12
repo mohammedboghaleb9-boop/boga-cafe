@@ -10,18 +10,12 @@ import { Icon } from '@/shared/ui/Icon';
 import { ComingSoon, SavedFlash, Switch, Tabs, WriteError, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
+import { useSavedDraft } from '../useSavedDraft';
 
 export function NotificationsPage() {
   const { t, date } = useI18n();
   const { notifications, settings, configVersions } = useAdminDb();
-  const [n, setN] = useState(settings.notifications);
-  // what is saved changed (read again after a refused save): the form starts again from it
-  const version = configVersions?.recipients ?? JSON.stringify(settings.notifications);
-  const [seen, setSeen] = useState(version);
-  if (seen !== version) {
-    setSeen(version);
-    setN(settings.notifications);
-  }
+  const [n, setN] = useSavedDraft(settings.notifications, configVersions?.recipients ?? JSON.stringify(settings.notifications));
   // as the database keeps them: the phone number without spaces, the email trimmed
   const recipients = { ...n, adminWhatsapp: digitsOnly(n.adminWhatsapp), adminEmail: n.adminEmail.trim() };
   const valid = recipientsOk(recipients);
@@ -53,7 +47,7 @@ export function NotificationsPage() {
             </label>
             <label className="field">
               <span className="label">{t.admin.notif.adminEmail}</span>
-              <input className="input" type="email" maxLength={120} value={n.adminEmail} onChange={(e) => setN({ ...n, adminEmail: e.target.value })} />
+              <input className="input" type="email" dir="ltr" maxLength={120} value={n.adminEmail} onChange={(e) => setN({ ...n, adminEmail: e.target.value })} />
             </label>
           </div>
           <div className="spread">

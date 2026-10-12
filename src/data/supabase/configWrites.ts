@@ -6,7 +6,7 @@
  * the page read; the role passed here is not trusted, the database decides. Each part is
  * sent with only its own keys: nothing else of the page reaches the database.
  */
-import type { BusinessRules, Payee } from '@/core/config';
+import { cleanPayee, type BusinessRules, type Payee } from '@/core/config';
 import type { PaymentMethodConfig, Settings, ShippingRate, SiteContent } from '@/core/types';
 import { newShippingId } from '../ids';
 import type { ConfigPart } from '../state';
@@ -28,11 +28,8 @@ const rulesJson = ({ b2bThresholdKg, roastLossPercent, unpaidOrderTimeoutHours, 
   customBlend: { ...customBlend, feeBySize: { ...customBlend.feeBySize } },
 });
 
-/** Trimmed, and these fields only: there is no field for an identity card number. */
-const payeeJson = ({ bank, cashplus }: Payee): Json => ({
-  bank: { holder: bank.holder.trim(), bankName: bank.bankName.trim(), rib: bank.rib },
-  cashplus: { beneficiary: cashplus.beneficiary.trim(), city: cashplus.city.trim(), phone: cashplus.phone },
-});
+/** Cleaned, and these fields only: there is no field for an identity card number. */
+const payeeJson = (payee: Payee): Json => cleanPayee(payee);
 
 const contentJson = ({ announcement, heroTitle, heroSubtitle, aboutTitle, aboutText }: SiteContent): Json => ({
   announcement,

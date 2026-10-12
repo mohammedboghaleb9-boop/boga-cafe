@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { CONTENT_MAX, contactOk, contentOk, digitsOnly } from '@/core/config';
 import type { Settings, SiteContent } from '@/core/types';
 import { api } from '@/data/api';
@@ -8,21 +7,14 @@ import { ComingSoon, LocalizedInput, SavedFlash, WriteError, useSavedFlash } fro
 import { cleanProfileUrl } from '@/shared/contact';
 import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
+import { useSavedDraft } from '../useSavedDraft';
 
 export function ContentPage() {
   const { t } = useI18n();
   const db = useAdminDb();
   const writable = canWrite('content');
-  const [content, setContent] = useState<SiteContent>(db.content);
-  const [contact, setContact] = useState<Settings['contact']>(db.settings.contact);
-  // what is saved changed (read again after a refused save): the form starts again from it
-  const version = JSON.stringify([db.configVersions?.content ?? db.content, db.configVersions?.contact ?? db.settings.contact]);
-  const [seen, setSeen] = useState(version);
-  if (seen !== version) {
-    setSeen(version);
-    setContent(db.content);
-    setContact(db.settings.contact);
-  }
+  const [content, setContent] = useSavedDraft<SiteContent>(db.content, db.configVersions?.content ?? JSON.stringify(db.content));
+  const [contact, setContact] = useSavedDraft<Settings['contact']>(db.settings.contact, db.configVersions?.contact ?? JSON.stringify(db.settings.contact));
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
   const role = useAdminRole()!;
@@ -74,7 +66,7 @@ export function ContentPage() {
               </label>
               <label className="field">
                 <span className="label">{t.admin.content.email}</span>
-                <input className="input" type="email" maxLength={120} value={contact.email} onChange={(e) => setK('email', e.target.value)} />
+                <input className="input" type="email" dir="ltr" maxLength={120} value={contact.email} onChange={(e) => setK('email', e.target.value)} />
               </label>
               <label className="field span-all">
                 <span className="label">{t.admin.content.instagram}</span>
