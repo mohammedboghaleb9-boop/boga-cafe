@@ -66,7 +66,9 @@ const ADMIN_TABLES: Record<string, unknown[]> = {
     { id: 1, created_at: '2026-10-08T09:00:00Z', channel: 'email', event: 'order.created', recipient: 'team@example.test', subject: 'Nouvelle commande BC-2026-0007',
       body: `${CUSTOMER.name} ${CUSTOMER.phone}`, status: 'pending', attempts: 0, last_error: null, sent_at: null },
   ],
-  admin_config: [{ id: 1, admin_whatsapp: '212600000000', admin_email: 'team@example.test', whatsapp_on: true, email_on: true }],
+  admin_config: [{ id: 1, admin_whatsapp: '212600000000', admin_email: 'team@example.test', whatsapp_on: true, email_on: true, updated_at: '2026-10-12T08:00:00.000001+00:00' }],
+  // who changed the payee details last (owner only): never yet
+  config_changes: [],
 };
 
 interface Server {
@@ -88,7 +90,14 @@ async function fakeSupabase(page: Page, server: Server = {}) {
   // this test's own copy: writes change it, and the next read shows them
   const db = structuredClone(ADMIN_TABLES) as Record<string, Record<string, unknown>[]>;
   // the catalog too: products and origins change through save_product and save_origin
-  const catalog = structuredClone({ products: tables.products, origins: tables.origins }) as Record<'products' | 'origins', Record<string, unknown>[]>;
+  const catalog = structuredClone({
+    products: tables.products,
+    origins: tables.origins,
+    // and the settings, payment methods and delivery prices, through the slice 10 functions
+    site_config: tables.site_config.map((r) => ({ ...(r as object), versions: {} })),
+    payment_methods: tables.payment_methods,
+    shipping_rates: tables.shipping_rates,
+  }) as Record<'products' | 'origins' | 'site_config' | 'payment_methods' | 'shipping_rates', Record<string, unknown>[]>;
   /** the write functions called: name, arguments, and the level of the session that called */
   const writes: { fn: string; args: Record<string, unknown>; aal?: Aal }[] = [];
   let factors = server.factors ?? [{ id: 'app-1', status: 'verified' }];
@@ -148,7 +157,9 @@ async function fakeSupabase(page: Page, server: Server = {}) {
       const allowed = (req.postDataJSON() as { allowed?: string[] } | null)?.allowed;
       return json(200, !!(user && admins[user] && (!allowed || allowed.includes(admins[user])) && claims?.aal === 'aal2'));
     }
-    const write = url.pathname.match(/^\/rest\/v1\/rpc\/(set_order_status|set_payment_status|adjust_stock|update_quote_request|save_product|save_origin)$/)?.[1];
+    const write = url.pathname.match(
+      /^\/rest\/v1\/rpc\/(set_order_status|set_payment_status|adjust_stock|update_quote_request|save_product|save_origin|save_rules|save_free_shipping|save_payee|save_content|save_recipients|save_payment_method|save_shipping_rate)$/,
+    )?.[1];
     if (write) {
       const args = req.postDataJSON() as Record<string, unknown>;
       writes.push({ fn: write, args, aal: claims?.aal });
@@ -191,6 +202,52 @@ async function fakeSupabase(page: Page, server: Server = {}) {
           restock_date: null, active: false, updated_at: now });
         return json(200, item.id);
       }
+      // the slice 10 rules (migration 20261012120000): owner-only parts, the version read, the card off, a new city hidden
+      const refused = (message: string) => json(400, { code: 'P0001', message, details: null, hint: null });
+      const role = user ? admins[user] : undefined;
+      const site = catalog.site_config[0] as { settings: Record<string, unknown>; content: unknown; versions: Record<string, string> };
+      const part = { save_rules: 'rules', save_free_shipping: 'freeShipping', save_payee: 'payee', save_content: 'content' }[write as string];
+      if (part) {
+        if (role !== 'owner' && !(role === 'manager' && (part === 'freeShipping' || (part === 'content' && args.p_contact === null)))) return refused(role === 'manager' ? 'owner_only' : 'forbidden');
+        const seenAt = part === 'content' ? args.p_seen_content : args.p_seen;
+        if ((site.versions[part] ?? null) !== seenAt) return refused('stale');
+        if (write === 'save_rules') Object.assign(site.settings, args.p_rules);
+        if (write === 'save_free_shipping') site.settings.freeShippingOver = args.p_amount;
+        if (write === 'save_payee') Object.assign(site.settings, args.p_payee);
+        if (write === 'save_content') {
+          site.content = args.p_content;
+          if (args.p_contact) site.settings.contact = args.p_contact;
+        }
+        site.versions = { ...site.versions, [part]: now, ...(args.p_contact ? { contact: now } : {}) };
+        return json(200, null);
+      }
+      if (write === 'save_recipients') {
+        if (role !== 'owner') return refused('forbidden');
+        const config = db.admin_config[0];
+        if (config.updated_at !== args.p_seen) return refused('stale');
+        const next = args.p_recipients as Record<string, unknown>;
+        Object.assign(config, { admin_whatsapp: next.adminWhatsapp, admin_email: next.adminEmail, whatsapp_on: next.whatsappEnabled, email_on: next.emailEnabled, updated_at: now });
+        return json(200, null);
+      }
+      if (write === 'save_payment_method' || write === 'save_shipping_rate') {
+        const item = (write === 'save_payment_method' ? args.p_method : args.p_rate) as Record<string, unknown>;
+        if (role !== 'owner' && !(role === 'manager' && write === 'save_shipping_rate')) return refused('forbidden');
+        if (item.id === 'card' && item.enabled) return refused('card_unavailable');
+        const rows = catalog[write === 'save_payment_method' ? 'payment_methods' : 'shipping_rates'];
+        const row = rows.find((x) => x.id === item.id);
+        if (args.p_seen === null) {
+          if (row) return refused('exists');
+          rows.push({ id: item.id, city: item.city, distance_km: item.distanceKm, base_fee: item.baseFee, included_kg: item.includedKg, extra_per_kg: item.extraPerKg,
+            delivery_days: item.deliveryDays, active: false, updated_at: now });
+          return json(200, item.id);
+        }
+        if (!row) return refused('not_found');
+        if (row.updated_at !== args.p_seen) return refused('stale');
+        if (write === 'save_payment_method') Object.assign(row, { enabled: item.enabled, label: item.label, instructions: item.instructions, updated_at: now });
+        else Object.assign(row, { city: item.city, distance_km: item.distanceKm, base_fee: item.baseFee, included_kg: item.includedKg, extra_per_kg: item.extraPerKg,
+          delivery_days: item.deliveryDays, active: item.active, updated_at: now });
+        return json(200, item.id);
+      }
       return json(200, null);
     }
     const table = url.pathname.match(/^\/rest\/v1\/(\w+)$/)?.[1] ?? '';
@@ -210,10 +267,12 @@ async function fakeSupabase(page: Page, server: Server = {}) {
       return json(200, single ? own : own ? [own] : []);
     }
     shopAs.push(user);
-    if (table === 'products' || table === 'origins') {
+    if (table in catalog) {
       // row level security: a visitor reads the shown rows only
       const admin = user && admins[user] && claims?.aal === 'aal2';
-      return json(200, catalog[table].filter((x) => admin || x.active));
+      const rows = catalog[table as keyof typeof catalog].filter((x) => admin || (x.active ?? x.enabled ?? true));
+      const single = (req.headers()['accept'] ?? '').includes('vnd.pgrst.object');
+      return json(200, single ? (rows[0] ?? null) : rows);
     }
     return answerCatalog(r);
   });
@@ -275,7 +334,7 @@ test.describe('admin sign-in on the live site', () => {
     const nav = page.getByRole('navigation', { name: 'Panel Admin' });
     await expect(nav.getByRole('link', { name: 'Commandes' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Paiements' })).toHaveCount(0);
-    await expect(page.locator('.admin-live-bar .notice-warn')).toContainText('Les commandes, le stock, les demandes B2B, les produits et les origines se modifient ici');
+    await expect(page.locator('.admin-live-bar .notice-warn')).toContainText('Données réelles : chaque section se modifie ici');
     await expect(page.getByRole('link', { name: 'BC-2026-0007' })).toBeVisible();
     await expect(page.getByRole('button', { name: /démo/i })).toHaveCount(0);
 
@@ -353,7 +412,7 @@ test.describe('admin sign-in on the live site', () => {
     expect(asked).toContain('sign-out');
   });
 
-  test('the panel shows the live data at aal2; what is not connected yet is off, with a "coming soon" note', async ({ page }) => {
+  test('the panel shows the live data at aal2 on every page, nothing left "coming soon", no delete button', async ({ page }) => {
     test.setTimeout(60_000); // 12 pages, each with an axe scan: near the 30 s default on a slow runner
     await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
     const asked = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
@@ -369,25 +428,25 @@ test.describe('admin sign-in on the live site', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'BC-2026-0007' })).toBeVisible();
     await expect(page.locator('.history li')).toHaveText([/signalé un paiement/, /Commande passée/]); // newest first
 
-    // on every page: the "coming soon" note where something could be changed, and no control left on but
-    // reading tools (refresh, tabs, search, the delivery simulator) and the writes of slices 8-9 (orders, stock, B2B, catalog)
-    const SOON = 'Bientôt : les modifications ici ne sont pas encore branchées.';
-    const pages: [path: string, wired: string, note: string | null][] = [
-      ['', '', null],
-      ['/orders', '', null],
-      [`/orders/${ORDER_ID}`, 'button', null],
-      ['/b2b', 'fieldset *', null],
-      ['/products', 'a[href*="/new?"]', null],
+    // on every page: nothing left "coming soon" (slices 8-10 wired every part), and no control on but
+    // reading tools (refresh, tabs, search, the delivery simulator) and the page's own saves
+    const pages: [path: string, wired: string][] = [
+      ['', ''],
+      ['/orders', ''],
+      [`/orders/${ORDER_ID}`, 'button'],
+      ['/b2b', 'fieldset *'],
+      ['/products', 'a[href*="/new?"]'],
       // the form, its save button; no delete button on the live site (a product is hidden, never deleted)
-      ['/products/boga-signature', 'fieldset *, .admin-head .btn-primary', null],
-      ['/stock', '.admin-head button, tbody button, tbody input[type=checkbox]', null],
-      ['/shipping', '', SOON],
-      ['/payments', 'tbody button', 'Bientôt : les moyens de paiement et les coordonnées du bénéficiaire ne sont pas encore branchés. « Marquer payé » fonctionne.'],
-      ['/notifications', '', SOON],
-      ['/content', '', SOON],
-      ['/settings', '', SOON],
+      ['/products/boga-signature', 'fieldset *, .admin-head .btn-primary'],
+      ['/stock', '.admin-head button, tbody button, tbody input[type=checkbox]'],
+      // each row saved by its own button; no delete button on the live site (orders keep their city)
+      ['/shipping', '.admin-head button, tbody input, tbody .btn-primary, fieldset *'],
+      ['/payments', 'tbody button, fieldset *'],
+      ['/notifications', 'fieldset *'],
+      ['/content', 'fieldset *, .admin-head .btn-primary'],
+      ['/settings', 'fieldset *, .admin-head .btn-primary'],
     ];
-    for (const [path, wired, note] of pages) {
+    for (const [path, wired] of pages) {
       const readingTools = ['.admin-live-bar button, [role=tab], input[type=search], .shipping-sim *', wired].filter(Boolean).join(', ');
       await open(page, `/admin${path}`);
       const on = await page.locator('.admin-main').evaluate(
@@ -399,8 +458,8 @@ test.describe('admin sign-in on the live site', () => {
         readingTools,
       );
       expect(on, `${path || '/'}: ${on.join(' | ')}`).toEqual([]);
-      if (note) await expect(page.locator('.coming-soon').first(), path).toHaveText(note);
-      else await expect(page.locator('.coming-soon'), path).toHaveCount(0);
+      await expect(page.locator('.coming-soon'), path).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Supprimer' }), path).toHaveCount(0);
       await scanA11y(page, `admin${path}`);
       if (path === '/b2b') await expect(page.getByText('QR-2026-0003')).toBeVisible();
       if (path === '/notifications') await expect(page.locator('.log-item .pill')).toHaveText('pas encore envoyé'); // the queue, not "sent"
@@ -565,6 +624,59 @@ test.describe('admin sign-in on the live site', () => {
     await expect(price250).toHaveValue('68'); // read again: the other admin's price, not overwritten
     expect(writes.map((w) => w.args.p_seen_at)).toEqual(['2026-10-09T08:00:00.000002+00:00']);
     expect(catalog.products[0].prices).toEqual({ 250: 68, 500: 120, 1000: 220 });
+  });
+
+  test('delivery, settings and payee are saved by their buttons through their functions; typing saves nothing; an older copy is refused', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const { writes, catalog } = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
+    const saved = page.locator('.pill-ok', { hasText: 'Enregistré' });
+
+    await open(page, '/admin/shipping');
+    await page.getByLabel('Forfait · Oujda').fill('25');
+    expect(writes).toEqual([]); // typing saves nothing
+    await page.getByRole('button', { name: 'Enregistrer · Oujda' }).click();
+    await expect(saved).toBeVisible();
+    expect(catalog.shipping_rates[0].base_fee).toBe(25);
+    // meanwhile another admin saves the city: this copy is refused, the row shows what is saved
+    await page.getByLabel('Forfait · Oujda').fill('30');
+    Object.assign(catalog.shipping_rates[0], { base_fee: 27, updated_at: '2026-10-12T09:00:00.000001+00:00' });
+    await page.getByRole('button', { name: 'Enregistrer · Oujda' }).click();
+    await expect(page.locator('.write-error')).toBeVisible();
+    await expect(page.getByLabel('Forfait · Oujda')).toHaveValue('27');
+    // a new city: created hidden
+    await page.getByRole('button', { name: 'Ajouter une ville' }).click();
+    await page.locator('section', { hasText: 'Une nouvelle ville est créée masquée' }).getByLabel('Ville FR').fill('TEST ville');
+    await page.locator('section', { hasText: 'Une nouvelle ville est créée masquée' }).getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(page.getByRole('checkbox', { name: 'Activé · TEST ville' })).not.toBeChecked();
+    expect(catalog.shipping_rates.find((r) => r.id === 'test-ville')).toMatchObject({ active: false });
+
+    await open(page, '/admin/payments');
+    await page.getByLabel('Titulaire').fill('TEST');
+    await expect(page.getByText('Remplissez tout le virement')).toBeVisible(); // half a payee is never sent
+    await page.getByLabel('Banque', { exact: true }).fill('TEST');
+    await page.getByLabel('RIB').fill('0000 0000 0000 0000 0000 0000');
+    await page.getByRole('button', { name: 'Enregistrer · Coordonnées de paiement' }).click();
+    await expect(page.locator('fieldset', { hasText: 'Coordonnées de paiement' }).locator('.pill-ok')).toBeVisible();
+    expect((catalog.site_config[0].settings as { bank: unknown }).bank).toEqual({ holder: 'TEST', bankName: 'TEST', rib: '000000000000000000000000' });
+
+    await open(page, '/admin/settings');
+    await page.getByLabel(/Seuil B2B/).fill('11');
+    await page.getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(saved).toBeVisible();
+    expect((catalog.site_config[0].settings as { b2bThresholdKg: number }).b2bThresholdKg).toBe(11);
+
+    expect(writes.map((w) => `${w.fn} ${w.aal}`)).toEqual([
+      'save_shipping_rate aal2',
+      'save_shipping_rate aal2',
+      'save_shipping_rate aal2',
+      'save_payee aal2',
+      'save_rules aal2',
+    ]);
+    // the cash plus payee: only its own fields, never an identity card number
+    expect(writes[3].args.p_payee).toEqual({
+      bank: { holder: 'TEST', bankName: 'TEST', rib: '000000000000000000000000' },
+      cashplus: { beneficiary: 'BOGA E2E', city: 'Oujda', phone: '0600000000' },
+    });
   });
 
   test('a refused write says so and never shows "saved"; staff never gets the owner\'s payment buttons', async ({ page }) => {

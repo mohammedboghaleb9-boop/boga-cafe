@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Origin, Product, QuoteRequest } from '@/core/types';
 import { STATE_VERSION, type DbState } from '../../state';
 import type { AdminData } from '../../types';
-import { createAdminWrites, WriteFailed } from '../adminWrites';
+import { createAdminWrites } from '../adminWrites';
+import { WriteFailed } from '../writeCall';
 import type { Client } from '../client';
 
 const quote = { id: 'q1', status: 'new', finalPrice: null, adminNotes: 'old note', updatedAt: '2026-10-08T10:00:00.123456+00:00' } as unknown as QuoteRequest;

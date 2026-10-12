@@ -24,7 +24,7 @@ const tables: Record<string, unknown[]> = {
   ],
   shipping_rates: [{ id: 'oujda', city: loc('Oujda'), distance_km: 0, base_fee: 20, included_kg: 3, extra_per_kg: 5, delivery_days: '1', active: false }],
   payment_methods: [{ id: 'cashplus', enabled: false, label: loc('Cash Plus'), instructions: loc('') }],
-  site_config: [{ settings: {}, content: {} }],
+  site_config: [{ settings: {}, content: {}, versions: { rules: '2026-10-12 10:00:00.000001+00', other: 'x', content: 5 } }],
   orders: [
     { id: ORDER, number: 'BC-2026-0001', created_at: '2026-10-06T10:00:00Z', locale: 'fr', customer_name: 'Amina', phone: PHONE, email: '', city_id: 'oujda',
       address: 'Rue 1', company: '', notes: '', lines: [], weight_kg: '0.250', subtotal: '60.00', shipping_fee: '20.00', total: '80.00',
@@ -42,7 +42,10 @@ const tables: Record<string, unknown[]> = {
     { id: 3, created_at: '2026-10-06T10:00:00Z', channel: 'whatsapp', event: 'order.created', recipient: '212600000000', subject: '', body: `Amina ${PHONE}`,
       status: 'pending', attempts: 0, last_error: null, sent_at: null },
   ],
-  admin_config: [{ id: 1, admin_whatsapp: '212600000000', admin_email: 'team@example.test', whatsapp_on: true, email_on: false }],
+  admin_config: [{ id: 1, admin_whatsapp: '212600000000', admin_email: 'team@example.test', whatsapp_on: true, email_on: false, updated_at: '2026-10-12T10:00:00.000001+00:00' }],
+  // who changed the payee details last (owner only)
+  config_changes: [{ at: '2026-10-12T09:00:00Z', actor: 'owner-id' }],
+  admin_users: [{ user_id: 'owner-id', full_name: 'TEST Owner' }],
 };
 
 interface Fake {
@@ -128,11 +131,20 @@ describe('admin data (live site)', () => {
     expect(s.notifications[0]).toMatchObject({ id: '3', channel: 'whatsapp', event: 'order.created', status: 'pending' });
     expect(s.products.map((p) => p.active)).toEqual([false]);
     expect(s.settings.notifications).toMatchObject({ adminEmail: 'team@example.test', emailEnabled: false }); // owner: admin_config
+    // the versions the save functions compare (strings only, known parts only), and who changed the payee last
+    expect(s.configVersions).toEqual({ rules: '2026-10-12 10:00:00.000001+00', recipients: '2026-10-12T10:00:00.000001+00:00' });
+    expect(s.payeeChange).toEqual({ at: '2026-10-12T09:00:00Z', by: 'TEST Owner' });
     expect(asked.at(-1)).toBe('is_admin owner'); // asked after the reads, for the role shown
   });
 
+  it('a failed read of who changed the payee says "unknown", never the error screen (a line under the form, not the page)', async () => {
+    const { data } = opened({ failing: new Set(['config_changes']) });
+    await vi.waitFor(() => expect(data.status.get()).toBe('ready'));
+    expect(data.db.get().payeeChange).toBe('unknown');
+  });
+
   it('reads only what the role may read: staff no messages nor recipients, a manager no recipients', async () => {
-    for (const [role, skipped] of [['staff', ['notification_outbox', 'admin_config']], ['manager', ['admin_config']]] as const) {
+    for (const [role, skipped] of [['staff', ['notification_outbox', 'admin_config', 'config_changes']], ['manager', ['admin_config', 'config_changes']]] as const) {
       const { data, asked } = opened({}, { state: 'signed_in', role });
       await vi.waitFor(() => expect(data.status.get()).toBe('ready'));
       for (const table of skipped) expect(asked).not.toContain(table);

@@ -65,3 +65,7 @@ export const newProductId = (name: string, products: readonly { id: string; slug
 /** A new origin's id: never an existing origin's, nor "new" (refused by the database for any catalog id). */
 export const newOriginId = (name: string, origins: readonly { id: string }[]): string =>
   uniqueSlug(name, (id) => id === 'new' || origins.some((o) => o.id === id), 'origine');
+
+/** A new city's id: never an existing city's, nor "new" (refused by the database for any catalog id). */
+export const newShippingId = (name: string, rates: readonly { id: string }[]): string =>
+  uniqueSlug(name, (id) => id === 'new' || rates.some((r) => r.id === id), 'ville');

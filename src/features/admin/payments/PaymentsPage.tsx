@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { digitsOnly, methodOk, payeeProblem, PHONE, RIB, type Payee } from '@/core/config';
 import type { PaymentMethodConfig, PaymentMethodId, Settings } from '@/core/types';
 import { api } from '@/data/api';
 import { canWrite, useAdminDb } from '@/data/hooks';
-import { useI18n } from '@/i18n';
+import { fmt, useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { ComingSoon, LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import type { Role } from '../permissions';
@@ -29,8 +30,7 @@ export function PaymentsPage() {
         <h1>{t.admin.nav.payments}</h1>
       </div>
       <p className="muted">{t.admin.payments.intro}</p>
-      {/* live site: "paid" works (slice 8), methods and payee details connect in slice 10 */}
-      {!canWrite('payments') && <ComingSoon text={canWrite('orders') ? t.admin.soonPayments : undefined} />}
+      {!canWrite('payments') && <ComingSoon />}
 
       <section className="stack">
         <h2 className="admin-card-title">{t.admin.payments.toVerify}</h2>
@@ -89,17 +89,26 @@ export function PaymentsPage() {
         </div>
       </section>
 
-      <BankEditor settings={settings} role={role} />
+      <PayeeEditor settings={settings} role={role} />
     </>
   );
 }
 
 function MethodEditor({ method, settings }: { method: PaymentMethodConfig; settings: Settings }) {
   const { t, l } = useI18n();
+  const role = useAdminRole()!;
   const [m, setM] = useState(method);
+  // what is saved changed (read again after a refused save): the form starts again from it
+  const version = method.updatedAt ?? JSON.stringify(method);
+  const [seen, setSeen] = useState(version);
+  if (seen !== version) {
+    setSeen(version);
+    setM(method);
+  }
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
   const writable = canWrite('payments');
+  const valid = methodOk(m);
   return (
     <fieldset className="plain-fieldset panel stack" disabled={!writable}>
       <div className="spread">
@@ -108,14 +117,17 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
         </strong>
         <div className="row">
           <SavedFlash show={saved} />
-          <Switch checked={m.enabled} onChange={(v) => setM({ ...m, enabled: v })} label={t.admin.payments.enabled} />
+          {/* the card stays off until its gateway exists: it can be switched off, never on */}
+          <Switch checked={m.enabled} disabled={m.id === 'card' && !method.enabled} onChange={(v) => setM({ ...m, enabled: v })} label={t.admin.payments.enabled} name={l(method.label)} />
           <button
             type="button"
             className="btn btn-primary btn-sm"
+            disabled={!valid}
             aria-disabled={busy || undefined}
+            aria-label={`${t.common.save} · ${l(method.label)}`}
             onClick={() =>
               run(async () => {
-                await api.savePaymentMethod(m);
+                if (!(await api.savePaymentMethod(m, role))) refuse('payment method'); // never the "saved" flash
                 flash();
               })
             }
@@ -127,26 +139,47 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
       <WriteError show={failed} />
       {m.id === 'card' && !methodAvailable({ id: 'card', enabled: true }, settings) && <p className="notice small">{t.admin.payments.cardOff}</p>}
       {m.id !== 'card' && !payeeReady(m.id, settings) && <p className="notice small">{t.admin.payments.payeeMissing}</p>}
+      {!valid && <p className="field-error">{t.admin.payments.methodInvalid}</p>}
       <div className="detail-grid">
-        <LocalizedInput id={`pm-${m.id}-label`} label={t.admin.payments.label} value={m.label} onChange={(v) => setM({ ...m, label: v })} />
+        <LocalizedInput id={`pm-${m.id}-label`} label={t.admin.payments.label} value={m.label} onChange={(v) => setM({ ...m, label: v })} maxLength={40} />
         <LocalizedInput
           id={`pm-${m.id}-instr`}
           label={t.admin.payments.instructions}
           value={m.instructions}
           onChange={(v) => setM({ ...m, instructions: v })}
           multiline
+          maxLength={600}
         />
       </div>
     </fieldset>
   );
 }
 
-function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
-  const { t } = useI18n();
-  const [bank, setBank] = useState(settings.bank);
-  const [cashplus, setCashplus] = useState(settings.cashplus);
+/** As the database keeps them: spaces, dots and dashes out of the RIB and the phone number. */
+const normalized = ({ bank, cashplus }: Payee): Payee => ({
+  bank: { ...bank, rib: digitsOnly(bank.rib) },
+  cashplus: { ...cashplus, phone: digitsOnly(cashplus.phone) },
+});
+
+function PayeeEditor({ settings, role }: { settings: Settings; role: Role }) {
+  const { t, date } = useI18n();
+  const { configVersions, payeeChange } = useAdminDb();
+  const current: Payee = { bank: settings.bank, cashplus: settings.cashplus };
+  const [bank, setBank] = useState(current.bank);
+  const [cashplus, setCashplus] = useState(current.cashplus);
+  // what is saved changed (read again after a refused save): the form starts again from it
+  const version = configVersions?.payee ?? JSON.stringify(current);
+  const [seen, setSeen] = useState(version);
+  if (seen !== version) {
+    setSeen(version);
+    setBank(current.bank);
+    setCashplus(current.cashplus);
+  }
+  const payee = normalized({ bank, cashplus });
+  const problem = payeeProblem(payee);
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
+  const setC = (k: keyof Payee['cashplus'], v: string) => setCashplus((c) => ({ ...c, [k]: v }));
   return (
     <fieldset className="plain-fieldset panel stack" disabled={!canWrite('payments')}>
       <WriteError show={failed} />
@@ -157,10 +190,12 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
           <button
             type="button"
             className="btn btn-primary btn-sm"
+            disabled={problem !== null}
             aria-disabled={busy || undefined}
+            aria-label={`${t.common.save} · ${t.admin.payments.bankTitle}`}
             onClick={() =>
               run(async () => {
-                await api.saveSettings({ ...settings, bank, cashplus }, role);
+                if (!(await api.savePayee(payee, role))) refuse('payee'); // never the "saved" flash
                 flash();
               })
             }
@@ -169,24 +204,40 @@ function BankEditor({ settings, role }: { settings: Settings; role: Role }) {
           </button>
         </div>
       </div>
+      {payeeChange && (
+        <p className="small muted">
+          {payeeChange === 'unknown' ? t.admin.payments.lastChangeUnknown : fmt(t.admin.payments.lastChange, { when: date(payeeChange.at, true), who: payeeChange.by })}
+        </p>
+      )}
       <div className="form-grid">
         <label className="field">
           <span className="label">{t.admin.payments.holder}</span>
-          <input className="input" value={bank.holder} onChange={(e) => setBank({ ...bank, holder: e.target.value })} />
+          <input className="input" maxLength={80} value={bank.holder} onChange={(e) => setBank({ ...bank, holder: e.target.value })} />
         </label>
         <label className="field">
           <span className="label">{t.admin.payments.bankName}</span>
-          <input className="input" value={bank.bankName} onChange={(e) => setBank({ ...bank, bankName: e.target.value })} />
+          <input className="input" maxLength={80} value={bank.bankName} onChange={(e) => setBank({ ...bank, bankName: e.target.value })} />
         </label>
         <label className="field span-all">
           <span className="label">{t.admin.payments.rib}</span>
-          <input className="input num" dir="ltr" value={bank.rib} onChange={(e) => setBank({ ...bank, rib: e.target.value })} />
+          <input className="input num" dir="ltr" inputMode="numeric" maxLength={40} value={bank.rib} onChange={(e) => setBank({ ...bank, rib: e.target.value })} />
+          {payee.bank.rib !== '' && !RIB.test(payee.bank.rib) && <span className="field-error">{t.admin.payments.ribInvalid}</span>}
         </label>
-        <label className="field span-all">
+        <label className="field">
           <span className="label">{t.admin.payments.cashplusBeneficiary}</span>
-          <input className="input" value={cashplus.beneficiary} onChange={(e) => setCashplus({ beneficiary: e.target.value })} />
+          <input className="input" maxLength={80} value={cashplus.beneficiary} onChange={(e) => setC('beneficiary', e.target.value)} />
+        </label>
+        <label className="field">
+          <span className="label">{t.admin.payments.cashplusCity}</span>
+          <input className="input" maxLength={60} value={cashplus.city} onChange={(e) => setC('city', e.target.value)} />
+        </label>
+        <label className="field">
+          <span className="label">{t.admin.payments.cashplusPhone}</span>
+          <input className="input num" dir="ltr" inputMode="tel" maxLength={24} value={cashplus.phone} onChange={(e) => setC('phone', e.target.value)} />
+          {payee.cashplus.phone !== '' && !PHONE.test(payee.cashplus.phone) && <span className="field-error">{t.admin.payments.phoneInvalid}</span>}
         </label>
       </div>
+      {problem === 'incomplete' && <p className="field-error">{t.admin.payments.payeeIncomplete}</p>}
       <p className="small muted">{t.admin.payments.payeeHelp}</p>
     </fieldset>
   );

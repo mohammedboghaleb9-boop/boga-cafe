@@ -30,7 +30,7 @@ const settings = {
   freeShippingOver: 1500,
   customBlend: { ...seedSettings.customBlend, enabled: true },
   bank: { holder: 'Test', bankName: 'Test', rib: 'TEST' },
-  cashplus: { beneficiary: 'Test' },
+  cashplus: { beneficiary: 'Test', city: 'Oujda', phone: '0600000000' },
 };
 const origins = seedOrigins.map((o) => ({ ...o, stockKg: 5000 }));
 const ctx: CheckoutContext = {

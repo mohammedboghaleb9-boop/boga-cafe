@@ -10,7 +10,7 @@
  */
 import type { AdminRole } from '@/core/orderFlow';
 import { seedContent, seedSettings } from '../seed/config';
-import { STATE_VERSION, type DbState } from '../state';
+import { STATE_VERSION, type ConfigPart, type DbState } from '../state';
 import type { AdminAuth, AdminData, DataStatus } from '../types';
 import { loadCatalog } from './catalog';
 import { must, rows, type Client } from './client';
@@ -35,9 +35,32 @@ const empty = (): DbState => ({
   notifications: [],
 });
 
+const CONFIG_PARTS: readonly ConfigPart[] = ['rules', 'freeShipping', 'payee', 'content', 'contact', 'recipients'];
+
+/** Each settings part's version mark (site_config.versions), as the save functions compare it. */
+function versionsFrom(j: unknown): DbState['configVersions'] {
+  const marks = (j ?? {}) as Record<string, unknown>;
+  return Object.fromEntries(CONFIG_PARTS.filter((p) => typeof marks[p] === 'string').map((p) => [p, marks[p] as string]));
+}
+
+/**
+ * When the payee details last changed and by whom (owner only). A line under the form, not
+ * the page's data: a failed read says "unknown" instead of the error screen.
+ */
+async function readPayeeChange(db: Client): Promise<DbState['payeeChange']> {
+  const [change, admins] = await Promise.all([
+    db.from('config_changes').select('at, actor').eq('area', 'payee').order('at', { ascending: false }).limit(1).maybeSingle(),
+    db.from('admin_users').select('user_id, full_name'),
+  ]);
+  if (change.error || admins.error) return 'unknown';
+  if (!change.data) return undefined;
+  const { at, actor } = change.data;
+  return { at, by: admins.data.find((a) => a.user_id === actor)?.full_name || '—' };
+}
+
 /** Everything this role may read. Throws the first failed read. */
 async function readAll(db: Client, role: AdminRole): Promise<DbState> {
-  const [catalog, orders, quotes, movements, outbox, adminConfig] = await Promise.all([
+  const [catalog, orders, quotes, movements, outbox, adminConfig, site, payeeChange] = await Promise.all([
     // an admin's session sees the inactive products and origins too
     loadCatalog(db),
     db.from('orders').select('*, order_events(at, label)').order('created_at', { ascending: false }).limit(MAX_ROWS),
@@ -47,19 +70,25 @@ async function readAll(db: Client, role: AdminRole): Promise<DbState> {
     role === 'staff' ? null : db.from('notification_outbox').select('*').order('created_at', { ascending: false }).limit(RECENT_ROWS),
     // who receives the messages: owner only
     role === 'owner' ? db.from('admin_config').select('*').eq('id', 1).maybeSingle() : null,
+    // the version marks the save functions compare (slice 10)
+    db.from('site_config').select('*').eq('id', 1).maybeSingle(),
+    role === 'owner' ? readPayeeChange(db) : undefined,
   ]);
+  const recipients = adminConfig ? must(adminConfig) : null;
   return {
     ...empty(),
     origins: catalog.origins,
     products: catalog.products,
     shippingRates: catalog.shippingRates,
     paymentMethods: catalog.paymentMethods,
-    settings: settingsFromRows(catalog.siteSettings, adminConfig ? must(adminConfig) : null, seedSettings),
+    settings: settingsFromRows(catalog.siteSettings, recipients, seedSettings),
     content: contentFromRow(catalog.content, seedContent),
     orders: rows(orders).map(({ order_events, ...order }) => orderFromRow(order, order_events)),
     quotes: rows(quotes).map(quoteFromRow),
     stockMovements: rows(movements).map(stockMovementFromRow),
     notifications: outbox ? rows(outbox).map(notificationFromRow) : [],
+    configVersions: { ...versionsFrom(must(site)?.versions), ...(recipients?.updated_at && { recipients: recipients.updated_at }) },
+    payeeChange,
   };
 }
 

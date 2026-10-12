@@ -18,7 +18,7 @@ const product = (id: string, kind: string, prices: Record<string, number>, recip
   prices, image_url: null, featured: false, active: true, sort_order: 1, updated_at: '',
   product_recipes: recipe.map(([origin_id, percent]) => ({ origin_id, percent })),
 });
-const PAYEE = { bank: { holder: 'BOGA', bankName: 'Banque', rib: '0123' }, cashplus: { beneficiary: 'BOGA' } };
+const PAYEE = { bank: { holder: 'BOGA', bankName: 'Banque', rib: '0123' }, cashplus: { beneficiary: 'BOGA', city: 'Oujda', phone: '0600000000' } };
 const rowsWith = (settings: Record<string, unknown>, cardEnabled = false, origins: Record<string, object> = {}): Record<string, unknown[]> => ({
   origins: [origin('brazil', 'arabica', 50, 200), origin('vietnam', 'robusta', 1, 100)].map((o) => ({ ...o, ...origins[o.id] })),
   products: [
@@ -209,7 +209,7 @@ describe('storefront: order', () => {
   });
 
   it('takes no transfer or Cash Plus order before the real payment details exist, and no card order', async () => {
-    const closed = fakeDb({ settings: { bank: { holder: '', bankName: '', rib: '' }, cashplus: { beneficiary: '' } } });
+    const closed = fakeDb({ settings: { bank: { holder: '', bankName: '', rib: '' }, cashplus: { beneficiary: '', city: '', phone: '' } } });
     for (const paymentMethod of ['cashplus', 'bank_transfer']) {
       expect((await handleStorefront('order', orderBody({ paymentMethod }), deps(closed.db))).body).toEqual({ ok: false, errors: ['payment_method'] });
     }
@@ -279,7 +279,7 @@ describe('storefront: order', () => {
 
   it('gives an order sent again its saved order, before any check that could now refuse it', async () => {
     // the payment details were removed since: a new order would be refused
-    const { db, calls } = fakeDb({ saved: [savedRow], settings: { bank: { holder: '', bankName: '', rib: '' }, cashplus: { beneficiary: '' } } });
+    const { db, calls } = fakeDb({ saved: [savedRow], settings: { bank: { holder: '', bankName: '', rib: '' }, cashplus: { beneficiary: '', city: '', phone: '' } } });
     const r = await handleStorefront('order', orderBody({ idempotencyKey: KEY }), deps(db));
     expect(r.body).toMatchObject({
       ok: true,

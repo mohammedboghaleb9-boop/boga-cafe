@@ -5,7 +5,7 @@
  * "I have paid" is report_offline_payment. The team's messages are queued by
  * the database (notification_outbox), so nothing is sent from the browser.
  * The admin's writes for orders, stock, B2B requests (slice 8), products and origins
- * (slice 9): ./adminWrites.ts.
+ * (slice 9): ./adminWrites.ts; settings, payments, texts and delivery (slice 10): ./configWrites.ts.
  * Every other call says which slice brings it (P5 step 3, PROJECT_NOTES.md).
  */
 import { CHECKOUT_ERRORS } from '@/core/order';
@@ -15,6 +15,7 @@ import { quoteMessage } from '@/services/notifications';
 import { templateContext } from '../context';
 import { GUARD_ERRORS, type Api, type GuardError, type PlaceOrderResult, type QuoteResult } from '../types';
 import { createAdminWrites } from './adminWrites';
+import { createConfigWrites } from './configWrites';
 import type { Client } from './client';
 import { cachedOrder, rememberOrder } from './orderCache';
 import { orderKey, orderSent } from './orderKey';
@@ -134,14 +135,21 @@ export function createSupabaseApi({ client, store, storefront, admin }: Supabase
     createOrigin: notYet('origins (no admin client)'),
     saveOrigin: notYet('origins (no admin client)'),
     adjustStock: notYet('stock (no admin client)'),
-    saveShippingRate: notYet('shipping (slice 10)'),
-    deleteShippingRate: notYet('shipping (slice 10)'),
-    savePaymentMethod: notYet('payment methods (slice 10)'),
-    saveSettings: notYet('settings (slice 10)'),
-    saveContent: notYet('content (slice 10)'),
+    createShippingRate: notYet('delivery prices (no admin client)'),
+    saveShippingRate: notYet('delivery prices (no admin client)'),
+    // orders keep their city: a city is hidden, never deleted
+    deleteShippingRate: notYet('deleting a city (demo only)'),
+    savePaymentMethod: notYet('payment methods (no admin client)'),
+    saveRules: notYet('settings (no admin client)'),
+    saveFreeShipping: notYet('settings (no admin client)'),
+    savePayee: notYet('payment details (no admin client)'),
+    saveRecipients: notYet('message recipients (no admin client)'),
+    saveContent: notYet('texts (no admin client)'),
     updateQuote: notYet('B2B requests (no admin client)'),
     resetDemo: notYet('resetting the demo (demo only)'),
-    // orders, stock and B2B follow-up (slice 8), products and origins (slice 9)
+    // orders, stock and B2B follow-up (slice 8), products and origins (slice 9), settings,
+    // payments, texts, recipients and delivery prices (slice 10)
     ...(admin && createAdminWrites(...admin)),
+    ...(admin && createConfigWrites(...admin)),
   };
 }

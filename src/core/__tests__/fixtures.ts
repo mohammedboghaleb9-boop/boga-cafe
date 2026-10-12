@@ -57,7 +57,7 @@ export const settings: Settings = {
   contact: { whatsapp: '', email: '', instagram: '', tiktok: '', facebook: '', address: L(''), hours: L('') },
   notifications: { adminWhatsapp: '', adminEmail: '', whatsappEnabled: true, emailEnabled: true },
   bank: { holder: '', bankName: '', rib: '' },
-  cashplus: { beneficiary: '' },
+  cashplus: { beneficiary: '', city: '', phone: '' },
 };
 
 export const rate: ShippingRate = {

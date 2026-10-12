@@ -70,6 +70,20 @@ export function PaymentPanel({ order }: { order: Order }) {
           <dt>{t.payment.beneficiary}</dt>
           <dd>{step.method === 'cashplus' ? settings.cashplus.beneficiary : settings.bank.holder}</dd>
         </div>
+        {step.method === 'cashplus' && (
+          <>
+            <div>
+              <dt>{t.payment.city}</dt>
+              <dd>{settings.cashplus.city}</dd>
+            </div>
+            <div>
+              <dt>{t.payment.phone}</dt>
+              <dd className="num" dir="ltr">
+                {settings.cashplus.phone}
+              </dd>
+            </div>
+          </>
+        )}
         {step.method === 'bank_transfer' && (
           <>
             <div>

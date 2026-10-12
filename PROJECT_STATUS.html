@@ -365,14 +365,15 @@ footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);color:v
 <section class="chap" id="s5">
   <div class="chead"><span class="no">05</span><h2>Current Work</h2><span class="ar">قيد العمل الآن</span></div>
   <article class="pcard prog">
-    <header><div><span class="pid">ON A BRANCH · STARTED 2026-10-12</span><h3>P5 step 3 · slice 10: settings, payments, content and shipping writes (feat/p5-s10-settings-writes)</h3></div><span class="b prog"><i></i>IN PROGRESS</span></header>
+    <header><div><span class="pid">ON A BRANCH · CODE DONE · NOT MERGED · MIGRATION NOT APPLIED</span><h3>P5 step 3 · slice 10: settings, payments, content and shipping writes (feat/p5-s10-settings-writes)</h3></div><span class="b prog"><i></i>IN PROGRESS</span></header>
     <div class="pgrid">
       <div>
         <h4>Goal</h4><p>حفظ القواعد والخلطة الخاصة، طرق الأداء ومعلومات المستفيد (RIB وCash Plus)، النصوص ومعلومات التواصل، والتوصيل حسب المدينة، عبر دوال فالقاعدة. «تحفظ» غير من بعد تأكيد القاعدة. حتى migration ما كتطبق حياً قبل الدمج. التجربة على الـ preview بقيم TEST وكترجع القيم الأصلية من بعد.</p>
       </div>
       <div>
-        <h4>What was done</h4><ul class="checks"><li class="ck done"><span class="box"></span><span>الـ commit الأول: الشريحة 9 مسدودة ومفحوصة، صفوف TEST ديال الشريحة 9 مكتوبة للتنظيف، الـ CI كياخد postgres من <code>public.ecr.aws</code>، و<code>code-reviewer</code> بلا shell</span></li></ul>
-        <h4>Next task</h4><p>الخطة كتتسنى موافقتك قبل الكود.</p>
+        <h4>What was done</h4><ul class="checks"><li class="ck done"><span class="box"></span><span>الـ commit الأول: الشريحة 9 مسدودة ومفحوصة، صفوف TEST ديال الشريحة 9 مكتوبة للتنظيف، الـ CI كياخد postgres من <code>public.ecr.aws</code>، و<code>code-reviewer</code> بلا shell</span></li><li class="ck done"><span class="box"></span><span>سبع دوال فالقاعدة (migration <code>20261012120000</code>، ما تطبقاتش): القواعد والأداء والمستفيد والمستقبلين للمالك، النصوص والتوصيل للمالك والمسير، كل قيمة كتتفحص، البطاقة مسدودة، المستفيد كامل ولا خاوي، Cash Plus = اسم ومدينة وهاتف (بلا CIN)، RIB = 24 رقم. الدليل: <span class="mono">config.sql (pgTAP 40)</span></span></li><li class="ck done"><span class="box"></span><span>اللوحة: زر «حفظ» لكل سطر ديال التوصيل، المدينة الجديدة مخفية، «ما تأكدش» عند الرفض، شكون بدّل المستفيد. الدليل: <span class="mono">unit 264 · e2e 63 · صور 390px ar/fr</span></span></li></ul>
+        <p><span class="verify">⚠️ Needs Verification</span> المفتاح ديال الـ RIB ما كيتفحصش: ما لقيتش القاعدة الرسمية عند Bank Al-Maghrib.</p>
+        <h4>Next task</h4><p>المراجعة (security-auditor + code-reviewer)، ثم تجربتك على الـ preview بلا الدوال الحية، ثم الدمج والتطبيق وتجربة قيم TEST.</p>
         <h4>Estimated time · Priority</h4><p class="dur">الشريحة 10: يوم ونص تقريباً (Estimated، تقدير مني: 4 صفحات بنفس طريقة الشريحتين 8 و9) · HIGH</p>
       </div>
     </div>

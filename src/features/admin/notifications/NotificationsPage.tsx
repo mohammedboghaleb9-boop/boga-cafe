@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { digitsOnly, recipientsOk } from '@/core/config';
 import type { NotificationChannel } from '@/core/types';
 import { api } from '@/data/api';
 import { canWrite, useAdminDb } from '@/data/hooks';
@@ -8,17 +9,26 @@ import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
 import { ComingSoon, SavedFlash, Switch, Tabs, WriteError, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
-import { useAction } from '../useAction';
+import { refuse, useAction } from '../useAction';
 
 export function NotificationsPage() {
   const { t, date } = useI18n();
-  const { notifications, settings } = useAdminDb();
+  const { notifications, settings, configVersions } = useAdminDb();
   const [n, setN] = useState(settings.notifications);
+  // what is saved changed (read again after a refused save): the form starts again from it
+  const version = configVersions?.recipients ?? JSON.stringify(settings.notifications);
+  const [seen, setSeen] = useState(version);
+  if (seen !== version) {
+    setSeen(version);
+    setN(settings.notifications);
+  }
+  // as the database keeps them: the phone number without spaces, the email trimmed
+  const recipients = { ...n, adminWhatsapp: digitsOnly(n.adminWhatsapp), adminEmail: n.adminEmail.trim() };
+  const valid = recipientsOk(recipients);
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
   const role = useAdminRole()!;
   const owner = role === 'owner';
-  // live site: the recipients connect in slice 10
   const writable = owner && canWrite('notifications');
   const [channel, setChannel] = useState<'all' | NotificationChannel>('all');
   const list = notifications.filter((x) => channel === 'all' || x.channel === channel);
@@ -34,15 +44,16 @@ export function NotificationsPage() {
         {!owner && <p className="small muted">{t.admin.ownerOnly}</p>}
         {owner && !writable && <ComingSoon />}
         <WriteError show={failed} />
+        {writable && !valid && <p className="field-error">{t.admin.notif.invalid}</p>}
         <fieldset className="plain-fieldset stack" disabled={!writable}>
           <div className="form-grid">
             <label className="field">
               <span className="label">{t.admin.notif.adminWhatsapp}</span>
-              <input className="input num" dir="ltr" value={n.adminWhatsapp} onChange={(e) => setN({ ...n, adminWhatsapp: e.target.value })} />
+              <input className="input num" dir="ltr" inputMode="tel" maxLength={24} value={n.adminWhatsapp} onChange={(e) => setN({ ...n, adminWhatsapp: e.target.value })} />
             </label>
             <label className="field">
               <span className="label">{t.admin.notif.adminEmail}</span>
-              <input className="input" type="email" value={n.adminEmail} onChange={(e) => setN({ ...n, adminEmail: e.target.value })} />
+              <input className="input" type="email" maxLength={120} value={n.adminEmail} onChange={(e) => setN({ ...n, adminEmail: e.target.value })} />
             </label>
           </div>
           <div className="spread">
@@ -56,10 +67,11 @@ export function NotificationsPage() {
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
+                  disabled={!valid}
                   aria-disabled={busy || undefined}
                   onClick={() =>
                     run(async () => {
-                      await api.saveSettings({ ...settings, notifications: n }, role);
+                      if (!(await api.saveRecipients(recipients, role))) refuse('recipients'); // never the "saved" flash
                       flash();
                     })
                   }

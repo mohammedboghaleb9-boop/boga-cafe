@@ -115,7 +115,7 @@ export const seedSettings: Settings = {
     emailEnabled: true,
   },
   bank: { holder: '', bankName: '', rib: '' },
-  cashplus: { beneficiary: '' },
+  cashplus: { beneficiary: '', city: '', phone: '' },
 };
 
 export const seedContent: SiteContent = {

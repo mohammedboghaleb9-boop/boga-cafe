@@ -29,8 +29,8 @@ describe('card payments', () => {
 
   it('offers transfer and Cash Plus only with the owner\'s real details, and respects the admin switch', async () => {
     const { methodAvailable } = await build(undefined);
-    const empty = { bank: { holder: '', bankName: '', rib: '' }, cashplus: { beneficiary: '' } };
-    const filled = { bank: { holder: 'H', bankName: 'B', rib: 'R' }, cashplus: { beneficiary: 'N' } };
+    const empty = { bank: { holder: '', bankName: '', rib: '' }, cashplus: { beneficiary: '', city: '', phone: '' } };
+    const filled = { bank: { holder: 'H', bankName: 'B', rib: 'R' }, cashplus: { beneficiary: 'N', city: 'C', phone: 'P' } };
     expect(methodAvailable({ id: 'card', enabled: true }, filled, 'off')).toBe(false);
     expect(methodAvailable({ id: 'card', enabled: true }, empty, 'demo')).toBe(true);
     expect(methodAvailable({ id: 'card', enabled: false }, filled, 'demo')).toBe(false);
@@ -41,5 +41,7 @@ describe('card payments', () => {
     }
     // one missing detail is enough to keep the transfer closed (whitespace is not a detail)
     expect(methodAvailable({ id: 'bank_transfer', enabled: true }, { ...filled, bank: { ...filled.bank, rib: '  ' } }, 'off')).toBe(false);
+    // Cash Plus: a name, a city and a phone, all three
+    expect(methodAvailable({ id: 'cashplus', enabled: true }, { ...filled, cashplus: { ...filled.cashplus, phone: '' } }, 'off')).toBe(false);
   });
 });

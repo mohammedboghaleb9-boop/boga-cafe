@@ -3,6 +3,7 @@
  * here, on the visitor's own copy of the data (./store). Each function maps to
  * one server call of the Supabase backend — same inputs, same results.
  */
+import { contactOk, contentOk, MAX_FREE_SHIPPING, methodOk, payeeProblem, recipientsOk, rulesOk, shippingRateOk, type BusinessRules, type Payee } from '@/core/config';
 import { buildOrder, expiredUnpaidOrders, type CheckoutInput } from '@/core/order';
 import { buildQuoteRequest, type QuoteInput } from '@/core/requests';
 import { isPrice } from '@/core/pricing';
@@ -24,7 +25,7 @@ import type {
 import { draftsToLogs, lowStockMessage, orderMessage, paymentReportMessage, quoteMessage } from '@/services/notifications';
 import { deliver } from '@/services/notifications/deliver';
 import { checkoutContext, storefrontCheckoutContext, templateContext } from '../context';
-import { newOriginId, newProductId, newReference, uid } from '../ids';
+import { newOriginId, newProductId, newReference, newShippingId, uid } from '../ids';
 import type { DbState } from '../state';
 import type { Api } from '../types';
 import { db } from './store';
@@ -32,6 +33,15 @@ import { awaitsPayment, canReportPayment, canSetPayment, refundCancelsOrder, set
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
 const now = () => new Date().toISOString();
+
+/** A part of the settings, refused for a role that may not change it (core/orderFlow) or a value the database would refuse. */
+function savePart(patch: Partial<Settings>, role: AdminRole, valid: boolean): boolean {
+  const before = db.get().settings;
+  const after = { ...before, ...patch };
+  if (!valid || settingsChangeRefused(before, after, role)) return false;
+  db.update((s) => ({ ...s, settings: after }));
+  return true;
+}
 
 function withLowStockAlerts(before: Origin[], after: Origin[], s: DbState, at: string) {
   return after
@@ -269,32 +279,52 @@ export const demoApi: Api = {
     });
   },
 
-  async saveShippingRate(rate: ShippingRate) {
-    db.update((s) => ({
-      ...s,
-      shippingRates: s.shippingRates.some((r) => r.id === rate.id)
-        ? s.shippingRates.map((r) => (r.id === rate.id ? rate : r))
-        : [...s.shippingRates, rate],
-    }));
+  /** A new city, hidden until shown on purpose; its id comes from its French name and is never an existing one. */
+  async createShippingRate(draft: ShippingRate, role: AdminRole) {
+    if (role === 'staff' || !shippingRateOk(draft)) return null;
+    const rate = { ...draft, id: newShippingId(draft.city.fr, db.get().shippingRates), active: false };
+    db.update((s) => ({ ...s, shippingRates: [...s.shippingRates, rate] }));
+    return rate;
+  },
+
+  async saveShippingRate(rate: ShippingRate, role: AdminRole) {
+    if (role === 'staff' || !shippingRateOk(rate) || !db.get().shippingRates.some((r) => r.id === rate.id)) return false;
+    db.update((s) => ({ ...s, shippingRates: s.shippingRates.map((r) => (r.id === rate.id ? rate : r)) }));
+    return true;
   },
 
   async deleteShippingRate(id: string) {
     db.update((s) => ({ ...s, shippingRates: s.shippingRates.filter((r) => r.id !== id) }));
   },
 
-  async savePaymentMethod(method: PaymentMethodConfig) {
+  async savePaymentMethod(method: PaymentMethodConfig, role: AdminRole) {
+    if (role !== 'owner' || !methodOk(method) || !db.get().paymentMethods.some((m) => m.id === method.id)) return false;
     db.update((s) => ({ ...s, paymentMethods: s.paymentMethods.map((m) => (m.id === method.id ? method : m)) }));
-  },
-
-  /** Returns false when the role may not change these settings (core/orderFlow MANAGER_SETTINGS). */
-  async saveSettings(settings: Settings, role: AdminRole) {
-    if (settingsChangeRefused(db.get().settings, settings, role)) return false;
-    db.update((s) => ({ ...s, settings }));
     return true;
   },
 
-  async saveContent(content: SiteContent) {
+  async saveRules(rules: BusinessRules, role: AdminRole) {
+    return savePart(rules, role, rulesOk(rules));
+  },
+
+  async saveFreeShipping(amount: number, role: AdminRole) {
+    return savePart({ freeShippingOver: amount }, role, Number.isFinite(amount) && amount >= 0 && amount <= MAX_FREE_SHIPPING);
+  },
+
+  async savePayee(payee: Payee, role: AdminRole) {
+    return savePart(payee, role, payeeProblem(payee) === null);
+  },
+
+  async saveRecipients(recipients: Settings['notifications'], role: AdminRole) {
+    return savePart({ notifications: recipients }, role, recipientsOk(recipients));
+  },
+
+  /** The texts, and the contact details when given (owner only): both saved, or neither. */
+  async saveContent(content: SiteContent, contact: Settings['contact'] | null, role: AdminRole) {
+    if (role === 'staff' || !contentOk(content) || (contact && !contactOk(contact))) return false;
+    if (contact && !savePart({ contact }, role, true)) return false;
     db.update((s) => ({ ...s, content }));
+    return true;
   },
 
   async updateQuote(id: string, patch: Partial<QuoteRequest>) {

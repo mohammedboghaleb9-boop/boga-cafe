@@ -24,7 +24,7 @@ describe('real site data (audit H4)', () => {
     const s = initialState(false);
     expect([s.orders, s.quotes, s.notifications, s.stockMovements].map((x) => x.length)).toEqual([0, 0, 0, 0]);
     expect(s.settings.bank).toEqual({ holder: '', bankName: '', rib: '' });
-    expect(s.settings.cashplus).toEqual({ beneficiary: '' });
+    expect(s.settings.cashplus).toEqual({ beneficiary: '', city: '', phone: '' });
     expect(storefrontCheckoutContext(s).paymentMethods.filter((m) => m.enabled)).toEqual([]);
     // the demo store, by contrast, can take the tests' orders
     expect(storefrontCheckoutContext(initialState(true)).paymentMethods.filter((m) => m.enabled).map((m) => m.id).sort()).toEqual(['bank_transfer', 'cashplus']);
@@ -35,13 +35,14 @@ describe('demo data layer', () => {
   it('keeps contact and recipients for the owner, free shipping for managers, nothing for staff', async () => {
     const { api, db } = t;
     const s = db.get().settings;
-    expect(await api.saveSettings({ ...s, contact: { ...s.contact, whatsapp: '+212700000000' } }, 'manager')).toBe(false);
-    expect(await api.saveSettings({ ...s, notifications: { ...s.notifications, adminEmail: 'x@evil.example' } }, 'manager')).toBe(false);
-    expect(await api.saveSettings({ ...s, freeShippingOver: 999 }, 'staff')).toBe(false);
+    const content = db.get().content;
+    expect(await api.saveContent(content, { ...s.contact, whatsapp: '+212700000000' }, 'manager')).toBe(false);
+    expect(await api.saveRecipients({ ...s.notifications, adminEmail: 'x@evil.example' }, 'manager')).toBe(false);
+    expect(await api.saveFreeShipping(999, 'staff')).toBe(false);
     expect(db.get().settings).toEqual(s);
-    expect(await api.saveSettings({ ...s, freeShippingOver: 999 }, 'manager')).toBe(true);
+    expect(await api.saveFreeShipping(999, 'manager')).toBe(true);
     expect(db.get().settings.freeShippingOver).toBe(999);
-    expect(await api.saveSettings({ ...s, contact: { ...s.contact, whatsapp: '+212700000000' } }, 'owner')).toBe(true);
+    expect(await api.saveContent(content, { ...s.contact, whatsapp: '+212700000000' }, 'owner')).toBe(true);
     expect(db.get().settings.contact.whatsapp).toBe('+212700000000');
   });
 

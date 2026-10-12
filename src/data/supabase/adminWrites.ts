@@ -4,8 +4,8 @@
  * own function (set_order_status, set_payment_status, adjust_stock, update_quote_request,
  * save_product, save_origin), with the admin's session. The functions check the rights
  * (is_admin() at aal2, "paid" owner only, the catalog owner and manager only), what is
- * saved, and record who did it; this file only sends, then reads the panel's data again.
- * A refusal or no answer is never taken for a success: the panel shows "not saved".
+ * saved, and record who did it; this file only sends (./writeCall.ts). The settings,
+ * payments, texts and delivery prices of slice 10: ./configWrites.ts.
  */
 import type { StatusRefusal } from '@/core/orderFlow';
 import { isPrice } from '@/core/pricing';
@@ -13,16 +13,8 @@ import { PACK_SIZES, type Origin, type Product, type QuoteRequest } from '@/core
 import { newOriginId, newProductId } from '../ids';
 import type { AdminData, Api } from '../types';
 import type { Client } from './client';
-import type { Database, Json } from './database.types';
-
-type Fn = keyof Database['public']['Functions'];
-
-/** What the database refused (its exception text), or 'failed' (no answer, or an error with no such text): the panel says "not saved". */
-export class WriteFailed extends Error {
-  constructor(readonly code: string) {
-    super(`admin write failed: ${code}`);
-  }
-}
+import type { Json } from './database.types';
+import { createCall, creating, unlessRefused, WriteFailed } from './writeCall';
 
 const REFUSALS: readonly StatusRefusal[] = ['not_next', 'needs_payment', 'too_late_to_cancel', 'closed', 'refund_instead', 'owner_only'];
 
@@ -49,43 +41,9 @@ function originJson(o: Origin): Json {
   return { id, name, countryCode, species, region, roastLevel, tastingNotes, lowStockKg, pricePerKg, customBlendEnabled };
 }
 
-/**
- * No answer to a creation, but the read that followed shows the new row: it was saved. Said so,
- * since a second click would pick the next free id and create a copy.
- */
-async function creating(write: () => Promise<void>, isThere: () => boolean): Promise<void> {
-  try {
-    await write();
-  } catch (e) {
-    if (!(e instanceof WriteFailed && e.code === 'failed' && isThere())) throw e;
-  }
-}
-
-/** A refusal (the database's reason) is answered `refused`; no answer is thrown: it may have been saved. */
-async function unlessRefused<T>(write: () => Promise<T>, refused: T): Promise<T> {
-  try {
-    return await write();
-  } catch (e) {
-    if (e instanceof WriteFailed && e.code !== 'failed') return refused;
-    throw e;
-  }
-}
-
 /** `client`: the admin's own (src/data/supabase/index.ts); `data`: what the panel shows, read again after each write. */
 export function createAdminWrites(client: () => Client, data: AdminData): Writes {
-  /** Calls the function; throws WriteFailed. Logs the function and the refusal only (no customer detail). */
-  async function call<F extends Fn>(fn: F, args: Database['public']['Functions'][F]['Args']) {
-    const { error } = await client().rpc(fn, args as never);
-    if (error) {
-      const code = error.message && /^[a-z_]+$/.test(error.message) ? error.message : 'failed';
-      console.error(`admin write ${fn}:`, code, error.code ?? '');
-      // refused (the page was out of date) or no answer (it may have been saved all the same):
-      // the panel reads again, so a second try starts from what is really saved
-      await data.refresh();
-      throw new WriteFailed(code);
-    }
-    await data.refresh();
-  }
+  const call = createCall(client, data);
 
   return {
     async setOrderStatus(orderId, status) {
