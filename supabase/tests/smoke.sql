@@ -100,7 +100,12 @@ set role anon;
 do $$ begin
   if (select count(*) from public.products) <> 3 then raise exception 'TEST FAILED: anon catalog'; end if; -- the retired one is hidden
   if (select count(*) from public.orders) <> 0 then raise exception 'TEST FAILED: anon sees orders'; end if;
-  if (select count(*) from public.admin_config) <> 0 then raise exception 'TEST FAILED: anon sees admin config'; end if;
+  -- who receives the messages: not even readable (slice 10 revoked SELECT from anon)
+  begin
+    perform count(*) from public.admin_config;
+    raise exception 'TEST FAILED: anon reads admin config';
+  exception when insufficient_privilege then null;
+  end;
   begin
     insert into public.orders (number, customer_name, phone, city_id, address, lines, weight_kg, subtotal, shipping_fee, total, payment_method, stock_deductions)
     values ('HACK', 'x', 'x', 'oujda', 'x', '[]', 1, 0, 0, 0, 'card', '[]');
@@ -257,8 +262,20 @@ end $$;
 select 'ok 9 - no production before payment; only the owner records payments' as result;
 
 -- 10. Bank details and rules: owner only; managers keep editing texts ---------
+-- (slice 10: the API roles write the config through the save_* functions only; the
+-- guard_settings trigger stays as a second check, run here as the table's owner)
 set role authenticated;
 set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "aal": "aal2"}';
+do $$ begin
+  begin
+    update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"ATTACKER-RIB"') where id = 1;
+    raise exception 'TEST FAILED: manager changed the RIB';
+  exception when insufficient_privilege then null;
+  end;
+  perform public.save_content(jsonb_build_object('announcement', '{}'::jsonb, 'heroTitle', '{"fr": "Nouveau"}'::jsonb, 'heroSubtitle', '{}'::jsonb,
+                                                 'aboutTitle', '{}'::jsonb, 'aboutText', '{}'::jsonb), null, null, null);
+end $$;
+reset role;
 do $$ begin
   begin
     update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"ATTACKER-RIB"') where id = 1;
@@ -266,11 +283,9 @@ do $$ begin
   exception when others then
     if sqlerrm <> 'owner_only' then raise; end if;
   end;
-  update public.site_config set content = '{"heroTitle": {"fr": "Nouveau"}}' where id = 1;
 end $$;
 set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "aal": "aal2"}';
 update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"NEW-OWNER-RIB"') where id = 1;
-reset role;
 do $$ begin
   if (select settings #>> '{bank,rib}' from public.site_config) <> 'NEW-OWNER-RIB' then raise exception 'TEST FAILED: owner could not edit'; end if;
   if (select content #>> '{heroTitle,fr}' from public.site_config) <> 'Nouveau' then raise exception 'TEST FAILED: manager could not edit texts'; end if;
@@ -351,7 +366,17 @@ select 'ok 13 - cancelled orders: no late report, one refund, none mid-productio
 set role authenticated;
 set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "aal": "aal2"}';
 do $$ begin
-  update public.site_config set settings = settings || '{"freeShippingOver": 600}' where id = 1;
+  perform public.save_free_shipping(600, null);
+  begin
+    perform public.save_content('{}', '{"whatsapp": "+212700000000"}', null, null);
+    raise exception 'TEST FAILED: manager changed the contact number';
+  exception when others then
+    if sqlerrm <> 'owner_only' then raise; end if;
+  end;
+end $$;
+reset role;
+-- the same refused by guard_settings, as the table's owner with the manager's token
+do $$ begin
   begin
     update public.site_config set settings = settings || '{"contact": {"whatsapp": "+212700000000"}}' where id = 1;
     raise exception 'TEST FAILED: manager changed the contact number';
@@ -359,7 +384,6 @@ do $$ begin
     if sqlerrm <> 'owner_only' then raise; end if;
   end;
 end $$;
-reset role;
 do $$ begin
   if (select settings ->> 'freeShippingOver' from public.site_config) <> '600' then raise exception 'TEST FAILED: manager could not set free shipping'; end if;
   if (select settings -> 'contact' from public.site_config) is not null then raise exception 'TEST FAILED: contact changed'; end if;
@@ -409,7 +433,7 @@ end $$;
 select 'ok 16 - a refund before production cancels the order and returns the stock' as result;
 
 -- 17. The free-shipping threshold stays a number ------------------------------
-set role authenticated;
+-- guard_settings, as the table's owner with a manager's token (save_free_shipping checks it first)
 set request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "aal": "aal2"}'; -- manager
 do $$
 declare bad text;
@@ -811,7 +835,9 @@ begin
   begin perform public.set_order_status((select id from t23 where k = 'paid'), 'cancelled'); r := 'accepted';
   exception when others then r := sqlerrm; end;
   if r <> 'refund_instead' then raise exception 'TEST FAILED: paid order cancelled without refund (%)', r; end if;
-  -- the deadlines are limits, never "off"
+  -- the deadlines are limits, never "off" (guard_settings, as the table's owner with the owner's
+  -- token: the API roles write settings through save_rules only, slice 10)
+  reset role;
   foreach r in array array['0', '-1', '"48"', 'null'] loop
     begin
       update public.site_config set settings = jsonb_set(settings, '{unpaidOrderTimeoutHours}', r::jsonb);
@@ -868,8 +894,11 @@ begin
   alter table public.site_config disable trigger site_config_guard_settings;
   update public.site_config set settings = settings || '{"unpaidOrderTimeoutHours": 48}';
   alter table public.site_config enable trigger site_config_guard_settings;
-  -- no payment details, no order to pay into nowhere
+  -- no payment details, no order to pay into nowhere (half a payee, as a row written before
+  -- guard_payee existed: check_order refuses it all the same)
+  alter table public.site_config disable trigger site_config_guard_payee;
   update public.site_config set settings = jsonb_set(settings, '{bank,rib}', '"  "');
+  alter table public.site_config enable trigger site_config_guard_payee;
   begin
     perform public.commit_order(pg_temp.test_order('so-brazil', 250, 1, 'bank_transfer'), '', '', '');
     raise exception 'TEST FAILED: transfer order without a RIB';

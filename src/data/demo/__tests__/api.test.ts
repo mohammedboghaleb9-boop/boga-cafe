@@ -24,7 +24,7 @@ describe('real site data (audit H4)', () => {
     const s = initialState(false);
     expect([s.orders, s.quotes, s.notifications, s.stockMovements].map((x) => x.length)).toEqual([0, 0, 0, 0]);
     expect(s.settings.bank).toEqual({ holder: '', bankName: '', rib: '' });
-    expect(s.settings.cashplus).toEqual({ beneficiary: '' });
+    expect(s.settings.cashplus).toEqual({ beneficiary: '', city: '', phone: '' });
     expect(storefrontCheckoutContext(s).paymentMethods.filter((m) => m.enabled)).toEqual([]);
     // the demo store, by contrast, can take the tests' orders
     expect(storefrontCheckoutContext(initialState(true)).paymentMethods.filter((m) => m.enabled).map((m) => m.id).sort()).toEqual(['bank_transfer', 'cashplus']);
@@ -35,14 +35,28 @@ describe('demo data layer', () => {
   it('keeps contact and recipients for the owner, free shipping for managers, nothing for staff', async () => {
     const { api, db } = t;
     const s = db.get().settings;
-    expect(await api.saveSettings({ ...s, contact: { ...s.contact, whatsapp: '+212700000000' } }, 'manager')).toBe(false);
-    expect(await api.saveSettings({ ...s, notifications: { ...s.notifications, adminEmail: 'x@evil.example' } }, 'manager')).toBe(false);
-    expect(await api.saveSettings({ ...s, freeShippingOver: 999 }, 'staff')).toBe(false);
+    const content = db.get().content;
+    expect(await api.saveContent(content, { ...s.contact, whatsapp: '+212700000000' }, 'manager')).toBe(false);
+    expect(await api.saveRecipients({ ...s.notifications, adminEmail: 'x@evil.example' }, 'manager')).toBe(false);
+    expect(await api.saveFreeShipping(999, 'staff')).toBe(false);
     expect(db.get().settings).toEqual(s);
-    expect(await api.saveSettings({ ...s, freeShippingOver: 999 }, 'manager')).toBe(true);
+    expect(await api.saveFreeShipping(999, 'manager')).toBe(true);
     expect(db.get().settings.freeShippingOver).toBe(999);
-    expect(await api.saveSettings({ ...s, contact: { ...s.contact, whatsapp: '+212700000000' } }, 'owner')).toBe(true);
+    expect(await api.saveContent(content, { ...s.contact, whatsapp: '+212700000000' }, 'owner')).toBe(true);
     expect(db.get().settings.contact.whatsapp).toBe('+212700000000');
+  });
+
+  it('keeps a payee as the live site does: trimmed, in digits, whole or empty; the card follows its gateway', async () => {
+    const { api, db } = t;
+    const payee = { bank: { holder: ' TEST ', bankName: 'TEST', rib: '0000 0000 0000 0000 0000 0000' }, cashplus: { beneficiary: '', city: '', phone: '' } };
+    expect(await api.savePayee(payee, 'owner')).toBe(true);
+    expect(db.get().settings.bank).toEqual({ holder: 'TEST', bankName: 'TEST', rib: '000000000000000000000000' });
+    expect(await api.savePayee({ ...payee, bank: { ...payee.bank, bankName: '' } }, 'owner')).toBe(false); // half a transfer
+    // the card follows its gateway: none in this build (VITE_CARD_GATEWAY unset), so it can be
+    // switched off, not on again (the prototype's simulated gateway: src/core/__tests__/config.test.ts)
+    const card = db.get().paymentMethods.find((m) => m.id === 'card')!;
+    expect(await api.savePaymentMethod({ ...card, enabled: false }, 'owner')).toBe(true);
+    expect(await api.savePaymentMethod({ ...card, enabled: true }, 'owner')).toBe(false);
   });
 
   it('logs the stock change that really happened', async () => {

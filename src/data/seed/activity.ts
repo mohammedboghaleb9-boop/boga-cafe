@@ -154,7 +154,7 @@ const demoOrders: DemoOrder[] = [
  */
 export const DEMO_PAYEE: Pick<Settings, 'bank' | 'cashplus'> = {
   bank: { holder: 'BOGA CAFÉ (DÉMO)', bankName: 'Banque fictive (démo)', rib: 'DEMO 000 0000000000000000 00' },
-  cashplus: { beneficiary: 'Bénéficiaire fictif (démo)' },
+  cashplus: { beneficiary: 'Bénéficiaire fictif (démo)', city: 'Oujda', phone: '0600000000' },
 };
 
 export function buildDemoActivity(base: DbState): DbState {

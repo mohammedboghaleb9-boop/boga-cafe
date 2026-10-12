@@ -4,7 +4,7 @@
  * vite.config.ts refuses the build without them, or with any other key.
  */
 import { createClient } from '@supabase/supabase-js';
-import type { Backend } from '../types';
+import { ADMIN_WRITE_AREAS, type Backend } from '../types';
 import { createAdminAuth } from './adminAuth';
 import { createAdminData } from './adminData';
 import type { Client } from './client';
@@ -48,6 +48,6 @@ export function createSupabaseBackend(): Backend {
   const admin = createAdminAuth(adminDb, forgetAdminSession);
   const adminData = createAdminData(adminDb, admin);
   const api = createSupabaseApi({ client, store, storefront: { url, key }, admin: [adminDb, adminData] });
-  // orders, stock and B2B follow-up (slice 8), products and origins (slice 9); settings, payments, content, shipping: slice 10
-  return { db: store.db, status: store.status, api, retry: () => void store.load(), admin, adminData, adminWrites: ['orders', 'stock', 'b2b', 'catalog'] };
+  // every part of the panel saves through the database's functions (slices 8-10)
+  return { db: store.db, status: store.status, api, retry: () => void store.load(), admin, adminData, adminWrites: ADMIN_WRITE_AREAS };
 }

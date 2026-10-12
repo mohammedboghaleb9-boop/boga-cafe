@@ -5,6 +5,7 @@
  * one is a network request.
  */
 import type { CheckoutError, CheckoutInput } from '@/core/order';
+import type { BusinessRules, Payee } from '@/core/config';
 import type { AdminRole, StatusRefusal } from '@/core/orderFlow';
 import type { QuoteInput, RequestError } from '@/core/requests';
 import type {
@@ -70,12 +71,26 @@ export interface Api {
   /** Saves origin details; stock changes only through `adjustStock`, so every change is logged. */
   saveOrigin(origin: Origin): Promise<boolean>;
   adjustStock(originId: string, deltaKg: number, reason: StockReason, note: string): Promise<void>;
-  saveShippingRate(rate: ShippingRate): Promise<void>;
+  // Settings, payments, texts, recipients and delivery (slice 10): false when refused (the
+  // role, a value out of range, or an older copy of the page: the page reads again), so the
+  // "saved" flash shows only once the database confirmed. No answer is thrown.
+  /** A new city, created hidden with an id from its French name; null when refused. */
+  createShippingRate(draft: ShippingRate, role: AdminRole): Promise<ShippingRate | null>;
+  saveShippingRate(rate: ShippingRate, role: AdminRole): Promise<boolean>;
+  /** Prototype only: on the live site a city is hidden, never deleted (orders keep their city). */
   deleteShippingRate(id: string): Promise<void>;
-  savePaymentMethod(method: PaymentMethodConfig): Promise<void>;
-  /** False when the role may not change these settings (core/orderFlow MANAGER_SETTINGS). */
-  saveSettings(settings: Settings, role: AdminRole): Promise<boolean>;
-  saveContent(content: SiteContent): Promise<void>;
+  /** Owner only; the card stays off until its gateway exists. */
+  savePaymentMethod(method: PaymentMethodConfig, role: AdminRole): Promise<boolean>;
+  /** The business rules (Settings page): owner only. */
+  saveRules(rules: BusinessRules, role: AdminRole): Promise<boolean>;
+  /** The free-shipping threshold (Shipping page): owner and manager (core/orderFlow MANAGER_SETTINGS). */
+  saveFreeShipping(amount: number, role: AdminRole): Promise<boolean>;
+  /** Who customers pay by transfer and Cash Plus: owner only, all filled in or all empty. */
+  savePayee(payee: Payee, role: AdminRole): Promise<boolean>;
+  /** Who receives the team's messages: owner only. */
+  saveRecipients(recipients: Settings['notifications'], role: AdminRole): Promise<boolean>;
+  /** The site texts (owner and manager) with, from the owner only, the contact details (null: left as they are). */
+  saveContent(content: SiteContent, contact: Settings['contact'] | null, role: AdminRole): Promise<boolean>;
   updateQuote(id: string, patch: Partial<QuoteRequest>): Promise<void>;
   resetDemo(): Promise<void>;
 }

@@ -59,7 +59,9 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        # Docker Hub's official image through AWS's public mirror: Docker Hub's anonymous pull
+        # limit failed this job twice on main (2026-10-09), before any test ran
+        image: public.ecr.aws/docker/library/postgres:16
         env:
           POSTGRES_PASSWORD: postgres
         ports: ['5432:5432']

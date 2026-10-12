@@ -96,6 +96,8 @@ export interface ShippingRate {
   extraPerKg: number;
   deliveryDays: string;
   active: boolean;
+  /** Live site: when the city last changed (a save from an older copy is refused). */
+  updatedAt?: string;
 }
 
 export type PaymentMethodId = 'card' | 'cashplus' | 'bank_transfer';
@@ -105,6 +107,8 @@ export interface PaymentMethodConfig {
   enabled: boolean;
   label: Localized;
   instructions: Localized;
+  /** Live site: when the method last changed (a save from an older copy is refused). */
+  updatedAt?: string;
 }
 
 export type OrderStatus =
@@ -272,9 +276,14 @@ export interface Settings {
     bankName: string;
     rib: string;
   };
-  /** Who receives Cash Plus payments. Empty until known: Cash Plus is then not offered. */
+  /**
+   * Who receives Cash Plus payments: full name, city and phone, all three or none (Cash Plus
+   * is then not offered). Never an identity card number: there is no field for it.
+   */
   cashplus: {
     beneficiary: string;
+    city: string;
+    phone: string;
   };
 }
 

@@ -1,5 +1,5 @@
 import { formatSize } from '@/core/format';
-import { useState } from 'react';
+import { rulesOk, type BusinessRules } from '@/core/config';
 import { PACK_SIZES, type Settings } from '@/core/types';
 import { api } from '@/data/api';
 import { canWrite, useAdminDb } from '@/data/hooks';
@@ -9,15 +9,25 @@ import { Icon } from '@/shared/ui/Icon';
 import { PERMISSIONS, ROLES, SECTIONS } from '../permissions';
 import { ComingSoon, ConfirmButton, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
-import { useAction } from '../useAction';
+import { refuse, useAction } from '../useAction';
+import { useSavedDraft } from '../useSavedDraft';
+
+const rulesOf = ({ b2bThresholdKg, roastLossPercent, unpaidOrderTimeoutHours, paymentCheckTimeoutHours, customBlend }: Settings): BusinessRules => ({
+  b2bThresholdKg,
+  roastLossPercent,
+  unpaidOrderTimeoutHours,
+  paymentCheckTimeoutHours,
+  customBlend,
+});
 
 export function SettingsPage() {
   const role = useAdminRole()!;
   const { t } = useI18n();
   const db = useAdminDb();
-  // live site: the rules connect in slice 10
   const writable = canWrite('settings');
-  const [s, setS] = useState<Settings>(db.settings);
+  const current = rulesOf(db.settings);
+  const [s, setS] = useSavedDraft<BusinessRules>(current, db.configVersions?.rules ?? JSON.stringify(current));
+  const valid = rulesOk(s);
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
   const num = (v: string) => Math.max(0, Number(v) || 0);
@@ -32,11 +42,11 @@ export function SettingsPage() {
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            disabled={!writable}
+            disabled={!writable || !valid}
             aria-disabled={busy || undefined}
             onClick={() =>
               run(async () => {
-                await api.saveSettings({ ...db.settings, ...s, bank: db.settings.bank, cashplus: db.settings.cashplus, contact: db.settings.contact, notifications: db.settings.notifications }, role);
+                if (!(await api.saveRules(s, role))) refuse('rules'); // never the "saved" flash
                 flash();
               })
             }
@@ -48,12 +58,13 @@ export function SettingsPage() {
 
       {!writable && <ComingSoon />}
       <WriteError show={failed} />
+      {!valid && <p className="field-error">{t.admin.settings.outOfRange}</p>}
       <fieldset className="plain-fieldset detail-grid" disabled={!writable}>
         <section className="panel stack">
           <h2 className="admin-card-title">{t.admin.settings.rules}</h2>
           <label className="field">
             <span className="label">{t.admin.settings.b2bThreshold}</span>
-            <input className="input num" type="number" min={1} value={s.b2bThresholdKg} onChange={(e) => setS({ ...s, b2bThresholdKg: num(e.target.value) })} />
+            <input className="input num" type="number" min={1} max={1000} value={s.b2bThresholdKg} onChange={(e) => setS({ ...s, b2bThresholdKg: num(e.target.value) })} />
           </label>
           <label className="field">
             <span className="label">{t.admin.settings.roastLoss}</span>
@@ -72,6 +83,7 @@ export function SettingsPage() {
               className="input num"
               type="number"
               min={1}
+              max={720}
               value={s.unpaidOrderTimeoutHours}
               onChange={(e) => setS({ ...s, unpaidOrderTimeoutHours: Math.max(1, num(e.target.value)) })}
             />
@@ -82,6 +94,7 @@ export function SettingsPage() {
               className="input num"
               type="number"
               min={1}
+              max={720}
               value={s.paymentCheckTimeoutHours}
               onChange={(e) => setS({ ...s, paymentCheckTimeoutHours: Math.max(1, num(e.target.value)) })}
             />
@@ -128,6 +141,7 @@ export function SettingsPage() {
                   className="input num"
                   type="number"
                   min={0}
+                  max={1000}
                   value={cb.feeBySize[size]}
                   onChange={(e) =>
                     setS({ ...s, customBlend: { ...cb, feeBySize: { ...cb.feeBySize, [size]: num(e.target.value) } } })

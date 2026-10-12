@@ -98,6 +98,7 @@ export const shippingRateFromRow = (r: Tables<'shipping_rates'>): ShippingRate =
   extraPerKg: Number(r.extra_per_kg),
   deliveryDays: r.delivery_days,
   active: r.active,
+  updatedAt: r.updated_at,
 });
 
 const PAYMENT_ORDER: PaymentMethodId[] = ['card', 'cashplus', 'bank_transfer'];
@@ -109,6 +110,7 @@ export const paymentMethodFromRow = (r: Tables<'payment_methods'>): PaymentMetho
   enabled: r.enabled,
   label: loc(r.label),
   instructions: loc(r.instructions),
+  updatedAt: r.updated_at,
 });
 
 /** Notification recipients are owner-only (admin_config): unknown to whoever cannot read them. */

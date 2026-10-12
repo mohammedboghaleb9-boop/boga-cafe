@@ -11,9 +11,9 @@ export type Database = {
   public: {
     Tables: {
       admin_config: {
-        Row: { admin_email: string; admin_whatsapp: string; email_on: boolean; id: number; whatsapp_on: boolean };
-        Insert: { admin_email?: string; admin_whatsapp?: string; email_on?: boolean; id?: number; whatsapp_on?: boolean };
-        Update: { admin_email?: string; admin_whatsapp?: string; email_on?: boolean; id?: number; whatsapp_on?: boolean };
+        Row: { admin_email: string; admin_whatsapp: string; email_on: boolean; id: number; updated_at: string; whatsapp_on: boolean };
+        Insert: { admin_email?: string; admin_whatsapp?: string; email_on?: boolean; id?: number; updated_at?: string; whatsapp_on?: boolean };
+        Update: { admin_email?: string; admin_whatsapp?: string; email_on?: boolean; id?: number; updated_at?: string; whatsapp_on?: boolean };
         Relationships: [];
       };
       admin_users: {
@@ -26,6 +26,12 @@ export type Database = {
         Row: { action: string; actor: string | null; at: string; id: number; item: string; item_id: string };
         Insert: { action: string; actor?: string | null; at?: string; id?: never; item: string; item_id: string };
         Update: { action?: string; actor?: string | null; at?: string; id?: never; item?: string; item_id?: string };
+        Relationships: [];
+      };
+      config_changes: {
+        Row: { actor: string | null; area: string; at: string; id: number; item_id: string };
+        Insert: { actor?: string | null; area: string; at?: string; id?: never; item_id?: string };
+        Update: { actor?: string | null; area?: string; at?: string; id?: never; item_id?: string };
         Relationships: [];
       };
       notification_outbox: {
@@ -229,9 +235,9 @@ export type Database = {
         Relationships: [];
       };
       payment_methods: {
-        Row: { enabled: boolean; id: string; instructions: Json; label: Json };
-        Insert: { enabled?: boolean; id: string; instructions?: Json; label: Json };
-        Update: { enabled?: boolean; id?: string; instructions?: Json; label?: Json };
+        Row: { enabled: boolean; id: string; instructions: Json; label: Json; updated_at: string };
+        Insert: { enabled?: boolean; id: string; instructions?: Json; label: Json; updated_at?: string };
+        Update: { enabled?: boolean; id?: string; instructions?: Json; label?: Json; updated_at?: string };
         Relationships: [];
       };
       product_recipes: {
@@ -393,6 +399,7 @@ export type Database = {
           extra_per_kg: number;
           id: string;
           included_kg: number;
+          updated_at: string;
         };
         Insert: {
           active?: boolean;
@@ -403,6 +410,7 @@ export type Database = {
           extra_per_kg?: number;
           id: string;
           included_kg?: number;
+          updated_at?: string;
         };
         Update: {
           active?: boolean;
@@ -413,13 +421,14 @@ export type Database = {
           extra_per_kg?: number;
           id?: string;
           included_kg?: number;
+          updated_at?: string;
         };
         Relationships: [];
       };
       site_config: {
-        Row: { content: Json; id: number; settings: Json };
-        Insert: { content: Json; id?: number; settings: Json };
-        Update: { content?: Json; id?: number; settings?: Json };
+        Row: { content: Json; id: number; settings: Json; versions: Json };
+        Insert: { content: Json; id?: number; settings: Json; versions?: Json };
+        Update: { content?: Json; id?: number; settings?: Json; versions?: Json };
         Relationships: [];
       };
       stock_movements: {
@@ -510,8 +519,18 @@ export type Database = {
         Returns: boolean;
       };
       report_offline_payment: { Args: { p_order_id: string; p_ref: string }; Returns: undefined };
+      save_content: {
+        Args: { p_contact: Json | null; p_content: Json; p_seen_contact: string | null; p_seen_content: string | null };
+        Returns: undefined;
+      };
+      save_free_shipping: { Args: { p_amount: number; p_seen: string | null }; Returns: undefined };
       save_origin: { Args: { p_origin: Json; p_seen_at: string | null }; Returns: string };
+      save_payee: { Args: { p_payee: Json; p_seen: string | null }; Returns: undefined };
+      save_payment_method: { Args: { p_method: Json; p_seen: string }; Returns: undefined };
       save_product: { Args: { p_product: Json; p_recipe: Json; p_seen_at: string | null }; Returns: string };
+      save_recipients: { Args: { p_recipients: Json; p_seen: string }; Returns: undefined };
+      save_rules: { Args: { p_rules: Json; p_seen: string | null }; Returns: undefined };
+      save_shipping_rate: { Args: { p_rate: Json; p_seen: string | null }; Returns: string };
       set_order_status: { Args: { p_order_id: string; p_status: string }; Returns: undefined };
       set_payment_status: { Args: { p_order_id: string; p_status: string }; Returns: undefined };
       update_quote_request: {

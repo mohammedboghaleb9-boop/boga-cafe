@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { formatKg, formatSize } from '@/core/format';
 import type { QuoteRequest, QuoteStatus } from '@/core/types';
 import { api } from '@/data/api';
@@ -8,6 +7,7 @@ import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
 import { ComingSoon, SavedFlash, TableWrap, WriteError, useSavedFlash } from '../ui';
 import { useAction } from '../useAction';
+import { useSavedDraft } from '../useSavedDraft';
 
 const QUOTE_STATUSES: QuoteStatus[] = ['new', 'negotiating', 'confirmed', 'closed'];
 
@@ -56,14 +56,7 @@ function QuoteCard({ q }: { q: QuoteRequest }) {
   const { t, l, money } = useI18n();
   // the follow-up is edited here and saved by the button, not on every keystroke
   const current = { status: q.status, finalPrice: q.finalPrice, adminNotes: q.adminNotes };
-  const [form, setForm] = useState(current);
-  // what is saved changed (this save, another admin's, a refresh): the form starts again from it
-  const version = q.updatedAt ?? JSON.stringify(current);
-  const [seen, setSeen] = useState(version);
-  if (seen !== version) {
-    setSeen(version);
-    setForm(current);
-  }
+  const [form, setForm] = useSavedDraft(current, q.updatedAt ?? JSON.stringify(current));
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
   const [busy, run, failed] = useAction();
   const [saved, flash] = useSavedFlash();

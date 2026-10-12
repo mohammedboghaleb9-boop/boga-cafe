@@ -78,7 +78,7 @@ export function canSetPayment(order: Pick<Order, 'paymentStatus' | 'status'>, ne
 export function payeeReady(id: PaymentMethodId, settings: Pick<Settings, 'bank' | 'cashplus'>): boolean {
   const filled = (v: string | undefined) => typeof v === 'string' && v.trim() !== '';
   if (id === 'bank_transfer') return filled(settings.bank?.holder) && filled(settings.bank?.bankName) && filled(settings.bank?.rib);
-  if (id === 'cashplus') return filled(settings.cashplus?.beneficiary);
+  if (id === 'cashplus') return filled(settings.cashplus?.beneficiary) && filled(settings.cashplus?.city) && filled(settings.cashplus?.phone);
   return true;
 }
 
