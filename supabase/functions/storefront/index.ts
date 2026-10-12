@@ -13,11 +13,14 @@
  *   TURNSTILE_SECRET_KEY  required: every form must carry a valid Turnstile token; without
  *                         the secret, or with one of Cloudflare's test secrets, every form is
  *                         refused (500), none goes through unchecked.
+ *   TURNSTILE_HOSTNAMES   required: the hostnames a token may be solved on, comma separated (the
+ *                         site's own address; `*-boga-cafe.<account>.workers.dev` for the previews).
+ *                         Without it every form is refused (500). Not a secret.
  */
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/data/supabase/database.types';
 import { handleHttp, keysOf } from '@/server/http';
-import { liveTurnstileSecret } from '@/server/guard';
+import { liveTurnstileHostnames, liveTurnstileSecret } from '@/server/guard';
 import { handleStorefront } from '@/server/storefront';
 
 declare const Deno: {
@@ -38,6 +41,13 @@ Deno.serve((req) =>
   handleHttp(req, {
     publicKeys,
     // the secret key also keys the IP hash: never stored, so a stored hash cannot be reversed
-    run: (route, raw, ip) => handleStorefront(route, raw, { db, ip, ipKey: secretKey, turnstileSecret: liveTurnstileSecret(env('TURNSTILE_SECRET_KEY')) }),
+    run: (route, raw, ip) =>
+      handleStorefront(route, raw, {
+        db,
+        ip,
+        ipKey: secretKey,
+        turnstileSecret: liveTurnstileSecret(env('TURNSTILE_SECRET_KEY')),
+        turnstileHostnames: liveTurnstileHostnames(env('TURNSTILE_HOSTNAMES')),
+      }),
   }),
 );

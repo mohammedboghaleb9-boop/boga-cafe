@@ -58,7 +58,10 @@ export interface Captcha {
   reset(): void;
 }
 
-export function useCaptcha(): Captcha {
+/** The form the widget is for: the server accepts a token only for the route it was solved for (src/server/guard.ts). */
+export type CaptchaAction = 'order' | 'quote';
+
+export function useCaptcha(action: CaptchaAction): Captcha {
   const { t, locale } = useI18n();
   // The form can unmount its fields and show them again: a callback ref renders
   // a widget in whichever element is currently on screen.
@@ -79,6 +82,7 @@ export function useCaptcha(): Captcha {
         if (!live) return;
         id.current = ts.render(el, {
           sitekey: SITE_KEY,
+          action,
           language: locale,
           // the storefront is dark whatever the device theme (styles/tokens.css)
           theme: 'dark',
@@ -106,7 +110,7 @@ export function useCaptcha(): Captcha {
       // the token belonged to the widget just removed
       setToken('');
     };
-  }, [el, locale]);
+  }, [el, locale, action]);
 
   const retry = () => {
     setFailed(false);

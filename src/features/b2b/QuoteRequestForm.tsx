@@ -14,7 +14,7 @@ export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent:
   const [contact, setContact] = useState(emptyRequest);
   const [errors, setErrors] = useState<(RequestError | GuardError)[]>([]);
   const [busy, setBusy] = useState(false);
-  const captcha = useCaptcha();
+  const captcha = useCaptcha('quote');
   const isGuard = (e: RequestError | GuardError): e is GuardError => (GUARD_ERRORS as readonly string[]).includes(e);
   const fieldErrors = errors.filter((e): e is RequestError => !isGuard(e));
   const guardErrors = errors.filter(isGuard);
