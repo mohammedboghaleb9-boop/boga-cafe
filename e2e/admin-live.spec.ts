@@ -202,7 +202,7 @@ async function fakeSupabase(page: Page, server: Server = {}) {
           restock_date: null, active: false, updated_at: now });
         return json(200, item.id);
       }
-      // the slice 10 rules (migration 20261012120000): owner-only parts, the version read, the card off, a new city hidden
+      // the slice 10 rules (migration 20261012183912): owner-only parts, the version read, the card off, a new city hidden
       const refused = (message: string) => json(400, { code: 'P0001', message, details: null, hint: null });
       const role = user ? admins[user] : undefined;
       const site = catalog.site_config[0] as { settings: Record<string, unknown>; content: unknown; versions: Record<string, string> };

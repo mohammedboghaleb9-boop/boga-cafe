@@ -9,7 +9,7 @@ const payee: Payee = {
   cashplus: { beneficiary: 'TEST', city: 'Oujda', phone: '0600000000' },
 };
 
-// the same limits as supabase/migrations/20261012120000_settings_writes.sql: a form never sends what comes back "not saved"
+// the same limits as supabase/migrations/20261012183912_settings_writes.sql: a form never sends what comes back "not saved"
 describe('admin settings, checked as the database checks them', () => {
   it('rules: within their ranges, whole numbers where the database wants them', () => {
     expect(rulesOk(rules)).toBe(true);

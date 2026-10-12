@@ -1,6 +1,6 @@
 /**
  * What the Admin Panel's settings, payment, text, recipient and delivery forms may save:
- * the same limits the database checks (supabase/migrations/20261012120000_settings_writes.sql),
+ * the same limits the database checks (supabase/migrations/20261012183912_settings_writes.sql),
  * so a form never sends what would come back "not saved".
  */
 import { PACK_SIZES, type Localized, type PaymentMethodConfig, type Settings, type ShippingRate, type SiteContent } from './types';
