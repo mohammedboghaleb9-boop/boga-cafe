@@ -66,7 +66,7 @@ describe('admin settings, checked as the database checks them', () => {
   });
 });
 
-// the same trimming as supabase/migrations/20261012230000_config_trim.sql: what a form sends is what is kept
+// the same trimming as supabase/migrations/20261013090048_config_trim.sql: what a form sends is what is kept
 describe('texts without the spaces at their start and end', () => {
   it('trims a space, a tab, a carriage return and a line feed, and changes nothing inside the text', () => {
     expect(trimEnds(' \t\r\n Titre \n ')).toBe('Titre');

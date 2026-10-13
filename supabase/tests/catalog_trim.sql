@@ -1,5 +1,5 @@
 -- Product and origin texts without the spaces at their start and end (P5 slice 11, migration
--- 20261013000000_catalog_trim) AND the behaviour that must not change: a key that is not sent
+-- 20261013100000_catalog_trim) AND the behaviour that must not change: a key that is not sent
 -- stays not sent, so its default still applies. SQL NULL (a missing key) and JSON null (a key
 -- written back with jsonb_build_object) are not the same thing: the default only replaces SQL NULL.
 -- pgTAP, run by run-local.sh on a fresh database; the count is checked against plan().
