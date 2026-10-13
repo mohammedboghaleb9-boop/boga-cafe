@@ -1,5 +1,5 @@
 -- Texts saved by the Admin Panel keep no space or line break at their start or end (P5 slice 11,
--- migration 20261012230000_config_trim): save_content (texts and contact), save_payment_method,
+-- migration 20261013090048_config_trim): save_content (texts and contact), save_payment_method,
 -- save_shipping_rate. The owner's preview test found three stray spaces in the live texts.
 -- pgTAP, run by run-local.sh on a fresh database; the count is checked against plan().
 \set ON_ERROR_STOP on

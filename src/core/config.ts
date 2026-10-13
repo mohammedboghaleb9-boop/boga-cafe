@@ -146,7 +146,7 @@ export const trimmedMethod = (m: PaymentMethodConfig): PaymentMethodConfig => ({
 
 export const trimmedRate = (r: ShippingRate): ShippingRate => ({ ...r, city: trimLocalized(r.city), deliveryDays: trimEnds(r.deliveryDays) });
 
-/** The catalog texts of a product, trimmed as save_product keeps them (migration 20261013000000_catalog_trim). */
+/** The catalog texts of a product, trimmed as save_product keeps them (migration 20261013100000_catalog_trim). */
 export const trimmedProduct = (p: Product): Product => ({
   ...p,
   name: trimLocalized(p.name),

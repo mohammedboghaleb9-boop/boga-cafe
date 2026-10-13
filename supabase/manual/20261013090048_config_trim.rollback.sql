@@ -1,17 +1,17 @@
--- ROLLBACK of 20261012230000_config_trim (P5 slice 11, first part; live version 20261013090048). Supabase SQL Editor, ONE
+-- ROLLBACK of 20261013090048_config_trim (P5 slice 11, first part; live version 20261013090048). Supabase SQL Editor, ONE
 -- transaction, on a computer. Run it ONLY if the trim of the settings texts must be undone. It restores the four function bodies
 -- of 20261012183912_settings_writes.sql, drops config_trim_text then config_trim_str and removes the history row 20261013090048.
 -- The settings, payment methods, recipients and delivery prices are not touched. (The tool that applies migrations cannot run a
 -- DROP or a DELETE, hence the SQL Editor.)
 --
--- ORDER OF THE TWO ROLLBACKS: 20261013000000_catalog_trim.rollback.sql FIRST, then this one.
+-- ORDER OF THE TWO ROLLBACKS: 20261013100000_catalog_trim.rollback.sql FIRST, then this one.
 -- save_product / save_origin (catalog_trim) call config_trim_keys, which calls config_trim_text, which calls config_trim_str.
 -- These are SQL functions: Postgres does not track the dependency, so dropping a helper too early does not fail, it breaks the
 -- catalog saves at their first call. This script stops by itself while config_trim_keys is still there.
 --
 -- HOW: paste ALL of it (from "begin;" to the last select), select nothing, press Run. Any check that fails raises an
 -- exception ("stop:") and nothing is changed. RESULT: helpers_0 0, version_left_0 0, the last version is 20261012183912.
--- (If 20261013000000_catalog_trim was rolled back first, as it must be, nothing else is newer.)
+-- (If 20261013100000_catalog_trim was rolled back first, as it must be, nothing else is newer.)
 -- Tests: tests/manual-sql.test.ts keeps the four bodies below equal to the ones in 20261012183912_settings_writes.sql.
 
 begin;
@@ -19,10 +19,10 @@ begin;
 do $$
 begin
   if to_regprocedure('public.config_trim_keys(jsonb, text[], text[])') is not null then
-    raise exception 'stop: undo 20261013000000_catalog_trim first (supabase/manual/20261013000000_catalog_trim.rollback.sql): save_product and save_origin still call the helpers';
+    raise exception 'stop: undo 20261013100000_catalog_trim first (supabase/manual/20261013100000_catalog_trim.rollback.sql): save_product and save_origin still call the helpers';
   end if;
   if to_regprocedure('public.config_trim_text(jsonb)') is null or to_regprocedure('public.config_trim_str(jsonb)') is null then
-    raise exception 'stop: config_trim_text / config_trim_str are not there, 20261012230000_config_trim is not applied (nothing to undo)';
+    raise exception 'stop: config_trim_text / config_trim_str are not there, 20261013090048_config_trim is not applied (nothing to undo)';
   end if;
 end $$;
 

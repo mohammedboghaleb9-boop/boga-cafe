@@ -1,9 +1,10 @@
--- ROLLBACK of 20261013000000_catalog_trim (P5 slice 11, second part). Supabase SQL Editor, ONE transaction, on a computer.
+-- ROLLBACK of 20261013100000_catalog_trim (P5 slice 11, second part). Supabase SQL Editor, ONE transaction, on a computer.
 -- Run it ONLY if the trim of product and origin texts must be undone. It restores the two function bodies of
 -- 20261009200000_catalog_writes.sql (they hold a DELETE, which the tool that applies migrations cannot run), drops the helper
--- config_trim_keys and removes the history row 20261013000000. Products, recipes and origins are not touched.
+-- config_trim_keys and removes its history row (version 20261013100000 once the history repair
+-- supabase/manual/20261013100000_catalog_trim.history-repair.sql was run, 20261013000000 before it: both are handled). Products, recipes and origins are not touched.
 --
--- ORDER OF THE TWO ROLLBACKS: this one FIRST, then 20261012230000_config_trim.rollback.sql.
+-- ORDER OF THE TWO ROLLBACKS: this one FIRST, then 20261013090048_config_trim.rollback.sql.
 -- save_product / save_origin call config_trim_keys, which calls config_trim_text, which calls config_trim_str. These are SQL
 -- functions: Postgres does not track the dependency, so dropping a helper too early does not fail, it breaks the saves at
 -- their first call. This script stops by itself if the helper it drops is not there.
@@ -23,7 +24,7 @@ create temp table _catalog_before on commit drop as
 do $$
 begin
   if to_regprocedure('public.config_trim_keys(jsonb, text[], text[])') is null then
-    raise exception 'stop: config_trim_keys is not there, 20261013000000_catalog_trim is not applied (nothing to undo)';
+    raise exception 'stop: config_trim_keys is not there, 20261013100000_catalog_trim is not applied (nothing to undo)';
   end if;
 end $$;
 
@@ -201,7 +202,7 @@ end $$;
 -- <<< save_product and save_origin of 20261009200000_catalog_writes.sql
 
 drop function public.config_trim_keys(jsonb, text[], text[]);
-delete from supabase_migrations.schema_migrations where version = '20261013000000' and name = 'catalog_trim';
+delete from supabase_migrations.schema_migrations where name = 'catalog_trim' and version in ('20261013000000', '20261013100000');
 
 do $$
 declare
@@ -227,7 +228,7 @@ begin
      or (select count(*) from public.origins) <> b.origins then
     raise exception 'stop: products, recipes or origins changed';
   end if;
-  if (select count(*) from supabase_migrations.schema_migrations where version = '20261013000000') <> 0 then
+  if (select count(*) from supabase_migrations.schema_migrations where name = 'catalog_trim') <> 0 then
     raise exception 'stop: the history row is still there';
   end if;
 end $$;
@@ -237,7 +238,7 @@ commit;
 select (select count(*) from pg_proc where pronamespace = 'public'::regnamespace and proname in ('save_product', 'save_origin')
           and md5(replace(prosrc, E'\r', '')) in ('a4131de0cb2b2bed001d0787219ff878', 'dfd0f6642ee688a093d612d6aee19c6d')) as bodies_restored,
        to_regprocedure('public.config_trim_keys(jsonb, text[], text[])') is null as helper_gone,
-       (select count(*) from supabase_migrations.schema_migrations where version = '20261013000000') as history_row_left,
+       (select count(*) from supabase_migrations.schema_migrations where name = 'catalog_trim') as history_row_left,
        has_function_privilege('anon', 'public.save_product(jsonb, jsonb, timestamptz)', 'execute') as anon_runs,
        has_function_privilege('authenticated', 'public.save_product(jsonb, jsonb, timestamptz)', 'execute') as signed_in_runs,
        (select count(*) from public.products) as products,

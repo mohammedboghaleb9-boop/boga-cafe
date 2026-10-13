@@ -1,5 +1,5 @@
 -- Product and origin texts are saved without the spaces and line breaks at their start and end
--- (P5 slice 11, second part; the first, 20261012230000_config_trim, did the settings, the texts,
+-- (P5 slice 11, second part; the first, 20261013090048_config_trim, did the settings, the texts,
 -- the recipients, the payment methods and the delivery prices).
 --
 -- save_product keeps what the panel sends: a product name edited and put back would end with a
@@ -18,7 +18,7 @@
 -- This migration holds a DELETE (save_product replaces the recipe whole, as the slice 9 original
 -- does): the tool that applies migrations to the live project hangs on it, so the owner runs it
 -- in the SQL Editor, in one transaction, then the version is recorded by hand (PROJECT_NOTES.md).
--- It needs config_trim_str and config_trim_text from 20261012230000_config_trim.sql, applied first:
+-- It needs config_trim_str and config_trim_text from 20261013090048_config_trim.sql, applied first:
 -- without them the functions would fail at their first call, so this stops before changing anything.
 -- create or replace keeps each function's owner and grants. Rollback: the two bodies of
 -- 20261009200000_catalog_writes.sql, then the helper below dropped.
@@ -26,7 +26,7 @@
 do $$
 begin
   if to_regprocedure('public.config_trim_text(jsonb)') is null or to_regprocedure('public.config_trim_str(jsonb)') is null then
-    raise exception 'stop: config_trim_text / config_trim_str are missing, apply 20261012230000_config_trim first';
+    raise exception 'stop: config_trim_text / config_trim_str are missing, apply 20261013090048_config_trim first';
   end if;
 end $$;
 

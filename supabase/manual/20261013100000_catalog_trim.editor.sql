@@ -1,11 +1,11 @@
--- SQL Editor block for 20261013000000_catalog_trim (P5 slice 11).
+-- SQL Editor block for 20261013100000_catalog_trim (P5 slice 11).
 -- WHY HERE: the migration holds a DELETE (inside save_product), and the tool that applies migrations to the live
 -- project hangs on a DELETE. So the owner runs this in the Supabase SQL Editor, on a computer, ONCE, after the merge
--- into main and after 20261012230000_config_trim was applied (the migration stops by itself if it was not).
+-- into main and after 20261013090048_config_trim was applied (the migration stops by itself if it was not).
 --
 -- HOW: paste ALL of it (from "begin;" to the last select), select nothing, press Run. One transaction: any check that
 -- fails raises an exception and nothing is changed. The migration text between the two markers is the file
--- supabase/migrations/20261013000000_catalog_trim.sql, unchanged (tests/manual-sql.test.ts keeps them equal).
+-- supabase/migrations/20261013100000_catalog_trim.sql, unchanged (tests/manual-sql.test.ts keeps them equal).
 -- RESULT: the last select must read: bodies_trimmed 2, helper_closed true, anon_runs false, signed_in_runs true,
 -- products/recipes/origins as they were. An error message (the word "stop:") means nothing was applied: tell Claude.
 -- ROLLBACK (after a commit): the two function bodies of 20261009200000_catalog_writes.sql, then
@@ -18,9 +18,9 @@ create temp table _catalog_before on commit drop as
          (select count(*) from public.product_recipes) as recipes,
          (select count(*) from public.origins) as origins;
 
--- >>> 20261013000000_catalog_trim.sql
+-- >>> 20261013100000_catalog_trim.sql
 -- Product and origin texts are saved without the spaces and line breaks at their start and end
--- (P5 slice 11, second part; the first, 20261012230000_config_trim, did the settings, the texts,
+-- (P5 slice 11, second part; the first, 20261013090048_config_trim, did the settings, the texts,
 -- the recipients, the payment methods and the delivery prices).
 --
 -- save_product keeps what the panel sends: a product name edited and put back would end with a
@@ -39,7 +39,7 @@ create temp table _catalog_before on commit drop as
 -- This migration holds a DELETE (save_product replaces the recipe whole, as the slice 9 original
 -- does): the tool that applies migrations to the live project hangs on it, so the owner runs it
 -- in the SQL Editor, in one transaction, then the version is recorded by hand (PROJECT_NOTES.md).
--- It needs config_trim_str and config_trim_text from 20261012230000_config_trim.sql, applied first:
+-- It needs config_trim_str and config_trim_text from 20261013090048_config_trim.sql, applied first:
 -- without them the functions would fail at their first call, so this stops before changing anything.
 -- create or replace keeps each function's owner and grants. Rollback: the two bodies of
 -- 20261009200000_catalog_writes.sql, then the helper below dropped.
@@ -47,7 +47,7 @@ create temp table _catalog_before on commit drop as
 do $$
 begin
   if to_regprocedure('public.config_trim_text(jsonb)') is null or to_regprocedure('public.config_trim_str(jsonb)') is null then
-    raise exception 'stop: config_trim_text / config_trim_str are missing, apply 20261012230000_config_trim first';
+    raise exception 'stop: config_trim_text / config_trim_str are missing, apply 20261013090048_config_trim first';
   end if;
 end $$;
 
@@ -246,7 +246,7 @@ begin
   insert into public.catalog_changes (item, item_id, action, actor) values ('origin', v_id, case when p_seen_at is null then 'create' else 'edit' end, auth.uid());
   return v_id;
 end $$;
--- <<< 20261013000000_catalog_trim.sql
+-- <<< 20261013100000_catalog_trim.sql
 
 do $$
 declare
