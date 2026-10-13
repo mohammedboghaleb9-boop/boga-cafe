@@ -1,5 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { contactOk, methodOk, payeeProblem, recipientsOk, rulesOk, sameRib, shippingRateOk, textOk, trimEnds, trimmedContact, trimmedContent, trimmedMethod, trimmedRate, trimmedRecipients, type BusinessRules, type Payee } from '../config';
+import {
+  contactOk,
+  methodOk,
+  payeeProblem,
+  recipientsOk,
+  rulesOk,
+  sameRib,
+  shippingRateOk,
+  textOk,
+  trimEnds,
+  trimmedContact,
+  trimmedContent,
+  trimmedMethod,
+  trimmedOrigin,
+  trimmedProduct,
+  trimmedRate,
+  trimmedRecipients,
+  type BusinessRules,
+  type Payee,
+} from '../config';
+import type { Origin, Product } from '../types';
 import { settings } from './fixtures';
 
 const L = (fr: string) => ({ ar: '', fr, en: '' });
@@ -88,6 +108,22 @@ describe('texts without the spaces at their start and end', () => {
       city: { ar: 'Oujda', fr: 'Oujda', en: 'Oujda' },
       deliveryDays: '2-3',
     });
+  });
+});
+
+describe('catalog texts without the spaces at their start and end', () => {
+  const pad = (v: string) => ({ ar: ` ${v} `, fr: `${v}\n`, en: `\t${v}` });
+  const clean = (v: string) => ({ ar: v, fr: v, en: v });
+
+  it('a product keeps its four texts trimmed and nothing else changed', () => {
+    const product = { id: 'p', slug: 'p', kind: 'signature', name: pad('N'), tagline: pad('T'), description: pad('D'), recipe: [], roastLevel: 'medium', tastingNotes: pad('K'), prices: { 250: 1 }, featured: false, active: false, sortOrder: 1 } as Product;
+    expect(trimmedProduct(product)).toEqual({ ...product, name: clean('N'), tagline: clean('T'), description: clean('D'), tastingNotes: clean('K') });
+  });
+
+  it('an origin keeps its name, tasting notes and region trimmed, and a missing region is empty', () => {
+    const origin = { id: 'o', name: pad('N'), countryCode: 'ET', species: 'arabica', region: ' Sidamo \n', roastLevel: 'light', tastingNotes: pad('K'), stockKg: 0, lowStockKg: 1, pricePerKg: 1, customBlendEnabled: true, active: false } as Origin;
+    expect(trimmedOrigin(origin)).toEqual({ ...origin, name: clean('N'), tastingNotes: clean('K'), region: 'Sidamo' });
+    expect(trimmedOrigin({ ...origin, region: undefined as unknown as string }).region).toBe('');
   });
 });
 

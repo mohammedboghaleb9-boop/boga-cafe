@@ -80,6 +80,21 @@ describe('demo data layer', () => {
     expect(await api.saveShippingRate({ ...rate, city: { ar: '', fr: '   ', en: '' } }, 'manager')).toBe(false); // only spaces: no French name
   });
 
+  it('keeps product and origin texts without the spaces at their start and end, as the live site does', async () => {
+    const { api, db } = t;
+    const pad = (v: string) => ({ ar: ` ${v}`, fr: `${v}\n `, en: `\t${v} ` });
+    const clean = (v: string) => ({ ar: v, fr: v, en: v });
+    const product = db.get().products[0];
+    expect(await api.saveProduct({ ...product, name: pad('Nom'), tagline: pad('Court') })).toBe(true);
+    expect(db.get().products.find((p) => p.id === product.id)).toMatchObject({ name: clean('Nom'), tagline: clean('Court') });
+    const created = await api.createProduct({ ...product, id: '', slug: '', name: pad('Nouveau') });
+    expect(created.name).toEqual(clean('Nouveau'));
+    const origin = db.get().origins[0];
+    expect(await api.saveOrigin({ ...origin, region: ' Sidamo ', tastingNotes: pad('Fruite') })).toBe(true);
+    expect(db.get().origins.find((o) => o.id === origin.id)).toMatchObject({ region: 'Sidamo', tastingNotes: clean('Fruite') });
+    expect(await api.createOrigin({ ...origin, id: '', name: pad('Nouvelle') })).toMatchObject({ name: clean('Nouvelle') });
+  });
+
   it('logs the stock change that really happened', async () => {
     const { api, db } = t;
     const id = db.get().origins[0].id;

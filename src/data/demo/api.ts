@@ -16,6 +16,8 @@ import {
   trimmedContact,
   trimmedContent,
   trimmedMethod,
+  trimmedOrigin,
+  trimmedProduct,
   trimmedRate,
   trimmedRecipients,
   type BusinessRules,
@@ -252,14 +254,16 @@ export const demoApi: Api = {
 
   /** New product: its id and address come from the name and never replace an existing product. */
   async createProduct(draft: Product) {
-    const slug = newProductId(draft.name.fr, db.get().products);
-    const product = { ...draft, id: slug, slug };
+    const clean = trimmedProduct(draft);
+    const slug = newProductId(clean.name.fr, db.get().products);
+    const product = { ...clean, id: slug, slug };
     db.update((s) => ({ ...s, products: [...s.products, product] }));
     return product;
   },
 
   /** Changes an existing product (false if there is none with this id: use createProduct). */
-  async saveProduct(product: Product) {
+  async saveProduct(draft: Product) {
+    const product = trimmedProduct(draft);
     if (!db.get().products.some((p) => p.id === product.id)) return false;
     db.update((s) => ({ ...s, products: s.products.map((p) => (p.id === product.id ? product : p)) }));
     return true;
@@ -272,13 +276,15 @@ export const demoApi: Api = {
   /** New origin at 0 kg (its first lot goes through adjustStock); never replaces an existing one. Null without a real price per kg. */
   async createOrigin(draft: Origin) {
     if (!isPrice(draft.pricePerKg)) return null;
-    const origin = { ...draft, id: newOriginId(draft.name.fr, db.get().origins), stockKg: 0 };
+    const clean = trimmedOrigin(draft);
+    const origin = { ...clean, id: newOriginId(clean.name.fr, db.get().origins), stockKg: 0 };
     db.update((s) => ({ ...s, origins: [...s.origins, origin] }));
     return origin;
   },
 
   /** Saves origin details. Stock is changed only through `adjustStock` so every change is logged. */
-  async saveOrigin(origin: Origin) {
+  async saveOrigin(draft: Origin) {
+    const origin = trimmedOrigin(draft);
     if (!isPrice(origin.pricePerKg) || !db.get().origins.some((o) => o.id === origin.id)) return false;
     db.update((s) => ({ ...s, origins: s.origins.map((o) => (o.id === origin.id ? { ...origin, stockKg: o.stockKg } : o)) }));
     return true;

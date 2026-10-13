@@ -7,7 +7,7 @@ set client_min_messages = warning;
 create extension if not exists pgtap;
 
 begin;
-select plan(31);
+select plan(40);
 
 insert into auth.users values ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000003');
 insert into public.admin_users values
@@ -117,6 +117,25 @@ select throws_ok($$select public.save_content(null::jsonb, null, null, null)$$, 
 select throws_ok($$select public.save_recipients(null::jsonb, pg_temp.seen_recipients())$$, 'P0001', 'invalid_recipients', 'no recipients at all is refused');
 select throws_ok($$select public.save_payment_method('[]'::jsonb, pg_temp.seen_method())$$, 'P0001', 'invalid_method', 'a payment method sent as an array is refused');
 select throws_ok($$select public.save_shipping_rate('{"id": "ville-x", "city": 5}'::jsonb, null)$$, 'P0001', 'invalid_rate', 'a city name sent as a number is refused');
+
+-- a key that is not sent: refused as before, never a raw error. The rebuild with jsonb_build_object turns it into a JSON null
+-- (not an SQL NULL: the two are different values), and the checks refuse both alike, which is why the rebuild is safe here
+select pg_temp.token('00000000-0000-0000-0000-000000000001', 'aal2');
+select throws_ok($$select public.save_content(pg_temp.content(), pg_temp.contact() - 'tiktok', pg_temp.mark('content'), pg_temp.mark('contact'))$$,
+                 'P0001', 'invalid_contact', 'a contact detail that is not sent is still refused');
+select throws_ok($$select public.save_recipients(jsonb_build_object('adminWhatsapp', '+212600000000', 'whatsappEnabled', true, 'emailEnabled', true), pg_temp.seen_recipients())$$,
+                 'P0001', 'invalid_recipients', 'a recipient that is not sent is still refused');
+select throws_ok($$select public.save_payment_method(pg_temp.method() - 'instructions', pg_temp.seen_method())$$, 'P0001', 'invalid_method', 'payment instructions that are not sent are still refused');
+select throws_ok($$select public.save_shipping_rate(pg_temp.rate('test-ville') - 'deliveryDays', pg_temp.seen_rate('test-ville'))$$, 'P0001', 'invalid_rate', 'delivery days that are not sent are still refused');
+reset role;
+select is((jsonb_build_object('adminEmail', ('{}'::jsonb) -> 'adminEmail') -> 'adminEmail') is null, false,
+          'jsonb_build_object of a missing key makes a JSON null, which is not an SQL NULL');
+select is(public.config_string_ok(null::jsonb, 120) or public.config_string_ok('null'::jsonb, 120), false, 'a string check refuses the SQL NULL and the JSON null alike');
+select is(public.config_text_ok(null::jsonb, 200) or public.config_text_ok('null'::jsonb, 200), false, 'a text check refuses the SQL NULL and the JSON null alike');
+select is(public.config_trim_str(null::jsonb) is null and jsonb_typeof(public.config_trim_str('null'::jsonb)) = 'null', true,
+          'the trim helpers keep an SQL NULL as NULL and a JSON null as a JSON null');
+select is(public.config_trim_text(null::jsonb) is null and jsonb_typeof(public.config_trim_text('null'::jsonb)) = 'null', true, 'same for a text');
+set local role authenticated;
 
 -- the helpers are the functions' own: no API role runs them
 select is((select has_function_privilege('authenticated', 'public.config_trim_str(jsonb)', 'execute') or has_function_privilege('anon', 'public.config_trim_text(jsonb)', 'execute')), false,

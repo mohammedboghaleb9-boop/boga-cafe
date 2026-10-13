@@ -3,7 +3,7 @@
  * the same limits the database checks (supabase/migrations/20261012183912_settings_writes.sql),
  * so a form never sends what would come back "not saved".
  */
-import { PACK_SIZES, type Localized, type PaymentMethodConfig, type Settings, type ShippingRate, type SiteContent } from './types';
+import { PACK_SIZES, type Localized, type Origin, type PaymentMethodConfig, type Product, type Settings, type ShippingRate, type SiteContent } from './types';
 
 /** The parts of the settings saved by the Settings page (owner only). */
 export type BusinessRules = Pick<Settings, 'b2bThresholdKg' | 'roastLossPercent' | 'unpaidOrderTimeoutHours' | 'paymentCheckTimeoutHours' | 'customBlend'>;
@@ -145,3 +145,20 @@ export const trimmedMethod = (m: PaymentMethodConfig): PaymentMethodConfig => ({
 });
 
 export const trimmedRate = (r: ShippingRate): ShippingRate => ({ ...r, city: trimLocalized(r.city), deliveryDays: trimEnds(r.deliveryDays) });
+
+/** The catalog texts of a product, trimmed as save_product keeps them (migration 20261013000000_catalog_trim). */
+export const trimmedProduct = (p: Product): Product => ({
+  ...p,
+  name: trimLocalized(p.name),
+  tagline: trimLocalized(p.tagline),
+  description: trimLocalized(p.description),
+  tastingNotes: trimLocalized(p.tastingNotes),
+});
+
+/** The same for an origin: name, tasting notes and region, as save_origin keeps them. */
+export const trimmedOrigin = (o: Origin): Origin => ({
+  ...o,
+  name: trimLocalized(o.name),
+  tastingNotes: trimLocalized(o.tastingNotes),
+  region: trimEnds(o.region ?? ''),
+});

@@ -8,6 +8,7 @@
  * payments, texts and delivery prices of slice 10: ./configWrites.ts.
  */
 import type { StatusRefusal } from '@/core/orderFlow';
+import { trimmedOrigin, trimmedProduct } from '@/core/config';
 import { isPrice } from '@/core/pricing';
 import { PACK_SIZES, type Origin, type Product, type QuoteRequest } from '@/core/types';
 import { newOriginId, newProductId } from '../ids';
@@ -27,7 +28,9 @@ type Writes = Pick<
  * The product as save_product reads it: its photo is not sent (image_url stays as it is),
  * and a size without a real price (0 or empty in the form) is not offered.
  */
-function productJson(p: Product): Json {
+function productJson(product: Product): Json {
+  // the texts trimmed, as save_product keeps them: what is sent is what is saved
+  const p = trimmedProduct(product);
   const prices = Object.fromEntries(PACK_SIZES.filter((s) => isPrice(p.prices[s])).map((s) => [String(s), p.prices[s]!]));
   const { id, slug, kind, name, tagline, description, roastLevel, tastingNotes, featured, active, sortOrder } = p;
   return { id, slug, kind, name, tagline, description, roastLevel, tastingNotes, prices, featured, active, sortOrder };
@@ -36,7 +39,8 @@ function productJson(p: Product): Json {
 const recipeJson = (p: Product): Json => p.recipe.map(({ originId, percent }) => ({ originId, percent }));
 
 /** The origin as save_origin reads it (stock, shown or not and the restock date are not changed there). */
-function originJson(o: Origin): Json {
+function originJson(origin: Origin): Json {
+  const o = trimmedOrigin(origin);
   const { id, name, countryCode, species, region, roastLevel, tastingNotes, lowStockKg, pricePerKg, customBlendEnabled } = o;
   return { id, name, countryCode, species, region, roastLevel, tastingNotes, lowStockKg, pricePerKg, customBlendEnabled };
 }
@@ -83,8 +87,9 @@ export function createAdminWrites(client: () => Client, data: AdminData): Writes
 
     // created hidden, with an id from its French name; it is shown by an edit, after a check
     async createProduct(draft) {
-      const id = newProductId(draft.name.fr, data.db.get().products);
-      const product = { ...draft, id, slug: id, active: false };
+      const clean = trimmedProduct(draft);
+      const id = newProductId(clean.name.fr, data.db.get().products);
+      const product = { ...clean, id, slug: id, active: false };
       await creating(
         () => call('save_product', { p_product: productJson(product), p_recipe: recipeJson(product), p_seen_at: null }),
         () => data.db.get().products.some((p) => p.id === id),
@@ -104,7 +109,8 @@ export function createAdminWrites(client: () => Client, data: AdminData): Writes
     createOrigin: (draft) =>
       unlessRefused(async () => {
         if (!isPrice(draft.pricePerKg)) return null;
-        const origin = { ...draft, id: newOriginId(draft.name.fr, data.db.get().origins), stockKg: 0, active: false };
+        const clean = trimmedOrigin(draft);
+        const origin = { ...clean, id: newOriginId(clean.name.fr, data.db.get().origins), stockKg: 0, active: false };
         await creating(
           () => call('save_origin', { p_origin: originJson(origin), p_seen_at: null }),
           () => data.db.get().origins.some((o) => o.id === origin.id),
