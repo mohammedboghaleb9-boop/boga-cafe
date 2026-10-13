@@ -3,7 +3,26 @@
  * here, on the visitor's own copy of the data (./store). Each function maps to
  * one server call of the Supabase backend — same inputs, same results.
  */
-import { cleanPayee, contactOk, contentOk, MAX_FREE_SHIPPING, methodOk, payeeProblem, recipientsOk, rulesOk, shippingRateOk, type BusinessRules, type Payee } from '@/core/config';
+import {
+  cleanPayee,
+  contactOk,
+  contentOk,
+  MAX_FREE_SHIPPING,
+  methodOk,
+  payeeProblem,
+  recipientsOk,
+  rulesOk,
+  shippingRateOk,
+  trimmedContact,
+  trimmedContent,
+  trimmedMethod,
+  trimmedOrigin,
+  trimmedProduct,
+  trimmedRate,
+  trimmedRecipients,
+  type BusinessRules,
+  type Payee,
+} from '@/core/config';
 import { buildOrder, expiredUnpaidOrders, type CheckoutInput } from '@/core/order';
 import { buildQuoteRequest, type QuoteInput } from '@/core/requests';
 import { isPrice } from '@/core/pricing';
@@ -235,14 +254,16 @@ export const demoApi: Api = {
 
   /** New product: its id and address come from the name and never replace an existing product. */
   async createProduct(draft: Product) {
-    const slug = newProductId(draft.name.fr, db.get().products);
-    const product = { ...draft, id: slug, slug };
+    const clean = trimmedProduct(draft);
+    const slug = newProductId(clean.name.fr, db.get().products);
+    const product = { ...clean, id: slug, slug };
     db.update((s) => ({ ...s, products: [...s.products, product] }));
     return product;
   },
 
   /** Changes an existing product (false if there is none with this id: use createProduct). */
-  async saveProduct(product: Product) {
+  async saveProduct(draft: Product) {
+    const product = trimmedProduct(draft);
     if (!db.get().products.some((p) => p.id === product.id)) return false;
     db.update((s) => ({ ...s, products: s.products.map((p) => (p.id === product.id ? product : p)) }));
     return true;
@@ -255,13 +276,15 @@ export const demoApi: Api = {
   /** New origin at 0 kg (its first lot goes through adjustStock); never replaces an existing one. Null without a real price per kg. */
   async createOrigin(draft: Origin) {
     if (!isPrice(draft.pricePerKg)) return null;
-    const origin = { ...draft, id: newOriginId(draft.name.fr, db.get().origins), stockKg: 0 };
+    const clean = trimmedOrigin(draft);
+    const origin = { ...clean, id: newOriginId(clean.name.fr, db.get().origins), stockKg: 0 };
     db.update((s) => ({ ...s, origins: [...s.origins, origin] }));
     return origin;
   },
 
   /** Saves origin details. Stock is changed only through `adjustStock` so every change is logged. */
-  async saveOrigin(origin: Origin) {
+  async saveOrigin(draft: Origin) {
+    const origin = trimmedOrigin(draft);
     if (!isPrice(origin.pricePerKg) || !db.get().origins.some((o) => o.id === origin.id)) return false;
     db.update((s) => ({ ...s, origins: s.origins.map((o) => (o.id === origin.id ? { ...origin, stockKg: o.stockKg } : o)) }));
     return true;
@@ -282,13 +305,15 @@ export const demoApi: Api = {
 
   /** A new city, hidden until shown on purpose; its id comes from its French name and is never an existing one. */
   async createShippingRate(draft: ShippingRate, role: AdminRole) {
-    if (role === 'staff' || !shippingRateOk(draft)) return null;
-    const rate = { ...draft, id: newShippingId(draft.city.fr, db.get().shippingRates), active: false };
+    const clean = trimmedRate(draft);
+    if (role === 'staff' || !shippingRateOk(clean)) return null;
+    const rate = { ...clean, id: newShippingId(clean.city.fr, db.get().shippingRates), active: false };
     db.update((s) => ({ ...s, shippingRates: [...s.shippingRates, rate] }));
     return rate;
   },
 
-  async saveShippingRate(rate: ShippingRate, role: AdminRole) {
+  async saveShippingRate(draft: ShippingRate, role: AdminRole) {
+    const rate = trimmedRate(draft);
     if (role === 'staff' || !shippingRateOk(rate) || !db.get().shippingRates.some((r) => r.id === rate.id)) return false;
     db.update((s) => ({ ...s, shippingRates: s.shippingRates.map((r) => (r.id === rate.id ? rate : r)) }));
     return true;
@@ -298,7 +323,8 @@ export const demoApi: Api = {
     db.update((s) => ({ ...s, shippingRates: s.shippingRates.filter((r) => r.id !== id) }));
   },
 
-  async savePaymentMethod(method: PaymentMethodConfig, role: AdminRole) {
+  async savePaymentMethod(draft: PaymentMethodConfig, role: AdminRole) {
+    const method = trimmedMethod(draft);
     if (role !== 'owner' || !methodOk(method, methodAvailable({ id: 'card', enabled: true }, db.get().settings)) || !db.get().paymentMethods.some((m) => m.id === method.id)) return false;
     db.update((s) => ({ ...s, paymentMethods: s.paymentMethods.map((m) => (m.id === method.id ? method : m)) }));
     return true;
@@ -317,12 +343,15 @@ export const demoApi: Api = {
     return savePart(clean, role, payeeProblem(clean) === null);
   },
 
-  async saveRecipients(recipients: Settings['notifications'], role: AdminRole) {
+  async saveRecipients(draft: Settings['notifications'], role: AdminRole) {
+    const recipients = trimmedRecipients(draft);
     return savePart({ notifications: recipients }, role, recipientsOk(recipients));
   },
 
   /** The texts, and the contact details when given (owner only): both saved, or neither. */
-  async saveContent(content: SiteContent, contact: Settings['contact'] | null, role: AdminRole) {
+  async saveContent(draft: SiteContent, draftContact: Settings['contact'] | null, role: AdminRole) {
+    const content = trimmedContent(draft);
+    const contact = draftContact && trimmedContact(draftContact);
     if (role === 'staff' || !contentOk(content) || (contact && !contactOk(contact))) return false;
     if (contact && !savePart({ contact }, role, true)) return false;
     db.update((s) => ({ ...s, content }));

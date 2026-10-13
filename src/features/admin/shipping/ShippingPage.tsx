@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MAX_FREE_SHIPPING, shippingRateOk } from '@/core/config';
+import { MAX_FREE_SHIPPING, shippingRateOk, trimmedRate } from '@/core/config';
 import { shippingFee } from '@/core/shipping';
 import type { ShippingRate } from '@/core/types';
 import { api } from '@/data/api';
@@ -205,7 +205,8 @@ function RateRow({ rate, writable }: { rate: ShippingRate; writable: boolean }) 
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
   const valid = shippingRateOk(r);
-  const changed = JSON.stringify(r) !== JSON.stringify(rate);
+  // what would be saved, not what is typed: a space at the end of a name is no change (and would only mark the city as saved by someone)
+  const changed = JSON.stringify(trimmedRate(r)) !== JSON.stringify(rate);
   const label = (field: string) => rowLabel(field, rate);
   return (
     <>

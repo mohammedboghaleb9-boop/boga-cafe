@@ -82,15 +82,80 @@ export function liveTurnstileSecret(secret: string): string {
   return '';
 }
 
-/** Cloudflare's answer for a widget token. Fails closed: no answer in 5 s = not verified. */
-export async function verifyTurnstile(secret: string, token: string, ip: string | null, fetchFn: typeof fetch = fetch): Promise<boolean> {
+const LABEL = '[a-z0-9]([a-z0-9-]*[a-z0-9])?';
+/** A hostname the site may be served from: lower case labels of letters, digits and dashes. */
+const HOSTNAME = new RegExp(`^${LABEL}(\\.${LABEL})*$`);
+/** A wildcard entry: `*-` and a label, then at least three more labels, so the star only stands for the start of the first one. */
+const WILDCARD = new RegExp(`^\\*-${LABEL}(\\.${LABEL}){3,}$`);
+
+/**
+ * The hostnames a Turnstile token may come from (TURNSTILE_HOSTNAMES, comma separated): the site's
+ * own address, and for the previews one wildcard such as `*-boga-cafe.<account>.workers.dev`: the star
+ * is glued to a dash and stands for one label start (a version id or a branch alias), and the entry
+ * must name the account, whose workers.dev names only its owner can create. `*.workers.dev` and
+ * anything shorter is dropped, so a typo never widens what is accepted. A dropped entry is logged by
+ * its place and length, never its text (a secret pasted here by mistake must not reach the logs).
+ */
+export function liveTurnstileHostnames(raw: string): string[] {
+  const kept: string[] = [];
+  raw
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+    .forEach((entry, i) => {
+      if (HOSTNAME.test(entry) || WILDCARD.test(entry)) kept.push(entry);
+      else console.error(`storefront: TURNSTILE_HOSTNAMES entry ${i + 1} (${entry.length} characters) is not a hostname or a safe wildcard: ignored`);
+    });
+  return kept;
+}
+
+/**
+ * Whether `hostname` is one of `allowed` (liveTurnstileHostnames' output): exactly, or under a wildcard
+ * entry's suffix with one label start before it (letters, digits, dashes), never the suffix alone.
+ */
+export function hostnameAllowed(hostname: string, allowed: string[]): boolean {
+  const host = hostname.toLowerCase();
+  return allowed.some((entry) => {
+    if (!entry.startsWith('*')) return host === entry;
+    const suffix = entry.slice(1);
+    return host.endsWith(suffix) && /^[a-z0-9-]+$/.test(host.slice(0, host.length - suffix.length));
+  });
+}
+
+/** What a token must prove besides being valid: it was solved for this form, on one of the site's own pages. */
+export interface TurnstileExpectation {
+  action: Route;
+  hostnames: string[];
+}
+
+/**
+ * Cloudflare's answer for a widget token (developers.cloudflare.com/turnstile/get-started/server-side-validation):
+ * valid, solved for the expected `action` (the widget names the form), on an allowed `hostname`.
+ * Fails closed: no answer in 5 s = not verified.
+ */
+export async function verifyTurnstile(
+  secret: string,
+  token: string,
+  ip: string | null,
+  expected: TurnstileExpectation,
+  fetchFn: typeof fetch = fetch,
+): Promise<boolean> {
   if (!token) return false;
   const body = new URLSearchParams({ secret, response: token });
   if (ip) body.set('remoteip', ip);
   try {
     const res = await fetchFn('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body, signal: AbortSignal.timeout(5000) });
-    const data = (await res.json()) as { success?: boolean };
-    return data.success === true;
+    const data = (await res.json()) as { success?: boolean; action?: string; hostname?: string };
+    if (data.success !== true) return false;
+    if (data.action !== expected.action) {
+      console.error(`turnstile: token solved for action ${JSON.stringify(data.action)}, expected ${JSON.stringify(expected.action)}`);
+      return false;
+    }
+    if (typeof data.hostname !== 'string' || !hostnameAllowed(data.hostname, expected.hostnames)) {
+      console.error(`turnstile: token solved on hostname ${JSON.stringify(data.hostname)}, not an allowed one`);
+      return false;
+    }
+    return true;
   } catch (e) {
     console.error('turnstile', e);
     return false;

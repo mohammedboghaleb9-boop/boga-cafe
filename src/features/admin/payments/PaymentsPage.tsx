@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { cleanPayee, methodOk, payeeProblem, PHONE, RIB, type Payee } from '@/core/config';
+import { cleanPayee, methodOk, payeeProblem, PHONE, RIB, sameRib, type Payee } from '@/core/config';
 import type { PaymentMethodConfig, PaymentMethodId, Settings } from '@/core/types';
 import { api } from '@/data/api';
 import { canWrite, useAdminDb } from '@/data/hooks';
@@ -154,12 +154,16 @@ function PayeeEditor({ settings, role }: { settings: Settings; role: Role }) {
   const { t, date } = useI18n();
   const { configVersions, payeeChange } = useAdminDb();
   const current: Payee = { bank: settings.bank, cashplus: settings.cashplus };
-  const [draft, setDraft] = useSavedDraft(current, configVersions?.payee ?? JSON.stringify(current));
-  const { bank, cashplus } = draft;
+  // `ribAgain` is only a typing check, never sent: it starts empty again with every new copy of the payee
+  const [draft, setDraft] = useSavedDraft({ ...current, ribAgain: '' }, configVersions?.payee ?? JSON.stringify(current));
+  const { bank, cashplus, ribAgain } = draft;
   const setBank = (next: Payee['bank']) => setDraft((d) => ({ ...d, bank: next }));
   const setCashplus = (update: (c: Payee['cashplus']) => Payee['cashplus']) => setDraft((d) => ({ ...d, cashplus: update(d.cashplus) }));
   const payee = cleanPayee(draft);
   const problem = payeeProblem(payee);
+  // a new RIB must be typed twice: a wrong digit would send customers' money to someone else
+  const ribToConfirm = payee.bank.rib !== '' && !sameRib(payee.bank.rib, current.bank.rib);
+  const ribUnconfirmed = ribToConfirm && !sameRib(payee.bank.rib, ribAgain);
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
   const setC = (k: keyof Payee['cashplus'], v: string) => setCashplus((c) => ({ ...c, [k]: v }));
@@ -173,7 +177,7 @@ function PayeeEditor({ settings, role }: { settings: Settings; role: Role }) {
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            disabled={problem !== null}
+            disabled={problem !== null || ribUnconfirmed}
             aria-disabled={busy || undefined}
             aria-label={`${t.common.save} · ${t.admin.payments.bankTitle}`}
             onClick={() =>
@@ -203,9 +207,25 @@ function PayeeEditor({ settings, role }: { settings: Settings; role: Role }) {
         </label>
         <label className="field span-all">
           <span className="label">{t.admin.payments.rib}</span>
-          <input className="input num" dir="ltr" inputMode="numeric" maxLength={40} value={bank.rib} onChange={(e) => setBank({ ...bank, rib: e.target.value })} />
+          {/* a changed RIB is typed again: the second one never outlives the first */}
+          <input className="input num" dir="ltr" inputMode="numeric" maxLength={40} value={bank.rib} onChange={(e) => setDraft((d) => ({ ...d, bank: { ...d.bank, rib: e.target.value }, ribAgain: '' }))} />
           {payee.bank.rib !== '' && !RIB.test(payee.bank.rib) && <span className="field-error">{t.admin.payments.ribInvalid}</span>}
         </label>
+        {ribToConfirm && (
+          <label className="field span-all">
+            <span className="label">{t.admin.payments.ribConfirm}</span>
+            <input
+              className="input num"
+              dir="ltr"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={40}
+              value={ribAgain}
+              onChange={(e) => setDraft((d) => ({ ...d, ribAgain: e.target.value }))}
+            />
+            {ribAgain !== '' && ribUnconfirmed && <span className="field-error">{t.admin.payments.ribMismatch}</span>}
+          </label>
+        )}
         <label className="field">
           <span className="label">{t.admin.payments.cashplusBeneficiary}</span>
           <input className="input" maxLength={80} value={cashplus.beneficiary} onChange={(e) => setC('beneficiary', e.target.value)} />

@@ -6,7 +6,7 @@
  * the page read; the role passed here is not trusted, the database decides. Each part is
  * sent with only its own keys: nothing else of the page reaches the database.
  */
-import { cleanPayee, type BusinessRules, type Payee } from '@/core/config';
+import { cleanPayee, trimmedContact, trimmedContent, trimmedMethod, trimmedRate, trimmedRecipients, type BusinessRules, type Payee } from '@/core/config';
 import type { PaymentMethodConfig, Settings, ShippingRate, SiteContent } from '@/core/types';
 import { newShippingId } from '../ids';
 import type { ConfigPart } from '../state';
@@ -31,34 +31,21 @@ const rulesJson = ({ b2bThresholdKg, roastLossPercent, unpaidOrderTimeoutHours, 
 /** Cleaned, and these fields only: there is no field for an identity card number. */
 const payeeJson = (payee: Payee): Json => cleanPayee(payee);
 
-const contentJson = ({ announcement, heroTitle, heroSubtitle, aboutTitle, aboutText }: SiteContent): Json => ({
-  announcement,
-  heroTitle,
-  heroSubtitle,
-  aboutTitle,
-  aboutText,
-});
+/** Every text trimmed, as the database keeps it (config_trim_text): what is sent is what is saved. */
+const contentJson = (content: SiteContent): Json => {
+  const { announcement, heroTitle, heroSubtitle, aboutTitle, aboutText } = trimmedContent(content);
+  return { announcement, heroTitle, heroSubtitle, aboutTitle, aboutText };
+};
 
-const contactJson = ({ whatsapp, email, instagram, tiktok, facebook, address, hours }: Settings['contact']): Json => ({
-  whatsapp,
-  email,
-  instagram,
-  tiktok,
-  facebook,
-  address,
-  hours,
-});
+const contactJson = (contact: Settings['contact']): Json => {
+  const { whatsapp, email, instagram, tiktok, facebook, address, hours } = trimmedContact(contact);
+  return { whatsapp, email, instagram, tiktok, facebook, address, hours };
+};
 
-const rateJson = ({ id, city, distanceKm, baseFee, includedKg, extraPerKg, deliveryDays, active }: ShippingRate): Json => ({
-  id,
-  city,
-  distanceKm,
-  baseFee,
-  includedKg,
-  extraPerKg,
-  deliveryDays,
-  active,
-});
+const rateJson = (rate: ShippingRate): Json => {
+  const { id, city, distanceKm, baseFee, includedKg, extraPerKg, deliveryDays, active } = trimmedRate(rate);
+  return { id, city, distanceKm, baseFee, includedKg, extraPerKg, deliveryDays, active };
+};
 
 /** `client`: the admin's own (src/data/supabase/index.ts); `data`: what the panel shows, read again after each write. */
 export function createConfigWrites(client: () => Client, data: AdminData): Writes {
@@ -79,7 +66,7 @@ export function createConfigWrites(client: () => Client, data: AdminData): Write
       saved(async () => {
         const at = seen('recipients');
         if (!at) return false; // the owner's read gives it: never sent blind
-        const { adminWhatsapp, adminEmail, whatsappEnabled, emailEnabled } = recipients;
+        const { adminWhatsapp, adminEmail, whatsappEnabled, emailEnabled } = trimmedRecipients(recipients);
         await call('save_recipients', { p_recipients: { adminWhatsapp, adminEmail, whatsappEnabled, emailEnabled }, p_seen: at });
       }),
 
@@ -94,8 +81,9 @@ export function createConfigWrites(client: () => Client, data: AdminData): Write
         }),
       ),
 
-    savePaymentMethod: ({ id, enabled, label, instructions, updatedAt }: PaymentMethodConfig) =>
+    savePaymentMethod: (method: PaymentMethodConfig) =>
       saved(async () => {
+        const { id, enabled, label, instructions, updatedAt } = trimmedMethod(method);
         if (!updatedAt) return false;
         await call('save_payment_method', { p_method: { id, enabled, label, instructions }, p_seen: updatedAt });
       }),
@@ -103,7 +91,8 @@ export function createConfigWrites(client: () => Client, data: AdminData): Write
     // created hidden, with an id from its French name; it is shown by an edit, after a check
     createShippingRate: (draft) =>
       unlessRefused(async () => {
-        const rate = { ...draft, id: newShippingId(draft.city.fr, data.db.get().shippingRates), active: false };
+        const clean = trimmedRate(draft);
+        const rate = { ...clean, id: newShippingId(clean.city.fr, data.db.get().shippingRates), active: false };
         await creating(
           () => call('save_shipping_rate', { p_rate: rateJson(rate), p_seen: null }),
           () => data.db.get().shippingRates.some((r) => r.id === rate.id),

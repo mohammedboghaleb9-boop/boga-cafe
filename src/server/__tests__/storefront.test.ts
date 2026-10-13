@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TEXT_MAX } from '@/core/limits';
 import type { Client } from '@/data/supabase/client';
-import { hashIp, ipBucket, liveTurnstileSecret, verifyTurnstile } from '../guard';
+import { hashIp, hostnameAllowed, ipBucket, liveTurnstileHostnames, liveTurnstileSecret, verifyTurnstile } from '../guard';
 import { idempotencyKey, parseCheckoutInput, parseQuoteInput } from '../parse';
 import { NUMBER_PLACEHOLDER } from '../prepare';
 import { handleStorefront, type Deps } from '../storefront';
@@ -109,21 +109,38 @@ const PASS_SECRET = '1x0000000000000000000000000000000AA';
 const FAIL_SECRET = '2x0000000000000000000000000000000AA';
 const DUMMY_TOKEN = 'XXXX.DUMMY.TOKEN.XXXX';
 
-/** siteverify as Cloudflare answers for the test keys; records what it was sent. */
+const SITE_HOST = 'boga-cafe.example.workers.dev';
+/** What the widget reported when the visitor solved it, besides what the form says: a test sets it to play another page or form. */
+let widgetSays: { action?: string; hostname?: string } = {};
+beforeEach(() => {
+  widgetSays = {};
+  // the refusals log why (guard.ts): kept out of the test output, and restored even when an assertion fails
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+afterEach(() => vi.restoreAllMocks());
+/** The form being checked, set by each call so that siteverify can answer as Cloudflare does: with the action the widget was given. */
+let formChecked: string = 'order';
+
+/** siteverify as Cloudflare answers for the test keys (its answer carries the action and the hostname of the widget); records what it was sent. */
 function fakeSiteverify(sent: URLSearchParams[] = []) {
   return (async (url: string, init: RequestInit) => {
     expect(url).toBe('https://challenges.cloudflare.com/turnstile/v0/siteverify');
     const body = init.body as URLSearchParams;
     sent.push(body);
     const success = body.get('secret') === PASS_SECRET && body.get('response') === DUMMY_TOKEN;
-    return new Response(JSON.stringify(success ? { success } : { success, 'error-codes': ['invalid-input-response'] }));
+    return new Response(
+      JSON.stringify(success ? { success, hostname: SITE_HOST, action: formChecked, ...widgetSays } : { success, 'error-codes': ['invalid-input-response'] }),
+    );
   }) as unknown as typeof fetch;
 }
 
 const IP_KEY = 'server-secret';
 const deps = (db: Client, over: Partial<Deps> = {}, siteverify = fakeSiteverify()): Deps => ({
-  db, ip: '196.200.1.1', ipKey: IP_KEY, turnstileSecret: PASS_SECRET, now: new Date('2026-10-01T10:00:00Z'),
-  verifyCaptcha: (secret, token, ip) => verifyTurnstile(secret, token, ip, siteverify),
+  db, ip: '196.200.1.1', ipKey: IP_KEY, turnstileSecret: PASS_SECRET, turnstileHostnames: [SITE_HOST], now: new Date('2026-10-01T10:00:00Z'),
+  verifyCaptcha: (secret, token, ip, expected) => {
+    formChecked = expected.action;
+    return verifyTurnstile(secret, token, ip, expected, siteverify);
+  },
   ...over,
 });
 
@@ -400,11 +417,77 @@ describe('storefront: Turnstile first', () => {
     expect(sent).toHaveLength(0);
   });
 
+  it('refuses a token solved for the other form, or without an action: the order\'s token never opens the B2B request', async () => {
+    for (const says of [{ action: 'quote' }, { action: '' }, { action: 'Order' }]) {
+      widgetSays = says;
+      const fake = fakeDb();
+      expect(await handleStorefront('order', orderBody(), deps(fake.db))).toEqual(CAPTCHA);
+      expect(untouched(fake)).toBe(true);
+    }
+    widgetSays = { action: 'order' };
+    const quote = fakeDb();
+    expect(await handleStorefront('quote', { ...contact, items: b2bItems }, deps(quote.db))).toEqual(CAPTCHA);
+    expect(untouched(quote)).toBe(true);
+  });
+
+  it('refuses a token solved on another site, accepts the site\'s own pages and the previews\' wildcard', async () => {
+    for (const hostname of ['evil.example.com', `${SITE_HOST}.evil.example.com`, `x${SITE_HOST}`, '']) {
+      widgetSays = { hostname };
+      const fake = fakeDb();
+      expect(await handleStorefront('order', orderBody(), deps(fake.db))).toEqual(CAPTCHA);
+      expect(untouched(fake)).toBe(true);
+    }
+    const preview = ['*-boga-cafe.example.workers.dev'];
+    widgetSays = { hostname: 'feat-p5-s11-cleanup-turnstile-boga-cafe.example.workers.dev' };
+    const ok = fakeDb();
+    expect((await handleStorefront('order', orderBody(), deps(ok.db, { turnstileHostnames: preview }))).body).toMatchObject({ ok: true });
+    widgetSays = { hostname: SITE_HOST }; // the wildcard is previews only: the site's own hostname needs its own entry
+    expect(await handleStorefront('order', orderBody(), deps(fakeDb().db, { turnstileHostnames: preview }))).toEqual(CAPTCHA);
+  });
+
+  it('refuses everything when no hostname is allowed (http.ts answers 500)', async () => {
+    const fake = fakeDb();
+    await expect(handleStorefront('order', orderBody(), deps(fake.db, { turnstileHostnames: [] }))).rejects.toThrow('TURNSTILE_HOSTNAMES');
+    expect(untouched(fake)).toBe(true);
+  });
+
+  it('keeps only hostnames that are safe: a wildcard stays glued to a dash inside one account, a typo widens nothing', () => {
+    expect(liveTurnstileHostnames(' Boga-Cafe.Example.workers.dev , *-boga-cafe.example.workers.dev,,bogacafe.ma')).toEqual([
+      'boga-cafe.example.workers.dev',
+      '*-boga-cafe.example.workers.dev',
+      'bogacafe.ma',
+    ]);
+    // dropped: everything under a public suffix, a star that is not glued to a dash, a bare star, a scheme, a port, a path, a space inside
+    expect(liveTurnstileHostnames('*.workers.dev,*,*.com,*.example.workers.dev,*.boga-cafe.example.workers.dev,*-x.com,*-.example.workers.dev,https://boga.ma,boga.ma:443,boga.ma/x,bo ga.ma,*.co.ma,boga..ma,.boga.ma')).toEqual([]);
+    expect(liveTurnstileHostnames('')).toEqual([]);
+  });
+
+  it('logs a dropped entry by its place and length, never its text (a secret pasted by mistake stays out of the logs)', () => {
+    const secret = '0x4AAAAAAA_pasted_secret_key_0123456789';
+    expect(liveTurnstileHostnames(`bogacafe.ma,${secret}`)).toEqual(['bogacafe.ma']);
+    const logged = vi.mocked(console.error).mock.calls.flat().join(' ');
+    expect(logged).toContain('entry 2');
+    expect(logged).not.toContain('pasted');
+  });
+
+  it('matches a hostname exactly, or under a wildcard entry\'s suffix with one label start before it', () => {
+    const allowed = ['boga-cafe.example.workers.dev', '*-boga-cafe.example.workers.dev'];
+    expect(hostnameAllowed('Boga-Cafe.example.workers.dev', allowed)).toBe(true);
+    expect(hostnameAllowed('abc123-boga-cafe.example.workers.dev', allowed)).toBe(true);
+    expect(hostnameAllowed('feat-p5-s11-cleanup-turnstile-boga-cafe.example.workers.dev', allowed)).toBe(true);
+    expect(hostnameAllowed('-boga-cafe.example.workers.dev', allowed)).toBe(false); // nothing before the suffix
+    expect(hostnameAllowed('a.b-boga-cafe.example.workers.dev', allowed)).toBe(false); // the star never spans a dot
+    expect(hostnameAllowed('abc123-boga-cafe.example.workers.dev.evil.com', allowed)).toBe(false);
+    expect(hostnameAllowed('evil-boga-cafe.other.workers.dev', allowed)).toBe(false);
+    expect(hostnameAllowed('evil.com/x-boga-cafe.example.workers.dev', allowed)).toBe(false); // not a hostname at all
+    expect(hostnameAllowed('abc 123-boga-cafe.example.workers.dev', allowed)).toBe(false);
+    expect(hostnameAllowed('', allowed)).toBe(false);
+    expect(hostnameAllowed('boga-cafe.example.workers.dev', [])).toBe(false);
+  });
+
   it('treats a Cloudflare test secret on the live function as no secret', () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
     for (const test of [PASS_SECRET, FAIL_SECRET, '3x0000000000000000000000000000000AA']) expect(liveTurnstileSecret(test)).toBe('');
     expect(liveTurnstileSecret('0x4AAAAAAAreal-looking-secret')).toBe('0x4AAAAAAAreal-looking-secret');
-    vi.restoreAllMocks();
   });
 
   it('refuses a token longer than Cloudflare issues (2048 characters)', async () => {
@@ -426,21 +509,27 @@ describe('storefront: Turnstile first', () => {
 
 describe('storefront: Turnstile answer', () => {
   const answer = (body: unknown) => (async () => new Response(JSON.stringify(body))) as unknown as typeof fetch;
+  const expected = { action: 'order' as const, hostnames: [SITE_HOST] };
+  const good = { success: true, action: 'order', hostname: SITE_HOST };
 
-  it('is verified only when Cloudflare says success', async () => {
-    expect(await verifyTurnstile('s', 'token', null, answer({ success: true }))).toBe(true);
-    expect(await verifyTurnstile('s', 'token', null, answer({ success: false }))).toBe(false);
+  it('is verified only when Cloudflare says success, for this form, on an allowed hostname', async () => {
+    expect(await verifyTurnstile('s', 'token', null, expected, answer(good))).toBe(true);
+    expect(await verifyTurnstile('s', 'token', null, expected, answer({ ...good, success: false }))).toBe(false);
+    expect(await verifyTurnstile('s', 'token', null, expected, answer({ ...good, action: 'quote' }))).toBe(false);
+    expect(await verifyTurnstile('s', 'token', null, expected, answer({ success: true, hostname: SITE_HOST }))).toBe(false); // no action
+    expect(await verifyTurnstile('s', 'token', null, expected, answer({ success: true, action: 'order' }))).toBe(false); // no hostname
+    expect(await verifyTurnstile('s', 'token', null, expected, answer({ ...good, hostname: 'evil.example.com' }))).toBe(false);
   });
 
   it('fails closed: no token, an unreachable Cloudflare or a broken answer', async () => {
     let asked = false;
     const spy = (async () => ((asked = true), new Response('{"success":true}'))) as unknown as typeof fetch;
-    expect(await verifyTurnstile('s', '', null, spy)).toBe(false);
+    expect(await verifyTurnstile('s', '', null, expected, spy)).toBe(false);
     expect(asked).toBe(false);
     const down = (async () => {
       throw new Error('network down');
     }) as unknown as typeof fetch;
-    expect(await verifyTurnstile('s', 'token', null, down)).toBe(false);
-    expect(await verifyTurnstile('s', 'token', null, (async () => new Response('<html>')) as unknown as typeof fetch)).toBe(false);
+    expect(await verifyTurnstile('s', 'token', null, expected, down)).toBe(false);
+    expect(await verifyTurnstile('s', 'token', null, expected, (async () => new Response('<html>')) as unknown as typeof fetch)).toBe(false);
   });
 });

@@ -11,7 +11,9 @@
  * {ok: false, errors} for every refusal the customer can act on (form errors,
  * stock, 'unavailable', 'too_many', 'captcha'); 200 {ok: true, …}. Limits: see guard.ts.
  * Cloudflare Turnstile comes first (slice 4): without a valid token nothing else
- * runs, not a read, not a count; without the secret every form is refused (500).
+ * runs, not a read, not a count; without the secret or the hostnames every form is refused (500).
+ * A token counts only if it was solved for this form (`action` = the route) on one of the
+ * site's own hostnames (slice 11).
  * An order sent again with the idempotency key of a saved one gets that order back
  * (slice 3b): with a fresh token (a token works once), nothing else is checked,
  * counted or saved again.
@@ -39,6 +41,8 @@ export interface Deps {
   ipKey: string;
   /** Turnstile secret key (TURNSTILE_SECRET_KEY); empty = every form refused, never let through. */
   turnstileSecret: string;
+  /** Hostnames a token may be solved on (TURNSTILE_HOSTNAMES, guard.ts liveTurnstileHostnames); none = every form refused. */
+  turnstileHostnames: string[];
   verifyCaptcha?: typeof verifyTurnstile;
   now?: Date;
 }
@@ -127,6 +131,9 @@ const HANDLERS = { order, quote };
 export async function handleStorefront(route: Route, raw: unknown, deps: Deps): Promise<Reply> {
   // fails closed: a function deployed without its secret refuses everything (http.ts answers 500)
   if (!deps.turnstileSecret) throw new Error('storefront: TURNSTILE_SECRET_KEY is not set');
-  if (!(await (deps.verifyCaptcha ?? verifyTurnstile)(deps.turnstileSecret, captchaToken(raw), deps.ip))) return refuse('captcha');
+  if (deps.turnstileHostnames.length === 0) throw new Error('storefront: TURNSTILE_HOSTNAMES is not set');
+  // the widget of each form names it (`action`), and only the site's own hostnames count
+  const expected = { action: route, hostnames: deps.turnstileHostnames };
+  if (!(await (deps.verifyCaptcha ?? verifyTurnstile)(deps.turnstileSecret, captchaToken(raw), deps.ip, expected))) return refuse('captcha');
   return HANDLERS[route](raw, deps, deps.now ?? new Date());
 }

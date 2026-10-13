@@ -1,9 +1,9 @@
 /**
  * What the Admin Panel's settings, payment, text, recipient and delivery forms may save:
- * the same limits the database checks (supabase/migrations/20261012120000_settings_writes.sql),
+ * the same limits the database checks (supabase/migrations/20261012183912_settings_writes.sql),
  * so a form never sends what would come back "not saved".
  */
-import { PACK_SIZES, type Localized, type PaymentMethodConfig, type Settings, type ShippingRate, type SiteContent } from './types';
+import { PACK_SIZES, type Localized, type Origin, type PaymentMethodConfig, type Product, type Settings, type ShippingRate, type SiteContent } from './types';
 
 /** The parts of the settings saved by the Settings page (owner only). */
 export type BusinessRules = Pick<Settings, 'b2bThresholdKg' | 'roastLossPercent' | 'unpaidOrderTimeoutHours' | 'paymentCheckTimeoutHours' | 'customBlend'>;
@@ -24,17 +24,32 @@ const HTTPS = /^https:\/\/\S+$/;
 /** Spaces, dots and dashes out, as the database keeps a phone number or a RIB. */
 export const digitsOnly = (value: string) => value.replace(/[\s.-]/g, '');
 
+/** The same RIB typed twice, whatever the spaces: the form's typing check (its key is not verified). */
+export const sameRib = (a: string, b: string) => digitsOnly(a) === digitsOnly(b);
+
+/**
+ * A text without the spaces, tabs and line breaks at its start and end, as the database keeps it
+ * (config_trim_str): only these four characters, and nothing inside the text changes.
+ */
+export const trimEnds = (value: string) => value.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '');
+/** A text missing a language (the database accepts one) gets it empty: the form fills all three. */
+export const trimLocalized = (t: Localized): Localized => ({ ar: trimEnds(t.ar ?? ''), fr: trimEnds(t.fr ?? ''), en: trimEnds(t.en ?? '') });
+
 /** A payee as it is checked and kept: names trimmed, the RIB and the phone in digits, these fields only. */
 export const cleanPayee = ({ bank, cashplus }: Payee): Payee => ({
   bank: { holder: bank.holder.trim(), bankName: bank.bankName.trim(), rib: digitsOnly(bank.rib) },
   cashplus: { beneficiary: cashplus.beneficiary.trim(), city: cashplus.city.trim(), phone: digitsOnly(cashplus.phone) },
 });
 
-/** A text in three languages of at most `max` characters each, with a French one when `required`. */
+/** A text in three languages of at most `max` characters each once trimmed, with a French one when `required`. */
 export const textOk = (text: Localized, max: number, required = false) =>
-  Object.values(text).every((v) => v.length <= max) && (!required || text.fr.trim() !== '');
+  Object.values(text).every((v) => trimEnds(v).length <= max) && (!required || trimEnds(text.fr) !== '');
 
-const optional = (value: string, max: number, pattern: RegExp) => value.length <= max && (value === '' || pattern.test(value));
+/** Empty, or matching `pattern`, of at most `max` characters, once trimmed (the database trims first). */
+const optional = (raw: string, max: number, pattern: RegExp) => {
+  const value = trimEnds(raw);
+  return value.length <= max && (value === '' || pattern.test(value));
+};
 
 export const rulesOk = (r: BusinessRules) =>
   between(r.b2bThresholdKg, 1, 1000) &&
@@ -96,4 +111,54 @@ export const shippingRateOk = (r: ShippingRate) =>
   between(r.baseFee, 0, 1000) &&
   between(r.includedKg, 0, 100) &&
   between(r.extraPerKg, 0, 1000) &&
-  r.deliveryDays.length <= 20;
+  trimEnds(r.deliveryDays).length <= 20;
+
+/** What each form sends: every text trimmed, as the database keeps it. */
+export const trimmedContent = (c: SiteContent): SiteContent => ({
+  announcement: trimLocalized(c.announcement),
+  heroTitle: trimLocalized(c.heroTitle),
+  heroSubtitle: trimLocalized(c.heroSubtitle),
+  aboutTitle: trimLocalized(c.aboutTitle),
+  aboutText: trimLocalized(c.aboutText),
+});
+
+export const trimmedContact = (c: Settings['contact']): Settings['contact'] => ({
+  whatsapp: trimEnds(c.whatsapp),
+  email: trimEnds(c.email),
+  instagram: trimEnds(c.instagram),
+  tiktok: trimEnds(c.tiktok),
+  facebook: trimEnds(c.facebook),
+  address: trimLocalized(c.address),
+  hours: trimLocalized(c.hours),
+});
+
+export const trimmedRecipients = (n: Settings['notifications']): Settings['notifications'] => ({
+  ...n,
+  adminWhatsapp: trimEnds(n.adminWhatsapp),
+  adminEmail: trimEnds(n.adminEmail),
+});
+
+export const trimmedMethod = (m: PaymentMethodConfig): PaymentMethodConfig => ({
+  ...m,
+  label: trimLocalized(m.label),
+  instructions: trimLocalized(m.instructions),
+});
+
+export const trimmedRate = (r: ShippingRate): ShippingRate => ({ ...r, city: trimLocalized(r.city), deliveryDays: trimEnds(r.deliveryDays) });
+
+/** The catalog texts of a product, trimmed as save_product keeps them (migration 20261013000000_catalog_trim). */
+export const trimmedProduct = (p: Product): Product => ({
+  ...p,
+  name: trimLocalized(p.name),
+  tagline: trimLocalized(p.tagline),
+  description: trimLocalized(p.description),
+  tastingNotes: trimLocalized(p.tastingNotes),
+});
+
+/** The same for an origin: name, tasting notes and region, as save_origin keeps them. */
+export const trimmedOrigin = (o: Origin): Origin => ({
+  ...o,
+  name: trimLocalized(o.name),
+  tastingNotes: trimLocalized(o.tastingNotes),
+  region: trimEnds(o.region ?? ''),
+});

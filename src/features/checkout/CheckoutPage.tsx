@@ -64,7 +64,7 @@ export function CheckoutPage() {
   const [method, setMethod] = useState<PaymentMethodId | ''>(methods.find((m) => methodAvailable(m, settings))?.id ?? '');
   const [errors, setErrors] = useState<(CheckoutError | GuardError)[]>([]);
   const [busy, setBusy] = useState(false);
-  const captcha = useCaptcha();
+  const captcha = useCaptcha('order');
 
   const summary = summarizeCart(cart.items, { products, origins: originIndex }, settings);
   const rate = shippingRates.find((r) => r.id === customer.cityId && r.active);

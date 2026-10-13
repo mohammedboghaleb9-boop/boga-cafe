@@ -202,7 +202,7 @@ async function fakeSupabase(page: Page, server: Server = {}) {
           restock_date: null, active: false, updated_at: now });
         return json(200, item.id);
       }
-      // the slice 10 rules (migration 20261012120000): owner-only parts, the version read, the card off, a new city hidden
+      // the slice 10 rules (migration 20261012183912): owner-only parts, the version read, the card off, a new city hidden
       const refused = (message: string) => json(400, { code: 'P0001', message, details: null, hint: null });
       const role = user ? admins[user] : undefined;
       const site = catalog.site_config[0] as { settings: Record<string, unknown>; content: unknown; versions: Record<string, string> };
@@ -645,19 +645,37 @@ test.describe('admin sign-in on the live site', () => {
     await expect(page.getByLabel('Forfait · Oujda')).toHaveValue('27');
     // a new city: created hidden
     await page.getByRole('button', { name: 'Ajouter une ville' }).click();
-    await page.locator('section', { hasText: 'Une nouvelle ville est créée masquée' }).getByLabel('Ville FR').fill('TEST ville');
+    await page.locator('section', { hasText: 'Une nouvelle ville est créée masquée' }).getByLabel('Ville FR').fill('  TEST ville ');
     await page.locator('section', { hasText: 'Une nouvelle ville est créée masquée' }).getByRole('button', { name: 'Enregistrer' }).click();
     await expect(page.getByRole('checkbox', { name: 'Activé · TEST ville' })).not.toBeChecked();
-    expect(catalog.shipping_rates.find((r) => r.id === 'test-ville')).toMatchObject({ active: false });
+    // spaces typed around the name are never sent, and never part of its id
+    expect(catalog.shipping_rates.find((r) => r.id === 'test-ville')).toMatchObject({ active: false, city: { fr: 'TEST ville' } });
 
     await open(page, '/admin/payments');
     await page.getByLabel('Titulaire').fill('TEST');
     await expect(page.getByText('Remplissez tout le virement')).toBeVisible(); // half a payee is never sent
     await page.getByLabel('Banque', { exact: true }).fill('TEST');
-    await page.getByLabel('RIB').fill('0000 0000 0000 0000 0000 0000');
-    await page.getByRole('button', { name: 'Enregistrer · Coordonnées de paiement' }).click();
+    const saveBank = page.getByRole('button', { name: 'Enregistrer · Coordonnées de paiement' });
+    const again = page.getByLabel('Saisissez à nouveau le RIB pour confirmer');
+    await expect(again).toHaveCount(0); // nothing to confirm while the RIB is empty
+    await page.getByLabel('RIB', { exact: true }).fill('0000 0000 0000 0000 0000 0000');
+    // a new RIB is typed twice: a wrong second number keeps the button off
+    await expect(saveBank).toBeDisabled();
+    await again.fill('0000 0000 0000 0000 0000 0001');
+    await expect(page.getByText('Les deux numéros ne sont pas identiques')).toBeVisible();
+    await expect(saveBank).toBeDisabled();
+    await again.fill('0000 0000 0000 0000 0000 0000');
+    await expect(page.getByText('Les deux numéros ne sont pas identiques')).toHaveCount(0);
+    // changing the first number clears the second: it has to be typed again
+    await page.getByLabel('RIB', { exact: true }).fill('0000 0000 0000 0000 0000 0002');
+    await expect(again).toHaveValue('');
+    await expect(saveBank).toBeDisabled();
+    await page.getByLabel('RIB', { exact: true }).fill('0000 0000 0000 0000 0000 0000');
+    await again.fill('0000 0000 0000 0000 0000 0000');
+    await saveBank.click();
     await expect(page.locator('fieldset', { hasText: 'Coordonnées de paiement' }).locator('.pill-ok')).toBeVisible();
     expect((catalog.site_config[0].settings as { bank: unknown }).bank).toEqual({ holder: 'TEST', bankName: 'TEST', rib: '000000000000000000000000' });
+    await expect(again).toHaveCount(0); // saved: nothing left to confirm
 
     await open(page, '/admin/settings');
     await page.getByLabel(/Seuil B2B/).fill('11');

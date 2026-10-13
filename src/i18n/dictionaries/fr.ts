@@ -648,6 +648,8 @@ export const fr: Dict = {
       lastChange: 'Dernière modification : {when} · {who}',
       lastChangeUnknown: 'Dernière modification : inconnue (lecture impossible).',
       ribInvalid: 'Le RIB compte 24 chiffres (les espaces sont retirés). La clé n’est pas vérifiée.',
+      ribConfirm: 'Saisissez à nouveau le RIB pour confirmer',
+      ribMismatch: 'Les deux numéros ne sont pas identiques. Vérifiez sur l’attestation RIB de la banque.',
       phoneInvalid: 'Téléphone : 8 à 15 chiffres, avec + au début si besoin.',
       payeeIncomplete: 'Remplissez tout le virement (titulaire, banque, RIB) ou laissez-le vide ; de même pour Cash Plus (nom, ville, téléphone).',
       toVerify: 'Paiements à vérifier',

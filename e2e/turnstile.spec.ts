@@ -24,7 +24,7 @@ window.turnstile = {
     el.appendChild(box);
     const solve = () => { if (!window.tsHold) setTimeout(() => o.callback(${JSON.stringify(DUMMY_TOKEN)} + '-' + ++window.tsStub.issued), 20); };
     window.tsStub.widgets[id] = { box, solve };
-    window.tsStub.renders.push({ sitekey: o.sitekey, language: o.language, size: o.size, theme: o.theme });
+    window.tsStub.renders.push({ sitekey: o.sitekey, action: o.action, language: o.language, size: o.size, theme: o.theme });
     solve();
     return id;
   },
@@ -86,7 +86,8 @@ test.describe('Turnstile on the live site', () => {
   test('checkout: the widget gets the test key in French, its token goes with the order, a new one after each answer', async ({ page }) => {
     const sent = await fakeServer(page, { cart: bag });
     await fillCheckout(page);
-    await expect.poll(() => renders(page)).toEqual([{ sitekey: SITE_KEY, language: 'fr', size: 'flexible', theme: 'dark' }]);
+    // the widget names the form: the server accepts the token only for it (src/server/guard.ts)
+    await expect.poll(() => renders(page)).toEqual([{ sitekey: SITE_KEY, action: 'order', language: 'fr', size: 'flexible', theme: 'dark' }]);
     await tokenReady(page);
     await placeOrder(page);
     await expect(page.locator('.checkout-errors')).toContainText('Trop de demandes');
@@ -152,7 +153,7 @@ test.describe('Turnstile on the live site', () => {
           await fillCheckout(page);
           await expect(page.locator('.ts-stub')).toBeVisible();
           const [checkoutWidget] = await renders(page);
-          expect(checkoutWidget).toMatchObject({ sitekey: SITE_KEY, language: lang });
+          expect(checkoutWidget).toMatchObject({ sitekey: SITE_KEY, action: 'order', language: lang });
           await expectWidgetInside(page);
           await expectNoSideScroll(page);
           expect(await clippedContent(page)).toEqual([]);
@@ -165,6 +166,7 @@ test.describe('Turnstile on the live site', () => {
           await page.fill('#quote-phone', '0612345678');
           await page.selectOption('#quote-city', 'oujda');
           await expect(page.locator('.b2b-box .ts-stub')).toBeVisible();
+          expect((await renders(page))[0]).toMatchObject({ action: 'quote' }); // not the order's: a token solved there is refused for this form
           await expectWidgetInside(page);
           await expectNoSideScroll(page);
           expect(await clippedContent(page)).toEqual([]);

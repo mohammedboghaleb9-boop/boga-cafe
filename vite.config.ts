@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { fileURLToPath, URL } from 'node:url';
+import { siteKeyProblem } from './scripts/turnstile-site-key.mjs';
 
 // Two build targets:
 //  - default: the real website (multi-file, served from the domain root)
@@ -49,6 +50,9 @@ export default defineConfig(({ command, mode: asked }) => {
     // the storefront function refuses every form without a Turnstile token
     if (!env.VITE_TURNSTILE_SITE_KEY?.trim()) throw new Error('VITE_DATA_MODE=supabase needs VITE_TURNSTILE_SITE_KEY (.env.example): without it no order or B2B request can be sent.');
   }
+  // a public key shipped to every visitor, whatever the build: never the secret one (scripts/turnstile-site-key.mjs says what it can and cannot tell)
+  const siteKey = env.VITE_TURNSTILE_SITE_KEY ? siteKeyProblem(env.VITE_TURNSTILE_SITE_KEY) : null;
+  if (command === 'build' && siteKey) throw new Error(`VITE_TURNSTILE_SITE_KEY ${siteKey}`);
   return {
     ...(preview ? { mode: PREVIEW_MODE } : {}),
     base: demo ? './' : '/',

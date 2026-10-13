@@ -1,5 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { contactOk, methodOk, payeeProblem, rulesOk, shippingRateOk, type BusinessRules, type Payee } from '../config';
+import {
+  contactOk,
+  methodOk,
+  payeeProblem,
+  recipientsOk,
+  rulesOk,
+  sameRib,
+  shippingRateOk,
+  textOk,
+  trimEnds,
+  trimmedContact,
+  trimmedContent,
+  trimmedMethod,
+  trimmedOrigin,
+  trimmedProduct,
+  trimmedRate,
+  trimmedRecipients,
+  type BusinessRules,
+  type Payee,
+} from '../config';
+import type { Origin, Product } from '../types';
 import { settings } from './fixtures';
 
 const L = (fr: string) => ({ ar: '', fr, en: '' });
@@ -9,7 +29,7 @@ const payee: Payee = {
   cashplus: { beneficiary: 'TEST', city: 'Oujda', phone: '0600000000' },
 };
 
-// the same limits as supabase/migrations/20261012120000_settings_writes.sql: a form never sends what comes back "not saved"
+// the same limits as supabase/migrations/20261012183912_settings_writes.sql: a form never sends what comes back "not saved"
 describe('admin settings, checked as the database checks them', () => {
   it('rules: within their ranges, whole numbers where the database wants them', () => {
     expect(rulesOk(rules)).toBe(true);
@@ -43,5 +63,74 @@ describe('admin settings, checked as the database checks them', () => {
     expect(shippingRateOk(rate)).toBe(true);
     expect(shippingRateOk({ ...rate, baseFee: 1001 })).toBe(false);
     expect(shippingRateOk({ ...rate, distanceKm: 1.5 })).toBe(false);
+  });
+});
+
+// the same trimming as supabase/migrations/20261012230000_config_trim.sql: what a form sends is what is kept
+describe('texts without the spaces at their start and end', () => {
+  it('trims a space, a tab, a carriage return and a line feed, and changes nothing inside the text', () => {
+    expect(trimEnds(' \t\r\n Titre \n ')).toBe('Titre');
+    expect(trimEnds('Ligne 1\n\n  Ligne 2 ')).toBe('Ligne 1\n\n  Ligne 2');
+    expect(trimEnds('   ')).toBe('');
+    expect(trimEnds('\u00a0x\u00a0')).toBe('\u00a0x\u00a0'); // only the four characters the database trims
+  });
+
+  it('a limit and the French name count what is kept', () => {
+    const edge = ' '.repeat(10);
+    expect(textOk(L(edge + 'x'.repeat(120) + edge), 120)).toBe(true);
+    expect(textOk(L('x'.repeat(121)), 120)).toBe(false);
+    expect(textOk(L('   '), 40, true)).toBe(false);
+    expect(contactOk({ whatsapp: ' +212600000000 ', email: ' team@example.com\n', instagram: ' https://instagram.com/x ', tiktok: '', facebook: '', address: L(''), hours: L('') })).toBe(true);
+    expect(contactOk({ whatsapp: '', email: '', instagram: 'https://insta gram.com', tiktok: '', facebook: '', address: L(''), hours: L('') })).toBe(false); // a space inside is still a mistake
+    expect(recipientsOk({ adminWhatsapp: ' +212600000000 ', adminEmail: ' team@example.com ', whatsappEnabled: true, emailEnabled: true })).toBe(true);
+  });
+
+  it('a text saved with only some languages (the database allows it) is trimmed, never an error', () => {
+    const partial = { fr: ' Bonjour ' } as unknown as ReturnType<typeof L>;
+    expect(trimmedMethod({ id: 'cashplus', enabled: true, label: partial, instructions: partial })).toMatchObject({ label: { ar: '', fr: 'Bonjour', en: '' } });
+    expect(textOk(partial, 10, true)).toBe(true);
+  });
+
+  it('every form part is sent trimmed', () => {
+    const padded = (fr: string) => ({ ar: ` ${fr} `, fr: ` ${fr}\n`, en: `\t${fr}` });
+    expect(trimmedContent({ announcement: padded('a'), heroTitle: padded('b'), heroSubtitle: padded('c'), aboutTitle: padded('d'), aboutText: padded('e') }).aboutText).toEqual({ ar: 'e', fr: 'e', en: 'e' });
+    const contact = trimmedContact({ whatsapp: ' 1 ', email: ' e ', instagram: ' i ', tiktok: ' t ', facebook: ' f ', address: padded('x'), hours: padded('y') });
+    expect(contact).toEqual({ whatsapp: '1', email: 'e', instagram: 'i', tiktok: 't', facebook: 'f', address: { ar: 'x', fr: 'x', en: 'x' }, hours: { ar: 'y', fr: 'y', en: 'y' } });
+    expect(trimmedRecipients({ adminWhatsapp: ' 1 ', adminEmail: ' e ', whatsappEnabled: false, emailEnabled: true })).toEqual({ adminWhatsapp: '1', adminEmail: 'e', whatsappEnabled: false, emailEnabled: true });
+    expect(trimmedMethod({ id: 'cashplus', enabled: true, label: padded('Cash'), instructions: padded('Pay'), updatedAt: 't' })).toEqual({
+      id: 'cashplus',
+      enabled: true,
+      label: { ar: 'Cash', fr: 'Cash', en: 'Cash' },
+      instructions: { ar: 'Pay', fr: 'Pay', en: 'Pay' },
+      updatedAt: 't',
+    });
+    expect(trimmedRate({ id: 'x', city: padded('Oujda'), distanceKm: 0, baseFee: 1, includedKg: 1, extraPerKg: 1, deliveryDays: ' 2-3 ', active: true })).toMatchObject({
+      city: { ar: 'Oujda', fr: 'Oujda', en: 'Oujda' },
+      deliveryDays: '2-3',
+    });
+  });
+});
+
+describe('catalog texts without the spaces at their start and end', () => {
+  const pad = (v: string) => ({ ar: ` ${v} `, fr: `${v}\n`, en: `\t${v}` });
+  const clean = (v: string) => ({ ar: v, fr: v, en: v });
+
+  it('a product keeps its four texts trimmed and nothing else changed', () => {
+    const product = { id: 'p', slug: 'p', kind: 'signature', name: pad('N'), tagline: pad('T'), description: pad('D'), recipe: [], roastLevel: 'medium', tastingNotes: pad('K'), prices: { 250: 1 }, featured: false, active: false, sortOrder: 1 } as Product;
+    expect(trimmedProduct(product)).toEqual({ ...product, name: clean('N'), tagline: clean('T'), description: clean('D'), tastingNotes: clean('K') });
+  });
+
+  it('an origin keeps its name, tasting notes and region trimmed, and a missing region is empty', () => {
+    const origin = { id: 'o', name: pad('N'), countryCode: 'ET', species: 'arabica', region: ' Sidamo \n', roastLevel: 'light', tastingNotes: pad('K'), stockKg: 0, lowStockKg: 1, pricePerKg: 1, customBlendEnabled: true, active: false } as Origin;
+    expect(trimmedOrigin(origin)).toEqual({ ...origin, name: clean('N'), tastingNotes: clean('K'), region: 'Sidamo' });
+    expect(trimmedOrigin({ ...origin, region: undefined as unknown as string }).region).toBe('');
+  });
+});
+
+describe('a new RIB typed twice', () => {
+  it('the two must be the same digits, whatever the spaces, dots and dashes', () => {
+    expect(sameRib('0000 0000 0000 0000 0000 0001', '000000000000000000000001')).toBe(true);
+    expect(sameRib('000000000000000000000001', '000000000000000000000010')).toBe(false);
+    expect(sameRib('000000000000000000000001', '')).toBe(false);
   });
 });

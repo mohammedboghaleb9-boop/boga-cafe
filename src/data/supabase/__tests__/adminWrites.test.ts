@@ -133,6 +133,25 @@ describe('admin writes (live site)', () => {
     });
   });
 
+  it('every catalog text is sent trimmed, as save_product and save_origin keep it', async () => {
+    const pad = (v: string) => ({ ar: ` ${v}`, fr: `${v}\n `, en: `\t${v} ` });
+    const clean = (v: string) => ({ ar: v, fr: v, en: v });
+    const { writes, rpc } = setup();
+    await writes.saveProduct({ ...product, name: pad('Nom'), tagline: pad('Court'), description: pad('Long'), tastingNotes: pad('Cacao') });
+    expect(rpc).toHaveBeenLastCalledWith('save_product', {
+      p_product: expect.objectContaining({ name: clean('Nom'), tagline: clean('Court'), description: clean('Long'), tastingNotes: clean('Cacao') }),
+      p_recipe: expect.anything(),
+      p_seen_at: product.updatedAt,
+    });
+    await writes.saveOrigin({ ...origin, name: pad('Nom'), tastingNotes: pad('Fruite'), region: ' Sidamo\n' });
+    expect(rpc).toHaveBeenLastCalledWith('save_origin', {
+      p_origin: expect.objectContaining({ name: clean('Nom'), tastingNotes: clean('Fruite'), region: 'Sidamo' }),
+      p_seen_at: origin.updatedAt,
+    });
+    expect(await writes.createProduct({ ...product, id: '', slug: '', name: pad('Nouveau'), updatedAt: undefined })).toMatchObject({ name: clean('Nouveau') });
+    expect(await writes.createOrigin({ ...origin, id: '', name: pad('Nouvelle'), region: ' x ', updatedAt: undefined })).toMatchObject({ name: clean('Nouvelle'), region: 'x' });
+  });
+
   it('an edit carries the version the form read; an origin edit too, and a new origin is sent hidden', async () => {
     const { writes, rpc } = setup();
     expect(await writes.saveProduct({ ...product, prices: { 250: 2 } })).toBe(true);
