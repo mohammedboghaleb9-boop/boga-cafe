@@ -50,9 +50,12 @@ function comingSoonEntry() {
     ['content="Blends signature, single origin et Custom Blend. Depuis Oujda, livré partout au Maroc."', 'content="BOGA CAFÉ, Oujda. La boutique en ligne ouvre bientôt."'],
     ['<title>BOGA CAFÉ</title>', '<title>BOGA CAFÉ — Bientôt en ligne</title>'],
   ];
-  // the only sources the page is built from: a seed or shop module imported by mistake stops the build,
-  // whatever text it holds (src/core/types is types only, erased)
+  // the only sources the page is built from (folders end with "/", files match exactly): a seed or shop module
+  // imported by mistake stops the build, whatever text it holds (src/core/types is types only, erased)
   const sources = ['coming-soon/', 'assets/brand/', 'styles/', 'shared/layout/Monogram.tsx', 'shared/ui/BrandIcon.tsx', 'data/contact.ts'];
+  const own = (path: string) => sources.some((s) => (s.endsWith('/') ? path.startsWith(s) : path === s));
+  // Windows paths may differ in letter case (c:/ and C:/)
+  const key = (id: string) => (process.platform === 'win32' ? id.toLowerCase() : id);
   let src = '';
   let outDir = '';
   let written = false;
@@ -62,12 +65,16 @@ function comingSoonEntry() {
       outDir = resolve(config.root, config.build.outDir);
       src = `${normalizePath(resolve(config.root, 'src'))}/`;
     },
+    buildStart() {
+      written = false;
+    },
     buildEnd(this: { getModuleIds(): IterableIterator<string> }, error?: Error) {
       if (error) return;
-      const outside = [...this.getModuleIds()]
-        .map((id) => id.split('?')[0])
-        .filter((id) => id.startsWith(src) && !sources.some((s) => id.startsWith(src + s)))
-        .map((id) => id.slice(src.length - 4));
+      const ids = [...this.getModuleIds()].map((id) => key(id.split('?')[0]));
+      const prefix = key(src);
+      // fails closed: if the ids are not read under src/ (a linked root…), the check cannot run, so the build stops
+      if (!ids.includes(`${prefix}coming-soon/main.tsx`)) throw new Error(`coming soon: the page's entry was not found under ${src}: the module check cannot run`);
+      const outside = ids.filter((id) => id.startsWith(prefix) && !own(id.slice(prefix.length))).map((id) => `src/${id.slice(prefix.length)}`);
       if (outside.length) throw new Error(`coming soon: the page is built from modules outside its own:\n- ${outside.join('\n- ')}`);
     },
     writeBundle() {

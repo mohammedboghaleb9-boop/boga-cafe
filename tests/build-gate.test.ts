@@ -29,6 +29,8 @@ function build(cwd: string, args: string[], vars: Record<string, string>) {
   const html = existsSync(join(outDir, 'index.html')) ? readFileSync(join(outDir, 'index.html'), 'utf8') : '';
   const shop = files.some((f) => f.endsWith('.js') && readFileSync(join(outDir, f), 'utf8').includes('boga-signature'));
   rmSync(outDir, { recursive: true, force: true });
+  // a build killed by the timeout is never read as one that stopped on its own
+  expect(r.signal, `${r.stdout}${r.stderr}`).toBeNull();
   return { status: r.status, log: `${r.stdout}${r.stderr}`, comingSoon: html.includes('data-site="coming-soon"'), shop };
 }
 
@@ -54,6 +56,7 @@ describe('the production build of main: "coming soon", or a stopped build, never
         const r = build(ROOT, ['--mode', mode], workers);
         expect(r.status).not.toBe(0);
         expect(r.log).toMatch(/production build of main/);
+        expect(r.shop).toBe(false);
       });
     }
 
@@ -61,6 +64,7 @@ describe('the production build of main: "coming soon", or a stopped build, never
       const r = build(ROOT, [], { ...workers, ...LIVE, VITE_DATA_MODE: 'supabase' });
       expect(r.status).not.toBe(0);
       expect(r.log).toMatch(/production build of main/);
+      expect(r.shop).toBe(false);
     });
   }
 
@@ -80,8 +84,8 @@ describe('the "coming soon" build checks the folder it wrote', { timeout: 60_000
       cpSync(join(ROOT, f), join(dir, f), { recursive: true });
     }
     symlinkSync(join(ROOT, 'node_modules'), join(dir, 'node_modules'), 'junction');
-    change(dir);
     try {
+      change(dir);
       return build(dir, [], { WORKERS_CI: '1', WORKERS_CI_BRANCH: 'main' });
     } finally {
       // removes the link to node_modules, never what it points to (rm does not follow links)
