@@ -6,7 +6,10 @@
 -- origins.price_per_kg required again (its constraint origins_active_needs_price dropped).
 -- WHAT IT KEEPS, on purpose: THE SALES GATE (check_order, commit_order and commit_quote_request still refuse every sale
 -- while settings.salesOpen is not true, and set_sales_open stays). Removing the gate would open the sales again: that is
--- a separate decision of the owner, never a side effect of a rollback.
+-- a separate decision of the owner, never a side effect of a rollback. save_product keeps its lock on the origins
+-- (harmless, it reads only whether they are shown), but save_origin goes back to catalog_trim's, without its lock
+-- or its 'origin_in_use' check: after a rollback an origin can again be hidden under a shown product (the race and
+-- the plain case are open again; the sale of such a product is still refused).
 -- WHEN IT REFUSES ("stop:", nothing changed): an origin without a price (the column cannot be required again without
 -- making a price up: give every origin its real price first, or keep the migration and fix forward), or a city with a
 -- cap (the cap would silently disappear and the fees would change: remove the caps first, knowingly). In practice this
@@ -42,9 +45,10 @@ begin
   if (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from '61d01c4019b75e4dab30773f9dd27f6d'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '470f0947d3666b6c6ab3ecaaafe4d1c4'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from '63810f494476dc81515e997212dc1ce4'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from '62e6b4adef77e45f860ca44ecc532082'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_shipping_rate') is distinct from '55f2f37a662eef940553a8ea3e2b711d'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d' then
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'e801b945a946649d21cba8957fb127de' then
     raise exception 'stop: a function is not the one of 20261016120000_catalog_ready (changed since): tell Claude before going on';
   end if;
   if exists (select 1 from public.origins where price_per_kg is null) then
@@ -441,19 +445,22 @@ begin
      or exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'shipping_rates' and column_name = 'max_fee') then
     raise exception 'stop: the schema is not the one before 20261016120000 (price required, no constraint, no cap column)';
   end if;
-  -- restored bodies are their migrations'; the gate's three bodies and the switch are untouched
+  -- restored bodies are their migrations'; the gate's three bodies, the switch and save_product are untouched
   if (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from '474c8f441e0f30db554ecbaa0837a5e7'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_shipping_rate') is distinct from '3b3785b0564417180052f22fb0902554'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from 'fb3b0aaa8adb57b78e4977e07c083bd9'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '470f0947d3666b6c6ab3ecaaafe4d1c4'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d' then
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'e801b945a946649d21cba8957fb127de' then
     raise exception 'stop: a function body is not the expected one';
   end if;
   if has_function_privilege('anon', 'public.set_sales_open(boolean, text)', 'execute')
      or not has_function_privilege('authenticated', 'public.set_sales_open(boolean, text)', 'execute')
      or has_function_privilege('anon', 'public.save_origin(jsonb, timestamptz)', 'execute')
      or not has_function_privilege('authenticated', 'public.save_origin(jsonb, timestamptz)', 'execute')
+     or has_function_privilege('anon', 'public.save_product(jsonb, jsonb, timestamptz)', 'execute')
+     or not has_function_privilege('authenticated', 'public.save_product(jsonb, jsonb, timestamptz)', 'execute')
      or has_function_privilege('anon', 'public.save_shipping_rate(jsonb, timestamptz)', 'execute')
      or not has_function_privilege('authenticated', 'public.save_shipping_rate(jsonb, timestamptz)', 'execute')
      or has_function_privilege('anon', 'public.commit_order(jsonb, text, text, text, uuid)', 'execute')
@@ -467,8 +474,8 @@ begin
     raise exception 'stop: the rights on the functions are not the expected ones';
   end if;
   if (select count(*) from pg_proc where pronamespace = 'public'::regnamespace
-       and proname in ('commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open')
-       and prosecdef and proconfig = array['search_path=public, pg_temp']) <> 5
+       and proname in ('commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open', 'save_product')
+       and prosecdef and proconfig = array['search_path=public, pg_temp']) <> 6
      or (select proconfig from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from array['search_path=public, pg_temp'] then
     raise exception 'stop: a function does not have its fixed search_path (public, pg_temp), or a writing one is not security definer';
   end if;

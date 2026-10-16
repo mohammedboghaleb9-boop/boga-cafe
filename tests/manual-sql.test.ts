@@ -138,14 +138,28 @@ describe('catalog_ready (slice 12)', () => {
     expect(block.match(/^commit;$/gm)).toHaveLength(1);
   });
 
-  it('the block checks the six bodies of the migration (md5) and that no row changed', async () => {
-    for (const name of ['check_order', 'commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open']) {
+  it('the block checks the seven bodies of the migration (md5) and that no row changed', async () => {
+    for (const name of ['check_order', 'commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open', 'save_product']) {
       expect(body(migration, name), name).toBeDefined();
       expect(block, name).toContain(await md5(body(migration, name)!));
     }
     expect(block).toContain("raise exception 'stop: a catalog, delivery, payment-method or settings row changed");
     expect(block).toContain("set local lock_timeout = '3s';");
     expect(block).toContain('stop: a function on live is not the one of the earlier migrations');
+  });
+
+  it("save_product is catalog_trim's with the lock on the shown product's origins, nothing else", () => {
+    const trim = read('supabase/migrations/20261013100000_catalog_trim.sql');
+    const lock = /  -- the recipe's origins, locked first.*?order by o\.id for share;\n/s;
+    const locked = fn(migration, 'save_product')!;
+    expect(locked.match(lock)?.[0]).toBeDefined();
+    // the lock comes before the 'hidden_origin' check and before the recipe is written
+    expect(locked.search(lock)).toBeLessThan(locked.indexOf("raise exception 'hidden_origin'"));
+    expect(locked.replace(lock, '')).toBe(fn(trim, 'save_product')!);
+    // save_origin locks its row before every check of an edit
+    const origin = fn(migration, 'save_origin')!;
+    expect(origin.indexOf('for update;')).toBeGreaterThan(origin.indexOf('  else\n'));
+    expect(origin.indexOf('for update;')).toBeLessThan(origin.indexOf("raise exception 'needs_price'"));
   });
 
   it('the migration changes no row: no insert, update or delete outside its function bodies', () => {
@@ -166,7 +180,7 @@ describe('catalog_ready (slice 12)', () => {
     expect(check.replace(/ *v_fee := round\(v_rate\.base_fee \+ v_extra_kg \* v_rate\.extra_per_kg\);\n/, '')).toBe(
       fn(migration, 'check_order')!.replace(/ *-- at most the city's cap.*\n *v_fee := round\(least\(.*\)\);\n/, ''),
     ); // the migration's check_order but the cap, nothing else
-    for (const name of ['commit_order', 'commit_quote_request', 'set_sales_open']) {
+    for (const name of ['commit_order', 'commit_quote_request', 'set_sales_open', 'save_product']) {
       expect(rollback, name).not.toMatch(new RegExp(`function public\\.${name}\\(`));
       expect(rollback, `${name} still checked`).toContain(await md5(body(migration, name)!));
     }

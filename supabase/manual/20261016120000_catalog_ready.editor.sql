@@ -5,7 +5,9 @@
 --
 -- WHAT IT CHANGES: functions and the schema only, NO ROW. An origin's price may be empty (shown only with a price);
 -- save_origin edits the whole definition (never the stock); a delivery cap per city (max_fee); the sales gate:
--- orders and B2B requests are saved only while settings.salesOpen is exactly true. The live settings have no
+-- orders and B2B requests are saved only while settings.salesOpen is exactly true; save_origin and save_product
+-- lock the origins before their checks (an origin hidden and a product shown at the same instant never both pass).
+-- The live settings have no
 -- salesOpen today, so from the commit of this block the database refuses every new order and B2B request until the
 -- owner opens the sales (Admin -> Settings). Orders already placed keep their life cycle.
 -- ORDER: deploy the storefront function of the merged code FIRST, then run this block. The other way round,
@@ -15,7 +17,7 @@
 -- HOW: paste ALL of it (from "begin;" to the last select), select nothing, press Run. One transaction: any check that
 -- fails raises an exception ("stop: ...") and nothing is changed. The migration text between the two markers is the
 -- file supabase/migrations/20261016120000_catalog_ready.sql, unchanged (tests/manual-sql.test.ts keeps them equal).
--- RESULT: the last select must read: sales_open false, price_optional true, cap_column true, bodies 6,
+-- RESULT: the last select must read: sales_open false, price_optional true, cap_column true, bodies 7,
 -- anon_runs_sales_switch false, owner_switch_callable true, and the same products / origins / cities counts as before.
 -- AFTER: the version 20261016120000 is recorded in the migration history (a separate step, as for 20261013100000).
 -- ROLLBACK (after a commit): supabase/manual/20261016120000_catalog_ready.rollback.sql (catalog part only; the gate stays).
@@ -50,7 +52,8 @@ begin
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '51bde0fa435a7ec049f68581049f3598'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '3f145b77d7669947def14024f7837a26') and ((select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from 'fb3b0aaa8adb57b78e4977e07c083bd9'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '470f0947d3666b6c6ab3ecaaafe4d1c4'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e')) then
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e'))
+     or (((select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from '70340b664e9d8244788a209a28872f72') and ((select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'e801b945a946649d21cba8957fb127de')) then
     raise exception 'stop: a function on live is not the one of the earlier migrations: tell Claude before going on';
   end if;
 end $$;
@@ -79,6 +82,9 @@ end $$;
 --      never refused as 'stale'). Orders already saved keep their whole life cycle (status, payment,
 --      expiry): the gate only stops new ones. It stops the API roles and application mistakes; a holder
 --      of the secret (service_role) key can still write tables directly, as for every other rule here.
+--   5. Hiding an origin and showing a product made of it, by two admins at the same instant: save_origin
+--      locks the origin (for update) and save_product its recipe's origins (for share, in id order, on every
+--      save) before their checks, so one waits for the other and refuses ('origin_in_use' or 'hidden_origin').
 --
 -- create or replace keeps each function's owner and grants. "drop not null" is a DROP for the tool that
 -- applies migrations to the live project (it hangs on DROP and DELETE): the owner runs this file in the
@@ -199,6 +205,9 @@ begin
     values (v_id, p_origin -> 'name', p_origin ->> 'countryCode', p_origin ->> 'species', coalesce(p_origin ->> 'region', ''),
             p_origin ->> 'roastLevel', coalesce(p_origin -> 'tastingNotes', '{}'), 0, v_low, v_price, v_blend, false);
   else
+    -- the row first: a product being shown with this origin at the same instant (save_product holds it for share)
+    -- is waited for, and every check below then reads what that save committed (each statement reads anew)
+    perform 1 from public.origins o where o.id = v_id for update;
     -- shown only with a price (also the table's constraint origins_active_needs_price)
     if v_active and v_price is null then
       raise exception 'needs_price';
@@ -680,6 +689,129 @@ begin
                                     replace(p_whatsapp, '{number}', v_number), replace(p_email, '{number}', v_number));
   return query select v_id, v_number;
 end $$;
+
+-- ───────────── 5. save_product: the origins locked before its check ─────────────
+-- The body of 20261013100000_catalog_trim with one change: every save locks the recipe's origins (for share, in id
+-- order) before checking they are shown and before writing the recipe. With save_origin's lock (for update, before
+-- its 'origin_in_use' check), hiding an origin and showing a product made of it at the same instant can no longer
+-- both pass: the second waits for the first, then refuses ('origin_in_use' or 'hidden_origin'). The id order also
+-- keeps a save from deadlocking with an order taking the same origins (supabase/tests/lock-stress.sh).
+create or replace function public.save_product(p_product jsonb, p_recipe jsonb, p_seen_at timestamptz)
+returns text
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_id     text := p_product ->> 'id';
+  v_new    boolean := p_seen_at is null;
+  v_prices jsonb := coalesce(p_product -> 'prices', '{}'::jsonb);
+  v_active boolean;
+  v_sort   integer;
+begin
+  if not public.is_admin(array['owner', 'manager']) then
+    raise exception 'forbidden';
+  end if;
+  if not public.catalog_id_ok(v_id) then
+    raise exception 'invalid_id';
+  end if;
+  -- the four texts, trimmed before they are checked; a text that is not sent stays not sent, so its default below still applies
+  p_product := public.config_trim_keys(p_product, array['name', 'tagline', 'description', 'tastingNotes']);
+  -- the address is the id: it never changes (orders keep the productId they were bought with)
+  if p_product ? 'slug' and p_product ->> 'slug' is distinct from v_id then
+    raise exception 'id_fixed';
+  end if;
+  if (p_product ->> 'kind') is null or (p_product ->> 'kind') not in ('signature', 'single-origin', 'b2b') then
+    raise exception 'invalid_kind';
+  end if;
+  if (p_product ->> 'roastLevel') is null or (p_product ->> 'roastLevel') not in ('light', 'medium', 'medium-dark', 'dark') then
+    raise exception 'invalid_roast';
+  end if;
+  if not public.catalog_text_ok(p_product -> 'name', 80) or coalesce(btrim(p_product #>> '{name,fr}'), '') = ''
+     or not public.catalog_text_ok(coalesce(p_product -> 'tagline', '{}'), 200)
+     or not public.catalog_text_ok(coalesce(p_product -> 'description', '{}'), 1000)
+     or not public.catalog_text_ok(coalesce(p_product -> 'tastingNotes', '{}'), 200) then
+    raise exception 'invalid_text';
+  end if;
+  -- a price is a real amount from 1 to 100 000 DH (src/core/pricing.ts isPrice, MAX_PRICE), only for the sold sizes
+  -- (SQL does not promise the order of OR: a malformed value fails a cast, caught here)
+  begin
+    if jsonb_typeof(v_prices) <> 'object'
+       or exists (select 1 from jsonb_each(v_prices) e
+                  where e.key not in ('250', '500', '1000') or jsonb_typeof(e.value) <> 'number'
+                     or (e.value #>> '{}')::numeric not between 1 and 100000) then
+      raise exception 'invalid_price';
+    end if;
+  exception when others then
+    raise exception 'invalid_price';
+  end;
+  begin
+    v_sort := coalesce((p_product ->> 'sortOrder')::integer, 0);
+    v_active := coalesce((p_product ->> 'active')::boolean, false);
+  exception when others then
+    raise exception 'invalid_product';
+  end;
+  -- a new product is created hidden; a shown product has at least one size for sale
+  if v_new then
+    v_active := false;
+  end if;
+  if v_active and not exists (select 1 from jsonb_each(v_prices)) then
+    raise exception 'needs_price';
+  end if;
+  -- 1 to 8 different origins that exist, whole percentages adding up to 100
+  begin
+    if jsonb_typeof(p_recipe) <> 'array' or jsonb_array_length(p_recipe) not between 1 and 8
+       or exists (select 1 from jsonb_array_elements(p_recipe) l
+                  where jsonb_typeof(l -> 'percent') <> 'number'
+                     or (l ->> 'percent')::numeric <> trunc((l ->> 'percent')::numeric)
+                     or (l ->> 'percent')::numeric not between 1 and 100
+                     or not exists (select 1 from public.origins o where o.id = l ->> 'originId'))
+       or (select count(distinct l ->> 'originId') from jsonb_array_elements(p_recipe) l) <> jsonb_array_length(p_recipe)
+       or (select sum((l ->> 'percent')::integer) from jsonb_array_elements(p_recipe) l) <> 100 then
+      raise exception 'invalid_recipe';
+    end if;
+  exception when others then
+    raise exception 'invalid_recipe';
+  end;
+  -- the recipe's origins, locked first and in id order like every path that locks several (commit_order, the stock
+  -- returns): an origin being hidden by save_origin at the same instant is waited for, then read as it was committed;
+  -- and the recipe rows written below take their own (key share) locks on origins already held, in no other order
+  -- (written in the order the page sent them, they could wait on an order in progress that waits on them: a deadlock)
+  perform 1 from public.origins o where o.id in (select l ->> 'originId' from jsonb_array_elements(p_recipe) l) order by o.id for share;
+  -- a shown product is made of shown origins only (a hidden one is new, or out of the range)
+  if v_active and exists (select 1 from jsonb_array_elements(p_recipe) l join public.origins o on o.id = l ->> 'originId' where not o.active) then
+    raise exception 'hidden_origin';
+  end if;
+
+  if v_new then
+    if exists (select 1 from public.products where id = v_id or slug = v_id) then
+      raise exception 'exists';
+    end if;
+    insert into public.products (id, slug, kind, name, tagline, description, roast_level, tasting_notes,
+                                 prices, featured, active, sort_order)
+    values (v_id, v_id, p_product ->> 'kind', p_product -> 'name', coalesce(p_product -> 'tagline', '{}'),
+            coalesce(p_product -> 'description', '{}'), p_product ->> 'roastLevel', coalesce(p_product -> 'tastingNotes', '{}'),
+            v_prices, coalesce((p_product ->> 'featured')::boolean, false), false, v_sort);
+  else
+    update public.products
+       set kind = p_product ->> 'kind', name = p_product -> 'name', tagline = coalesce(p_product -> 'tagline', '{}'),
+           description = coalesce(p_product -> 'description', '{}'), roast_level = p_product ->> 'roastLevel',
+           tasting_notes = coalesce(p_product -> 'tastingNotes', '{}'), prices = v_prices,
+           featured = coalesce((p_product ->> 'featured')::boolean, false), active = v_active, sort_order = v_sort
+     where id = v_id and updated_at = p_seen_at;
+    if not found then
+      if exists (select 1 from public.products where id = v_id) then
+        raise exception 'stale';
+      end if;
+      -- an id that does not exist: never a way to rename a product
+      raise exception 'not_found';
+    end if;
+  end if;
+
+  -- the recipe is replaced whole; product_recipes_total checks the sum again at commit
+  delete from public.product_recipes where product_id = v_id;
+  insert into public.product_recipes (product_id, origin_id, percent)
+  select v_id, l ->> 'originId', (l ->> 'percent')::integer from jsonb_array_elements(p_recipe) l;
+  insert into public.catalog_changes (item, item_id, action, actor) values ('product', v_id, case when v_new then 'create' else 'edit' end, auth.uid());
+  return v_id;
+end $$;
 -- <<< 20261016120000_catalog_ready.sql
 
 do $$
@@ -701,19 +833,22 @@ begin
      or not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'shipping_rates' and column_name = 'max_fee') then
     raise exception 'stop: the schema is not the expected one (optional price, its constraint, the cap column)';
   end if;
-  -- the six bodies are the file's (a body pasted from a Windows computer ends its lines with CR: removed before comparing)
+  -- the seven bodies are the file's (a body pasted from a Windows computer ends its lines with CR: removed before comparing)
   if (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from '61d01c4019b75e4dab30773f9dd27f6d'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '470f0947d3666b6c6ab3ecaaafe4d1c4'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from '63810f494476dc81515e997212dc1ce4'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from '62e6b4adef77e45f860ca44ecc532082'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_shipping_rate') is distinct from '55f2f37a662eef940553a8ea3e2b711d'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d' then
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'e801b945a946649d21cba8957fb127de' then
     raise exception 'stop: a function body is not the one of the file';
   end if;
   if has_function_privilege('anon', 'public.set_sales_open(boolean, text)', 'execute')
      or not has_function_privilege('authenticated', 'public.set_sales_open(boolean, text)', 'execute')
      or has_function_privilege('anon', 'public.save_origin(jsonb, timestamptz)', 'execute')
      or not has_function_privilege('authenticated', 'public.save_origin(jsonb, timestamptz)', 'execute')
+     or has_function_privilege('anon', 'public.save_product(jsonb, jsonb, timestamptz)', 'execute')
+     or not has_function_privilege('authenticated', 'public.save_product(jsonb, jsonb, timestamptz)', 'execute')
      or has_function_privilege('anon', 'public.save_shipping_rate(jsonb, timestamptz)', 'execute')
      or not has_function_privilege('authenticated', 'public.save_shipping_rate(jsonb, timestamptz)', 'execute')
      or has_function_privilege('anon', 'public.commit_order(jsonb, text, text, text, uuid)', 'execute')
@@ -727,8 +862,8 @@ begin
     raise exception 'stop: the rights on the functions are not the expected ones';
   end if;
   if (select count(*) from pg_proc where pronamespace = 'public'::regnamespace
-       and proname in ('commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open')
-       and prosecdef and proconfig = array['search_path=public, pg_temp']) <> 5
+       and proname in ('commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open', 'save_product')
+       and prosecdef and proconfig = array['search_path=public, pg_temp']) <> 6
      or (select proconfig from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from array['search_path=public, pg_temp'] then
     raise exception 'stop: a function does not have its fixed search_path (public, pg_temp), or a writing one is not security definer';
   end if;
@@ -742,7 +877,7 @@ select
   (select is_nullable = 'YES' from information_schema.columns where table_schema = 'public' and table_name = 'origins' and column_name = 'price_per_kg') as price_optional,
   exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'shipping_rates' and column_name = 'max_fee') as cap_column,
   (select count(*) from pg_proc where pronamespace = 'public'::regnamespace
-     and proname in ('check_order', 'commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open')) as bodies,
+     and proname in ('check_order', 'commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open', 'save_product')) as bodies,
   has_function_privilege('anon', 'public.set_sales_open(boolean, text)', 'execute') as anon_runs_sales_switch,
   has_function_privilege('authenticated', 'public.set_sales_open(boolean, text)', 'execute') as owner_switch_callable,
   (select count(*) from public.products) as products,

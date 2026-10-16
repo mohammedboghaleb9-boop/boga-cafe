@@ -5,6 +5,9 @@
 # slip through on the old stock figure. Usage: race.sh <database> (fresh, migrated).
 set -euo pipefail
 DB="$1"
+# a test database only, on this machine: these scripts write (salesOpen, test origins and helpers); never point them at live
+case "$DB" in boga_test*) ;; *) echo "refused: $DB is not a test database (boga_test*)"; exit 1 ;; esac
+case "${PGHOST:-}" in ''|/*|localhost|127.0.0.1|::1) ;; *) echo "refused: PGHOST=$PGHOST is not this machine"; exit 1 ;; esac
 PSQL="psql -q -X -v ON_ERROR_STOP=1 -d $DB"
 $PSQL <<'SQL'
 insert into public.site_config values (1, '{"salesOpen": true, "b2bThresholdKg": 10, "bank": {"holder": "T", "bankName": "T", "rib": "T"}}', '{}');
@@ -127,39 +130,82 @@ SEQ_AFTER=$($PSQL -t -A -c "select last_value || '/' || is_called from public.or
 [ "$SEQ_BEFORE" = "$SEQ_AFTER" ] || { echo "TEST FAILED: the refused order took a number ($SEQ_BEFORE -> $SEQ_AFTER)"; exit 1; }
 echo " ok race - an order arriving while the closing is saved waits, then is refused, and takes no number"
 
-# Known limit, kept for the owner's decision before the merge (slice 12 schema review): one admin hides an
-# origin while another shows a product made of it. Each check reads the other's row before it commits,
-# so both pass and a shown product ends up made of a hidden origin. This reproduces it with two real
-# sessions, then proves what the database does with that state: no sale of that product, nothing saved.
+# One admin hides an origin while another shows a product made of it (slice 12 schema review, fixed before the
+# merge): save_origin locks the origin (for update) and save_product the shown product's origins (for share)
+# before their checks, so the second waits for the first, then reads what it committed and refuses. Each case
+# below holds the first save open 2 s: the second must wait at least 1 s, be refused, and leave nothing saved.
 $PSQL <<'SQL' >/dev/null
 insert into auth.users values ('00000000-0000-0000-0000-0000000000a1'), ('00000000-0000-0000-0000-0000000000a2');
 insert into public.admin_users values ('00000000-0000-0000-0000-0000000000a1', 'owner', 'A'), ('00000000-0000-0000-0000-0000000000a2', 'manager', 'B');
 update public.site_config set settings = settings || '{"salesOpen": true}' where id = 1;
-insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg) values ('o2', '{"fr": "O2"}', 'BR', 'arabica', 'medium', 5, 0, 200);
+insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg, active)
+select id, jsonb_build_object('fr', id), 'BR', 'arabica', 'medium', 5, 0, 200, true from unnest(array['o2', 'o3', 'o4a', 'o4b', 'o5a', 'o5b']) id;
 begin;
-insert into public.products (id, slug, kind, name, roast_level, prices, active) values ('p2', 'p2', 'single-origin', '{"fr": "P2"}', 'medium', '{"250": 60}', false);
-insert into public.product_recipes values ('p2', 'o2', 100);
+insert into public.products (id, slug, kind, name, roast_level, prices, active) values
+  ('p2', 'p2', 'single-origin', '{"fr": "P2"}', 'medium', '{"250": 60}', false),
+  ('p3', 'p3', 'single-origin', '{"fr": "P3"}', 'medium', '{"250": 60}', false),
+  ('p4', 'p4', 'signature', '{"fr": "P4"}', 'medium', '{"250": 60}', true),
+  ('p5', 'p5', 'signature', '{"fr": "P5"}', 'medium', '{"250": 60}', true);
+insert into public.product_recipes values ('p2', 'o2', 100), ('p3', 'o3', 100), ('p4', 'o4a', 100), ('p5', 'o5a', 100);
 commit;
+-- o4b and o5b: shown, used by no shown product yet
 SQL
 AS() { echo "set role authenticated; select set_config('request.jwt.claims', '{\"sub\": \"$1\", \"aal\": \"aal2\"}', false);"; }
-# A (manager) hides o2 and holds its transaction 2 s; B (owner) shows p2 meanwhile
-$PSQL -c "$(AS 00000000-0000-0000-0000-0000000000a2) begin; select public.save_origin('{\"id\": \"o2\", \"active\": false}', (select updated_at from public.origins where id = 'o2')); select pg_sleep(2); commit;" >"$OUT/ia" 2>&1 &
-sleep 0.5
-$PSQL -c "$(AS 00000000-0000-0000-0000-0000000000a1) select public.save_product('{\"id\": \"p2\", \"slug\": \"p2\", \"kind\": \"single-origin\", \"name\": {\"fr\": \"P2\"}, \"roastLevel\": \"medium\", \"prices\": {\"250\": 60}, \"active\": true, \"sortOrder\": 1}', '[{\"originId\": \"o2\", \"percent\": 100}]', (select updated_at from public.products where id = 'p2'))" >"$OUT/ib" 2>&1 || true
-wait
-STATE=$($PSQL -t -A -c "select (select active from public.products where id = 'p2') || '/' || (select active from public.origins where id = 'o2')")
-[ "$STATE" = "true/false" ] || { echo "TEST FAILED: the race did not give a shown product of a hidden origin ($STATE): update this test and the note"; cat "$OUT/ia" "$OUT/ib"; exit 1; }
-echo " ok race - known limit reproduced: a product shown while its origin is hidden at the same moment (both saves pass)"
-P2_ORDER=$(echo "$($PSQL -t -A -c "select public.race_order(1)::text")" | sed 's/"productId": "p"/"productId": "p2"/; s/"originId": "last"/"originId": "o2"/g')
+OWNER=00000000-0000-0000-0000-0000000000a1; MANAGER=00000000-0000-0000-0000-0000000000a2
+HIDE() { echo "select public.save_origin('{\"id\": \"$1\", \"active\": false}', (select updated_at from public.origins where id = '$1'));"; }
+SHOW() { echo "select public.save_product('{\"id\": \"$1\", \"slug\": \"$1\", \"kind\": \"$2\", \"name\": {\"fr\": \"$1\"}, \"roastLevel\": \"medium\", \"prices\": {\"250\": 60}, \"active\": true, \"sortOrder\": 1}', '$3', (select updated_at from public.products where id = '$1'));"; }
+# FIRST holds its save open 2 s (as one admin); SECOND (the other admin) starts 0.5 s later: it must wait, then be refused with $5
+RACE() {
+  local name=$1 first=$2 second=$3 expect=$4
+  $PSQL -c "$(AS $MANAGER) begin; $first select pg_sleep(2); commit;" >"$OUT/r1" 2>&1 &
+  sleep 0.5
+  local t0; t0=$(date +%s%N)
+  if $PSQL -c "$(AS $OWNER) $second" >"$OUT/r2" 2>&1; then echo "TEST FAILED: $name: the second save passed"; cat "$OUT/r1" "$OUT/r2"; exit 1; fi
+  local waited=$(( ($(date +%s%N) - t0) / 1000000 ))
+  wait
+  grep -q "ERROR" "$OUT/r1" && { echo "TEST FAILED: $name: the first save failed"; cat "$OUT/r1"; exit 1; }
+  grep -q "$expect" "$OUT/r2" || { echo "TEST FAILED: $name: refused, but not as $expect"; cat "$OUT/r2"; exit 1; }
+  [ "$waited" -ge 1000 ] || { echo "TEST FAILED: $name: the second save did not wait for the first (${waited} ms)"; exit 1; }
+}
+STATE() { $PSQL -t -A -c "select (select active from public.products where id = '$1') || '/' || (select active from public.origins where id = '$2') || '/' || (select string_agg(origin_id, ',' order by origin_id) from public.product_recipes where product_id = '$1')"; }
+
+# 1. the origin is hidden first: showing a product made of it waits, then is refused
+RACE "hide, then show" "$(HIDE o2)" "$(SHOW p2 single-origin '[{"originId": "o2", "percent": 100}]')" hidden_origin
+[ "$(STATE p2 o2)" = "false/false/o2" ] || { echo "TEST FAILED: hide, then show: state $(STATE p2 o2)"; exit 1; }
+echo " ok race - an origin hidden while a product made of it is shown: the showing waits, then is refused (hidden_origin)"
+# 2. the product is shown first: hiding its origin waits, then is refused
+RACE "show, then hide" "$(SHOW p3 single-origin '[{"originId": "o3", "percent": 100}]')" "$(HIDE o3)" origin_in_use
+[ "$(STATE p3 o3)" = "true/true/o3" ] || { echo "TEST FAILED: show, then hide: state $(STATE p3 o3)"; exit 1; }
+echo " ok race - a product shown while its origin is hidden: the hiding waits, then is refused (origin_in_use)"
+# 3. a shown product's recipe moves to an origin being hidden: waits, then refused; the recipe stays as it was
+RACE "hide, then recipe" "$(HIDE o4b)" "$(SHOW p4 signature '[{"originId": "o4a", "percent": 50}, {"originId": "o4b", "percent": 50}]')" hidden_origin
+[ "$(STATE p4 o4b)" = "true/false/o4a" ] || { echo "TEST FAILED: hide, then recipe: state $(STATE p4 o4b)"; exit 1; }
+echo " ok race - a shown product's recipe changed to an origin being hidden: waits, then refused, the recipe unchanged"
+# 4. a shown product's recipe takes an origin first: hiding that origin waits, then is refused
+RACE "recipe, then hide" "$(SHOW p5 signature '[{"originId": "o5b", "percent": 50}, {"originId": "o5a", "percent": 50}]')" "$(HIDE o5b)" origin_in_use
+[ "$(STATE p5 o5b)" = "true/true/o5a,o5b" ] || { echo "TEST FAILED: recipe, then hide: state $(STATE p5 o5b)"; exit 1; }
+echo " ok race - an origin hidden while a shown product's recipe takes it: waits, then refused (origin_in_use)"
+
+# Defence in depth: should a shown product still be made of a hidden origin (a direct write by the secret key),
+# the database refuses its sale and saves nothing.
+$PSQL -c "update public.origins set active = false where id = 'o3'" >/dev/null
+P3_ORDER=$(echo "$($PSQL -t -A -c "select public.race_order(1)::text")" | sed 's/"productId": "p"/"productId": "p3"/; s/"originId": "last"/"originId": "o3"/g')
 ORDERS_BEFORE=$($PSQL -t -A -c "select count(*) from public.orders")
-STOCK_BEFORE=$($PSQL -t -A -c "select stock_kg from public.origins where id = 'o2'")
-if $PSQL -c "select number from public.commit_order('$P2_ORDER'::jsonb, '', '', '')" >"$OUT/ic" 2>&1; then
+STOCK_BEFORE=$($PSQL -t -A -c "select stock_kg from public.origins where id = 'o3'")
+if $PSQL -c "select number from public.commit_order('$P3_ORDER'::jsonb, '', '', '')" >"$OUT/ic" 2>&1; then
   echo "TEST FAILED: the product of a hidden origin was sold"; cat "$OUT/ic"; exit 1
 fi
-grep -q "out_of_stock:o2" "$OUT/ic" || { echo "TEST FAILED: not refused as out_of_stock:o2"; cat "$OUT/ic"; exit 1; }
-[ "$($PSQL -t -A -c "select count(*) from public.orders")" = "$ORDERS_BEFORE" ] && [ "$($PSQL -t -A -c "select stock_kg from public.origins where id = 'o2'")" = "$STOCK_BEFORE" ] \
+grep -q "out_of_stock:o3" "$OUT/ic" || { echo "TEST FAILED: not refused as out_of_stock:o3"; cat "$OUT/ic"; exit 1; }
+[ "$($PSQL -t -A -c "select count(*) from public.orders")" = "$ORDERS_BEFORE" ] && [ "$($PSQL -t -A -c "select stock_kg from public.origins where id = 'o3'")" = "$STOCK_BEFORE" ] \
   || { echo "TEST FAILED: something was saved for the refused order"; exit 1; }
-echo " ok race - in that state the database refuses the sale (out_of_stock:o2): no order, no stock moved"
+$PSQL -c "update public.origins set active = true where id = 'o3'" >/dev/null
+echo " ok race - a product of a hidden origin (written directly) is not sold: no order, no stock moved"
+
+# Many sessions at once, 1000 calls each (deadlocks are not proved by design alone): two admins show and hide products
+# made of 2 or 3 origins (recipes sent in shuffled order), two hide and show those origins, two customers buy
+# them (commit_order locks the origins for update). Expected: no deadlock, no other error than the refusals
+# below, and at no moment a shown product made of a hidden origin (a monitor reads it every 50 ms).
+bash "$(dirname "$0")/lock-stress.sh" "$DB" 1000
 
 # B2B requests and the closing (slice 12), both orders of the locks. commit_quote_request holds the settings
 # row (for share) before it takes a number: a closing waits for a request in progress, and a request that
