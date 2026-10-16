@@ -27,18 +27,33 @@ if (forbidden.length < 5) throw new Error(`check-real-build: read only ${forbidd
 // and the example delivery cities (Oujda is the shop's real address)
 const catalogStrings = [
   ...all(/(?:id|slug): '([^']+)'/g, products),
-  ...all(/name: \{ ar: '([^']+)', fr: '([^']+)'/g, products).flatMap((m) => m),
+  ...[...products.matchAll(/name: \{ ar: '([^']+)', fr: '([^']+)', en: '([^']+)'/g)].flatMap((m) => m.slice(1)),
   ...[...products.matchAll(/singleOrigin\('([^']+)', '[^']+', '([^']+)', '([^']+)', '([^']+)'/g)].flatMap((m) => m.slice(1)),
   // by French name: ids like "sale" or "fes" would match ordinary code
   ...[...config.matchAll(/city\('([^']+)', '[^']+', '([^']+)'/g)].filter((m) => m[1] !== 'oujda').map((m) => m[2]),
 ];
 if (catalogStrings.length < 30) throw new Error(`check-real-build: read only ${catalogStrings.length} catalog strings, the sources changed`);
 forbidden.push(...new Set(catalogStrings));
-// a product's three prices, as the minifier writes them ({250:65,500:120,1e3:225})
+// no database and no form: the live project (as the previews read it), any Supabase key or Turnstile widget
+const previewUrl = all(/^VITE_SUPABASE_URL=(.+)$/gm, src('.env.workers-preview'));
+if (previewUrl.length !== 1) throw new Error('check-real-build: VITE_SUPABASE_URL was not found in .env.workers-preview');
+forbidden.push(new URL(previewUrl[0]).hostname.split('.')[0], 'supabase.co', 'sb_publishable_', 'challenges.cloudflare.com');
+// a backstop only, tied to the minifier's shape ({250:65,500:120,1e3:225}): the names above are the real check
 const PRICES = /\b250:\d+,500:\d+,(?:1e3|1000):\d+/;
 
-const files = readdirSync('dist', { recursive: true }).map(String).filter((f) => /\.(js|html|css)$/.test(f));
-const problems = [];
+// every file of the build is one of these (brand images, fonts, the page): a product photo, a data file or a
+// source map is refused, and every text file is read
+const ALLOWED = [
+  /^(index\.html|favicon\.svg|apple-touch-icon\.png|og-image\.png)$/,
+  /^assets\/index-[\w-]+\.(js|css)$/,
+  /^assets\/label-[\w-]+\.webp$/,
+  /^assets\/(cinzel|montserrat|reem-kufi|tajawal)-[\w-]+\.woff2$/,
+];
+const allFiles = readdirSync('dist', { recursive: true, withFileTypes: true })
+  .filter((d) => d.isFile())
+  .map((d) => join(d.parentPath, d.name).slice('dist/'.length).split('\\').join('/'));
+const problems = allFiles.filter((f) => !ALLOWED.some((re) => re.test(f))).map((f) => `${f} is not a file of the "coming soon" page`);
+const files = allFiles.filter((f) => /\.(js|html|css|svg)$/.test(f));
 if (files.some((f) => /AdminApp/.test(f))) problems.push('the admin panel chunk is in the build');
 for (const f of files) {
   const text = readFileSync(join('dist', f), 'utf8');
@@ -50,6 +65,7 @@ const html = readFileSync(join('dist', 'index.html'), 'utf8');
 if (!html.includes('data-site="coming-soon"')) problems.push('dist/index.html is not the "coming soon" page');
 const scripts = files.filter((f) => f.endsWith('.js'));
 if (scripts.length !== 1) problems.push(`expected one script (the "coming soon" page), found ${scripts.length}: ${scripts.join(', ')}`);
+else if (!readFileSync(join('dist', scripts[0]), 'utf8').includes('soon-contact-title')) problems.push(`${scripts[0]} is not the "coming soon" page`);
 if (problems.length) {
   console.error(`The real build ships demo content:\n- ${problems.join('\n- ')}`);
   process.exit(1);

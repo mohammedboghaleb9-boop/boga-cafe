@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { fileURLToPath, URL } from 'node:url';
+import { buildTarget } from './scripts/build-target.mjs';
 import { siteKeyProblem } from './scripts/turnstile-site-key.mjs';
 
 // Build targets:
@@ -87,8 +88,9 @@ export default defineConfig(({ command, mode: asked }) => {
   // a public key shipped to every visitor, whatever the build: never the secret one (scripts/turnstile-site-key.mjs says what it can and cannot tell)
   const siteKey = env.VITE_TURNSTILE_SITE_KEY ? siteKeyProblem(env.VITE_TURNSTILE_SITE_KEY) : null;
   if (command === 'build' && siteKey) throw new Error(`VITE_TURNSTILE_SITE_KEY ${siteKey}`);
-  // the production build: "coming soon" only (the demo, the browser tests and the live-database builds set VITE_DATA_MODE)
-  const comingSoon = command === 'build' && !env.VITE_DATA_MODE;
+  // the production build: "coming soon" only (the demo, the browser tests and the live-database builds set VITE_DATA_MODE);
+  // a Workers Builds build of main is production: never the shop, whatever its build variables say
+  const comingSoon = command === 'build' && buildTarget({ dataMode: env.VITE_DATA_MODE, productionDeploy: inWorkersBuilds && !preview }) === 'coming-soon';
   return {
     ...(preview ? { mode: PREVIEW_MODE } : {}),
     base: demo ? './' : '/',

@@ -1,6 +1,6 @@
 // Cloudflare Workers (Workers Builds deploys `main`; other branches upload a preview version).
 // Static site only: the files of `npm run build` in ./dist, any unknown path answered with
-// index.html so the React router shows the page (or its own "not found").
+// index.html (production: the "coming soon" page for every path; previews: the React router's page).
 // Same values as the configuration Cloudflare's auto-setup generated for build 344952f.
 {
   "name": "boga-cafe",

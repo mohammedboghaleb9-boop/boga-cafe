@@ -14,5 +14,5 @@ export const BOGA_CONTACT: Settings['contact'] = {
   facebook: 'https://www.facebook.com/profile.php?id=61594620729419',
   address: { ar: 'وجدة، المغرب', fr: 'Oujda, Maroc', en: 'Oujda, Morocco' },
   // owner, 2026-09-30 (docs/07 Q19): every day, no day off
-  hours: { ar: 'كل يوم، من 8:00 إلى 22:00', fr: 'Tous les jours, de 8 h à 22 h', en: 'Every day, 8 am to 10 pm' },
+  hours: { ar: 'كل يوم، من 8:00 إلى 22:00', fr: 'Tous les jours, de 8\u00a0h à 22\u00a0h', en: 'Every day, 8\u00a0am to 10\u00a0pm' },
 };

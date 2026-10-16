@@ -26,6 +26,7 @@ test('every old link shows "coming soon" and nothing of the shop', async ({ page
     await open(page, path);
     await expect(page.locator('h1'), path).toHaveText(titles.fr);
     await expect(page.locator('html'), path).toHaveAttribute('data-site', 'coming-soon');
+    await expect(page.locator('meta[name="robots"]'), path).toHaveCount(path === '/' ? 0 : 1);
     expect(await page.locator('form, input, select, textarea').count(), path).toBe(0);
     // prices are written "65 DH" / "65 MAD" in the shop
     await expect(page.locator('body'), path).not.toContainText(/\d\s*(DH|MAD|د\.?م)/i);

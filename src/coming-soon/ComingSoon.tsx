@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import label from '@/assets/brand/label.webp';
 import type { Locale } from '@/core/types';
 import { BOGA_CONTACT } from '@/data/contact';
@@ -38,7 +38,8 @@ export function ComingSoon() {
   const [locale, setLocale] = useState<Locale>(initialLocale);
   const t = texts[locale];
 
-  useEffect(() => {
+  // before the first paint: an Arabic visitor never sees the page left to right
+  useLayoutEffect(() => {
     document.documentElement.lang = locale;
     document.documentElement.dir = t.dir;
     document.title = t.pageTitle;
@@ -56,13 +57,13 @@ export function ComingSoon() {
 
   return (
     <main className="soon">
-      <nav className="soon-langs" aria-label={t.language}>
+      <div className="soon-langs" role="group" aria-label={t.language}>
         {LOCALES.map((l) => (
           <button key={l} type="button" lang={l} aria-pressed={l === locale} onClick={() => choose(l)}>
             {texts[l].name}
           </button>
         ))}
-      </nav>
+      </div>
       <header className="soon-head">
         <Monogram variant="emblem" className="soon-emblem" />
         <h1>{t.title}</h1>
