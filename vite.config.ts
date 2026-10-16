@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, normalizePath } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { resolve } from 'node:path';
@@ -50,13 +50,32 @@ function comingSoonEntry() {
     ['content="Blends signature, single origin et Custom Blend. Depuis Oujda, livré partout au Maroc."', 'content="BOGA CAFÉ, Oujda. La boutique en ligne ouvre bientôt."'],
     ['<title>BOGA CAFÉ</title>', '<title>BOGA CAFÉ — Bientôt en ligne</title>'],
   ];
+  // the only sources the page is built from: a seed or shop module imported by mistake stops the build,
+  // whatever text it holds (src/core/types is types only, erased)
+  const sources = ['coming-soon/', 'assets/brand/', 'styles/', 'shared/layout/Monogram.tsx', 'shared/ui/BrandIcon.tsx', 'data/contact.ts'];
+  let src = '';
   let outDir = '';
+  let written = false;
   return {
     name: 'boga-coming-soon',
     configResolved(config: { root: string; build: { outDir: string } }) {
       outDir = resolve(config.root, config.build.outDir);
+      src = `${normalizePath(resolve(config.root, 'src'))}/`;
     },
+    buildEnd(this: { getModuleIds(): IterableIterator<string> }, error?: Error) {
+      if (error) return;
+      const outside = [...this.getModuleIds()]
+        .map((id) => id.split('?')[0])
+        .filter((id) => id.startsWith(src) && !sources.some((s) => id.startsWith(src + s)))
+        .map((id) => id.slice(src.length - 4));
+      if (outside.length) throw new Error(`coming soon: the page is built from modules outside its own:\n- ${outside.join('\n- ')}`);
+    },
+    writeBundle() {
+      written = true;
+    },
+    // after the files are written (closeBundle also runs after a failed build: its own error then stands)
     closeBundle() {
+      if (!written) return;
       const { problems, summary } = realBuildProblems(outDir);
       if (problems.length) throw new Error(`coming soon: the build ships what it must not (${outDir}):\n- ${problems.join('\n- ')}`);
       console.log(`coming soon: ${summary}`);

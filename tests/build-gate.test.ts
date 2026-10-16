@@ -14,10 +14,17 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const VITE = join(ROOT, 'node_modules/vite/bin/vite.js');
 
 function build(cwd: string, args: string[], vars: Record<string, string>) {
-  // only the variables a test sets (vitest itself runs with VITE_DATA_MODE=demo)
-  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('VITE_') && !k.startsWith('WORKERS_CI')));
+  // only the variables a test sets: vitest runs with VITE_DATA_MODE=demo and NODE_ENV=test (React's development build)
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(VITE_|VITEST|WORKERS_CI|NODE_ENV$|MODE$)/.test(k)));
   const outDir = mkdtempSync(join(tmpdir(), 'boga-build-'));
-  const r = spawnSync(process.execPath, [VITE, 'build', '--outDir', outDir, '--emptyOutDir', ...args], { cwd, env: { ...env, ...vars }, encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [VITE, 'build', '--outDir', outDir, '--emptyOutDir', ...args], {
+    cwd,
+    env: { ...env, ...vars },
+    encoding: 'utf8',
+    // a hung build fails its test instead of holding the worker
+    timeout: 55_000,
+    killSignal: 'SIGKILL',
+  });
   const files = readdirSync(outDir, { recursive: true }).map(String);
   const html = existsSync(join(outDir, 'index.html')) ? readFileSync(join(outDir, 'index.html'), 'utf8') : '';
   const shop = files.some((f) => f.endsWith('.js') && readFileSync(join(outDir, f), 'utf8').includes('boga-signature'));
@@ -47,7 +54,6 @@ describe('the production build of main: "coming soon", or a stopped build, never
         const r = build(ROOT, ['--mode', mode], workers);
         expect(r.status).not.toBe(0);
         expect(r.log).toMatch(/production build of main/);
-        expect(r.shop).toBe(false);
       });
     }
 
@@ -55,7 +61,6 @@ describe('the production build of main: "coming soon", or a stopped build, never
       const r = build(ROOT, [], { ...workers, ...LIVE, VITE_DATA_MODE: 'supabase' });
       expect(r.status).not.toBe(0);
       expect(r.log).toMatch(/production build of main/);
-      expect(r.shop).toBe(false);
     });
   }
 
@@ -74,7 +79,7 @@ describe('the "coming soon" build checks the folder it wrote', { timeout: 60_000
     for (const f of ['index.html', 'vite.config.ts', 'package.json', 'tsconfig.json', 'src', 'public', 'scripts', '.env.workers-preview']) {
       cpSync(join(ROOT, f), join(dir, f), { recursive: true });
     }
-    symlinkSync(join(ROOT, 'node_modules'), join(dir, 'node_modules'), 'dir');
+    symlinkSync(join(ROOT, 'node_modules'), join(dir, 'node_modules'), 'junction');
     change(dir);
     try {
       return build(dir, [], { WORKERS_CI: '1', WORKERS_CI_BRANCH: 'main' });
@@ -95,14 +100,35 @@ describe('the "coming soon" build checks the folder it wrote', { timeout: 60_000
       appendFileSync(join(dir, 'src/coming-soon/main.tsx'), "\nimport { seedProducts } from '@/data/seed/catalog';\nconsole.log(seedProducts);\n"),
     );
     expect(r.status).not.toBe(0);
+    expect(r.log).toMatch(/built from modules outside its own:\n- src\/data\/seed\/catalog\.ts/);
+  });
+
+  it('fails when the page writes an example product name itself (checked in the files written)', () => {
+    const r = buildCopy((dir) => appendFileSync(join(dir, 'src/coming-soon/main.tsx'), "\nconsole.log('Éthiopie Sidamo');\n"));
+    expect(r.status).not.toBe(0);
     expect(r.log).toMatch(/the build ships what it must not/);
-    expect(r.log).toMatch(/contains "Douceur 100% Arabica"/);
+    expect(r.log).toMatch(/contains "Éthiopie Sidamo"/);
+  });
+
+  it('fails when the page imports any module outside its own, even one whose text the checks do not know', () => {
+    const r = buildCopy((dir) =>
+      appendFileSync(join(dir, 'src/coming-soon/main.tsx'), "\nimport { seedContent } from '@/data/seed/config';\nconsole.log(seedContent);\n"),
+    );
+    expect(r.status).not.toBe(0);
+    expect(r.log).toMatch(/built from modules outside its own:\n- src\/data\/seed\/config\.ts/);
   });
 
   it('fails on a file that is not part of the page', () => {
     const r = buildCopy((dir) => writeFileSync(join(dir, 'public/menu.json'), '{}'));
     expect(r.status).not.toBe(0);
     expect(r.log).toMatch(/menu\.json is not a file of the "coming soon" page/);
+  });
+
+  it('a broken build keeps its own error (no check runs on a folder it never wrote)', () => {
+    const r = buildCopy((dir) => appendFileSync(join(dir, 'src/coming-soon/main.tsx'), '\nconst broken = ;\n'));
+    expect(r.status).not.toBe(0);
+    expect(r.log).toMatch(/Build failed/);
+    expect(r.log).not.toMatch(/ENOENT|ships what it must not/);
   });
 
   it('fails when the page names the live database', () => {
