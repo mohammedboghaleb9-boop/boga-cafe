@@ -11,7 +11,9 @@ set -euo pipefail
 DB="$1"
 N="${2:-200}"
 # a test database only, on this machine: these scripts write (salesOpen, test origins and helpers); never point them at live
-case "$DB" in boga_test*) ;; *) echo "refused: $DB is not a test database (boga_test*)"; exit 1 ;; esac
+# a bare name only (no "host=…" connection string slipped in after it), and no other way to name a server
+[[ "$DB" =~ ^boga_test[A-Za-z0-9_]*$ ]] || { echo "refused: $DB is not a test database (boga_test*)"; exit 1; }
+unset PGHOSTADDR PGSERVICE PGSERVICEFILE PGDATABASE
 case "${PGHOST:-}" in ''|/*|localhost|127.0.0.1|::1) ;; *) echo "refused: PGHOST=$PGHOST is not this machine"; exit 1 ;; esac
 PSQL="psql -q -X -v ON_ERROR_STOP=1 -d $DB"
 $PSQL <<'SQL' >/dev/null

@@ -6,7 +6,9 @@
 set -euo pipefail
 DB="$1"
 # a test database only, on this machine: these scripts write (salesOpen, test origins and helpers); never point them at live
-case "$DB" in boga_test*) ;; *) echo "refused: $DB is not a test database (boga_test*)"; exit 1 ;; esac
+# a bare name only (no "host=…" connection string slipped in after it), and no other way to name a server
+[[ "$DB" =~ ^boga_test[A-Za-z0-9_]*$ ]] || { echo "refused: $DB is not a test database (boga_test*)"; exit 1; }
+unset PGHOSTADDR PGSERVICE PGSERVICEFILE PGDATABASE
 case "${PGHOST:-}" in ''|/*|localhost|127.0.0.1|::1) ;; *) echo "refused: PGHOST=$PGHOST is not this machine"; exit 1 ;; esac
 PSQL="psql -q -X -v ON_ERROR_STOP=1 -d $DB"
 $PSQL <<'SQL'
@@ -132,7 +134,7 @@ SEQ_AFTER=$($PSQL -t -A -c "select last_value || '/' || is_called from public.or
 echo " ok race - an order arriving while the closing is saved waits, then is refused, and takes no number"
 
 # One admin hides an origin while another shows a product made of it (slice 12 schema review, fixed before the
-# merge): save_origin locks the origin (for update) and save_product the shown product's origins (for share)
+# merge): save_origin locks the origin (for update) and save_product the recipe's origins (for key share)
 # before their checks, so the second waits for the first, then reads what it committed and refuses. Each case
 # below holds the first save open 2 s: the second must wait at least 1 s, be refused, and leave nothing saved.
 $PSQL <<'SQL' >/dev/null
@@ -155,17 +157,20 @@ AS() { echo "set role authenticated; select set_config('request.jwt.claims', '{\
 OWNER=00000000-0000-0000-0000-0000000000a1; MANAGER=00000000-0000-0000-0000-0000000000a2
 HIDE() { echo "select public.save_origin('{\"id\": \"$1\", \"active\": false}', (select updated_at from public.origins where id = '$1'));"; }
 SHOW() { echo "select public.save_product('{\"id\": \"$1\", \"slug\": \"$1\", \"kind\": \"$2\", \"name\": {\"fr\": \"$1\"}, \"roastLevel\": \"medium\", \"prices\": {\"250\": 60}, \"active\": true, \"sortOrder\": 1}', '$3', (select updated_at from public.products where id = '$1'));"; }
-# FIRST holds its save open 2 s (as one admin); SECOND (the other admin) starts 0.5 s later: it must wait, then be refused with $5
+# waits until a session has done its work and sleeps in its open transaction (no timing guess)
+HELD() {
+  local i=0
+  until [ "$($PSQL -t -A -c "select count(*) from pg_stat_activity where wait_event = 'PgSleep' and query like '%pg_sleep(2)%' and pid <> pg_backend_pid()")" -ge 1 ]; do
+    i=$((i + 1)); [ "$i" -lt 200 ] || { echo "TEST FAILED: $1: the first session never held its transaction"; cat "$2"; exit 1; }
+    sleep 0.05
+  done
+}
+# FIRST holds its save open 2 s (as one admin); SECOND (the other admin) starts once it holds: it must wait, then be refused with $4
 RACE() {
   local name=$1 first=$2 second=$3 expect=$4
   $PSQL -c "$(AS $MANAGER) begin; $first select pg_sleep(2); commit;" >"$OUT/r1" 2>&1 &
   local holder=$!
-  # the second session starts only once the first has saved and sleeps in its open transaction (no timing guess)
-  local i=0
-  until [ "$($PSQL -t -A -c "select count(*) from pg_stat_activity where wait_event = 'PgSleep' and query like '%pg_sleep(2)%' and pid <> pg_backend_pid()")" -ge 1 ]; do
-    i=$((i + 1)); [ "$i" -lt 200 ] || { echo "TEST FAILED: $name: the first save never held its transaction"; cat "$OUT/r1"; exit 1; }
-    sleep 0.05
-  done
+  HELD "$name" "$OUT/r1"
   local t0; t0=$(date +%s%N)
   if $PSQL -c "$(AS $OWNER) $second" >"$OUT/r2" 2>&1; then echo "TEST FAILED: $name: the second save passed"; cat "$OUT/r1" "$OUT/r2"; exit 1; fi
   local waited=$(( ($(date +%s%N) - t0) / 1000000 ))
@@ -214,6 +219,53 @@ echo " ok race - a product of a hidden origin (written directly) is not sold: no
 bash "$(dirname "$0")/lock-stress.sh" "$DB" 1000
 # The expiry cron against admin saves (its stock returns take origins order after order, not in one sorted pass)
 bash "$(dirname "$0")/lock-stress-expiry.sh" "$DB" 300
+
+# The expiry cron and an admin cancelling the same aged unpaid order (20261016180000_expiry_lock_order): whoever
+# goes first closes it, the stock comes back once, one closing event. Each case holds the first side open 2 s.
+$PSQL <<'SQL' >/dev/null
+update public.site_config set settings = settings || '{"salesOpen": true}' where id = 1;
+select set_config('boga.stock_write', 'on', false);
+update public.origins set stock_kg = 1 where id = 'last';
+SQL
+# an unpaid order of 0.25 kg of 'last', aged past the timeout; prints its id
+AGED() {
+  local id; id=$($PSQL -t -A -c "select id from public.commit_order(public.race_order(1), '', '', '')")
+  $PSQL -c "update public.orders set created_at = now() - interval '100 hours' where id = '$id'" >/dev/null
+  echo "$id"
+}
+# status, stock back, stock of 'last', history lines of the return, closing events (labels)
+CLOSED() { $PSQL -t -A -c "select o.status || '/' || o.stock_returned || '/' || (select stock_kg from public.origins where id = 'last')
+  || '/' || (select count(*) from public.stock_movements m where m.ref = o.number and m.reason = 'order_cancelled')
+  || '/' || coalesce((select string_agg(label, ',') from public.order_events e where e.order_id = o.id and label in ('status.expired', 'status.cancelled')), '')
+  from public.orders o where o.id = '$1'"; }
+# 1. the admin is cancelling it: the cron does not wait (skip locked) and leaves it; the next run finds it closed
+O=$(AGED)
+$PSQL -c "$(AS $OWNER) begin; select public.set_order_status('$O', 'cancelled'); select pg_sleep(2); commit;" >"$OUT/x1" 2>&1 &
+HOLDER=$!
+HELD "admin cancels, cron runs" "$OUT/x1"
+T0=$(date +%s%N)
+N1=$($PSQL -t -A -c "select public.expire_unpaid_orders()")
+WAITED=$(( ($(date +%s%N) - T0) / 1000000 ))
+wait "$HOLDER" || { echo "TEST FAILED: admin cancels, cron runs: the cancel failed"; cat "$OUT/x1"; exit 1; }
+[ "$N1" = 0 ] && [ "$WAITED" -lt 1000 ] || { echo "TEST FAILED: admin cancels, cron runs: the cron expired $N1 order(s) after waiting ${WAITED} ms (expected 0, no wait)"; exit 1; }
+N2=$($PSQL -t -A -c "select public.expire_unpaid_orders()")
+[ "$N2" = 0 ] && [ "$(CLOSED "$O")" = "cancelled/true/1.000/1/status.cancelled" ] \
+  || { echo "TEST FAILED: admin cancels, cron runs: next run $N2, state $(CLOSED "$O")"; exit 1; }
+echo " ok race - an aged order being cancelled by an admin: the cron skips it without waiting; stock back once, one event"
+# 2. the cron is expiring it: the admin's cancel waits, then is refused (closed)
+O=$(AGED)
+$PSQL -c "begin; select public.expire_unpaid_orders(); select pg_sleep(2); commit;" >"$OUT/x2" 2>&1 &
+HOLDER=$!
+HELD "cron runs, admin cancels" "$OUT/x2"
+T0=$(date +%s%N)
+if $PSQL -c "$(AS $OWNER) select public.set_order_status('$O', 'cancelled')" >"$OUT/x3" 2>&1; then
+  echo "TEST FAILED: cron runs, admin cancels: the cancel passed"; cat "$OUT/x3"; exit 1
+fi
+WAITED=$(( ($(date +%s%N) - T0) / 1000000 ))
+wait "$HOLDER" || { echo "TEST FAILED: cron runs, admin cancels: the cron failed"; cat "$OUT/x2"; exit 1; }
+grep -q "closed" "$OUT/x3" && [ "$WAITED" -ge 1000 ] || { echo "TEST FAILED: cron runs, admin cancels: waited ${WAITED} ms, then: $(cat "$OUT/x3")"; exit 1; }
+[ "$(CLOSED "$O")" = "cancelled/true/1.000/1/status.expired" ] || { echo "TEST FAILED: cron runs, admin cancels: state $(CLOSED "$O")"; exit 1; }
+echo " ok race - an aged order being expired by the cron: the admin's cancel waits, then is refused (closed); stock back once, one event"
 
 # B2B requests and the closing (slice 12), both orders of the locks. commit_quote_request holds the settings
 # row (for share) before it takes a number: a closing waits for a request in progress, and a request that

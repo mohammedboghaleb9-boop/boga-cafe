@@ -192,3 +192,53 @@ describe('catalog_ready (slice 12)', () => {
     expect(rollback.match(/^commit;$/gm)).toHaveLength(1);
   });
 });
+
+describe('expiry_lock_order (the expiry cron in the orders\' lock order)', () => {
+  const migration = read('supabase/migrations/20261016180000_expiry_lock_order.sql');
+  const rollback = read('supabase/manual/20261016180000_expiry_lock_order.rollback.sql');
+  const init = read('supabase/migrations/20260927000000_init.sql');
+  // without CR, as the guards compare it (md5(replace(prosrc, E'\r', ''))): a CRLF checkout gives the same digest
+  const md5 = async (text: string) => (await import('node:crypto')).createHash('md5').update(text.replace(/\r/g, '')).digest('hex');
+  const body = (sql: string) => /create or replace function public\.expire_unpaid_orders\(.*?\$\$(.*?)\$\$/s.exec(sql)?.[1];
+  const fn = (sql: string) => /create or replace function public\.expire_unpaid_orders\(.*?\nend \$\$;/s.exec(sql)?.[0];
+
+  it('replaces only init\'s function or itself (md5 guard), and changes no row', async () => {
+    expect(migration).toContain(`'${await md5(body(init)!)}', '${await md5(body(migration)!)}'`);
+    expect(migration.indexOf("raise exception 'stop:")).toBeLessThan(migration.indexOf('create or replace function'));
+    // a missing function stops it too (md5 of nothing is NULL, and NULL not in (...) would let it through)
+    expect(migration).toMatch(/if coalesce\(\(select md5\(replace\(prosrc, E'\\r', ''\)\) from pg_proc .*?\), ''\)\s+not in \(/s);
+    // the rights as init set them, whatever the database's default privileges
+    expect(migration).toMatch(
+      /revoke all on function public\.expire_unpaid_orders\(\) from public, anon, authenticated;\ngrant execute on function public\.expire_unpaid_orders\(\) to service_role;\n$/,
+    );
+    const outside = migration.replace(/\$\$.*?\$\$/gs, '');
+    expect(outside).not.toMatch(/\b(insert into|update public\.|delete from|drop )/i);
+  });
+
+  it('locks the orders (skip locked), then every origin in id order, before any stock is given back', () => {
+    const b = body(migration)!;
+    const orders = b.search(/order by o\.created_at\s+for update skip locked/);
+    // the origins of the locked orders whose stock is not back yet, all in one statement
+    const origins = b.search(
+      /perform 1 from public\.origins o\s+where o\.id in \(select x ->> 'originId'\s+from public\.orders r, jsonb_array_elements\(r\.stock_deductions\) x\s+where r\.id = any\(v_ids\) and not r\.stock_returned\)\s+order by o\.id\s+for no key update;/,
+    );
+    expect(orders).toBeGreaterThan(-1);
+    expect(origins).toBeGreaterThan(orders);
+    expect(origins).toBeLessThan(b.indexOf('for v_order in'));
+    expect(b.indexOf('for v_order in')).toBeLessThan(b.indexOf('update public.origins set stock_kg'));
+  });
+
+  it('gives the stock back exactly as init did (once, one history line per origin, one status.expired)', () => {
+    const steps = /    if not v_order\.stock_returned then.*?values \(v_order\.id, 'status\.expired'\);\n/s;
+    const before = body(init)!.match(steps)?.[0];
+    expect(before).toBeDefined();
+    expect(body(migration)!.match(steps)?.[0]).toBe(before);
+  });
+
+  it('the rollback puts init\'s function back, guarded by both md5s, in one commit', async () => {
+    expect(rollback).toContain(fn(init)!);
+    expect(rollback).toContain(await md5(body(migration)!));
+    expect(rollback).toContain(await md5(body(init)!));
+    expect(rollback.match(/^commit;$/gm)).toHaveLength(1);
+  });
+});
