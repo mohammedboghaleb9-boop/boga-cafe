@@ -1,6 +1,6 @@
 import { roundMoney } from './money';
 import type { OriginIndex } from './recipe';
-import type { CustomBlendSpec, PackSize, Product, Settings } from './types';
+import type { CustomBlendSpec, Origin, PackSize, Product, Settings } from './types';
 
 /**
  * A real price: at least 1 DH. Totals are rounded to the whole dirham
@@ -11,6 +11,13 @@ export const isPrice = (v: unknown): v is number => typeof v === 'number' && Num
 
 /** The highest price the catalog saves (a bag, or an origin's kilo), in DH: anything above is a typing slip. */
 export const MAX_PRICE = 100_000;
+
+/**
+ * An origin's price as it may be saved: a real price, or none (null: not offered yet), and it is
+ * shown only with a price (supabase save_origin, constraint origins_active_needs_price).
+ */
+export const originPriceOk = (o: Pick<Origin, 'pricePerKg' | 'active'>) =>
+  o.pricePerKg === null ? !o.active : isPrice(o.pricePerKg) && o.pricePerKg <= MAX_PRICE;
 
 export const productPrice = (product: Product, size: PackSize): number | undefined => {
   const price = product.prices[size];
@@ -44,7 +51,7 @@ export function customBlendPrice(
   const lines = spec.lines.map((l) => {
     const origin = origins[l.originId];
     const grams = (spec.size * l.percent) / 100;
-    const cost = origin ? (origin.pricePerKg * grams) / 1000 : 0;
+    const cost = origin ? ((origin.pricePerKg ?? 0) * grams) / 1000 : 0;
     return { originId: l.originId, grams, cost };
   });
   const fee = settings.customBlend.feeBySize[spec.size] ?? 0;

@@ -9,7 +9,7 @@
  */
 import type { StatusRefusal } from '@/core/orderFlow';
 import { trimmedOrigin, trimmedProduct } from '@/core/config';
-import { isPrice } from '@/core/pricing';
+import { isPrice, originPriceOk } from '@/core/pricing';
 import { PACK_SIZES, type Origin, type Product, type QuoteRequest } from '@/core/types';
 import { newOriginId, newProductId } from '../ids';
 import type { AdminData, Api } from '../types';
@@ -38,11 +38,11 @@ function productJson(product: Product): Json {
 
 const recipeJson = (p: Product): Json => p.recipe.map(({ originId, percent }) => ({ originId, percent }));
 
-/** The origin as save_origin reads it (stock, shown or not and the restock date are not changed there). */
+/** The origin as save_origin reads it: its definition, price (null: none), alert level, Custom Blend and whether it is shown; never its stock or restock date. */
 function originJson(origin: Origin): Json {
   const o = trimmedOrigin(origin);
-  const { id, name, countryCode, species, region, roastLevel, tastingNotes, lowStockKg, pricePerKg, customBlendEnabled } = o;
-  return { id, name, countryCode, species, region, roastLevel, tastingNotes, lowStockKg, pricePerKg, customBlendEnabled };
+  const { id, name, countryCode, species, region, roastLevel, tastingNotes, lowStockKg, pricePerKg, customBlendEnabled, active } = o;
+  return { id, name, countryCode, species, region, roastLevel, tastingNotes, lowStockKg, pricePerKg, customBlendEnabled, active };
 }
 
 /** `client`: the admin's own (src/data/supabase/index.ts); `data`: what the panel shows, read again after each write. */
@@ -105,12 +105,12 @@ export function createAdminWrites(client: () => Client, data: AdminData): Writes
         return true;
       }, false),
 
-    // created hidden, at 0 kg: its first lot comes through adjustStock
+    // created hidden, at 0 kg (its first lot comes through adjustStock), with a price or none yet
     createOrigin: (draft) =>
       unlessRefused(async () => {
-        if (!isPrice(draft.pricePerKg)) return null;
         const clean = trimmedOrigin(draft);
         const origin = { ...clean, id: newOriginId(clean.name.fr, data.db.get().origins), stockKg: 0, active: false };
+        if (!originPriceOk(origin)) return null;
         await creating(
           () => call('save_origin', { p_origin: originJson(origin), p_seen_at: null }),
           () => data.db.get().origins.some((o) => o.id === origin.id),
@@ -118,10 +118,10 @@ export function createAdminWrites(client: () => Client, data: AdminData): Writes
         return origin;
       }, null),
 
-    // the price per kg, the alert level and Custom Blend only; refused ('stale') from an older copy
+    // the definition, the price (or none), the alert level, Custom Blend and whether it is shown (only with a price); refused ('stale') from an older copy
     saveOrigin: (origin) =>
       unlessRefused(async () => {
-        if (!isPrice(origin.pricePerKg) || !origin.updatedAt) return false;
+        if (!originPriceOk(origin) || !origin.updatedAt) return false;
         await call('save_origin', { p_origin: originJson(origin), p_seen_at: origin.updatedAt });
         return true;
       }, false),

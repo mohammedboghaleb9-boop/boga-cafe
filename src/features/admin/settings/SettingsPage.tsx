@@ -12,6 +12,52 @@ import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
 import { useSavedDraft } from '../useSavedDraft';
 
+/**
+ * Orders and B2B requests are taken only while the sales are open: the owner opens them once the
+ * catalog, the prices and the messages are ready (the database refuses every sale until then).
+ * Opening asks for a second click; closing does not.
+ */
+function SalesGate({ open, writable }: { open: boolean; writable: boolean }) {
+  const role = useAdminRole()!;
+  const { t } = useI18n();
+  const [saved, flash] = useSavedFlash();
+  const [busy, run, failed] = useAction();
+  const set = (next: boolean) =>
+    run(async () => {
+      if (!(await api.setSalesOpen(next, role))) refuse('sales');
+      flash();
+    });
+  return (
+    <section className="panel stack sales-gate">
+      <div className="spread">
+        <h2 className="admin-card-title">{t.admin.settings.salesTitle}</h2>
+        <SavedFlash show={saved} />
+      </div>
+      <p className={`notice ${open ? 'notice-ok' : 'notice-warn'}`} role="status">
+        {open ? t.admin.settings.salesOpenNow : t.admin.settings.salesClosedNow}
+      </p>
+      <p className="small muted">{t.admin.settings.salesHelp}</p>
+      <WriteError show={failed} />
+      <div>
+        {open ? (
+          <button type="button" className="btn btn-ghost btn-sm" disabled={!writable} aria-disabled={busy || undefined} onClick={() => set(false)}>
+            {t.admin.settings.closeSales}
+          </button>
+        ) : (
+          <ConfirmButton
+            className="btn btn-primary btn-sm"
+            label={t.admin.settings.openSales}
+            confirmLabel={t.admin.settings.openSalesConfirm}
+            busy={busy}
+            disabled={!writable}
+            onConfirm={() => set(true)}
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
 const rulesOf = ({ b2bThresholdKg, roastLossPercent, unpaidOrderTimeoutHours, paymentCheckTimeoutHours, customBlend }: Settings): BusinessRules => ({
   b2bThresholdKg,
   roastLossPercent,
@@ -57,6 +103,7 @@ export function SettingsPage() {
       </div>
 
       {!writable && <ComingSoon />}
+      <SalesGate open={db.settings.salesOpen} writable={writable && role === 'owner'} />
       <WriteError show={failed} />
       {!valid && <p className="field-error">{t.admin.settings.outOfRange}</p>}
       <fieldset className="plain-fieldset detail-grid" disabled={!writable}>

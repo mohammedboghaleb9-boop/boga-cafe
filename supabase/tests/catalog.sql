@@ -7,7 +7,7 @@ set client_min_messages = warning;
 create extension if not exists pgtap;
 
 begin;
-select plan(36);
+select plan(37);
 
 insert into auth.users values
   ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000002'), ('00000000-0000-0000-0000-000000000003');
@@ -77,13 +77,13 @@ select throws_ok($$select public.save_product(pg_temp.product('Test Produit'), p
 select throws_ok($$select public.save_product(pg_temp.product('new'), pg_temp.recipe(), null)$$, 'P0001', 'invalid_id', '"new" (the add-product address) is refused');
 select throws_ok($$select public.save_product(pg_temp.product('test-2', '{"name": {"fr": " "}}'), pg_temp.recipe(), null)$$, 'P0001', 'invalid_text', 'a product needs a French name');
 
--- origins: created hidden at 0 kg; afterwards price, alert level and Custom Blend only
+-- origins: created hidden at 0 kg; afterwards the whole definition and whether it is shown (slice 12), never the stock
 select is(public.save_origin(pg_temp.origin('test-origine'), null), 'test-origine', 'manager: creates an origin');
 select is((select active::text || ' ' || stock_kg::text from public.origins where id = 'test-origine'), 'false 0.000', 'a new origin is created hidden, at 0 kg');
 select lives_ok($$select public.save_origin(pg_temp.origin('test-origine', '{"pricePerKg": 120, "lowStockKg": 2, "customBlendEnabled": false, "active": true, "name": {"fr": "Renamed"}}'),
                                             pg_temp.seen_origin('test-origine'))$$, 'manager: edits an origin');
 select is((select price_per_kg || ' ' || low_stock_kg || ' ' || custom_blend_enabled || ' ' || active || ' ' || (name ->> 'fr') from public.origins where id = 'test-origine'),
-          '120.00 2.000 false false TEST origine', 'only the price, the alert level and Custom Blend change: never shown, never renamed');
+          '120.00 2.000 false true Renamed', 'the edit is saved: the definition, and shown with a price (slice 12)');
 select throws_ok($$select public.save_origin(pg_temp.origin('test-origine'), '2026-01-01')$$, 'P0001', 'stale', 'an origin edit from an older copy is refused');
 select throws_ok($$select public.save_origin(pg_temp.origin('other-origine'), pg_temp.seen_origin('test-origine'))$$, 'P0001', 'not_found', 'an origin edit under another id renames nothing');
 select is((select string_agg(item || ' ' || item_id || ' ' || action || ' ' || actor, ', ' order by id) from public.catalog_changes),
@@ -98,6 +98,7 @@ select lives_ok($$select public.save_origin(pg_temp.origin('test-origine', '{"pr
                 'a stock change since the page read the origin does not refuse its save');
 select throws_ok($$select public.save_product(pg_temp.product('test-produit', '{"prices": {"250": 100001}}'), pg_temp.recipe(), pg_temp.seen_product('test-produit'))$$,
                  'P0001', 'invalid_price', 'a price above 100 000 DH is refused');
+select lives_ok($$select public.save_origin(pg_temp.origin('test-origine', '{"active": false}'), pg_temp.seen_origin('test-origine'))$$, 'manager: hides the origin');
 select throws_ok($$select public.save_product(pg_temp.product('test-produit'), '[{"originId": "test-origine", "percent": 100}]', pg_temp.seen_product('test-produit'))$$,
                  'P0001', 'hidden_origin', 'a shown product is made of shown origins only');
 

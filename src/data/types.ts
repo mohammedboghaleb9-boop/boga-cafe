@@ -66,9 +66,9 @@ export interface Api {
   /** False if there is no product with this id (use createProduct). */
   saveProduct(product: Product): Promise<boolean>;
   deleteProduct(id: string): Promise<void>;
-  /** Null without a real price per kg. */
+  /** Created hidden, at 0 kg; its price may be empty (not offered yet). Null when refused. */
   createOrigin(draft: Origin): Promise<Origin | null>;
-  /** Saves origin details; stock changes only through `adjustStock`, so every change is logged. */
+  /** Saves origin details, and whether it is shown (only with a price); stock changes only through `adjustStock`, so every change is logged. */
   saveOrigin(origin: Origin): Promise<boolean>;
   adjustStock(originId: string, deltaKg: number, reason: StockReason, note: string): Promise<void>;
   // Settings, payments, texts, recipients and delivery (slice 10): false when refused (the
@@ -83,6 +83,8 @@ export interface Api {
   savePaymentMethod(method: PaymentMethodConfig, role: AdminRole): Promise<boolean>;
   /** The business rules (Settings page): owner only. */
   saveRules(rules: BusinessRules, role: AdminRole): Promise<boolean>;
+  /** Opens or closes the sales (orders and B2B requests): owner only. */
+  setSalesOpen(open: boolean, role: AdminRole): Promise<boolean>;
   /** The free-shipping threshold (Shipping page): owner and manager (core/orderFlow MANAGER_SETTINGS). */
   saveFreeShipping(amount: number, role: AdminRole): Promise<boolean>;
   /** Who customers pay by transfer and Cash Plus: owner only, all filled in or all empty. */

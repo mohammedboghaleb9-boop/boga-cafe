@@ -297,6 +297,7 @@ export const en = {
     freeFrom: 'Free delivery from {amount}',
     place: 'Place order · {total}',
     errors: {
+      sales_closed: 'Orders are not open yet. Write to us on WhatsApp to hear when they open.',
       empty_cart: 'Your cart is empty.',
       cart_problem: 'An item in your cart needs attention.',
       unavailable: 'A product in your cart is unavailable for now. Remove it from your cart.',
@@ -577,7 +578,8 @@ export const en = {
       hidden: 'Hidden',
     },
     stock: {
-      needsPrice: 'Price per kg: 1 to 100,000 DH.',
+      needsPrice: 'Price per kg: 1 to 100,000 DH, or empty until it is set.',
+      shownNeedsPrice: 'A shown origin needs a price per kg.',
       lowStockRange: 'Alert: 0 to 100,000 kg.',
       intro:
         'Stock is counted in kilograms per origin. Orders deduct it automatically, cancellations give it back.',
@@ -605,7 +607,7 @@ export const en = {
       movements: 'Stock movements',
       addOrigin: 'New origin',
       editOrigin: 'Edit origin',
-      editLimits: 'Only the price per kg, the alert level and Custom Blend change here. The name, the country and the rest are set at creation.',
+      editLimits: 'Everything changes here except the stock, which goes through “Adjust stock” (with its history). An origin is shown only with a price per kg.',
       createdHidden: 'A new origin is created hidden, at 0 kg: its first lot goes through “Adjust stock”.',
       country: 'Country code (ISO)',
       blendRule:
@@ -613,12 +615,13 @@ export const en = {
       empty: 'Empty',
     },
     shipping: {
-      intro: 'Delivery fee = city base fee (covers the first kilos) + a fee per extra kg.',
+      intro: 'Delivery fee = city base fee (covers the first kilos) + a fee per extra kg, never above the cap when there is one.',
       city: 'City',
       distance: 'Distance (km)',
       base: 'Base fee',
       included: 'Kg included',
       extra: 'Per extra kg',
+      cap: 'Cap (empty = none)',
       days: 'Delay (days)',
       addCity: 'Add a city',
       freeOver: 'Free delivery from (MAD, 0 = never)',
@@ -627,7 +630,7 @@ export const en = {
       simWeight: 'Weight (kg)',
       simResult: 'Delivery fee: {fee}',
       createdHidden: 'A new city is created hidden: show it afterwards with its switch, once checked.',
-      rowInvalid: 'French city name required; distance a whole number up to 3000 km; amounts up to 1000 DH; included kg up to 100.',
+      rowInvalid: 'French city name required; distance a whole number up to 3000 km; amounts up to 1000 DH; included kg up to 100; cap at least the base fee.',
     },
     payments: {
       cardOff: 'Not offered on the site until the CMI gateway is connected (phase D). Customers see it as “coming soon”.',
@@ -694,6 +697,13 @@ export const en = {
     },
     settings: {
       outOfRange: 'A value is out of range: B2B threshold 1 to 1000 kg, loss 0 to 30%, deadlines 1 to 720 h, minimum share and number of origins as whole numbers, fees 0 to 1000 DH.',
+      salesTitle: 'Sales',
+      salesOpenNow: 'Sales are open: the site takes orders and B2B requests.',
+      salesClosedNow: 'Sales are closed: no order or B2B request is accepted.',
+      salesHelp: 'Open them once the catalog, the prices, the stock and the sending of messages are ready. Orders already placed carry on as usual. Owner only.',
+      openSales: 'Open sales',
+      openSalesConfirm: 'Confirm opening',
+      closeSales: 'Close sales',
       rules: 'Business rules',
       b2bThreshold: 'B2B threshold (kg): above it, the order goes to the team',
       blendTitle: 'Custom Blend',

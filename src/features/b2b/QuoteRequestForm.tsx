@@ -17,7 +17,8 @@ export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent:
   const captcha = useCaptcha('quote');
   const isGuard = (e: RequestError | GuardError): e is GuardError => (GUARD_ERRORS as readonly string[]).includes(e);
   const fieldErrors = errors.filter((e): e is RequestError => !isGuard(e));
-  const guardErrors = errors.filter(isGuard);
+  // not about a field: the form's own messages (the sales may close while it is open)
+  const formErrors = errors.filter((e) => isGuard(e) || e === 'sales_closed');
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -50,9 +51,9 @@ export function QuoteRequestForm({ items, onSent }: { items: CartItem[]; onSent:
         />
       </Field>
       {captcha.widget}
-      {guardErrors.length > 0 && (
+      {formErrors.length > 0 && (
         <div className="span-all stack" role="alert">
-          {guardErrors.map((g) => (
+          {formErrors.map((g) => (
             <p key={g} className="notice notice-bad small">
               {t.checkout.errors[g]}
             </p>

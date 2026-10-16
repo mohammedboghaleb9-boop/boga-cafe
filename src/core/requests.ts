@@ -20,7 +20,7 @@ export interface ContactRequestInput {
 export type QuoteInput = ContactRequestInput & { items: CartItem[] };
 
 /** Every reason a B2B request can be refused (the site reads the server's answers against this list). */
-export const REQUEST_ERRORS = ['name', 'phone', 'email', 'city'] as const;
+export const REQUEST_ERRORS = ['sales_closed', 'name', 'phone', 'email', 'city'] as const;
 export type RequestError = (typeof REQUEST_ERRORS)[number];
 
 export function validateContact(input: ContactRequestInput, rates: ShippingRate[]): RequestError[] {
@@ -39,6 +39,8 @@ export function buildQuoteRequest(
   ctx: { catalog: Catalog; settings: Settings; shippingRates: ShippingRate[] },
   ids: { id: string; number: string; now: string },
 ): { ok: true; quote: QuoteRequest } | { ok: false; errors: RequestError[] } {
+  // no B2B request either before the owner opens the sales (the database refuses it too)
+  if (!ctx.settings.salesOpen) return { ok: false, errors: ['sales_closed'] };
   const errors = validateContact(input, ctx.shippingRates);
   if (errors.length) return { ok: false, errors };
   const cart = summarizeCart(input.items, ctx.catalog, ctx.settings);

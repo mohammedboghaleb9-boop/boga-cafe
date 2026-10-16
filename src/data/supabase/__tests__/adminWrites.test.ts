@@ -158,9 +158,18 @@ describe('admin writes (live site)', () => {
     expect(rpc).toHaveBeenLastCalledWith('save_product', expect.objectContaining({ p_seen_at: product.updatedAt }));
     expect(await writes.saveOrigin({ ...origin, pricePerKg: 120 })).toBe(true);
     expect(rpc).toHaveBeenLastCalledWith('save_origin', {
-      p_origin: { id: 'test-origine', name: origin.name, countryCode: 'ET', species: 'arabica', region: '', roastLevel: 'light', tastingNotes: origin.tastingNotes, lowStockKg: 3, pricePerKg: 120, customBlendEnabled: true },
+      p_origin: { id: 'test-origine', name: origin.name, countryCode: 'ET', species: 'arabica', region: '', roastLevel: 'light', tastingNotes: origin.tastingNotes, lowStockKg: 3, pricePerKg: 120, customBlendEnabled: true, active: false },
       p_seen_at: origin.updatedAt,
     });
+    // slice 12: shown (with a price), or a price taken away from a hidden origin; never shown without one
+    expect(await writes.saveOrigin({ ...origin, pricePerKg: 120, active: true })).toBe(true);
+    expect(rpc).toHaveBeenLastCalledWith('save_origin', expect.objectContaining({ p_origin: expect.objectContaining({ pricePerKg: 120, active: true }) }));
+    expect(await writes.saveOrigin({ ...origin, pricePerKg: null, active: false })).toBe(true);
+    expect(rpc).toHaveBeenLastCalledWith('save_origin', expect.objectContaining({ p_origin: expect.objectContaining({ pricePerKg: null, active: false }) }));
+    const calls = rpc.mock.calls.length;
+    expect(await writes.saveOrigin({ ...origin, pricePerKg: null, active: true })).toBe(false);
+    expect(rpc.mock.calls.length).toBe(calls); // refused before sending
+    expect(await writes.createOrigin({ ...origin, id: '', pricePerKg: null, updatedAt: undefined })).toMatchObject({ pricePerKg: null, active: false });
     expect(await writes.createOrigin({ ...origin, id: '', stockKg: 50, active: true, updatedAt: undefined })).toMatchObject({ id: 'test-origine-2', stockKg: 0, active: false });
     expect(rpc).toHaveBeenLastCalledWith('save_origin', expect.objectContaining({ p_seen_at: null }));
   });

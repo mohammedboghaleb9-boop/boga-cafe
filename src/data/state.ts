@@ -12,7 +12,7 @@ import type {
 } from '@/core/types';
 
 /** The parts of the settings the panel saves, each with its own version mark on the live site. */
-export type ConfigPart = 'rules' | 'freeShipping' | 'payee' | 'content' | 'contact' | 'recipients';
+export type ConfigPart = 'rules' | 'freeShipping' | 'payee' | 'content' | 'contact' | 'recipients' | 'sales';
 
 /** Everything the website and the admin read. Mirrors the database tables. */
 export interface DbState {
@@ -34,4 +34,4 @@ export interface DbState {
 }
 
 /** Bump when the seed changes, so saved demo data in browsers is replaced. */
-export const STATE_VERSION = 9; // 9: Cash Plus payee city and phone; 8: reply hours on the contact page; 7: paid samples (B2B 250 g prices, no sample requests); 6: no automatic free delivery; 5: payment check deadline, Cash Plus payee, no example data outside the demo
+export const STATE_VERSION = 10; // 10: sales closed by default (the prototype opens them), an origin's price may be empty, a delivery cap; 9: Cash Plus payee city and phone; 8: reply hours on the contact page; 7: paid samples (B2B 250 g prices, no sample requests); 6: no automatic free delivery; 5: payment check deadline, Cash Plus payee, no example data outside the demo

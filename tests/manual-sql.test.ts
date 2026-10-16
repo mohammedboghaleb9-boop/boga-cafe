@@ -120,3 +120,56 @@ describe('rollback scripts', () => {
     expect(commits(script)).toBe(1);
   });
 });
+
+/** Slice 12: the SQL Editor block holds the migration unchanged; the rollback undoes the catalog part only and keeps the sales gate. */
+describe('catalog_ready (slice 12)', () => {
+  const migration = read('supabase/migrations/20261016120000_catalog_ready.sql');
+  const block = read('supabase/manual/20261016120000_catalog_ready.editor.sql');
+  const rollback = read('supabase/manual/20261016120000_catalog_ready.rollback.sql');
+  const md5 = async (text: string) => (await import('node:crypto')).createHash('md5').update(text).digest('hex');
+  const body = (sql: string, name: string) => new RegExp(`create (?:or replace )?function public\\.${name}\\(.*?\\$\\$(.*?)\\$\\$`, 's').exec(sql)?.[1];
+  const fn = (sql: string, name: string) => new RegExp(`create or replace function public\\.${name}\\(.*?\\nend \\$\\$;`, 's').exec(sql)?.[0];
+
+  it('the block holds the migration unchanged, between begin and its one commit, after the guards', () => {
+    expect(block).toContain(`-- >>> 20261016120000_catalog_ready.sql\n${migration.trimEnd()}\n-- <<< 20261016120000_catalog_ready.sql`);
+    expect(block.indexOf('\nbegin;')).toBeLessThan(block.indexOf("stop: 20261016120000_catalog_ready is already applied"));
+    expect(block.indexOf("stop: 20261016120000_catalog_ready is already applied")).toBeLessThan(block.indexOf('-- >>>'));
+    expect(block.indexOf('-- <<<')).toBeLessThan(block.indexOf('\ncommit;'));
+    expect(block.match(/^commit;$/gm)).toHaveLength(1);
+  });
+
+  it('the block checks the six bodies of the migration (md5) and that no row changed', async () => {
+    for (const name of ['check_order', 'commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open']) {
+      expect(body(migration, name), name).toBeDefined();
+      expect(block, name).toContain(await md5(body(migration, name)!));
+    }
+    expect(block).toContain("raise exception 'stop: a row changed");
+  });
+
+  it('the migration changes no row: no insert, update or delete outside its function bodies', () => {
+    const outside = migration.replace(/\$\$.*?\$\$/gs, '');
+    expect(outside).not.toMatch(/\b(insert into|update public\.|delete from)\b/i);
+  });
+
+  it('the rollback restores save_origin and save_shipping_rate of their migrations, check_order without the cap, and keeps the gate', async () => {
+    const trim = read('supabase/migrations/20261013100000_catalog_trim.sql');
+    const config = read('supabase/migrations/20261013090048_config_trim.sql');
+    expect(rollback).toContain(fn(trim, 'save_origin')!);
+    expect(rollback).toContain(await md5(body(trim, 'save_origin')!));
+    expect(rollback).toContain(fn(config, 'save_shipping_rate')!);
+    expect(rollback).toContain(await md5(body(config, 'save_shipping_rate')!));
+    const check = fn(rollback, 'check_order')!;
+    expect(check).not.toContain('max_fee');
+    expect(check).toContain("raise exception 'sales_closed'"); // the gate stays: undoing it would open the sales
+    expect(check.replace(/ *v_fee := round\(v_rate\.base_fee \+ v_extra_kg \* v_rate\.extra_per_kg\);\n/, '')).toBe(
+      fn(migration, 'check_order')!.replace(/ *-- at most the city's cap.*\n *v_fee := round\(least\(.*\)\);\n/, ''),
+    ); // the migration's check_order but the cap, nothing else
+    for (const name of ['commit_order', 'commit_quote_request', 'set_sales_open']) {
+      expect(rollback, name).not.toMatch(new RegExp(`function public\\.${name}\\(`));
+      expect(rollback, `${name} still checked`).toContain(await md5(body(migration, name)!));
+    }
+    expect(rollback).toContain('stop: % origin(s) without a price');
+    expect(rollback).toContain('stop: % city(ies) with a delivery cap');
+    expect(rollback.match(/^commit;$/gm)).toHaveLength(1);
+  });
+});

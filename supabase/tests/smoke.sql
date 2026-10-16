@@ -12,7 +12,7 @@ insert into public.admin_users values
   ('00000000-0000-0000-0000-000000000002', 'staff', 'Staff'),
   ('00000000-0000-0000-0000-000000000003', 'manager', 'Manager');
 insert into public.admin_config values (1, '+212600000000', 'admin@example.com', true, true);
-insert into public.site_config values (1, '{"b2bThresholdKg": 10, "unpaidOrderTimeoutHours": 48, "paymentCheckTimeoutHours": 120, "bank": {"holder": "Test holder", "bankName": "Test bank", "rib": "OWNER-RIB"}, "cashplus": {"beneficiary": ""}}', '{}');
+insert into public.site_config values (1, '{"salesOpen": true, "b2bThresholdKg": 10, "unpaidOrderTimeoutHours": 48, "paymentCheckTimeoutHours": 120, "bank": {"holder": "Test holder", "bankName": "Test bank", "rib": "OWNER-RIB"}, "cashplus": {"beneficiary": ""}}', '{}');
 insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg) values
   ('brazil',  '{"fr": "Brésil"}',  'BR', 'arabica', 'medium', 10, 2, 220),
   ('vietnam', '{"fr": "Viêt Nam"}', 'VN', 'robusta', 'dark',   1, 0.5, 150);

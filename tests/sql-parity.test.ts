@@ -24,8 +24,10 @@ import { seedPaymentMethods, seedSettings, seedShippingRates } from '../src/data
 // loss: deductions are no longer round numbers, and 1/84 never ends in decimals) and free delivery above 1500 DH, so
 // most orders pay delivery, extra kg included
 // (payment details: test values, the real ones are empty until the owner's account exists)
+// and the sales open (closed by default: the database refuses every order then)
 const settings = {
   ...seedSettings,
+  salesOpen: true,
   roastLossPercent: 16,
   freeShippingOver: 1500,
   customBlend: { ...seedSettings.customBlend, enabled: true },
@@ -33,10 +35,13 @@ const settings = {
   cashplus: { beneficiary: 'Test', city: 'Oujda', phone: '0600000000' },
 };
 const origins = seedOrigins.map((o) => ({ ...o, stockKg: 5000 }));
+// the owner's tariff (2026-10-16) on three cities: 20 DH up to 4 kg (4 included), 30 DH above, at any weight
+const CAPPED = ['oujda', 'berkane', 'nador'];
+const shippingRates = seedShippingRates.map((r) => (CAPPED.includes(r.id) ? { ...r, baseFee: 20, includedKg: 4, extraPerKg: 10, maxFee: 30 } : r));
 const ctx: CheckoutContext = {
   catalog: { products: seedProducts, origins: indexOrigins(origins) },
   settings,
-  shippingRates: seedShippingRates,
+  shippingRates,
   paymentMethods: seedPaymentMethods,
 };
 
@@ -55,8 +60,8 @@ function orders() {
   const rnd = random(20260929);
   const pick = <T,>(xs: T[]) => xs[Math.floor(rnd() * xs.length)];
   const products = seedProducts.filter((p) => p.active && offeredSizes(p).length > 0);
-  const blendOrigins = origins.filter((o) => o.active && o.customBlendEnabled && o.pricePerKg >= 1);
-  const cities = seedShippingRates.filter((r) => r.active);
+  const blendOrigins = origins.filter((o) => o.active && o.customBlendEnabled && (o.pricePerKg ?? 0) >= 1);
+  const cities = shippingRates.filter((r) => r.active);
   const methods = seedPaymentMethods.filter((m) => m.enabled).map((m) => m.id as PaymentMethodId);
   const phones = ['06 12 34 56 78', '+212712345678', '0512345678', '00212 6 61 00 00 00'];
   const { minPercent, maxOrigins } = settings.customBlend;
@@ -80,27 +85,32 @@ function orders() {
     return { id: `p${rnd()}`, type: 'product', productId: product.id, size: pick(sizes), qty: 1 + Math.floor(rnd() * 4) };
   };
 
-  const carts: CartItem[][] = [];
-  for (let i = 0; i < 40; i++) carts.push(Array.from({ length: 1 + Math.floor(rnd() * 3) }, () => (rnd() < 0.6 ? bag() : blend())));
+  const carts: { items: CartItem[]; cityId?: string }[] = [];
+  for (let i = 0; i < 40; i++) carts.push({ items: Array.from({ length: 1 + Math.floor(rnd() * 3) }, () => (rnd() < 0.6 ? bag() : blend())) });
   // edges: exactly the 10 kg limit, free delivery, extra kg on a far city
   const signature = products.find((p) => offeredSizes(p).includes(1000))!;
-  carts.push([{ id: 'edge-10kg', type: 'product', productId: signature.id, size: 1000, qty: 10 }]);
+  const kilos = (id: string, qty: number, extra: CartItem[] = []): CartItem[] => [{ id, type: 'product', productId: signature.id, size: 1000, qty }, ...extra];
+  carts.push({ items: kilos('edge-10kg', 10) });
+  // the cap: 4 kg (included: 20 DH), 4.25 kg (30 DH), 6 kg (30 DH, not 40; still under the 1500 DH free delivery)
+  carts.push({ items: kilos('cap-4kg', 4), cityId: 'oujda' });
+  carts.push({ items: kilos('cap-4.25kg', 4, [{ id: 'cap-250g', type: 'product', productId: signature.id, size: 250, qty: 1 }]), cityId: 'berkane' });
+  carts.push({ items: kilos('cap-6kg', 6), cityId: 'nador' });
   // three bags with 7 % Brazil each: 3 × 250 × 7 % / 84 % = 0.0625 kg exactly, a half gram
   // that per-bag sums in decimals would make 0.06249… (the database divides once)
-  carts.push(
+  carts.push({ items:
     ['honduras', 'colombia', 'uganda'].map((other, i): CartItem => ({
       id: `edge-half-${i}`,
       type: 'custom',
       qty: 1,
       blend: { size: 250, lines: [{ originId: 'brazil', percent: 7 }, { originId: other, percent: 93 }] },
     })),
-  );
+  });
 
-  return carts.flatMap((items, i) => {
+  return carts.flatMap(({ items, cityId }, i) => {
     const r = buildOrder(
       {
         items,
-        customer: { fullName: `Client ${i}`, phone: pick(phones), email: i % 3 ? '' : `client${i}@example.ma`, cityId: pick(cities).id, address: ` ${i} rue de Test, Oujda\n`, company: '', notes: '' },
+        customer: { fullName: `Client ${i}`, phone: pick(phones), email: i % 3 ? '' : `client${i}@example.ma`, cityId: cityId ?? pick(cities).id, address: ` ${i} rue de Test, Oujda\n`, company: '', notes: '' },
         paymentMethod: pick(methods),
         locale: pick(['ar', 'fr', 'en'] as const),
       },
@@ -133,8 +143,8 @@ function parityFile() {
     'insert into public.product_recipes values',
     seedProducts.flatMap((p) => p.recipe.map((r) => `  ('${p.id}', '${r.originId}', ${r.percent})`)).join(',\n') + ';',
     'commit;',
-    'insert into public.shipping_rates (id, city, distance_km, base_fee, included_kg, extra_per_kg, delivery_days, active) values',
-    seedShippingRates.map((r) => `  ('${r.id}', ${lit(r.city)}, ${r.distanceKm}, ${r.baseFee}, ${r.includedKg}, ${r.extraPerKg}, ${lit(r.deliveryDays).replace(/"/g, '')}, ${r.active})`).join(',\n') + ';',
+    'insert into public.shipping_rates (id, city, distance_km, base_fee, included_kg, extra_per_kg, max_fee, delivery_days, active) values',
+    shippingRates.map((r) => `  ('${r.id}', ${lit(r.city)}, ${r.distanceKm}, ${r.baseFee}, ${r.includedKg}, ${r.extraPerKg}, ${r.maxFee ?? 'null'}, ${lit(r.deliveryDays).replace(/"/g, '')}, ${r.active})`).join(',\n') + ';',
     'insert into public.payment_methods (id, enabled, label) values',
     seedPaymentMethods.map((m) => `  ('${m.id}', ${m.enabled}, ${lit(m.label)})`).join(',\n') + ';',
     'do $$',
@@ -165,6 +175,9 @@ describe('site and database compute orders the same way', () => {
   it('writes the orders built by src/core to supabase/tests/parity.sql', async () => {
     const { sql, count } = parityFile();
     expect(count).toBeGreaterThanOrEqual(30); // enough orders survive the 10 kg limit
+    // the three capped carts, last but one to last but three: the database must agree on 20, 30 and 30 DH
+    const capped = orders().filter((o) => CAPPED.includes(o.customer.cityId) && [4, 4.25, 6].includes(o.weightKg) && o.lines.every((l) => l.productId === 'boga-signature'));
+    expect(capped.map((o) => [o.customer.cityId, o.weightKg, o.shippingFee])).toEqual([['oujda', 4, 20], ['berkane', 4.25, 30], ['nador', 6, 30]]);
     await expect(sql).toMatchFileSnapshot('../supabase/tests/parity.sql');
   });
 });

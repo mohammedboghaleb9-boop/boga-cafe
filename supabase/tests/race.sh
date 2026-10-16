@@ -7,7 +7,7 @@ set -euo pipefail
 DB="$1"
 PSQL="psql -q -X -v ON_ERROR_STOP=1 -d $DB"
 $PSQL <<'SQL'
-insert into public.site_config values (1, '{"b2bThresholdKg": 10, "bank": {"holder": "T", "bankName": "T", "rib": "T"}}', '{}');
+insert into public.site_config values (1, '{"salesOpen": true, "b2bThresholdKg": 10, "bank": {"holder": "T", "bankName": "T", "rib": "T"}}', '{}');
 insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg)
 values ('last', '{"fr": "Dernier"}', 'BR', 'arabica', 'medium', 1, 0, 200);
 begin;
@@ -88,3 +88,24 @@ grep -q "^$A_ID false$" "$OUT/lb" || { echo "TEST FAILED: the retry did not get 
 STOCK=$($PSQL -t -A -c "select stock_kg from public.origins where id = 'last'")
 [ "$STOCK" = "0.000" ] || { echo "TEST FAILED: stock is $STOCK, expected 0.000"; exit 1; }
 echo " ok race - one key sent twice when the first takes the last kilos: the second gets the first order back"
+
+# The owner closes the sales while an order is being saved (slice 12): the order holds the
+# settings row (for share) until it commits, so the closing waits for it and the next order
+# is refused. Neither a lost order nor a sale after the closing.
+$PSQL <<'SQL' >/dev/null
+select set_config('boga.stock_write', 'on', false);
+update public.origins set stock_kg = 1 where id = 'last';
+SQL
+$PSQL -t -A -c "begin; select number from public.commit_order(public.race_order(1), '', '', ''); select pg_sleep(2); commit;" >"$OUT/ga" 2>&1 &
+sleep 0.5
+T0=$(date +%s%N)
+$PSQL -c "update public.site_config set settings = settings || '{\"salesOpen\": false}' where id = 1" >"$OUT/gb" 2>&1
+WAITED=$(( ($(date +%s%N) - T0) / 1000000 ))
+wait
+grep -q "BC-" "$OUT/ga" || { echo "TEST FAILED: the order in progress was lost"; cat "$OUT/ga"; exit 1; }
+[ "$WAITED" -ge 1000 ] || { echo "TEST FAILED: the closing did not wait for the order in progress (${WAITED} ms)"; exit 1; }
+if $PSQL -c "select number from public.commit_order(public.race_order(1), '', '', '')" >"$OUT/gc" 2>&1; then
+  echo "TEST FAILED: an order went through after the closing"; cat "$OUT/gc"; exit 1
+fi
+grep -q "sales_closed" "$OUT/gc" || { echo "TEST FAILED: the order after the closing was not refused as sales_closed"; cat "$OUT/gc"; exit 1; }
+echo " ok race - the sales closed during an order: the closing waits for it, the next order is refused"

@@ -191,7 +191,7 @@ export type Database = {
           id: string;
           low_stock_kg: number;
           name: Json;
-          price_per_kg: number;
+          price_per_kg: number | null;
           region: string;
           restock_date: string | null;
           roast_level: string;
@@ -207,7 +207,7 @@ export type Database = {
           id: string;
           low_stock_kg?: number;
           name: Json;
-          price_per_kg: number;
+          price_per_kg?: number | null;
           region?: string;
           restock_date?: string | null;
           roast_level: string;
@@ -223,7 +223,7 @@ export type Database = {
           id?: string;
           low_stock_kg?: number;
           name?: Json;
-          price_per_kg?: number;
+          price_per_kg?: number | null;
           region?: string;
           restock_date?: string | null;
           roast_level?: string;
@@ -399,6 +399,7 @@ export type Database = {
           extra_per_kg: number;
           id: string;
           included_kg: number;
+          max_fee: number | null;
           updated_at: string;
         };
         Insert: {
@@ -410,6 +411,7 @@ export type Database = {
           extra_per_kg?: number;
           id: string;
           included_kg?: number;
+          max_fee?: number | null;
           updated_at?: string;
         };
         Update: {
@@ -421,6 +423,7 @@ export type Database = {
           extra_per_kg?: number;
           id?: string;
           included_kg?: number;
+          max_fee?: number | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -532,6 +535,7 @@ export type Database = {
       save_rules: { Args: { p_rules: Json; p_seen: string | null }; Returns: undefined };
       save_shipping_rate: { Args: { p_rate: Json; p_seen: string | null }; Returns: string };
       set_order_status: { Args: { p_order_id: string; p_status: string }; Returns: undefined };
+      set_sales_open: { Args: { p_open: boolean; p_seen: string | null }; Returns: undefined };
       set_payment_status: { Args: { p_order_id: string; p_status: string }; Returns: undefined };
       update_quote_request: {
         Args: { p_admin_notes: string; p_final_price: number | null; p_id: string; p_seen_at: string; p_status: string };

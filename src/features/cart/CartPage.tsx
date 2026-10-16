@@ -121,7 +121,12 @@ export function CartPage() {
             </p>
           ))}
 
-          {!summary.isB2B && (
+          {!settings.salesOpen && (
+            <p className="notice notice-warn small" role="status">
+              {t.checkout.errors.sales_closed}
+            </p>
+          )}
+          {!summary.isB2B && settings.salesOpen && (
             <Link
               to="/checkout"
               className="btn btn-primary btn-block"
@@ -152,7 +157,11 @@ export function CartPage() {
           >
             <Icon name="whatsapp" size={18} /> {t.b2b.largeCta}
           </a>
-          {unavailable ? (
+          {!settings.salesOpen ? (
+            <p className="notice notice-warn" role="status">
+              {t.checkout.errors.sales_closed}
+            </p>
+          ) : unavailable ? (
             <p className="notice notice-bad" role="alert">
               {t.checkout.errors.unavailable}
             </p>
