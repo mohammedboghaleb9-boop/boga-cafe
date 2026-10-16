@@ -3,6 +3,10 @@ dist
 dist-demo
 dist-supabase
 dist-e2e-supabase
+dist-coming-soon
+dist-coming-soon-rebuilt
+coming-soon-review
+coming-soon-SHA256SUMS
 # wrangler's local state (dry runs, wrangler dev)
 .wrangler/
 supabase/functions/*/dist

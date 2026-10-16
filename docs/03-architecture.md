@@ -179,4 +179,4 @@ npm run build:demo   # النموذج في ملف HTML واحد → dist-demo/in
 ./supabase/tests/run-local.sh   # اختبار مخطط قاعدة البيانات (يتطلب PostgreSQL)
 ```
 
-متغيرات البيئة: انظر `.env.example`. `VITE_DATA_MODE=demo` للنموذج، و`supabase` في المرحلة 2. معاينات Workers Builds تأخذ قيمها من `.env.workers-preview` (انظر الاستضافة أعلاه).
+متغيرات البيئة: انظر `.env.example`. `VITE_DATA_MODE=demo` للنموذج، و`supabase` في المرحلة 2. بلا `VITE_DATA_MODE` (الإنتاج، `main`): صفحة «قريباً» وحدها (`src/coming-soon`، `scripts/build-target.mjs`) حتى يفتح المالك المتجر؛ أي قيمة أخرى توقف البناء. معاينات Workers Builds تأخذ قيمها من `.env.workers-preview` (انظر الاستضافة أعلاه).
