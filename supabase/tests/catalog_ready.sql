@@ -8,7 +8,7 @@ set client_min_messages = warning;
 create extension if not exists pgtap;
 
 begin;
-select plan(36);
+select plan(45);
 
 insert into auth.users values
   ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000002'), ('00000000-0000-0000-0000-000000000003');
@@ -92,10 +92,10 @@ select throws_ok($$select public.set_sales_open(true, null)$$, 'P0001', 'forbidd
 select pg_temp.token('00000000-0000-0000-0000-000000000001', 'aal2');
 select throws_ok($$select public.set_sales_open(null, null)$$, 'P0001', 'invalid_settings', 'owner: neither open nor closed is refused');
 select lives_ok($$select public.set_sales_open(true, null)$$, 'owner at aal2: opens the sales');
-select throws_ok($$select public.set_sales_open(false, null)$$, 'P0001', 'stale', 'from an older copy of the page: refused');
+select throws_ok($$select public.set_sales_open(true, null)$$, 'P0001', 'stale', 'opening from an older copy of the page: refused');
 reset role;
 select is((select (settings -> 'salesOpen')::text || ' ' || (select area || '/' || item_id || '/' || actor from public.config_changes) from public.site_config),
-          'true rules/salesOpen/00000000-0000-0000-0000-000000000001', 'saved as a JSON true, recorded with who did it');
+          'true rules/salesOpen:open/00000000-0000-0000-0000-000000000001', 'saved as a JSON true, recorded as an opening with who did it');
 select is((select settings ->> 'b2bThresholdKg' from public.site_config), '10', 'the other settings are untouched');
 
 -- ── open: orders and requests go through; the delivery cap ──
@@ -110,7 +110,7 @@ reset role;
 -- ── closed again: no new sale, but the orders already placed keep their life cycle ──
 set local role authenticated;
 select pg_temp.token('00000000-0000-0000-0000-000000000001', 'aal2');
-select lives_ok(format('select public.set_sales_open(false, %L)', pg_temp.mark()), 'owner: closes the sales');
+select lives_ok($$select public.set_sales_open(false, '2026-01-01')$$, 'owner: closes the sales, even from an older copy of the page (closing is always safe)');
 select lives_ok($$select public.set_order_status((select id from public.orders order by number limit 1), 'confirmed')$$,
                 'closed: an order already placed still moves on');
 reset role;
@@ -139,6 +139,14 @@ select is((select (name ->> 'fr') || ' ' || price_per_kg || ' ' || active || ' '
           'Ouganda 120.00 true 2.000', '… changes only those: the rest stays as it is, the origin stays shown');
 select throws_ok($$select public.save_origin(pg_temp.origin('test-origine', '{"pricePerKg": null, "active": true}'), pg_temp.seen_origin('test-origine'))$$,
                  'P0001', 'needs_price', 'the price taken away from a shown origin: refused');
+select lives_ok($$select public.save_origin('{"id": "test-origine", "active": null, "customBlendEnabled": null, "lowStockKg": null}', pg_temp.seen_origin('test-origine'))$$,
+                'fields sent as null on an edit …');
+select is((select active || ' ' || custom_blend_enabled || ' ' || low_stock_kg from public.origins where id = 'test-origine'), 'true true 2.000',
+          '… stay as they are (only the price sent as null means none)');
+select throws_ok($$select public.save_origin('{"id": "test-origine", "active": 1}', pg_temp.seen_origin('test-origine'))$$,
+                 'P0001', 'invalid_origin', 'shown or hidden is a JSON boolean, never a number or a text');
+select throws_ok($$select public.save_origin('{"id": "brazil", "active": false}', pg_temp.seen_origin('brazil'))$$,
+                 'P0001', 'origin_in_use', 'an origin used by a shown product cannot be hidden (hide the product first)');
 reset role;
 select throws_ok($$update public.origins set price_per_kg = null where id = 'test-origine'$$, '23514', null,
                  'and the table itself refuses a shown origin without a price (constraint)');
@@ -150,6 +158,14 @@ select throws_ok($$select public.save_shipping_rate(pg_temp.city('{"maxFee": 19}
 select is(public.save_shipping_rate(pg_temp.city(), null), 'berkane', 'manager: a city with the owner''s tariff');
 select is((select base_fee || ' ' || included_kg || ' ' || extra_per_kg || ' ' || max_fee from public.shipping_rates where id = 'berkane'), '20.00 4.000 10.00 30.00',
           'saved with its cap');
+select lives_ok($$select public.save_shipping_rate(pg_temp.city() - 'maxFee' || '{"active": false}', (select updated_at from public.shipping_rates where id = 'berkane'))$$,
+                'a page that does not know the cap saves the city …');
+select is((select max_fee || ' ' || active from public.shipping_rates where id = 'berkane'), '30.00 false', '… and the cap stays');
+select throws_ok($$select public.save_shipping_rate(pg_temp.city('{"maxFee": 30.5}'), (select updated_at from public.shipping_rates where id = 'berkane'))$$,
+                 'P0001', 'invalid_rate', 'a cap in whole DH only (30.5 would charge 31)');
+select lives_ok($$select public.save_shipping_rate(pg_temp.city('{"maxFee": null}'), (select updated_at from public.shipping_rates where id = 'berkane'))$$,
+                'a cap sent as null …');
+select is((select coalesce(max_fee::text, 'none') from public.shipping_rates where id = 'berkane'), 'none', '… is removed, on purpose');
 reset role;
 
 select * from finish(true);

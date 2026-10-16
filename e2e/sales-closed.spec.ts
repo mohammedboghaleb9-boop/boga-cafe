@@ -4,8 +4,8 @@ import { answerCatalog, CORS, SUPABASE, tables } from './live';
 
 /**
  * The live-site build while the owner has not opened the sales (slice 12: settings.salesOpen missing,
- * as on the live database today): the cart, the checkout and the B2B form say so, and nothing reaches the
- * storefront function. The server and the database refuse it too (src/server and supabase/tests).
+ * as on the live database today): the cart, the checkout and the B2B form say so, and a checkout form
+ * submitted anyway sends nothing to the storefront function. The server and the database refuse it too (src/server and supabase/tests).
  */
 async function closedSite(page: Page, cart: object[]) {
   const sent: string[] = [];
@@ -44,6 +44,9 @@ test.describe('sales closed on the live site', () => {
     await expect(page.getByRole('status').filter({ hasText: 'pas encore ouvertes' })).toBeVisible();
     await expect(page.locator('form.checkout button[type=submit]')).toBeDisabled();
     await scanA11y(page, 'checkout, sales closed');
+    // the form submitted anyway (Enter in a field, a script): it says so and sends nothing
+    await page.locator('form.checkout').evaluate((f) => (f as HTMLFormElement).requestSubmit());
+    await expect(page.locator('.checkout-errors')).toContainText('pas encore ouvertes');
     expect(sent).toEqual([]);
   });
 
@@ -51,13 +54,13 @@ test.describe('sales closed on the live site', () => {
     test.describe(`390px ${locale}`, () => {
       test.use({ locale, viewport: { width: 390, height: 844 } });
       test('the B2B form is replaced by the notice, inside the window', async ({ page }) => {
-        const sent = await closedSite(page, b2bCart);
+        await closedSite(page, b2bCart);
         await open(page, '/cart');
         await expect(page.locator('.b2b-box [role=status]')).toBeVisible();
         await expect(page.locator('.b2b-box form')).toHaveCount(0);
         await expectNoSideScroll(page);
+        await expect(page.locator('aside [role=status]')).toHaveCount(0); // said once, in the B2B box
         await page.locator('.b2b-box').screenshot({ path: `test-results/sales-closed-b2b-${locale}.png` });
-        expect(sent).toEqual([]);
       });
     });
   }

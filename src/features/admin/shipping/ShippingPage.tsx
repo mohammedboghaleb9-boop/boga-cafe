@@ -199,6 +199,7 @@ function RateFields({
           type="number"
           min={0}
           max={1000}
+          step={1}
           value={r.maxFee ?? ''}
           aria-label={label(t.admin.shipping.cap)}
           onChange={(e) => set({ maxFee: e.target.value === '' ? undefined : num(e.target.value) })}

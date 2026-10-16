@@ -86,6 +86,12 @@ export function CheckoutPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    // the button is off, but a form can still be submitted (Enter in a field, a script): nothing is sent
+    if (!settings.salesOpen) {
+      setErrors(['sales_closed']);
+      focusField('sales_closed');
+      return;
+    }
     if (!method) {
       setErrors(['payment_method']);
       focusField('payment_method');

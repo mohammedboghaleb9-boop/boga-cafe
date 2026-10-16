@@ -111,7 +111,7 @@ export const shippingRateOk = (r: ShippingRate) =>
   between(r.baseFee, 0, 1000) &&
   between(r.includedKg, 0, 100) &&
   between(r.extraPerKg, 0, 1000) &&
-  (r.maxFee === undefined || (between(r.maxFee, 0, 1000) && r.maxFee >= r.baseFee)) &&
+  (r.maxFee === undefined || (wholeBetween(r.maxFee, 0, 1000) && r.maxFee >= r.baseFee)) &&
   trimEnds(r.deliveryDays).length <= 20;
 
 /** What each form sends: every text trimmed, as the database keeps it. */

@@ -11,6 +11,7 @@
 -- making a price up: give every origin its real price first, or keep the migration and fix forward), or a city with a
 -- cap (the cap would silently disappear and the fees would change: remove the caps first, knowingly). In practice this
 -- rollback works between applying the migration and the cleanup that removes the example prices; after that, fix forward.
+-- BEFORE: close the sales (Admin -> Settings) if they are open: an order saved while it runs stops it ("a row changed").
 -- THE SITE: revert the code of slice 12 too (a revert commit, no history rewrite): the reverted code reads and sends
 -- what these functions expect again.
 --
@@ -160,7 +161,7 @@ end $$;
 -- >>> check_order of 20261016120000_catalog_ready.sql without the cap (the gate stays)
 create or replace function public.check_order(p_order jsonb)
 returns jsonb
-language plpgsql stable set search_path = public as $$
+language plpgsql stable set search_path = public, pg_temp as $$
 declare
   s           jsonb := (select settings from public.site_config where id = 1);
   v_line      jsonb;
@@ -436,7 +437,7 @@ begin
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') <> 'fb3b0aaa8adb57b78e4977e07c083bd9'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') <> '470f0947d3666b6c6ab3ecaaafe4d1c4'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') <> '7fb8abd19c7f317919f3bb11cc72807e'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') <> 'e5d2fb48005678bd43d425d8dfb6edb9' then
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') <> '311bd5321bdc6d25cfd93ee1bde4cccc' then
     raise exception 'stop: a function body is not the expected one';
   end if;
   if has_function_privilege('anon', 'public.set_sales_open(boolean, text)', 'execute')
@@ -457,8 +458,9 @@ begin
   end if;
   if (select count(*) from pg_proc where pronamespace = 'public'::regnamespace
        and proname in ('commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open')
-       and prosecdef and exists (select 1 from unnest(proconfig) c where c like 'search_path=public%')) <> 5 then
-    raise exception 'stop: a writing function is not security definer with its fixed search_path';
+       and prosecdef and proconfig = array['search_path=public, pg_temp']) <> 5
+     or (select proconfig from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from array['search_path=public, pg_temp'] then
+    raise exception 'stop: a function does not have its fixed search_path (public, pg_temp), or a writing one is not security definer';
   end if;
 end $$;
 

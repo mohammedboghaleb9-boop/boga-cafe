@@ -17,8 +17,10 @@
 --      missing, false or anything else = closed. commit_order and commit_quote_request check it under a
 --      lock on the settings row (a sale in progress finishes first, the next one sees the change), before
 --      a number is taken; check_order checks it too. Only the owner changes it (set_sales_open, at aal2,
---      recorded in config_changes as a 'rules' change). Orders already saved keep their whole life cycle
---      (status, payment, expiry): the gate only stops new ones.
+--      recorded in config_changes as a 'rules' change, item salesOpen:open or salesOpen:closed; closing is
+--      never refused as 'stale'). Orders already saved keep their whole life cycle (status, payment,
+--      expiry): the gate only stops new ones. It stops the API roles and application mistakes; a holder
+--      of the secret (service_role) key can still write tables directly, as for every other rule here.
 --
 -- create or replace keeps each function's owner and grants. "drop not null" is a DROP for the tool that
 -- applies migrations to the live project (it hangs on DROP and DELETE): the owner runs this file in the
@@ -44,12 +46,15 @@ begin
   if p_open is null then
     raise exception 'invalid_settings';
   end if;
-  perform public.config_section_seen('sales', p_seen);
+  -- opening from an older copy of the page is refused ('stale'); closing is always safe, never refused
+  if p_open then
+    perform public.config_section_seen('sales', p_seen);
+  end if;
   update public.site_config
      set settings = settings || jsonb_build_object('salesOpen', p_open),
          versions = versions || jsonb_build_object('sales', clock_timestamp()::text)
    where id = 1;
-  perform public.config_saved('rules', 'salesOpen');
+  perform public.config_saved('rules', case when p_open then 'salesOpen:open' else 'salesOpen:closed' end);
 end $$;
 
 revoke all on function public.set_sales_open(boolean, text) from public, anon;
@@ -74,8 +79,8 @@ begin
   if not public.catalog_id_ok(v_id) then
     raise exception 'invalid_id';
   end if;
-  -- an edit: what is not sent stays as it is (the price sent as null means none); a page from before
-  -- this version sends neither the definition's every field nor whether the origin is shown
+  -- an edit: what is not sent, or sent as null, stays as it is; only the price sent as null means none.
+  -- A page from before this version sends neither the definition's every field nor whether the origin is shown.
   if p_seen_at is not null then
     if not exists (select 1 from public.origins where id = v_id) then
       raise exception 'not_found';
@@ -83,7 +88,13 @@ begin
     p_origin := (select jsonb_build_object('name', o.name, 'countryCode', o.country_code, 'species', o.species, 'region', o.region,
                                            'roastLevel', o.roast_level, 'tastingNotes', o.tasting_notes, 'pricePerKg', o.price_per_kg,
                                            'lowStockKg', o.low_stock_kg, 'customBlendEnabled', o.custom_blend_enabled, 'active', o.active)
-                   from public.origins o where o.id = v_id) || p_origin;
+                   from public.origins o where o.id = v_id)
+                || (select coalesce(jsonb_object_agg(e.key, e.value), '{}'::jsonb) from jsonb_each(p_origin) e
+                     where jsonb_typeof(e.value) <> 'null' or e.key = 'pricePerKg');
+  end if;
+  -- the two switches are JSON booleans (a text or a number never shows an origin)
+  if jsonb_typeof(p_origin -> 'active') not in ('boolean', 'null') or jsonb_typeof(p_origin -> 'customBlendEnabled') not in ('boolean', 'null') then
+    raise exception 'invalid_origin';
   end if;
   -- name, tasting notes and region, trimmed before they are checked; one that is not sent stays not sent (its default below still applies)
   p_origin := public.config_trim_keys(p_origin, array['name', 'tastingNotes'], array['region']);
@@ -130,6 +141,12 @@ begin
     if v_active and v_price is null then
       raise exception 'needs_price';
     end if;
+    -- never hidden under a shown product (save_product's rule 'hidden_origin', from the origin's side):
+    -- hide the products first
+    if not v_active and (select o.active from public.origins o where o.id = v_id)
+       and exists (select 1 from public.product_recipes r join public.products p on p.id = r.product_id where r.origin_id = v_id and p.active) then
+      raise exception 'origin_in_use';
+    end if;
     update public.origins
        set name = p_origin -> 'name', country_code = p_origin ->> 'countryCode', species = p_origin ->> 'species',
            region = coalesce(p_origin ->> 'region', ''), roast_level = p_origin ->> 'roastLevel',
@@ -150,7 +167,8 @@ end $$;
 -- ───────────── 3. save_shipping_rate: the cap ─────────────
 -- A city's delivery price (src/core/types.ts ShippingRate): owner and manager. p_seen null =
 -- a new city, created hidden (shown on purpose, after a check). Its id never changes.
--- maxFee: missing or null = no cap; else at least the base fee.
+-- maxFee: a whole number of DH, at least the base fee; null = no cap; not sent on an edit = the cap stays
+-- (a page from before this version never removes it).
 create or replace function public.save_shipping_rate(p_rate jsonb, p_seen timestamptz) returns text
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -171,12 +189,16 @@ begin
           and public.config_number_ok(p_rate -> 'extraPerKg', 0, 1000)
           and public.config_string_ok(p_rate -> 'deliveryDays', 20)
           and coalesce(jsonb_typeof(p_rate -> 'active') = 'boolean', false)
-          and (coalesce(jsonb_typeof(p_rate -> 'maxFee'), 'null') = 'null'
-               or (public.config_number_ok(p_rate -> 'maxFee', 0, 1000)
-                   and (p_rate ->> 'maxFee')::numeric >= (p_rate ->> 'baseFee')::numeric))) then
+          and (coalesce(jsonb_typeof(p_rate -> 'maxFee'), 'null') = 'null' or public.config_integer_ok(p_rate -> 'maxFee', 0, 1000))) then
     raise exception 'invalid_rate';
   end if;
   v_max := (p_rate ->> 'maxFee')::numeric;
+  if p_seen is not null and not (p_rate ? 'maxFee') then
+    v_max := (select r.max_fee from public.shipping_rates r where r.id = v_id);
+  end if;
+  if v_max < (p_rate ->> 'baseFee')::numeric then
+    raise exception 'invalid_rate';
+  end if;
   if p_seen is null then
     if exists (select 1 from public.shipping_rates where id = v_id) then
       raise exception 'exists';
@@ -205,9 +227,10 @@ end $$;
 -- ───────────── 4. The gate where orders and B2B requests are written ─────────────
 -- check_order (20260927000000_init.sql) with three changes: the gate first, an origin without a price is
 -- never in a Custom Blend, and the delivery fee stops at the city's cap. Everything else is unchanged.
+-- check_order, commit_order and commit_quote_request now also list pg_temp last in their search_path.
 create or replace function public.check_order(p_order jsonb)
 returns jsonb
-language plpgsql stable set search_path = public as $$
+language plpgsql stable set search_path = public, pg_temp as $$
 declare
   s           jsonb := (select settings from public.site_config where id = 1);
   v_line      jsonb;
@@ -458,7 +481,7 @@ end $$;
 create or replace function public.commit_order(p_order jsonb, p_whatsapp text, p_email text, p_subject text,
                                     p_idempotency_key uuid default null)
 returns table (id uuid, number text, created boolean)
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   d          jsonb;
   v_checked  jsonb;
@@ -560,7 +583,7 @@ end $$;
 -- commit_quote_request (20261001180317_quote_requests.sql), the same.
 create or replace function public.commit_quote_request(p_quote jsonb, p_whatsapp text, p_email text, p_subject text)
 returns table (id uuid, number text)
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_id     uuid := gen_random_uuid();
   v_seq    bigint;

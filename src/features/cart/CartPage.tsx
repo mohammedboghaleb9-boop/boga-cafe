@@ -121,7 +121,8 @@ export function CartPage() {
             </p>
           ))}
 
-          {!settings.salesOpen && (
+          {/* a B2B cart says it once, in its own box below */}
+          {!settings.salesOpen && !summary.isB2B && (
             <p className="notice notice-warn small" role="status">
               {t.checkout.errors.sales_closed}
             </p>

@@ -380,7 +380,8 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
               max={MAX_PRICE}
               step={1}
               value={o.pricePerKg ?? ''}
-              onChange={(e) => set('pricePerKg', e.target.value === '' ? null : Number(e.target.value))}
+              // empty = no price; text the field cannot read ("1e", "-") changes nothing, never wipes the price
+              onChange={(e) => !e.target.validity.badInput && set('pricePerKg', e.target.value === '' ? null : Number(e.target.value))}
             />
             {!priceTyped && <span className="field-error">{t.admin.stock.needsPrice}</span>}
             {priceTyped && !priced && <span className="field-error">{t.admin.stock.shownNeedsPrice}</span>}

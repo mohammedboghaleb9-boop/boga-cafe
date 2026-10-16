@@ -94,7 +94,7 @@ export interface ShippingRate {
   includedKg: number;
   /** Added per started kg above `includedKg`. */
   extraPerKg: number;
-  /** The most the delivery costs, whatever the weight (none: no cap). At least `baseFee`. */
+  /** The most the delivery costs, whatever the weight (none: no cap). Whole DH, at least `baseFee`. */
   maxFee?: number;
   deliveryDays: string;
   active: boolean;

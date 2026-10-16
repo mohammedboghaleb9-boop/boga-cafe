@@ -37,6 +37,7 @@ describe('delivery cap', () => {
     expect(shippingRateOk({ ...ownerTariff, maxFee: 19 })).toBe(false);
     expect(shippingRateOk({ ...ownerTariff, maxFee: 1001 })).toBe(false);
     expect(shippingRateOk({ ...ownerTariff, maxFee: Number.NaN })).toBe(false);
+    expect(shippingRateOk({ ...ownerTariff, maxFee: 30.5 })).toBe(false); // whole DH: 30.5 would be charged 31
   });
 });
 
