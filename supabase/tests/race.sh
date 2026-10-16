@@ -160,3 +160,48 @@ grep -q "out_of_stock:o2" "$OUT/ic" || { echo "TEST FAILED: not refused as out_o
 [ "$($PSQL -t -A -c "select count(*) from public.orders")" = "$ORDERS_BEFORE" ] && [ "$($PSQL -t -A -c "select stock_kg from public.origins where id = 'o2'")" = "$STOCK_BEFORE" ] \
   || { echo "TEST FAILED: something was saved for the refused order"; exit 1; }
 echo " ok race - in that state the database refuses the sale (out_of_stock:o2): no order, no stock moved"
+
+# B2B requests and the closing (slice 12), both orders of the locks. commit_quote_request holds the settings
+# row (for share) before it takes a number: a closing waits for a request in progress, and a request that
+# arrives during a closing waits, then is refused without a number.
+$PSQL <<'SQL' >/dev/null
+update public.site_config set settings = settings || '{"salesOpen": true}' where id = 1;
+create function public.race_quote() returns jsonb language sql as $f$
+  select jsonb_build_object('businessType', 'cafe', 'contactName', 'Client B2B', 'phone', '+212612345678', 'cityId', 'oujda',
+    'lines', '[{"kind": "product", "productId": "p", "size": 1000, "qty": 12}]'::jsonb, 'weightKg', 12, 'indicativeTotal', 2400)
+$f$;
+SQL
+QSEQ() { $PSQL -t -A -c "select last_value || '/' || is_called from public.quote_number_seq"; }
+# 1. a request in progress, the closing meanwhile: the request is saved with the next number, the closing waits for it
+Q0=$(QSEQ)
+$PSQL -t -A -c "begin; select number from public.commit_quote_request(public.race_quote(), '', '', ''); select pg_sleep(2); commit;" >"$OUT/qa" 2>&1 &
+sleep 0.5
+T0=$(date +%s%N)
+$PSQL -c "update public.site_config set settings = settings || '{\"salesOpen\": false}' where id = 1" >"$OUT/qb" 2>&1
+WAITED=$(( ($(date +%s%N) - T0) / 1000000 ))
+wait
+QNUM=$(grep -o "QR-[0-9]*-[0-9]*" "$OUT/qa" || true)
+[ -n "$QNUM" ] || { echo "TEST FAILED: the B2B request in progress was lost"; cat "$OUT/qa"; exit 1; }
+[ "$WAITED" -ge 1000 ] || { echo "TEST FAILED: the closing did not wait for the B2B request in progress (${WAITED} ms)"; exit 1; }
+# the first request of this database: number 1, the sequence moved once
+[ "${QNUM##*-}" = "0001" ] && [ "$Q0" = "1/false" ] || { echo "TEST FAILED: numbering $Q0, saved $QNUM (expected the first number)"; exit 1; }
+Q1=$(QSEQ)
+[ "$Q1" = "1/true" ] || { echo "TEST FAILED: the sequence reads $Q1 after one saved request"; exit 1; }
+if $PSQL -c "select number from public.commit_quote_request(public.race_quote(), '', '', '')" >"$OUT/qc" 2>&1; then echo "TEST FAILED: a B2B request went through after the closing"; exit 1; fi
+grep -q "sales_closed" "$OUT/qc" || { echo "TEST FAILED: the request after the closing was not refused as sales_closed"; cat "$OUT/qc"; exit 1; }
+[ "$(QSEQ)" = "$Q1" ] || { echo "TEST FAILED: the refused request took a number"; exit 1; }
+echo " ok race - B2B: a request in progress is saved ($QNUM), the closing waits for it, the next request is refused without a number"
+# 2. the closing in progress, a request meanwhile: it waits, then is refused, no number
+$PSQL -c "update public.site_config set settings = settings || '{\"salesOpen\": true}' where id = 1" >/dev/null
+Q2=$(QSEQ)
+$PSQL -c "begin; update public.site_config set settings = settings || '{\"salesOpen\": false}' where id = 1; select pg_sleep(2); commit;" >"$OUT/qd" 2>&1 &
+sleep 0.5
+T0=$(date +%s%N)
+if $PSQL -c "select number from public.commit_quote_request(public.race_quote(), '', '', '')" >"$OUT/qe" 2>&1; then echo "TEST FAILED: a B2B request went through while the closing was being saved"; cat "$OUT/qe"; exit 1; fi
+WAITED=$(( ($(date +%s%N) - T0) / 1000000 ))
+wait
+grep -q "sales_closed" "$OUT/qe" || { echo "TEST FAILED: the waiting request was not refused as sales_closed"; cat "$OUT/qe"; exit 1; }
+[ "$WAITED" -ge 1000 ] || { echo "TEST FAILED: the request did not wait for the closing (${WAITED} ms)"; exit 1; }
+[ "$(QSEQ)" = "$Q2" ] || { echo "TEST FAILED: the refused request took a number ($Q2 -> $(QSEQ))"; exit 1; }
+[ "$($PSQL -t -A -c "select count(*) from public.quote_requests")" = 1 ] || { echo "TEST FAILED: not exactly one B2B request saved"; exit 1; }
+echo " ok race - B2B: a request arriving during the closing waits, then is refused, takes no number; one request saved in all ($QNUM)"
