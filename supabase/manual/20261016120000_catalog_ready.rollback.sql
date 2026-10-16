@@ -45,10 +45,10 @@ begin
   if (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from '61d01c4019b75e4dab30773f9dd27f6d'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '470f0947d3666b6c6ab3ecaaafe4d1c4'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from '62e6b4adef77e45f860ca44ecc532082'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from 'f8873820585d45efbe00aa6089831021'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_shipping_rate') is distinct from '55f2f37a662eef940553a8ea3e2b711d'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'e801b945a946649d21cba8957fb127de' then
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'bc33e39a2b763cb2bf66d3685767e69b' then
     raise exception 'stop: a function is not the one of 20261016120000_catalog_ready (changed since): tell Claude before going on';
   end if;
   if exists (select 1 from public.origins where price_per_kg is null) then
@@ -452,7 +452,7 @@ begin
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '470f0947d3666b6c6ab3ecaaafe4d1c4'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'e801b945a946649d21cba8957fb127de' then
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'bc33e39a2b763cb2bf66d3685767e69b' then
     raise exception 'stop: a function body is not the expected one';
   end if;
   if has_function_privilege('anon', 'public.set_sales_open(boolean, text)', 'execute')

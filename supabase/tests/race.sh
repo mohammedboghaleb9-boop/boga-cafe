@@ -31,6 +31,7 @@ create function public.race_order(n int) returns jsonb language sql as $f$
 $f$;
 SQL
 OUT=$(mktemp -d)
+trap 'rm -rf "$OUT"' EXIT
 # A: takes 0.75 kg of the 1 kg and keeps its transaction open for 2 s
 $PSQL -c "begin; select number from public.commit_order(public.race_order(3), '', '', ''); select pg_sleep(2); commit;" >"$OUT/a" 2>&1 &
 sleep 0.5
@@ -158,12 +159,17 @@ SHOW() { echo "select public.save_product('{\"id\": \"$1\", \"slug\": \"$1\", \"
 RACE() {
   local name=$1 first=$2 second=$3 expect=$4
   $PSQL -c "$(AS $MANAGER) begin; $first select pg_sleep(2); commit;" >"$OUT/r1" 2>&1 &
-  sleep 0.5
+  local holder=$!
+  # the second session starts only once the first has saved and sleeps in its open transaction (no timing guess)
+  local i=0
+  until [ "$($PSQL -t -A -c "select count(*) from pg_stat_activity where wait_event = 'PgSleep' and query like '%pg_sleep(2)%' and pid <> pg_backend_pid()")" -ge 1 ]; do
+    i=$((i + 1)); [ "$i" -lt 200 ] || { echo "TEST FAILED: $name: the first save never held its transaction"; cat "$OUT/r1"; exit 1; }
+    sleep 0.05
+  done
   local t0; t0=$(date +%s%N)
   if $PSQL -c "$(AS $OWNER) $second" >"$OUT/r2" 2>&1; then echo "TEST FAILED: $name: the second save passed"; cat "$OUT/r1" "$OUT/r2"; exit 1; fi
   local waited=$(( ($(date +%s%N) - t0) / 1000000 ))
-  wait
-  grep -q "ERROR" "$OUT/r1" && { echo "TEST FAILED: $name: the first save failed"; cat "$OUT/r1"; exit 1; }
+  wait "$holder" || { echo "TEST FAILED: $name: the first save failed"; cat "$OUT/r1"; exit 1; }
   grep -q "$expect" "$OUT/r2" || { echo "TEST FAILED: $name: refused, but not as $expect"; cat "$OUT/r2"; exit 1; }
   [ "$waited" -ge 1000 ] || { echo "TEST FAILED: $name: the second save did not wait for the first (${waited} ms)"; exit 1; }
 }
@@ -204,8 +210,10 @@ echo " ok race - a product of a hidden origin (written directly) is not sold: no
 # Many sessions at once, 1000 calls each (deadlocks are not proved by design alone): two admins show and hide products
 # made of 2 or 3 origins (recipes sent in shuffled order), two hide and show those origins, two customers buy
 # them (commit_order locks the origins for update). Expected: no deadlock, no other error than the refusals
-# below, and at no moment a shown product made of a hidden origin (a monitor reads it every 50 ms).
+# below, and at no moment a shown product made of a hidden origin (a monitor reads it every 2 ms).
 bash "$(dirname "$0")/lock-stress.sh" "$DB" 1000
+# The expiry cron against admin saves (its stock returns take origins order after order, not in one sorted pass)
+bash "$(dirname "$0")/lock-stress-expiry.sh" "$DB" 300
 
 # B2B requests and the closing (slice 12), both orders of the locks. commit_quote_request holds the settings
 # row (for share) before it takes a number: a closing waits for a request in progress, and a request that

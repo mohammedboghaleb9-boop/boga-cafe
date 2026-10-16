@@ -148,18 +148,21 @@ describe('catalog_ready (slice 12)', () => {
     expect(block).toContain('stop: a function on live is not the one of the earlier migrations');
   });
 
-  it("save_product is catalog_trim's with the lock on the shown product's origins, nothing else", () => {
+  it("save_product is catalog_trim's with the lock on the shown product's origins, nothing else", async () => {
     const trim = read('supabase/migrations/20261013100000_catalog_trim.sql');
-    const lock = /  -- the recipe's origins, locked first.*?order by o\.id for share;\n/s;
+    const lock = /  -- the recipe's origins, locked first.*?order by o\.id for key share;\n/s;
     const locked = fn(migration, 'save_product')!;
     expect(locked.match(lock)?.[0]).toBeDefined();
     // the lock comes before the 'hidden_origin' check and before the recipe is written
     expect(locked.search(lock)).toBeLessThan(locked.indexOf("raise exception 'hidden_origin'"));
     expect(locked.replace(lock, '')).toBe(fn(trim, 'save_product')!);
+    // before applying, the block accepts exactly catalog_trim's save_product (or this one, after a rollback)
+    expect(block).toContain(await md5(body(trim, 'save_product')!));
     // save_origin locks its row before every check of an edit
     const origin = fn(migration, 'save_origin')!;
     expect(origin.indexOf('for update;')).toBeGreaterThan(origin.indexOf('  else\n'));
     expect(origin.indexOf('for update;')).toBeLessThan(origin.indexOf("raise exception 'needs_price'"));
+    expect(origin.indexOf('for update;')).toBeLessThan(origin.indexOf("raise exception 'origin_in_use'"));
   });
 
   it('the migration changes no row: no insert, update or delete outside its function bodies', () => {

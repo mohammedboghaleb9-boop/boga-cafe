@@ -64,8 +64,12 @@ end $f$;
 grant execute on function public.stress_product(), public.stress_origin() to authenticated;
 SQL
 OUT=$(mktemp -d)
+MON=
+# never leave the monitor running nor the temp folder behind, whatever stops the script
+trap '[ -n "$MON" ] && { psql -q -X -d "$DB" -c "update public.stress_control set done = true" >/dev/null 2>&1; kill "$MON" 2>/dev/null; }; rm -rf "$OUT"' EXIT
 AS() { echo "set role authenticated; select set_config('request.jwt.claims', '{\"sub\": \"$1\", \"aal\": \"aal2\"}', false);"; }
-script() { echo "$1"; for _ in $(seq "$N"); do echo "select public.$2();"; done; }
+# each session's last line says it reached the end (a session that died midway never prints it)
+script() { echo "$1"; for _ in $(seq "$N"); do echo "select public.$2();"; done; echo "select 'session done';"; }
 script "$(AS 00000000-0000-0000-0000-0000000000a1)" stress_product >"$OUT/w1.sql"
 script "$(AS 00000000-0000-0000-0000-0000000000a2)" stress_product >"$OUT/w2.sql"
 script "$(AS 00000000-0000-0000-0000-0000000000a1)" stress_origin >"$OUT/w3.sql"
@@ -73,12 +77,15 @@ script "$(AS 00000000-0000-0000-0000-0000000000a2)" stress_origin >"$OUT/w4.sql"
 script "" stress_buy >"$OUT/w5.sql"
 script "" stress_buy >"$OUT/w6.sql"
 BAD="select count(*) from public.products p join public.product_recipes r on r.product_id = p.id join public.origins o on o.id = r.origin_id where p.active and not o.active"
-# the monitor: one session, one loop, reading every 2 ms until told to stop (in READ COMMITTED each read sees
-# what is committed at that instant); it reports how many reads it made and how many saw the bad state
+SAVED() { $PSQL -t -A -c "select count(*) filter (where item = 'product' and item_id like 'sp_') || ' ' || count(*) filter (where item = 'origin' and item_id like 's_') from public.catalog_changes"; }
+read -r PROD0 ORIG0 < <(SAVED)
+ORD0=$($PSQL -t -A -c "select count(*) from public.orders")
+# the monitor: one session, one loop, reading every 2 ms until told to stop or after 10 minutes (in READ COMMITTED
+# each read sees what is committed at that instant); it reports how many reads it made and how many saw the bad state
 $PSQL -c "create table public.stress_control (done boolean not null); insert into public.stress_control values (false)" >/dev/null
-psql -q -X -d "$DB" -c "do \$m\$ declare n int := 0; bad int := 0; begin
+psql -q -X -d "$DB" -c "do \$m\$ declare n int := 0; bad int := 0; t0 timestamptz := clock_timestamp(); begin
   loop
-    exit when (select done from public.stress_control);
+    exit when (select done from public.stress_control) or clock_timestamp() - t0 > interval '10 minutes';
     n := n + 1;
     if ($BAD) > 0 then bad := bad + 1; end if;
     perform pg_sleep(0.002);
@@ -88,21 +95,32 @@ end \$m\$" >"$OUT/monitor" 2>&1 &
 MON=$!
 T0=$(date +%s%N)
 PIDS=()
-for w in 1 2 3 4 5 6; do psql -q -X -t -A -v ON_ERROR_STOP=0 -d "$DB" -f "$OUT/w$w.sql" >"$OUT/w$w.out" 2>"$OUT/w$w.err" & PIDS+=($!); done
-wait "${PIDS[@]}"
+# at most 5 minutes per session: a lock bug that hangs sessions without a deadlock fails here, never hangs CI
+for w in 1 2 3 4 5 6; do timeout 300 psql -q -X -t -A -v ON_ERROR_STOP=0 -d "$DB" -f "$OUT/w$w.sql" >"$OUT/w$w.out" 2>"$OUT/w$w.err" & PIDS+=($!); done
+FAILED_SESSIONS=0
+for pid in "${PIDS[@]}"; do wait "$pid" || FAILED_SESSIONS=$((FAILED_SESSIONS + 1)); done
 MS=$(( ($(date +%s%N) - T0) / 1000000 ))
 $PSQL -c "update public.stress_control set done = true" >/dev/null
-wait "$MON"
+wait "$MON" || true
+MON=
+[ "$FAILED_SESSIONS" = 0 ] || { echo "TEST FAILED: $FAILED_SESSIONS session(s) ended with an error or a timeout"; cat "$OUT"/w*.err | grep -v 'ERROR: ' | head; exit 1; }
+for w in 1 2 3 4 5 6; do grep -qx 'session done' "$OUT/w$w.out" || { echo "TEST FAILED: session $w did not reach its end"; tail -3 "$OUT/w$w.err"; exit 1; }; done
 ERRORS=$(cat "$OUT"/w*.err | grep -o 'ERROR: .*' | sed 's/:[a-z0-9]*$//' | sort | uniq -c || true)
 DEADLOCKS=$(cat "$OUT"/w*.err | grep -c 'deadlock detected' || true)
 [ "$DEADLOCKS" = 0 ] || { echo "TEST FAILED: $DEADLOCKS deadlock(s)"; echo "$ERRORS"; exit 1; }
 # the refusals a race can give (a product hidden meanwhile: invalid_order:product; an origin hidden: out_of_stock); anything else fails
-UNEXPECTED=$(cat "$OUT"/w*.err | grep 'ERROR: ' | grep -v -E 'ERROR:  (hidden_origin|origin_in_use|stale|out_of_stock:s[1-5]|invalid_order:product)$' || true)
-[ -z "$UNEXPECTED" ] || { echo "TEST FAILED: unexpected errors:"; echo "$UNEXPECTED" | sort | uniq -c | head; exit 1; }
-read -r READS SEEN < <(sed -n 's/.*NOTICE:  monitor \([0-9]*\) \([0-9]*\)$/\1 \2/p' "$OUT/monitor")
+# every message psql prints starts with "psql:" (the CONTEXT lines under it do not); FATAL or a lost connection fails too
+UNEXPECTED=$(cat "$OUT"/w*.err | grep '^psql' | grep -v -E 'ERROR:  (hidden_origin|origin_in_use|stale|out_of_stock:s[1-5]|invalid_order:product)$' || true)
+[ -z "$UNEXPECTED" ] || { echo "TEST FAILED: unexpected output:"; echo "$UNEXPECTED" | sort | uniq -c | head; exit 1; }
+READS=; SEEN=
+read -r READS SEEN < <(sed -n 's/.*NOTICE:  monitor \([0-9]*\) \([0-9]*\)$/\1 \2/p' "$OUT/monitor") || true
 [ -n "${READS:-}" ] && [ "$READS" -ge 200 ] || { echo "TEST FAILED: the monitor made too few reads (${READS:-none}) to watch the race"; cat "$OUT/monitor"; exit 1; }
 [ "$SEEN" = 0 ] || { echo "TEST FAILED: a shown product made of a hidden origin was seen $SEEN time(s) in $READS reads"; exit 1; }
 [ "$($PSQL -t -A -c "$BAD")" = 0 ] || { echo "TEST FAILED: the final state holds a shown product made of a hidden origin"; exit 1; }
-SAVES=$(( $(grep -c '' "$OUT/w1.sql") + $(grep -c '' "$OUT/w2.sql") + $(grep -c '' "$OUT/w3.sql") + $(grep -c '' "$OUT/w4.sql") - 4 ))
-ORDERS=$($PSQL -t -A -c "select count(*) from public.orders o where o.lines::text ~ '\"sp[123]\"'")
-echo " ok race - 6 sessions × $N calls ($SAVES admin saves, $ORDERS orders saved): no deadlock, only expected refusals ($(echo "$ERRORS" | awk '{printf "%s %s; ", $1, $3}')), the monitor never saw a shown product of a hidden origin in $READS reads over ${MS} ms"
+# the race was really run: saves and orders went through, not only refusals
+read -r PROD1 ORIG1 < <(SAVED)
+PSAVED=$((PROD1 - PROD0)); OSAVED=$((ORIG1 - ORIG0)); ORDERS=$(( $($PSQL -t -A -c "select count(*) from public.orders") - ORD0 ))
+MIN=$((N / 10))
+[ "$PSAVED" -ge "$MIN" ] && [ "$OSAVED" -ge "$MIN" ] && [ "$ORDERS" -ge $((N / 50)) ] \
+  || { echo "TEST FAILED: too little went through to test the locks ($PSAVED product saves, $OSAVED origin saves, $ORDERS orders)"; exit 1; }
+echo " ok race - 6 sessions × $N calls: $PSAVED product saves, $OSAVED origin saves and $ORDERS orders went through; no deadlock, only expected refusals ($(echo "$ERRORS" | awk '{printf "%s %s; ", $1, $3}')), the monitor never saw a shown product of a hidden origin in $READS reads over ${MS} ms"

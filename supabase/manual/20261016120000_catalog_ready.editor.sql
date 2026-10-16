@@ -53,7 +53,7 @@ begin
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '3f145b77d7669947def14024f7837a26') and ((select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from 'fb3b0aaa8adb57b78e4977e07c083bd9'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '470f0947d3666b6c6ab3ecaaafe4d1c4'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e'))
-     or (((select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from '70340b664e9d8244788a209a28872f72') and ((select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'e801b945a946649d21cba8957fb127de')) then
+     or (((select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from '70340b664e9d8244788a209a28872f72') and ((select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'bc33e39a2b763cb2bf66d3685767e69b')) then
     raise exception 'stop: a function on live is not the one of the earlier migrations: tell Claude before going on';
   end if;
 end $$;
@@ -83,7 +83,7 @@ end $$;
 --      expiry): the gate only stops new ones. It stops the API roles and application mistakes; a holder
 --      of the secret (service_role) key can still write tables directly, as for every other rule here.
 --   5. Hiding an origin and showing a product made of it, by two admins at the same instant: save_origin
---      locks the origin (for update) and save_product its recipe's origins (for share, in id order, on every
+--      locks the origin (for update) and save_product its recipe's origins (for key share, in id order, on every
 --      save) before their checks, so one waits for the other and refuses ('origin_in_use' or 'hidden_origin').
 --
 -- create or replace keeps each function's owner and grants. "drop not null" is a DROP for the tool that
@@ -205,7 +205,7 @@ begin
     values (v_id, p_origin -> 'name', p_origin ->> 'countryCode', p_origin ->> 'species', coalesce(p_origin ->> 'region', ''),
             p_origin ->> 'roastLevel', coalesce(p_origin -> 'tastingNotes', '{}'), 0, v_low, v_price, v_blend, false);
   else
-    -- the row first: a product being shown with this origin at the same instant (save_product holds it for share)
+    -- the row first: a product being shown with this origin at the same instant (save_product holds it for key share)
     -- is waited for, and every check below then reads what that save committed (each statement reads anew)
     perform 1 from public.origins o where o.id = v_id for update;
     -- shown only with a price (also the table's constraint origins_active_needs_price)
@@ -691,11 +691,12 @@ begin
 end $$;
 
 -- ───────────── 5. save_product: the origins locked before its check ─────────────
--- The body of 20261013100000_catalog_trim with one change: every save locks the recipe's origins (for share, in id
--- order) before checking they are shown and before writing the recipe. With save_origin's lock (for update, before
+-- The body of 20261013100000_catalog_trim with one change: every save locks the recipe's origins (for key share, in
+-- id order) before checking they are shown and before writing the recipe. With save_origin's lock (for update, before
 -- its 'origin_in_use' check), hiding an origin and showing a product made of it at the same instant can no longer
 -- both pass: the second waits for the first, then refuses ('origin_in_use' or 'hidden_origin'). The id order also
--- keeps a save from deadlocking with an order taking the same origins (supabase/tests/lock-stress.sh).
+-- keeps a save from deadlocking with an order taking the same origins, and key share (not share) with the expiry
+-- cron's stock returns (supabase/tests/lock-stress.sh, lock-stress-expiry.sh).
 create or replace function public.save_product(p_product jsonb, p_recipe jsonb, p_seen_at timestamptz)
 returns text
 language plpgsql security definer set search_path = public, pg_temp as $$
@@ -771,10 +772,11 @@ begin
     raise exception 'invalid_recipe';
   end;
   -- the recipe's origins, locked first and in id order like every path that locks several (commit_order, the stock
-  -- returns): an origin being hidden by save_origin at the same instant is waited for, then read as it was committed;
-  -- and the recipe rows written below take their own (key share) locks on origins already held, in no other order
-  -- (written in the order the page sent them, they could wait on an order in progress that waits on them: a deadlock)
-  perform 1 from public.origins o where o.id in (select l ->> 'originId' from jsonb_array_elements(p_recipe) l) order by o.id for share;
+  -- returns): an origin being hidden by save_origin (for update) at the same instant is waited for, then read as it
+  -- was committed; and the recipe rows written below take their own key share locks on origins already held, in no
+  -- other order (in the order the page sent them, they could wait on an order in progress that waits on them).
+  -- key share, the lock those rows take anyway: it never waits on a stock update (an order, the expiry cron)
+  perform 1 from public.origins o where o.id in (select l ->> 'originId' from jsonb_array_elements(p_recipe) l) order by o.id for key share;
   -- a shown product is made of shown origins only (a hidden one is new, or out of the range)
   if v_active and exists (select 1 from jsonb_array_elements(p_recipe) l join public.origins o on o.id = l ->> 'originId' where not o.active) then
     raise exception 'hidden_origin';
@@ -837,10 +839,10 @@ begin
   if (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from '61d01c4019b75e4dab30773f9dd27f6d'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '470f0947d3666b6c6ab3ecaaafe4d1c4'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from '62e6b4adef77e45f860ca44ecc532082'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from 'f8873820585d45efbe00aa6089831021'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_shipping_rate') is distinct from '55f2f37a662eef940553a8ea3e2b711d'
      or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'e801b945a946649d21cba8957fb127de' then
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_product') is distinct from 'bc33e39a2b763cb2bf66d3685767e69b' then
     raise exception 'stop: a function body is not the one of the file';
   end if;
   if has_function_privilege('anon', 'public.set_sales_open(boolean, text)', 'execute')
