@@ -109,3 +109,20 @@ if $PSQL -c "select number from public.commit_order(public.race_order(1), '', ''
 fi
 grep -q "sales_closed" "$OUT/gc" || { echo "TEST FAILED: the order after the closing was not refused as sales_closed"; cat "$OUT/gc"; exit 1; }
 echo " ok race - the sales closed during an order: the closing waits for it, the next order is refused"
+
+# The other way round: the closing holds the settings row when an order arrives. The order waits, then
+# reads the new setting: refused, and no order number is taken.
+$PSQL <<'SQL' >/dev/null
+update public.site_config set settings = settings || '{"salesOpen": true}' where id = 1;
+SQL
+SEQ_BEFORE=$($PSQL -t -A -c "select last_value || '/' || is_called from public.order_number_seq")
+$PSQL -c "begin; update public.site_config set settings = settings || '{\"salesOpen\": false}' where id = 1; select pg_sleep(2); commit;" >"$OUT/ha" 2>&1 &
+sleep 0.5
+if $PSQL -c "select number from public.commit_order(public.race_order(1), '', '', '')" >"$OUT/hb" 2>&1; then
+  echo "TEST FAILED: an order went through while the closing was being saved"; cat "$OUT/hb"; exit 1
+fi
+wait
+grep -q "sales_closed" "$OUT/hb" || { echo "TEST FAILED: the waiting order was not refused as sales_closed"; cat "$OUT/hb"; exit 1; }
+SEQ_AFTER=$($PSQL -t -A -c "select last_value || '/' || is_called from public.order_number_seq")
+[ "$SEQ_BEFORE" = "$SEQ_AFTER" ] || { echo "TEST FAILED: the refused order took a number ($SEQ_BEFORE -> $SEQ_AFTER)"; exit 1; }
+echo " ok race - an order arriving while the closing is saved waits, then is refused, and takes no number"

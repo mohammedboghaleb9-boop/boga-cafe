@@ -22,6 +22,7 @@
 -- Tests: tests/manual-sql.test.ts keeps the restored bodies equal to the ones of their migrations.
 
 begin;
+set local lock_timeout = '3s';
 
 create temp table _before on commit drop as
   select (select md5(coalesce(string_agg(to_jsonb(p)::text, '|' order by id), '')) from public.products p) as products,
@@ -36,6 +37,15 @@ do $$
 begin
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'shipping_rates' and column_name = 'max_fee') then
     raise exception 'stop: 20261016120000_catalog_ready is not applied (nothing to undo)';
+  end if;
+  -- what it undoes is exactly this migration (a later fix-forward is never reverted unseen)
+  if (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from '61d01c4019b75e4dab30773f9dd27f6d'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '470f0947d3666b6c6ab3ecaaafe4d1c4'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from '63810f494476dc81515e997212dc1ce4'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_shipping_rate') is distinct from '55f2f37a662eef940553a8ea3e2b711d'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d' then
+    raise exception 'stop: a function is not the one of 20261016120000_catalog_ready (changed since): tell Claude before going on';
   end if;
   if exists (select 1 from public.origins where price_per_kg is null) then
     raise exception 'stop: % origin(s) without a price: the price cannot be required again without making one up', (select count(*) from public.origins where price_per_kg is null);
@@ -424,7 +434,7 @@ begin
      or (select md5(coalesce(string_agg(to_jsonb(m)::text, '|' order by id), '')) from public.payment_methods m) is distinct from b.methods
      or (select md5(to_jsonb(c)::text) from public.site_config c where id = 1) is distinct from b.config
      or (select count(*) from public.orders) + (select count(*) from public.quote_requests) <> b.sales then
-    raise exception 'stop: a row changed (catalog, delivery, payment methods, settings or sales), and this script must change none';
+    raise exception 'stop: a catalog, delivery, payment-method or settings row changed, or a sale was saved meanwhile: nothing is kept, run it again';
   end if;
   if (select is_nullable from information_schema.columns where table_schema = 'public' and table_name = 'origins' and column_name = 'price_per_kg') <> 'NO'
      or exists (select 1 from pg_constraint where conname = 'origins_active_needs_price')
@@ -432,12 +442,12 @@ begin
     raise exception 'stop: the schema is not the one before 20261016120000 (price required, no constraint, no cap column)';
   end if;
   -- restored bodies are their migrations'; the gate's three bodies and the switch are untouched
-  if (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') <> '474c8f441e0f30db554ecbaa0837a5e7'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_shipping_rate') <> '3b3785b0564417180052f22fb0902554'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') <> 'fb3b0aaa8adb57b78e4977e07c083bd9'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') <> '470f0947d3666b6c6ab3ecaaafe4d1c4'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') <> '7fb8abd19c7f317919f3bb11cc72807e'
-     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') <> '311bd5321bdc6d25cfd93ee1bde4cccc' then
+  if (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_origin') is distinct from '474c8f441e0f30db554ecbaa0837a5e7'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'save_shipping_rate') is distinct from '3b3785b0564417180052f22fb0902554'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'check_order') is distinct from 'fb3b0aaa8adb57b78e4977e07c083bd9'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_order') is distinct from '470f0947d3666b6c6ab3ecaaafe4d1c4'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'commit_quote_request') is distinct from '7fb8abd19c7f317919f3bb11cc72807e'
+     or (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'set_sales_open') is distinct from '12536c717475c55bffc615eae54eab8d' then
     raise exception 'stop: a function body is not the expected one';
   end if;
   if has_function_privilege('anon', 'public.set_sales_open(boolean, text)', 'execute')

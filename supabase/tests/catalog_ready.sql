@@ -8,7 +8,7 @@ set client_min_messages = warning;
 create extension if not exists pgtap;
 
 begin;
-select plan(45);
+select plan(46);
 
 insert into auth.users values
   ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000002'), ('00000000-0000-0000-0000-000000000003');
@@ -23,16 +23,18 @@ insert into public.origins (id, name, country_code, species, roast_level, stock_
 insert into public.products (id, slug, kind, name, roast_level, prices, active)
 values ('signature', 'signature', 'signature', '{"fr": "Signature"}', 'medium', '{"1000": 200}', true);
 insert into public.product_recipes values ('signature', 'brazil', 100);
-insert into public.shipping_rates (id, city, base_fee, included_kg, extra_per_kg, max_fee) values ('oujda', '{"fr": "Oujda"}', 20, 4, 10, 30);
+insert into public.shipping_rates (id, city, base_fee, included_kg, extra_per_kg, max_fee) values
+  ('oujda', '{"fr": "Oujda"}', 20, 4, 10, 30),
+  ('nocap', '{"fr": "Sans plafond"}', 20, 4, 10, null);
 insert into public.payment_methods (id, label) values ('card', '{"fr": "Carte"}');
 
 create function pg_temp.token(p_sub text, p_aal text) returns text language sql as $$
   select set_config('request.jwt.claims', jsonb_build_object('sub', p_sub, 'aal', p_aal)::text, true)
 $$;
--- p_kg bags of 1 kg of Signature to Oujda, every figure right, with this delivery fee
-create function pg_temp.order_of(p_kg int, p_fee numeric) returns jsonb language sql as $$
+-- p_kg bags of 1 kg of Signature to a city (Oujda unless said), every figure right, with this delivery fee
+create function pg_temp.order_of(p_kg int, p_fee numeric, p_city text default 'oujda') returns jsonb language sql as $$
   select jsonb_build_object('locale', 'fr',
-    'customer', jsonb_build_object('fullName', 'Client Test', 'phone', '+212612345678', 'cityId', 'oujda', 'address', '12 rue Test'),
+    'customer', jsonb_build_object('fullName', 'Client Test', 'phone', '+212612345678', 'cityId', p_city, 'address', '12 rue Test'),
     'lines', jsonb_build_array(jsonb_build_object('kind', 'product', 'productId', 'signature', 'name', '{"fr": "Signature"}', 'size', 1000, 'qty', p_kg,
       'unitPrice', 200, 'lineTotal', 200 * p_kg, 'composition', '[{"originId": "brazil", "percent": 100, "grams": 1000}]'::jsonb)),
     'weightKg', p_kg, 'subtotal', 200 * p_kg, 'shippingFee', p_fee, 'total', 200 * p_kg + p_fee, 'paymentMethod', 'card',
@@ -102,8 +104,9 @@ select is((select settings ->> 'b2bThresholdKg' from public.site_config), '10', 
 set local role service_role;
 select is((select number from public.commit_order(pg_temp.order_of(4, 20), '', '', '')), 'BC-' || to_char(now(), 'YYYY') || '-0001',
           'open: an order goes through, numbered from 1 (4 kg to Oujda: 20 DH, the 4 kg are included)');
-select throws_ok($$select * from public.commit_order(pg_temp.order_of(5, 40), '', '', '')$$, 'P0001', 'invalid_order:shipping', '5 kg: not 40 DH (no cap) …');
-select lives_ok($$select * from public.commit_order(pg_temp.order_of(5, 30), '', '', '')$$, '… but 30 DH, the cap');
+select throws_ok($$select * from public.commit_order(pg_temp.order_of(7, 50), '', '', '')$$, 'P0001', 'invalid_order:shipping', '7 kg to Oujda: not 50 DH (20 + 3 × 10) …');
+select lives_ok($$select * from public.commit_order(pg_temp.order_of(7, 30), '', '', '')$$, '… but 30 DH, the cap');
+select lives_ok($$select * from public.commit_order(pg_temp.order_of(7, 50, 'nocap'), '', '', '')$$, 'a city with no cap: 7 kg cost 50 DH, as before');
 select lives_ok($$select * from public.commit_quote_request(pg_temp.quote(), '', '', '')$$, 'open: a B2B request goes through');
 reset role;
 
@@ -121,8 +124,8 @@ reset role;
 -- ── an origin without a price: saved hidden, never shown; the definition edited; the stock never ──
 set local role authenticated;
 select pg_temp.token('00000000-0000-0000-0000-000000000003', 'aal2');
-select is(public.save_origin(pg_temp.origin('test-origine'), null), 'test-origine', 'manager: creates an origin with no price');
-select is((select coalesce(price_per_kg::text, 'none') || ' ' || active from public.origins where id = 'test-origine'), 'none false', 'saved hidden, with no price');
+select is(public.save_origin(pg_temp.origin('test-origine', '{"active": true}'), null), 'test-origine', 'manager: creates an origin with no price, asking to show it');
+select is((select coalesce(price_per_kg::text, 'none') || ' ' || active from public.origins where id = 'test-origine'), 'none false', 'saved hidden all the same, with no price');
 select throws_ok($$select public.save_origin(pg_temp.origin('test-origine', '{"active": true}'), pg_temp.seen_origin('test-origine'))$$,
                  'P0001', 'needs_price', 'shown without a price: refused');
 select throws_ok($$select public.save_origin(pg_temp.origin('test-origine', '{"pricePerKg": "120"}'), pg_temp.seen_origin('test-origine'))$$,

@@ -27,13 +27,14 @@
 -- SQL Editor from supabase/manual/20261016120000_catalog_ready.editor.sql, after the merge into main.
 -- Rollback (catalog part only, the gate stays): supabase/manual/20261016120000_catalog_ready.rollback.sql.
 
--- ───────────── 1. An origin's price may be empty; shown only with one ─────────────
-alter table public.origins alter column price_per_kg drop not null;
-alter table public.origins add constraint origins_active_needs_price check (not active or price_per_kg is not null);
-
+-- the delivery table first, then the origins: the order the orders themselves take them in
 -- ───────────── 3. A cap on a city's delivery fee ─────────────
 alter table public.shipping_rates add column max_fee numeric(10, 2)
   check (max_fee is null or (max_fee <> 'NaN' and max_fee >= base_fee and max_fee <= 1000));
+
+-- ───────────── 1. An origin's price may be empty; shown only with one ─────────────
+alter table public.origins alter column price_per_kg drop not null;
+alter table public.origins add constraint origins_active_needs_price check (not active or price_per_kg is not null);
 
 -- ───────────── 4. The sales gate ─────────────
 -- p_open: the owner's choice; p_seen: versions.sales as the page read it ('stale' from an older copy).
@@ -54,6 +55,9 @@ begin
      set settings = settings || jsonb_build_object('salesOpen', p_open),
          versions = versions || jsonb_build_object('sales', clock_timestamp()::text)
    where id = 1;
+  if not found then
+    raise exception 'not_found';
+  end if;
   perform public.config_saved('rules', case when p_open then 'salesOpen:open' else 'salesOpen:closed' end);
 end $$;
 

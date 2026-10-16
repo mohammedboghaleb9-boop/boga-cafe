@@ -143,7 +143,9 @@ describe('catalog_ready (slice 12)', () => {
       expect(body(migration, name), name).toBeDefined();
       expect(block, name).toContain(await md5(body(migration, name)!));
     }
-    expect(block).toContain("raise exception 'stop: a row changed");
+    expect(block).toContain("raise exception 'stop: a catalog, delivery, payment-method or settings row changed");
+    expect(block).toContain("set local lock_timeout = '3s';");
+    expect(block).toContain('stop: a function on live is not the one of the earlier migrations');
   });
 
   it('the migration changes no row: no insert, update or delete outside its function bodies', () => {
