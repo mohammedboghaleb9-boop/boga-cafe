@@ -26,7 +26,8 @@ test('every old link shows "coming soon" and nothing of the shop', async ({ page
     await open(page, path);
     await expect(page.locator('h1'), path).toHaveText(titles.fr);
     await expect(page.locator('html'), path).toHaveAttribute('data-site', 'coming-soon');
-    await expect(page.locator('meta[name="robots"]'), path).toHaveCount(path === '/' ? 0 : 1);
+    if (path === '/') await expect(page.locator('meta[name="robots"]'), path).toHaveCount(0);
+    else await expect(page.locator('meta[name="robots"]'), path).toHaveAttribute('content', 'noindex');
     expect(await page.locator('form, input, select, textarea').count(), path).toBe(0);
     // prices are written "65 DH" / "65 MAD" in the shop
     await expect(page.locator('body'), path).not.toContainText(/\d\s*(DH|MAD|د\.?م)/i);
@@ -66,6 +67,19 @@ test('three languages, Arabic right to left, the choice kept', async ({ page }) 
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await expect(page).toHaveTitle('BOGA CAFÉ — Coming soon');
 });
+
+// pictures of the tested build for the owner's review (CI uploads them with the files: .github/workflows/ci.yml)
+for (const [locale, width, path] of [['ar-MA', 390, '/shop'], ['fr-FR', 1280, '/product/boga-signature'], ['en-US', 320, '/checkout']] as const) {
+  test.describe(`picture ${locale} ${width}px`, () => {
+    test.use({ locale, viewport: { width, height: 800 } });
+
+    test(`${path}`, async ({ page }) => {
+      await open(page, path);
+      await expect(page.locator('h1')).toHaveText(titles[locale.slice(0, 2) as keyof typeof titles]);
+      await page.screenshot({ path: `coming-soon-review/${locale.slice(0, 2)}-${width}${path.replace(/\//g, '_')}.png`, fullPage: true });
+    });
+  });
+}
 
 for (const locale of ['fr-FR', 'ar-MA', 'en-US']) {
   test.describe(locale, () => {

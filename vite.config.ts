@@ -1,8 +1,10 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
-import { buildTarget } from './scripts/build-target.mjs';
+import { buildTarget, isProductionDeploy } from './scripts/build-target.mjs';
+import { realBuildProblems } from './scripts/real-build.mjs';
 import { siteKeyProblem } from './scripts/turnstile-site-key.mjs';
 
 // Build targets:
@@ -33,7 +35,8 @@ const PREVIEW_MODE = 'workers-preview';
  * The production build (no VITE_DATA_MODE: the real site before the shop opens) gets the "coming soon"
  * page as its entry instead of the shop: src/coming-soon, nothing of src/app, so no example catalog,
  * price, cart or form ships (owner, 2026-10-16). Every replacement must apply, or the build stops:
- * a changed index.html never ships the shop by accident. scripts/check-real-build.mjs checks the result.
+ * a changed index.html never ships the shop by accident. When the files are written, the build checks the
+ * folder it wrote (scripts/real-build.mjs) and fails on anything the page must not ship.
  */
 function comingSoonEntry() {
   const swaps: [string, string][] = [
@@ -47,8 +50,17 @@ function comingSoonEntry() {
     ['content="Blends signature, single origin et Custom Blend. Depuis Oujda, livré partout au Maroc."', 'content="BOGA CAFÉ, Oujda. La boutique en ligne ouvre bientôt."'],
     ['<title>BOGA CAFÉ</title>', '<title>BOGA CAFÉ — Bientôt en ligne</title>'],
   ];
+  let outDir = '';
   return {
     name: 'boga-coming-soon',
+    configResolved(config: { root: string; build: { outDir: string } }) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      const { problems, summary } = realBuildProblems(outDir);
+      if (problems.length) throw new Error(`coming soon: the build ships what it must not (${outDir}):\n- ${problems.join('\n- ')}`);
+      console.log(`coming soon: ${summary}`);
+    },
     transformIndexHtml: {
       order: 'pre' as const,
       handler(html: string) {
@@ -63,15 +75,18 @@ function comingSoonEntry() {
 }
 
 export default defineConfig(({ command, mode: asked }) => {
-  // only the default build: `--mode demo|e2e…` builds stay what they ask for
-  const inWorkersBuilds = command === 'build' && asked === 'production' && process.env.WORKERS_CI === '1';
-  const branch = process.env.WORKERS_CI_BRANCH ?? '';
-  const preview = inWorkersBuilds && branch !== '' && branch !== 'main';
-  if (inWorkersBuilds) console.log(`Workers Builds: preview values ${preview ? 'ON' : 'OFF'} (branch "${branch}")`);
+  const inWorkersBuilds = command === 'build' && process.env.WORKERS_CI === '1';
+  // production (main), whatever `--mode` the build command passes: "coming soon" or a stopped build, below
+  const productionDeploy = command === 'build' && isProductionDeploy(process.env);
+  // a preview: the default build of another branch (`--mode demo|e2e…` builds stay what they ask for)
+  const preview = inWorkersBuilds && asked === 'production' && !productionDeploy;
+  if (inWorkersBuilds) console.log(`Workers Builds: ${productionDeploy ? 'production' : 'branch'} build, preview values ${preview ? 'ON' : 'OFF'} (branch "${process.env.WORKERS_CI_BRANCH ?? ''}", mode "${asked}")`);
   const mode = preview ? PREVIEW_MODE : asked;
   const demo = mode === 'demo';
-  // the simulated card page must never reach real customers (docs/09, .env.example)
   const env = { ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env };
+  // what ships, decided first: "coming soon" without VITE_DATA_MODE; on production nothing else, or the build stops
+  const comingSoon = command === 'build' && buildTarget({ dataMode: env.VITE_DATA_MODE, productionDeploy }) === 'coming-soon';
+  // the simulated card page must never reach real customers (docs/09, .env.example)
   if (command === 'build' && !demo && env.VITE_CARD_GATEWAY === 'demo') {
     throw new Error('VITE_CARD_GATEWAY=demo is for the prototype only (npm run build:demo). Leave it empty until CMI is connected.');
   }
@@ -88,9 +103,6 @@ export default defineConfig(({ command, mode: asked }) => {
   // a public key shipped to every visitor, whatever the build: never the secret one (scripts/turnstile-site-key.mjs says what it can and cannot tell)
   const siteKey = env.VITE_TURNSTILE_SITE_KEY ? siteKeyProblem(env.VITE_TURNSTILE_SITE_KEY) : null;
   if (command === 'build' && siteKey) throw new Error(`VITE_TURNSTILE_SITE_KEY ${siteKey}`);
-  // the production build: "coming soon" only (the demo, the browser tests and the live-database builds set VITE_DATA_MODE);
-  // a Workers Builds build of main is production: never the shop, whatever its build variables say
-  const comingSoon = command === 'build' && buildTarget({ dataMode: env.VITE_DATA_MODE, productionDeploy: inWorkersBuilds && !preview }) === 'coming-soon';
   return {
     ...(preview ? { mode: PREVIEW_MODE } : {}),
     base: demo ? './' : '/',
