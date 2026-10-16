@@ -1,11 +1,15 @@
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, normalizePath } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
+import { buildTarget, isProductionDeploy } from './scripts/build-target.mjs';
+import { realBuildProblems } from './scripts/real-build.mjs';
 import { siteKeyProblem } from './scripts/turnstile-site-key.mjs';
 
-// Two build targets:
-//  - default: the real website (multi-file, served from the domain root)
+// Build targets:
+//  - default (no VITE_DATA_MODE): the production site, the "coming soon" page until the shop opens
+//  - VITE_DATA_MODE=supabase: the live-database site (previews, CI, browser tests)
 //  - "demo":  the clickable prototype packed into ONE html file (dist-demo/index.html)
 /** Only a key meant for browsers: sb_publishable_… or a legacy JWT whose role is anon (an allowlist, so no other key slips through). */
 function isPublishableKey(key: string): boolean {
@@ -27,16 +31,88 @@ function isPublishableKey(key: string): boolean {
  */
 const PREVIEW_MODE = 'workers-preview';
 
+/**
+ * The production build (no VITE_DATA_MODE: the real site before the shop opens) gets the "coming soon"
+ * page as its entry instead of the shop: src/coming-soon, nothing of src/app, so no example catalog,
+ * price, cart or form ships (owner, 2026-10-16). Every replacement must apply, or the build stops:
+ * a changed index.html never ships the shop by accident. When the files are written, the build checks the
+ * folder it wrote (scripts/real-build.mjs) and fails on anything the page must not ship.
+ */
+function comingSoonEntry() {
+  const swaps: [string, string][] = [
+    ['<html lang="fr" dir="ltr">', '<html lang="fr" dir="ltr" data-site="coming-soon">'],
+    ['src="/src/main.tsx"', 'src="/src/coming-soon/main.tsx"'],
+    [
+      'content="BOGA CAFÉ — Torréfaction & vente, Oujda. Café en grains, blends signature, single origin et Custom Blend."',
+      'content="BOGA CAFÉ, Oujda. La boutique en ligne ouvre bientôt."',
+    ],
+    ['content="BOGA CAFÉ — Café en grains, torréfié pour vous"', 'content="BOGA CAFÉ — Bientôt en ligne"'],
+    ['content="Blends signature, single origin et Custom Blend. Depuis Oujda, livré partout au Maroc."', 'content="BOGA CAFÉ, Oujda. La boutique en ligne ouvre bientôt."'],
+    ['<title>BOGA CAFÉ</title>', '<title>BOGA CAFÉ — Bientôt en ligne</title>'],
+  ];
+  // the only sources the page is built from (folders end with "/", files match exactly): a seed or shop module
+  // imported by mistake stops the build, whatever text it holds (src/core/types is types only, erased)
+  const sources = ['coming-soon/', 'assets/brand/', 'styles/', 'shared/layout/Monogram.tsx', 'shared/ui/BrandIcon.tsx', 'data/contact.ts'];
+  const own = (path: string) => sources.some((s) => (s.endsWith('/') ? path.startsWith(s) : path === s));
+  // Windows paths may differ in letter case (c:/ and C:/)
+  const key = (id: string) => (process.platform === 'win32' ? id.toLowerCase() : id);
+  let src = '';
+  let outDir = '';
+  let written = false;
+  return {
+    name: 'boga-coming-soon',
+    configResolved(config: { root: string; build: { outDir: string } }) {
+      outDir = resolve(config.root, config.build.outDir);
+      src = `${normalizePath(resolve(config.root, 'src'))}/`;
+    },
+    buildStart() {
+      written = false;
+    },
+    buildEnd(this: { getModuleIds(): IterableIterator<string> }, error?: Error) {
+      if (error) return;
+      const ids = [...this.getModuleIds()].map((id) => key(id.split('?')[0]));
+      const prefix = key(src);
+      // fails closed: if the ids are not read under src/ (a linked root…), the check cannot run, so the build stops
+      if (!ids.includes(`${prefix}coming-soon/main.tsx`)) throw new Error(`coming soon: the page's entry was not found under ${src}: the module check cannot run`);
+      const outside = ids.filter((id) => id.startsWith(prefix) && !own(id.slice(prefix.length))).map((id) => `src/${id.slice(prefix.length)}`);
+      if (outside.length) throw new Error(`coming soon: the page is built from modules outside its own:\n- ${outside.join('\n- ')}`);
+    },
+    writeBundle() {
+      written = true;
+    },
+    // after the files are written (closeBundle also runs after a failed build: its own error then stands)
+    closeBundle() {
+      if (!written) return;
+      const { problems, summary } = realBuildProblems(outDir);
+      if (problems.length) throw new Error(`coming soon: the build ships what it must not (${outDir}):\n- ${problems.join('\n- ')}`);
+      console.log(`coming soon: ${summary}`);
+    },
+    transformIndexHtml: {
+      order: 'pre' as const,
+      handler(html: string) {
+        for (const [from, to] of swaps) {
+          if (!html.includes(from)) throw new Error(`coming soon: index.html no longer holds ${from}`);
+          html = html.replace(from, to);
+        }
+        return html;
+      },
+    },
+  };
+}
+
 export default defineConfig(({ command, mode: asked }) => {
-  // only the default build: `--mode demo|e2e…` builds stay what they ask for
-  const inWorkersBuilds = command === 'build' && asked === 'production' && process.env.WORKERS_CI === '1';
-  const branch = process.env.WORKERS_CI_BRANCH ?? '';
-  const preview = inWorkersBuilds && branch !== '' && branch !== 'main';
-  if (inWorkersBuilds) console.log(`Workers Builds: preview values ${preview ? 'ON' : 'OFF'} (branch "${branch}")`);
+  const inWorkersBuilds = command === 'build' && process.env.WORKERS_CI === '1';
+  // production (main), whatever `--mode` the build command passes: "coming soon" or a stopped build, below
+  const productionDeploy = command === 'build' && isProductionDeploy(process.env);
+  // a preview: the default build of another branch (`--mode demo|e2e…` builds stay what they ask for)
+  const preview = inWorkersBuilds && asked === 'production' && !productionDeploy;
+  if (inWorkersBuilds) console.log(`Workers Builds: ${productionDeploy ? 'production' : 'branch'} build, preview values ${preview ? 'ON' : 'OFF'} (branch "${process.env.WORKERS_CI_BRANCH ?? ''}", mode "${asked}")`);
   const mode = preview ? PREVIEW_MODE : asked;
   const demo = mode === 'demo';
-  // the simulated card page must never reach real customers (docs/09, .env.example)
   const env = { ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env };
+  // what ships, decided first: "coming soon" without VITE_DATA_MODE; on production nothing else, or the build stops
+  const comingSoon = command === 'build' && buildTarget({ dataMode: env.VITE_DATA_MODE, productionDeploy }) === 'coming-soon';
+  // the simulated card page must never reach real customers (docs/09, .env.example)
   if (command === 'build' && !demo && env.VITE_CARD_GATEWAY === 'demo') {
     throw new Error('VITE_CARD_GATEWAY=demo is for the prototype only (npm run build:demo). Leave it empty until CMI is connected.');
   }
@@ -56,7 +132,7 @@ export default defineConfig(({ command, mode: asked }) => {
   return {
     ...(preview ? { mode: PREVIEW_MODE } : {}),
     base: demo ? './' : '/',
-    plugins: [react(), ...(demo ? [viteSingleFile()] : [])],
+    plugins: [react(), ...(demo ? [viteSingleFile()] : []), ...(comingSoon ? [comingSoonEntry()] : [])],
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },

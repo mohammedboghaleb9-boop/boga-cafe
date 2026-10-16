@@ -1,0 +1,131 @@
+/* The "coming soon" page: the dark bag of the brand (tokens.css), one column on a phone, two above 760 px. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bag);
+  color: var(--silver-1);
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+.soon {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px var(--gutter) 48px;
+  display: grid;
+  gap: 28px;
+  grid-template-areas: 'langs' 'head' 'label' 'contact';
+}
+.soon-langs {
+  grid-area: langs;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.soon-langs button {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--silver-2);
+  background: transparent;
+  border: 1px solid var(--bag-2);
+  border-radius: 999px;
+  padding: 6px 14px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.soon-langs button[aria-pressed='true'] {
+  color: var(--bag);
+  background: var(--silver-1);
+  border-color: var(--silver-1);
+}
+.soon-langs button:focus-visible,
+.soon-contact a:focus-visible {
+  outline: 2px solid var(--silver-1);
+  outline-offset: 3px;
+}
+.soon-head {
+  grid-area: head;
+  text-align: center;
+}
+.soon-emblem {
+  display: inline-block;
+  width: min(220px, 60vw);
+  color: var(--silver-1);
+}
+.soon-emblem svg {
+  width: 100%;
+  height: auto;
+}
+.soon h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 7vw, 3.2rem);
+  margin: 16px 0 8px;
+  letter-spacing: 0.04em;
+}
+.soon-lead {
+  margin: 0 auto;
+  max-width: 34em;
+  color: var(--silver-2);
+}
+.soon-label {
+  grid-area: label;
+  justify-self: center;
+  width: min(220px, 56vw);
+  height: auto;
+}
+.soon-contact {
+  grid-area: contact;
+}
+.soon h2 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin: 0 0 12px;
+}
+.soon-contact ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.soon-contact a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 12px;
+  border: 1px solid var(--bag-2);
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.soon-contact a > span {
+  display: grid;
+  min-width: 0;
+}
+.soon-channel {
+  font-size: 0.8rem;
+  color: var(--silver-3);
+}
+.soon-place {
+  display: grid;
+  gap: 2px;
+  margin: 16px 0 0;
+  color: var(--silver-2);
+}
+@media (min-width: 760px) {
+  .soon {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 'langs langs' 'head head' 'label contact';
+    align-items: start;
+  }
+}
