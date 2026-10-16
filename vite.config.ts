@@ -4,8 +4,9 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 import { fileURLToPath, URL } from 'node:url';
 import { siteKeyProblem } from './scripts/turnstile-site-key.mjs';
 
-// Two build targets:
-//  - default: the real website (multi-file, served from the domain root)
+// Build targets:
+//  - default (no VITE_DATA_MODE): the production site, the "coming soon" page until the shop opens
+//  - VITE_DATA_MODE=supabase: the live-database site (previews, CI, browser tests)
 //  - "demo":  the clickable prototype packed into ONE html file (dist-demo/index.html)
 /** Only a key meant for browsers: sb_publishable_… or a legacy JWT whose role is anon (an allowlist, so no other key slips through). */
 function isPublishableKey(key: string): boolean {
@@ -26,6 +27,39 @@ function isPublishableKey(key: string): boolean {
  * https://developers.cloudflare.com/workers/ci-cd/builds/configuration/#environment-variables
  */
 const PREVIEW_MODE = 'workers-preview';
+
+/**
+ * The production build (no VITE_DATA_MODE: the real site before the shop opens) gets the "coming soon"
+ * page as its entry instead of the shop: src/coming-soon, nothing of src/app, so no example catalog,
+ * price, cart or form ships (owner, 2026-10-16). Every replacement must apply, or the build stops:
+ * a changed index.html never ships the shop by accident. scripts/check-real-build.mjs checks the result.
+ */
+function comingSoonEntry() {
+  const swaps: [string, string][] = [
+    ['<html lang="fr" dir="ltr">', '<html lang="fr" dir="ltr" data-site="coming-soon">'],
+    ['src="/src/main.tsx"', 'src="/src/coming-soon/main.tsx"'],
+    [
+      'content="BOGA CAFÉ — Torréfaction & vente, Oujda. Café en grains, blends signature, single origin et Custom Blend."',
+      'content="BOGA CAFÉ, Oujda. La boutique en ligne ouvre bientôt."',
+    ],
+    ['content="BOGA CAFÉ — Café en grains, torréfié pour vous"', 'content="BOGA CAFÉ — Bientôt en ligne"'],
+    ['content="Blends signature, single origin et Custom Blend. Depuis Oujda, livré partout au Maroc."', 'content="BOGA CAFÉ, Oujda. La boutique en ligne ouvre bientôt."'],
+    ['<title>BOGA CAFÉ</title>', '<title>BOGA CAFÉ — Bientôt en ligne</title>'],
+  ];
+  return {
+    name: 'boga-coming-soon',
+    transformIndexHtml: {
+      order: 'pre' as const,
+      handler(html: string) {
+        for (const [from, to] of swaps) {
+          if (!html.includes(from)) throw new Error(`coming soon: index.html no longer holds ${from}`);
+          html = html.replace(from, to);
+        }
+        return html;
+      },
+    },
+  };
+}
 
 export default defineConfig(({ command, mode: asked }) => {
   // only the default build: `--mode demo|e2e…` builds stay what they ask for
@@ -53,10 +87,12 @@ export default defineConfig(({ command, mode: asked }) => {
   // a public key shipped to every visitor, whatever the build: never the secret one (scripts/turnstile-site-key.mjs says what it can and cannot tell)
   const siteKey = env.VITE_TURNSTILE_SITE_KEY ? siteKeyProblem(env.VITE_TURNSTILE_SITE_KEY) : null;
   if (command === 'build' && siteKey) throw new Error(`VITE_TURNSTILE_SITE_KEY ${siteKey}`);
+  // the production build: "coming soon" only (the demo, the browser tests and the live-database builds set VITE_DATA_MODE)
+  const comingSoon = command === 'build' && !env.VITE_DATA_MODE;
   return {
     ...(preview ? { mode: PREVIEW_MODE } : {}),
     base: demo ? './' : '/',
-    plugins: [react(), ...(demo ? [viteSingleFile()] : [])],
+    plugins: [react(), ...(demo ? [viteSingleFile()] : []), ...(comingSoon ? [comingSoonEntry()] : [])],
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
