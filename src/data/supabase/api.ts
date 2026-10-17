@@ -141,6 +141,7 @@ export function createSupabaseApi({ client, store, storefront, admin }: Supabase
     deleteShippingRate: notYet('deleting a city (demo only)'),
     savePaymentMethod: notYet('payment methods (no admin client)'),
     saveRules: notYet('settings (no admin client)'),
+    setSalesOpen: notYet('opening the sales (no admin client)'),
     saveFreeShipping: notYet('settings (no admin client)'),
     savePayee: notYet('payment details (no admin client)'),
     saveRecipients: notYet('message recipients (no admin client)'),

@@ -35,7 +35,7 @@ const empty = (): DbState => ({
   notifications: [],
 });
 
-const CONFIG_PARTS: readonly ConfigPart[] = ['rules', 'freeShipping', 'payee', 'content', 'contact', 'recipients'];
+const CONFIG_PARTS: readonly ConfigPart[] = ['rules', 'freeShipping', 'payee', 'content', 'contact', 'recipients', 'sales'];
 
 /** Each settings part's version mark (site_config.versions), as the save functions compare it. */
 function versionsFrom(j: unknown): DbState['configVersions'] {

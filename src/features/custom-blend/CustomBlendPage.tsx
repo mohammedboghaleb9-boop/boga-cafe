@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { balanceBlend, validateBlend } from '@/core/blend';
 import { CUSTOM_BLEND_NAME } from '@/core/cart';
 import { formatNumber, formatSize } from '@/core/format';
-import { customBlendPrice } from '@/core/pricing';
+import { customBlendPrice, isPrice } from '@/core/pricing';
 import { composition, recipeTotal } from '@/core/recipe';
 import { kgNeeded } from '@/core/stock';
 import { PACK_SIZES, type Origin, type PackSize, type RecipeLine } from '@/core/types';
@@ -52,7 +52,7 @@ export function CustomBlendPage() {
   /** Why an origin cannot be picked right now (null = it can). */
   function blockReason(o: Origin): string | null {
     const back = o.restockDate ? ` · ${fmt(t.common.backAround, { date: date(o.restockDate) })}` : '';
-    if (!o.active || !o.customBlendEnabled) return t.common.unavailable + back;
+    if (!o.active || !o.customBlendEnabled || !isPrice(o.pricePerKg)) return t.common.unavailable + back;
     if (o.stockKg < kgNeeded(size, minPercent, qty, settings.roastLossPercent)) return t.common.outOfStock + back;
     if (!selected.has(o.id) && lines.length >= maxOrigins) return fmt(t.blend.maxReached, { max: maxOrigins });
     return null;
@@ -130,7 +130,7 @@ export function CustomBlendPage() {
                       <span className="small origin-tile-notes">{l(o.tastingNotes)}</span>
                       <span className="origin-tile-foot small">
                         <span className="num">
-                          {money(o.pricePerKg)} {t.common.perKg}
+                          {isPrice(o.pricePerKg) && `${money(o.pricePerKg)} ${t.common.perKg}`}
                         </span>
                         {reason && !isOn && <span className="pill pill-bad pill-plain">{reason}</span>}
                       </span>

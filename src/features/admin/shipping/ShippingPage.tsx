@@ -101,6 +101,7 @@ export function ShippingPage() {
               <th>{t.admin.shipping.base}</th>
               <th>{t.admin.shipping.included}</th>
               <th>{t.admin.shipping.extra}</th>
+              <th>{t.admin.shipping.cap}</th>
               <th>{t.admin.shipping.days}</th>
               <th>{t.admin.payments.enabled}</th>
               <th>
@@ -189,6 +190,20 @@ function RateFields({
       </td>
       <td>
         <input disabled={disabled} className="input num" type="number" min={0} max={1000} value={r.extraPerKg} aria-label={label(t.admin.shipping.extra)} onChange={(e) => set({ extraPerKg: num(e.target.value) })} />
+      </td>
+      <td>
+        {/* empty = no cap */}
+        <input
+          disabled={disabled}
+          className="input num"
+          type="number"
+          min={0}
+          max={1000}
+          step={1}
+          value={r.maxFee ?? ''}
+          aria-label={label(t.admin.shipping.cap)}
+          onChange={(e) => set({ maxFee: e.target.value === '' ? undefined : num(e.target.value) })}
+        />
       </td>
       <td>
         <input disabled={disabled} className="input" maxLength={20} value={r.deliveryDays} aria-label={label(t.admin.shipping.days)} onChange={(e) => set({ deliveryDays: e.target.value })} />
@@ -293,6 +308,7 @@ function NewCityForm({ onClose }: { onClose: () => void }) {
               <th>{t.admin.shipping.base}</th>
               <th>{t.admin.shipping.included}</th>
               <th>{t.admin.shipping.extra}</th>
+              <th>{t.admin.shipping.cap}</th>
               <th>{t.admin.shipping.days}</th>
             </tr>
           </thead>

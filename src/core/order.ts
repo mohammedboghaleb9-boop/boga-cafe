@@ -29,6 +29,7 @@ export interface CheckoutContext {
 
 /** Every reason an order can be refused (the site reads the server's answers against this list). */
 export const CHECKOUT_ERRORS = [
+  'sales_closed',
   'empty_cart',
   'cart_problem',
   'unavailable',
@@ -67,6 +68,8 @@ export function buildOrder(
   ids: { id: string; number: string; now: string },
 ): { ok: true; order: Order } | { ok: false; errors: CheckoutError[] } {
   const errors: CheckoutError[] = [];
+  // nothing is sold before the owner opens the sales (the database refuses it too)
+  if (!ctx.settings.salesOpen) return { ok: false, errors: ['sales_closed'] };
   if (input.items.length === 0) return { ok: false, errors: ['empty_cart'] };
 
   const cart = summarizeCart(input.items, ctx.catalog, ctx.settings);

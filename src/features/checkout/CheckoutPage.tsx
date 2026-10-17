@@ -86,6 +86,12 @@ export function CheckoutPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    // the button is off, but a form can still be submitted (Enter in a field, a script): nothing is sent
+    if (!settings.salesOpen) {
+      setErrors(['sales_closed']);
+      focusField('sales_closed');
+      return;
+    }
     if (!method) {
       setErrors(['payment_method']);
       focusField('payment_method');
@@ -111,7 +117,7 @@ export function CheckoutPage() {
   }
 
   const globalErrors = errors.filter((e) =>
-    ([...GUARD_ERRORS, 'empty_cart', 'cart_problem', 'unavailable', 'b2b_required', 'out_of_stock'] as (CheckoutError | GuardError)[]).includes(e),
+    ([...GUARD_ERRORS, 'sales_closed', 'empty_cart', 'cart_problem', 'unavailable', 'b2b_required', 'out_of_stock'] as (CheckoutError | GuardError)[]).includes(e),
   );
 
   return (
@@ -120,6 +126,12 @@ export function CheckoutPage() {
         <h1>{t.checkout.title}</h1>
         <p className="muted">{t.checkout.noAccount}</p>
       </div>
+
+      {!settings.salesOpen && (
+        <p className="notice notice-warn" role="status" style={{ marginBlockEnd: 16 }}>
+          {t.checkout.errors.sales_closed}
+        </p>
+      )}
 
       {(summary.isB2B || summary.hasProblems) && (
         <p className="notice notice-warn" style={{ marginBlockEnd: 16 }}>
@@ -307,7 +319,7 @@ export function CheckoutPage() {
           <button
             type="submit"
             className="btn btn-primary btn-block"
-            disabled={busy || summary.isB2B || summary.hasProblems}
+            disabled={busy || !settings.salesOpen || summary.isB2B || summary.hasProblems}
           >
             {busy ? t.common.loading : fmt(t.checkout.place, { total: money(summary.subtotal + (fee ?? 0)) })}
           </button>

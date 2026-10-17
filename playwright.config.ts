@@ -8,7 +8,7 @@ import { defineConfig, devices } from '@playwright/test';
  * "coming soon" page (e2e/coming-soon.spec.ts). In CI the browser comes from `npx playwright install`; locally,
  * PW_CHROMIUM can point to an already installed Chromium.
  */
-const LIVE_BUILD = /(turnstile|admin-live)\.spec\.ts$/;
+const LIVE_BUILD = /(turnstile|admin-live|sales-closed)\.spec\.ts$/;
 const COMING_SOON = /coming-soon\.spec\.ts$/;
 const executablePath = process.env.PW_CHROMIUM || undefined;
 

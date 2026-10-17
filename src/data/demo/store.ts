@@ -37,7 +37,8 @@ export function initialState(demo: boolean = DEMO_DATA): DbState {
   };
   // written out (not only DEMO_DATA) so the real build drops the example data entirely
   if (import.meta.env.VITE_DATA_MODE !== 'demo' || !demo) return base;
-  const s = buildDemoActivity({ ...base, settings: { ...base.settings, ...DEMO_PAYEE } });
+  // the prototype sells (with its DÉMO payee); the real site waits for the owner to open the sales
+  const s = buildDemoActivity({ ...base, settings: { ...base.settings, ...DEMO_PAYEE, salesOpen: true } });
   const ctx = templateContext(s);
   const notifications = [
     ...s.orders.flatMap((o) => draftsToLogs('order.created', orderMessage(o, ctx), s.settings, o.createdAt, uid)),

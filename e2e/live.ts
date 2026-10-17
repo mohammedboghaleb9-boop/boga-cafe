@@ -20,8 +20,8 @@ export const tables: Record<string, unknown[]> = {
   ],
   shipping_rates: [{ id: 'oujda', city: L('Oujda'), distance_km: 0, base_fee: 20, included_kg: 3, extra_per_kg: 5, delivery_days: '1', active: true, updated_at: '2026-10-12T08:00:00.000002+00:00' }],
   payment_methods: [{ id: 'cashplus', enabled: true, label: L('Cash Plus'), instructions: L(''), updated_at: '2026-10-12T08:00:00.000003+00:00' }],
-  // a payee, so Cash Plus can be chosen and the form reaches the server
-  site_config: [{ settings: { cashplus: { beneficiary: 'BOGA E2E', city: 'Oujda', phone: '0600000000' } }, content: {} }],
+  // a payee, so Cash Plus can be chosen and the form reaches the server; the sales open (closed: sales-closed.spec.ts)
+  site_config: [{ settings: { salesOpen: true, cashplus: { beneficiary: 'BOGA E2E', city: 'Oujda', phone: '0600000000' } }, content: {} }],
 };
 
 /** A catalog read (rest/v1/<table>), as PostgREST answers it: a list, or one row for .maybeSingle(). */

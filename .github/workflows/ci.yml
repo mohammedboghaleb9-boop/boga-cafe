@@ -78,24 +78,36 @@ jobs:
           retention-days: 7
 
   database:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        # Docker Hub's official image through AWS's public mirror: Docker Hub's anonymous pull
-        # limit failed this job twice on main (2026-10-09), before any test ran
-        image: public.ecr.aws/docker/library/postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    # The runner's own PostgreSQL 16, no image to pull: Docker Hub's anonymous limit (2026-10-09)
+    # and then AWS's public mirror ("toomanyrequests: Data limit exceeded", 2026-10-17) failed this
+    # job before any test ran. ubuntu-24.04 ships PostgreSQL 16, its service off by default.
+    runs-on: ubuntu-24.04
     env:
       PGHOST: localhost
       PGUSER: postgres
       PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v7
-      - run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
-      # pgTAP for supabase/tests/aal.sql, installed in the database container (its image carries the PostgreSQL apt repository)
-      - run: docker exec ${{ job.services.postgres.id }} sh -c 'apt-get update -qq && apt-get install -y -qq postgresql-16-pgtap'
+      - name: Start PostgreSQL and wait until it accepts connections (60 s at most)
+        run: |
+          sudo systemctl start postgresql.service
+          timeout 60 bash -c 'until pg_isready -h localhost -p 5432 -q; do sleep 1; done'
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "alter user postgres password 'postgres'"
+      # its encoding too: the suites hold non-ASCII text, which a SQL_ASCII cluster refuses
+      - name: The server is PostgreSQL 16 in UTF8 (its own version, not psql's)
+        run: |
+          psql -v ON_ERROR_STOP=1 -tA -c 'select version()'
+          V=$(psql -v ON_ERROR_STOP=1 -tA -c 'show server_version_num')
+          E=$(psql -v ON_ERROR_STOP=1 -tA -c 'show server_encoding')
+          echo "server_version_num=$V server_encoding=$E"
+          [ "$((V / 10000))" = 16 ] || { echo "expected PostgreSQL 16, the server is $V"; exit 1; }
+          [ "$E" = UTF8 ] || { echo "expected a UTF8 cluster, the server is $E"; exit 1; }
+      # pgTAP for the pgTAP suites of run-local.sh: this exact version, or the job stops
+      - name: Install pgTAP 1.3.2-2 and check the server offers it
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-16-pgtap=1.3.2-2
+          A=$(psql -v ON_ERROR_STOP=1 -tA -c "select default_version from pg_available_extensions where name = 'pgtap'")
+          echo "pgtap available: ${A:-none}"
+          [ "$A" = 1.3.2 ] || { echo "the server does not offer pgtap 1.3.2"; exit 1; }
       - run: ./supabase/tests/run-local.sh

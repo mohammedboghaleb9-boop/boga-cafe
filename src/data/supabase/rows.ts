@@ -47,7 +47,7 @@ export const originFromRow = (r: Tables<'origins'>): Origin => ({
   // numeric columns arrive as numbers or, past JavaScript's precision, as text
   stockKg: Number(r.stock_kg),
   lowStockKg: Number(r.low_stock_kg),
-  pricePerKg: Number(r.price_per_kg),
+  pricePerKg: r.price_per_kg === null ? null : Number(r.price_per_kg),
   customBlendEnabled: r.custom_blend_enabled,
   restockDate: r.restock_date ?? undefined,
   active: r.active,
@@ -96,6 +96,8 @@ export const shippingRateFromRow = (r: Tables<'shipping_rates'>): ShippingRate =
   baseFee: Number(r.base_fee),
   includedKg: Number(r.included_kg),
   extraPerKg: Number(r.extra_per_kg),
+  // null, or no such column yet (a database before migration 20261016120000): no cap
+  ...(r.max_fee != null && { maxFee: Number(r.max_fee) }),
   deliveryDays: r.delivery_days,
   active: r.active,
   updatedAt: r.updated_at,
@@ -130,6 +132,8 @@ export function settingsFromRows(site: Json | undefined, admin: Tables<'admin_co
   return {
     ...defaults,
     ...stored,
+    // only an explicit true opens the sales, whatever the defaults say (as the database: missing = closed)
+    salesOpen: stored.salesOpen === true,
     customBlend: {
       ...defaults.customBlend,
       ...stored.customBlend,

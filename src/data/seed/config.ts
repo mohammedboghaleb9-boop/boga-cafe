@@ -84,6 +84,8 @@ export const seedPaymentMethods: PaymentMethodConfig[] = [
 
 export const seedSettings: Settings = {
   currency: 'MAD',
+  // closed until the owner opens the sales from the Admin Panel (owner, 2026-10-16); only the prototype opens them
+  salesOpen: false,
   b2bThresholdKg: 10,
   customBlend: {
     enabled: true,

@@ -34,7 +34,7 @@ const rowsWith = (settings: Record<string, unknown>, cardEnabled = false, origin
     { id: 'cashplus', enabled: true, label: L('Cash Plus'), instructions: L('') },
     { id: 'bank_transfer', enabled: true, label: L('Virement'), instructions: L('') },
   ],
-  site_config: [{ settings: { freeShippingOver: 0, b2bThresholdKg: 10, roastLossPercent: 0, ...settings }, content: {} }],
+  site_config: [{ settings: { salesOpen: true, freeShippingOver: 0, b2bThresholdKg: 10, roastLossPercent: 0, ...settings }, content: {} }],
 });
 
 interface FakeOptions {
@@ -358,6 +358,26 @@ describe('storefront: B2B request', () => {
     const gone = [{ id: 'a', type: 'product', productId: 'gone', size: 1000, qty: 12 }];
     expect((await handleStorefront('quote', { ...contact, items: gone }, deps(db))).status).toBe(400);
     expect(committed(calls) || counted(calls).length > 0).toBe(false);
+  });
+});
+
+describe('storefront: sales gate (slice 12)', () => {
+  it.each([
+    ['closed', false],
+    ['missing', undefined],
+    ['not exactly true', 'true'],
+  ])('refuses every order and B2B request while the sales setting is %s, and saves nothing', async (_, salesOpen) => {
+    const { db, calls } = fakeDb({ settings: { ...PAYEE, salesOpen } });
+    expect((await handleStorefront('order', orderBody(), deps(db))).body).toEqual({ ok: false, errors: ['sales_closed'] });
+    expect((await handleStorefront('quote', { ...contact, items: b2bItems }, deps(db))).body).toEqual({ ok: false, errors: ['sales_closed'] });
+    expect(committed(calls)).toBe(false);
+    expect(counted(calls)).toEqual([]); // no phone or connection counted for a sale that cannot happen
+  });
+
+  it('the sales closed by the owner between the check and the commit: a refusal the customer reads, not a 400', async () => {
+    const { db } = fakeDb({ commitError: 'sales_closed' });
+    expect((await handleStorefront('order', orderBody(), deps(db))).body).toEqual({ ok: false, errors: ['sales_closed'] });
+    expect((await handleStorefront('quote', { ...contact, items: b2bItems }, deps(db))).body).toEqual({ ok: false, errors: ['sales_closed'] });
   });
 });
 

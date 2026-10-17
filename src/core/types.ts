@@ -30,8 +30,8 @@ export interface Origin {
   stockKg: number;
   /** Below this, the admin sees a low-stock alert. */
   lowStockKg: number;
-  /** Price per kg used to compute Custom Blend prices (MAD). */
-  pricePerKg: number;
+  /** Price per kg used to compute Custom Blend prices (MAD); null = no approved price yet: never shown, never sold. */
+  pricePerKg: number | null;
   /** Admin switch: can customers use this origin in the Custom Blend builder? */
   customBlendEnabled: boolean;
   /** Estimated date when stock comes back (ISO yyyy-mm-dd), shown to customers. */
@@ -94,6 +94,8 @@ export interface ShippingRate {
   includedKg: number;
   /** Added per started kg above `includedKg`. */
   extraPerKg: number;
+  /** The most the delivery costs, whatever the weight (none: no cap). Whole DH, at least `baseFee`. */
+  maxFee?: number;
   deliveryDays: string;
   active: boolean;
   /** Live site: when the city last changed (a save from an older copy is refused). */
@@ -230,6 +232,11 @@ export interface NotificationLog {
 
 export interface Settings {
   currency: 'MAD';
+  /**
+   * Orders and B2B requests are taken only while this is true: the owner opens the sales
+   * (Admin → Settings) once the catalog, prices and messages are ready. Missing = closed.
+   */
+  salesOpen: boolean;
   /** Above this total weight the order becomes B2B (kg). */
   b2bThresholdKg: number;
   customBlend: {

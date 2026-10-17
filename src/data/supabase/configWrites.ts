@@ -17,7 +17,7 @@ import { createCall, creating, unlessRefused } from './writeCall';
 
 type Writes = Pick<
   Api,
-  'saveRules' | 'saveFreeShipping' | 'savePayee' | 'saveRecipients' | 'saveContent' | 'savePaymentMethod' | 'createShippingRate' | 'saveShippingRate'
+  'saveRules' | 'setSalesOpen' | 'saveFreeShipping' | 'savePayee' | 'saveRecipients' | 'saveContent' | 'savePaymentMethod' | 'createShippingRate' | 'saveShippingRate'
 >;
 
 const rulesJson = ({ b2bThresholdKg, roastLossPercent, unpaidOrderTimeoutHours, paymentCheckTimeoutHours, customBlend }: BusinessRules): Json => ({
@@ -43,8 +43,9 @@ const contactJson = (contact: Settings['contact']): Json => {
 };
 
 const rateJson = (rate: ShippingRate): Json => {
-  const { id, city, distanceKm, baseFee, includedKg, extraPerKg, deliveryDays, active } = trimmedRate(rate);
-  return { id, city, distanceKm, baseFee, includedKg, extraPerKg, deliveryDays, active };
+  const { id, city, distanceKm, baseFee, includedKg, extraPerKg, maxFee, deliveryDays, active } = trimmedRate(rate);
+  // no cap: sent as null, so an edit can take a cap away
+  return { id, city, distanceKm, baseFee, includedKg, extraPerKg, maxFee: maxFee ?? null, deliveryDays, active };
 };
 
 /** `client`: the admin's own (src/data/supabase/index.ts); `data`: what the panel shows, read again after each write. */
@@ -57,6 +58,7 @@ export function createConfigWrites(client: () => Client, data: AdminData): Write
 
   return {
     saveRules: (rules) => saved(() => call('save_rules', { p_rules: rulesJson(rules), p_seen: seen('rules') })),
+    setSalesOpen: (open) => saved(() => call('set_sales_open', { p_open: open, p_seen: seen('sales') })),
 
     saveFreeShipping: (amount) => saved(() => call('save_free_shipping', { p_amount: amount, p_seen: seen('freeShipping') })),
 

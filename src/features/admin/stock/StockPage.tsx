@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { formatKg, formatNumber } from '@/core/format';
-import { isPrice, MAX_PRICE } from '@/core/pricing';
+import { isPrice, MAX_PRICE, originPriceOk } from '@/core/pricing';
 import { isLowStock } from '@/core/stock';
 import type { Origin, RoastLevel, Species, StockReason } from '@/core/types';
 import { api } from '@/data/api';
@@ -159,7 +159,7 @@ function OriginRow({
           </span>
         </td>
         <td className="num end small">{formatNumber(o.lowStockKg)}</td>
-        <td className="num end small">{money(o.pricePerKg)}</td>
+        <td className="num end small">{o.pricePerKg === null ? '—' : money(o.pricePerKg)}</td>
         <td>
           <Switch
             checked={o.customBlendEnabled}
@@ -285,13 +285,13 @@ function AdjustForm({ origin, onDone }: { origin: Origin; onDone: () => void }) 
 const ROASTS: RoastLevel[] = ['light', 'medium', 'medium-dark', 'dark'];
 
 /**
- * A new origin, or an existing one's price per kg, alert level and Custom Blend switch: what
- * the database saves (save_origin). Its name, country and the rest are set at creation; it is
- * created hidden, at 0 kg, and the restock date is not saved from here yet.
+ * A new origin, or an existing one's whole definition, price per kg (or none yet), alert level,
+ * Custom Blend switch and whether it is shown (only with a price): what the database saves
+ * (save_origin). Never its stock (adjust stock, with a history line). It is created hidden, at
+ * 0 kg, and the restock date is not saved from here yet.
  */
 function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () => void }) {
   const { t } = useI18n();
-  const locked = origin !== null;
   const [o, setO] = useSavedDraft<Origin>(
     origin ?? {
       id: '',
@@ -303,7 +303,8 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
       tastingNotes: { ar: '', fr: '', en: '' },
       stockKg: 0,
       lowStockKg: 5,
-      pricePerKg: 200,
+      // no price until one is approved: never a made-up default
+      pricePerKg: null,
       customBlendEnabled: true,
       active: false,
     },
@@ -312,7 +313,8 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
   );
   const set = <K extends keyof Origin>(k: K, v: Origin[K]) => setO((cur) => ({ ...cur, [k]: v }));
   const [busy, run, failed] = useAction();
-  const priced = isPrice(o.pricePerKg) && o.pricePerKg <= MAX_PRICE;
+  const priceTyped = o.pricePerKg === null || (isPrice(o.pricePerKg) && o.pricePerKg <= MAX_PRICE);
+  const priced = originPriceOk(o);
   const lowOk = Number.isFinite(o.lowStockKg) && o.lowStockKg >= 0 && o.lowStockKg <= 100_000;
   const valid = o.name.fr.trim() && /^[a-z]{2}$/i.test(o.countryCode) && priced && lowOk;
   const save = () =>
@@ -337,31 +339,31 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
         </div>
       </div>
       <WriteError show={failed} />
-      <p className="small muted">{locked ? t.admin.stock.editLimits : t.admin.stock.createdHidden}</p>
+      <p className="small muted">{origin ? t.admin.stock.editLimits : t.admin.stock.createdHidden}</p>
       <div className="detail-grid">
-        <fieldset className="plain-fieldset stack" disabled={locked}>
+        <fieldset className="plain-fieldset stack">
           <LocalizedInput id="o-name" label={t.admin.products.name} value={o.name} onChange={(v) => set('name', v)} maxLength={80} />
           <LocalizedInput id="o-notes" label={t.common.tastingNotes} value={o.tastingNotes} onChange={(v) => set('tastingNotes', v)} maxLength={200} />
         </fieldset>
         <div className="form-grid">
           <label className="field">
             <span className="label">{t.admin.stock.country}</span>
-            <input className="input" maxLength={2} disabled={locked} value={o.countryCode} onChange={(e) => set('countryCode', e.target.value)} />
+            <input className="input" maxLength={2} value={o.countryCode} onChange={(e) => set('countryCode', e.target.value)} />
           </label>
           <label className="field">
             <span className="label">{t.admin.stock.species}</span>
-            <select className="select" disabled={locked} value={o.species} onChange={(e) => set('species', e.target.value as Species)}>
+            <select className="select" value={o.species} onChange={(e) => set('species', e.target.value as Species)}>
               <option value="arabica">{t.common.arabica}</option>
               <option value="robusta">{t.common.robusta}</option>
             </select>
           </label>
           <label className="field">
             <span className="label">{t.common.region}</span>
-            <input className="input" maxLength={80} disabled={locked} value={o.region} onChange={(e) => set('region', e.target.value)} />
+            <input className="input" maxLength={80} value={o.region} onChange={(e) => set('region', e.target.value)} />
           </label>
           <label className="field">
             <span className="label">{t.common.roast}</span>
-            <select className="select" disabled={locked} value={o.roastLevel} onChange={(e) => set('roastLevel', e.target.value as RoastLevel)}>
+            <select className="select" value={o.roastLevel} onChange={(e) => set('roastLevel', e.target.value as RoastLevel)}>
               {ROASTS.map((r) => (
                 <option key={r} value={r}>
                   {t.roast[r]}
@@ -371,8 +373,18 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
           </label>
           <label className="field">
             <span className="label">{t.admin.stock.pricePerKg}</span>
-            <input className="input num" type="number" min={1} max={MAX_PRICE} step={1} value={o.pricePerKg} onChange={(e) => set('pricePerKg', Number(e.target.value))} />
-            {!priced && <span className="field-error">{t.admin.stock.needsPrice}</span>}
+            <input
+              className="input num"
+              type="number"
+              min={1}
+              max={MAX_PRICE}
+              step={1}
+              value={o.pricePerKg ?? ''}
+              // empty = no price; text the field cannot read ("1e", "-") changes nothing, never wipes the price
+              onChange={(e) => !e.target.validity.badInput && set('pricePerKg', e.target.value === '' ? null : Number(e.target.value))}
+            />
+            {!priceTyped && <span className="field-error">{t.admin.stock.needsPrice}</span>}
+            {priceTyped && !priced && <span className="field-error">{t.admin.stock.shownNeedsPrice}</span>}
           </label>
           <label className="field">
             <span className="label">{t.admin.stock.lowAt}</span>
@@ -385,7 +397,8 @@ function OriginEditor({ origin, onClose }: { origin: Origin | null; onClose: () 
           </label>
           <div className="stack span-all">
             <Switch checked={o.customBlendEnabled} onChange={(v) => set('customBlendEnabled', v)} label={t.admin.stock.inBlend} />
-            <Switch checked={o.active} disabled onChange={(v) => set('active', v)} label={t.admin.products.active} />
+            {/* a new origin is created hidden; one with no price is never shown */}
+            <Switch checked={o.active} disabled={!origin || (o.pricePerKg === null && !o.active)} onChange={(v) => set('active', v)} label={t.admin.products.active} />
           </div>
         </div>
       </div>

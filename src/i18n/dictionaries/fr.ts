@@ -295,6 +295,7 @@ export const fr: Dict = {
     freeFrom: 'Livraison offerte dès {amount}',
     place: 'Commander · {total}',
     errors: {
+      sales_closed: 'Les commandes ne sont pas encore ouvertes. Écrivez-nous sur WhatsApp pour être prévenu de l’ouverture.',
       empty_cart: 'Votre panier est vide.',
       cart_problem: 'Un article de votre panier doit être vérifié.',
       unavailable: 'Un produit de votre panier est indisponible pour le moment. Retirez-le de votre panier.',
@@ -575,7 +576,8 @@ export const fr: Dict = {
       hidden: 'Masqué',
     },
     stock: {
-      needsPrice: 'Prix au kilo : de 1 à 100 000 DH.',
+      needsPrice: 'Prix au kilo : de 1 à 100 000 DH, ou vide tant qu’il n’est pas fixé.',
+      shownNeedsPrice: 'Une origine affichée doit avoir un prix au kilo.',
       lowStockRange: 'Alerte : de 0 à 100 000 kg.',
       intro:
         'Le stock est compté en kilogrammes par origine. Les commandes le déduisent automatiquement, les annulations le rendent.',
@@ -603,7 +605,7 @@ export const fr: Dict = {
       movements: 'Mouvements de stock',
       addOrigin: 'Nouvelle origine',
       editOrigin: 'Modifier l’origine',
-      editLimits: 'Ici, seuls le prix au kilo, l’alerte et le Custom Blend se modifient. Le nom, le pays et le reste sont fixés à la création.',
+      editLimits: 'Tout se modifie ici sauf le stock, qui passe par « Ajuster le stock » (avec son historique). Une origine s’affiche seulement avec un prix au kilo.',
       createdHidden: 'Une nouvelle origine est créée masquée, à 0 kg : son premier lot passe par « Ajuster le stock ».',
       country: 'Code pays (ISO)',
       blendRule:
@@ -611,12 +613,13 @@ export const fr: Dict = {
       empty: 'Vide',
     },
     shipping: {
-      intro: 'Frais de livraison = forfait de la ville (couvre les premiers kilos) + un montant par kg supplémentaire.',
+      intro: 'Frais de livraison = forfait de la ville (couvre les premiers kilos) + un montant par kg supplémentaire, sans dépasser le plafond s’il y en a un.',
       city: 'Ville',
       distance: 'Distance (km)',
       base: 'Forfait',
       included: 'Kg inclus',
       extra: 'Par kg en plus',
+      cap: 'Plafond (vide = aucun)',
       days: 'Délai (jours)',
       addCity: 'Ajouter une ville',
       freeOver: 'Livraison offerte dès (MAD, 0 = jamais)',
@@ -625,7 +628,7 @@ export const fr: Dict = {
       simWeight: 'Poids (kg)',
       simResult: 'Frais de livraison : {fee}',
       createdHidden: 'Une nouvelle ville est créée masquée : affichez-la ensuite avec son interrupteur, après vérification.',
-      rowInvalid: 'Ville en français obligatoire ; distance entière jusqu’à 3000 km ; montants jusqu’à 1000 DH ; kg inclus jusqu’à 100.',
+      rowInvalid: 'Ville en français obligatoire ; distance entière jusqu’à 3000 km ; montants jusqu’à 1000 DH ; kg inclus jusqu’à 100 ; plafond au moins égal au forfait.',
     },
     payments: {
       cardOff: 'Non proposée sur le site tant que la passerelle CMI n’est pas branchée (phase D). Les clients la voient « bientôt ».',
@@ -692,6 +695,13 @@ export const fr: Dict = {
     },
     settings: {
       outOfRange: 'Une valeur est hors limites : seuil B2B 1 à 1000 kg, perte 0 à 30 %, délais 1 à 720 h, part minimale et nombre d’origines en nombres entiers, frais 0 à 1000 DH.',
+      salesTitle: 'Ventes',
+      salesOpenNow: 'Les ventes sont ouvertes : le site prend les commandes et les demandes B2B.',
+      salesClosedNow: 'Les ventes sont fermées : aucune commande ni demande B2B n’est acceptée.',
+      salesHelp: 'Ouvrez-les quand le catalogue, les prix, le stock et l’envoi des messages sont prêts. Les commandes déjà passées continuent normalement. Propriétaire seulement.',
+      openSales: 'Ouvrir les ventes',
+      openSalesConfirm: 'Confirmer l’ouverture',
+      closeSales: 'Fermer les ventes',
       rules: 'Règles commerciales',
       b2bThreshold: 'Seuil B2B (kg) : au-delà, la commande passe par l’équipe',
       blendTitle: 'Custom Blend',

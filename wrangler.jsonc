@@ -5,12 +5,14 @@
 {
   "name": "boga-cafe",
   "compatibility_date": "2026-10-06",
-  // Version URLs (<version>-boga-cafe.<subdomain>.workers.dev, and the branch alias) for the
-  // preview builds' `wrangler versions upload`. Applied by the next `wrangler deploy` (main);
-  // omitted, Wrangler leaves the Worker's setting as it is. The production workers.dev URL is
-  // unchanged (workers_dev defaults to true without routes).
+  // Version URLs (<version>-boga-cafe.<subdomain>.workers.dev, and the branch alias) stay OFF
+  // (owner 2026-10-17): a branch build is the shop on the live database, so a public link to it
+  // could take real orders before the sales gate. The owner turned them off in the dashboard;
+  // `false` keeps them off, because `wrangler deploy` (main) writes this value to the Worker
+  // (true here would turn them back on). `wrangler versions upload` (branch builds) only reads it.
+  // The production workers.dev URL is unchanged (workers_dev defaults to true without routes).
   // https://developers.cloudflare.com/workers/versions-and-deployments/version-urls/
-  "preview_urls": true,
+  "preview_urls": false,
   "observability": {
     "enabled": true
   },

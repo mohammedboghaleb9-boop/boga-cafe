@@ -109,7 +109,7 @@ select lives_ok($$select public.save_origin(pg_temp.origin('test-o5', jsonb_buil
 select throws_ok($$select public.save_origin(pg_temp.origin('test-o6', jsonb_build_object('region', repeat('r', 81))), null)$$, 'P0001', 'invalid_origin', 'a region of 81 characters is still refused');
 select is(public.save_origin(pg_temp.origin('test-origine', jsonb_build_object('name', pg_temp.text(' Autre '), 'pricePerKg', 120)), pg_temp.seen_origin('test-origine')),
           'test-origine', 'manager: edits an origin from the copy the page read');
-select is((select (name ->> 'fr') || ' ' || price_per_kg::text from public.origins where id = 'test-origine'), 'TEST origine 120.00', 'an edit still changes the price only, never the name');
+select is((select (name ->> 'fr') || ' ' || price_per_kg::text from public.origins where id = 'test-origine'), 'Autre 120.00', 'an edit changes the name too (slice 12), kept without its spaces');
 
 -- who may save, and nothing at all
 select pg_temp.token('00000000-0000-0000-0000-000000000002', 'aal2');

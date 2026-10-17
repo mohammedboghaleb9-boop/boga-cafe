@@ -196,7 +196,13 @@ async function fakeSupabase(page: Page, server: Server = {}) {
             prices: item.prices, featured: item.featured, sort_order: item.sortOrder, product_recipes: recipe, updated_at: now };
           if (row) Object.assign(row, fields, { active: item.active });
           else rows.push({ id: item.id, slug: item.id, image_url: null, ...fields, active: false });
-        } else if (row) Object.assign(row, { price_per_kg: item.pricePerKg, low_stock_kg: item.lowStockKg, custom_blend_enabled: item.customBlendEnabled, updated_at: now });
+        } else if (row) {
+          // slice 12: the whole definition and whether it is shown (only with a price), never the stock
+          if (item.active && item.pricePerKg === null) return refused('needs_price');
+          Object.assign(row, { name: item.name, country_code: item.countryCode, species: item.species, region: item.region, roast_level: item.roastLevel,
+            tasting_notes: item.tastingNotes, price_per_kg: item.pricePerKg, low_stock_kg: item.lowStockKg, custom_blend_enabled: item.customBlendEnabled,
+            active: item.active, updated_at: now });
+        }
         else rows.push({ id: item.id, name: item.name, country_code: item.countryCode, species: item.species, region: item.region, roast_level: item.roastLevel,
           tasting_notes: item.tastingNotes, stock_kg: 0, low_stock_kg: item.lowStockKg, price_per_kg: item.pricePerKg, custom_blend_enabled: item.customBlendEnabled,
           restock_date: null, active: false, updated_at: now });
@@ -444,7 +450,8 @@ test.describe('admin sign-in on the live site', () => {
       ['/payments', 'tbody button, fieldset *'],
       ['/notifications', 'fieldset *'],
       ['/content', 'fieldset *, .admin-head .btn-primary'],
-      ['/settings', 'fieldset *, .admin-head .btn-primary'],
+      // and the owner's sales switch (slice 12)
+      ['/settings', 'fieldset *, .admin-head .btn-primary, .sales-gate button'],
     ];
     for (const [path, wired] of pages) {
       const readingTools = ['.admin-live-bar button, [role=tab], input[type=search], .shipping-sim *', wired].filter(Boolean).join(', ');
@@ -568,19 +575,23 @@ test.describe('admin sign-in on the live site', () => {
     await open(page, '/admin/stock');
     await page.getByRole('button', { name: 'Nouvelle origine' }).click();
     await expect(page.getByRole('checkbox', { name: 'Visible sur le site' })).toBeDisabled(); // created hidden, at 0 kg
+    await expect(page.getByLabel('Prix Custom Blend / kg')).toHaveValue(''); // no made-up price (slice 12)
     await page.locator('#o-name-fr').fill('TEST origine');
     await page.getByLabel('Code pays (ISO)').fill('et');
     await page.getByLabel('Prix Custom Blend / kg').fill('100');
     await page.getByRole('button', { name: 'Enregistrer' }).click();
     const row = page.getByRole('row', { name: /TEST origine/ });
     await expect(row).toBeVisible(); // read again after the write
-    // afterwards: the price, the alert level and Custom Blend only
+    // afterwards (slice 12): the whole definition, and shown only with a price; never the stock
     await row.getByRole('button', { name: 'Modifier' }).click();
-    await expect(page.locator('#o-name-fr')).toBeDisabled();
-    await expect(page.getByLabel('Code pays (ISO)')).toBeDisabled();
+    await page.getByLabel('Prix Custom Blend / kg').fill('');
+    await expect(page.getByRole('checkbox', { name: 'Visible sur le site' })).toBeDisabled(); // no price: cannot be shown
+    await page.locator('#o-name-fr').fill('TEST origine B');
     await page.getByLabel('Prix Custom Blend / kg').fill('120');
+    await page.getByRole('checkbox', { name: 'Visible sur le site' }).click({ force: true });
     await page.getByRole('button', { name: 'Enregistrer' }).click();
-    await expect(row).toContainText('120');
+    const renamed = page.getByRole('row', { name: /TEST origine B/ });
+    await expect(renamed).toContainText('120');
     await page.getByRole('checkbox', { name: 'Dans le Custom Blend · Brésil' }).click({ force: true }); // the input sits under the drawn switch
     await expect(page.getByRole('checkbox', { name: 'Dans le Custom Blend · Brésil' })).not.toBeChecked();
 
@@ -599,7 +610,7 @@ test.describe('admin sign-in on the live site', () => {
     const [origin, edit, blend, product] = writes;
     expect(origin).toEqual({ fn: 'save_origin', aal: 'aal2', args: { p_seen_at: null, p_origin: expect.objectContaining({ id: 'test-origine', countryCode: 'ET', pricePerKg: 100 }) } });
     // the version the editor read: the one the creation gave it
-    expect(edit.args).toEqual({ p_seen_at: expect.any(String), p_origin: expect.objectContaining({ id: 'test-origine', pricePerKg: 120 }) });
+    expect(edit.args).toEqual({ p_seen_at: expect.any(String), p_origin: expect.objectContaining({ id: 'test-origine', name: expect.objectContaining({ fr: 'TEST origine B' }), pricePerKg: 120, active: true }) });
     expect(blend.args).toEqual({ p_seen_at: '2026-10-09T08:00:00.000001+00:00', p_origin: expect.objectContaining({ id: 'brazil', customBlendEnabled: false }) });
     expect(product).toEqual({
       fn: 'save_product',
@@ -607,7 +618,7 @@ test.describe('admin sign-in on the live site', () => {
       args: { p_seen_at: null, p_recipe: [{ originId: 'brazil', percent: 100 }], p_product: expect.objectContaining({ id: 'test-produit', slug: 'test-produit', active: false, prices: { '250': 1 } }) },
     });
     expect(catalog.products.find((x) => x.id === 'test-produit')).toMatchObject({ active: false });
-    expect(catalog.origins.find((x) => x.id === 'test-origine')).toMatchObject({ active: false, stock_kg: 0, price_per_kg: 120 });
+    expect(catalog.origins.find((x) => x.id === 'test-origine')).toMatchObject({ active: true, stock_kg: 0, price_per_kg: 120 });
   });
 
   test('a product saved from an older copy is refused: "not confirmed", the form shows what is saved, never left as if saved', async ({ page }) => {

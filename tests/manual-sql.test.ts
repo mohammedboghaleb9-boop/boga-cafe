@@ -120,3 +120,125 @@ describe('rollback scripts', () => {
     expect(commits(script)).toBe(1);
   });
 });
+
+/** Slice 12: the SQL Editor block holds the migration unchanged; the rollback undoes the catalog part only and keeps the sales gate. */
+describe('catalog_ready (slice 12)', () => {
+  const migration = read('supabase/migrations/20261016120000_catalog_ready.sql');
+  const block = read('supabase/manual/20261016120000_catalog_ready.editor.sql');
+  const rollback = read('supabase/manual/20261016120000_catalog_ready.rollback.sql');
+  const md5 = async (text: string) => (await import('node:crypto')).createHash('md5').update(text).digest('hex');
+  const body = (sql: string, name: string) => new RegExp(`create (?:or replace )?function public\\.${name}\\(.*?\\$\\$(.*?)\\$\\$`, 's').exec(sql)?.[1];
+  const fn = (sql: string, name: string) => new RegExp(`create or replace function public\\.${name}\\(.*?\\nend \\$\\$;`, 's').exec(sql)?.[0];
+
+  it('the block holds the migration unchanged, between begin and its one commit, after the guards', () => {
+    expect(block).toContain(`-- >>> 20261016120000_catalog_ready.sql\n${migration.trimEnd()}\n-- <<< 20261016120000_catalog_ready.sql`);
+    expect(block.indexOf('\nbegin;')).toBeLessThan(block.indexOf("stop: 20261016120000_catalog_ready is already applied"));
+    expect(block.indexOf("stop: 20261016120000_catalog_ready is already applied")).toBeLessThan(block.indexOf('-- >>>'));
+    expect(block.indexOf('-- <<<')).toBeLessThan(block.indexOf('\ncommit;'));
+    expect(block.match(/^commit;$/gm)).toHaveLength(1);
+  });
+
+  it('the block checks the seven bodies of the migration (md5) and that no row changed', async () => {
+    for (const name of ['check_order', 'commit_order', 'commit_quote_request', 'save_origin', 'save_shipping_rate', 'set_sales_open', 'save_product']) {
+      expect(body(migration, name), name).toBeDefined();
+      expect(block, name).toContain(await md5(body(migration, name)!));
+    }
+    expect(block).toContain("raise exception 'stop: a catalog, delivery, payment-method or settings row changed");
+    expect(block).toContain("set local lock_timeout = '3s';");
+    expect(block).toContain('stop: a function on live is not the one of the earlier migrations');
+  });
+
+  it("save_product is catalog_trim's with the lock on the shown product's origins, nothing else", async () => {
+    const trim = read('supabase/migrations/20261013100000_catalog_trim.sql');
+    const lock = /  -- the recipe's origins, locked first.*?order by o\.id for key share;\n/s;
+    const locked = fn(migration, 'save_product')!;
+    expect(locked.match(lock)?.[0]).toBeDefined();
+    // the lock comes before the 'hidden_origin' check and before the recipe is written
+    expect(locked.search(lock)).toBeLessThan(locked.indexOf("raise exception 'hidden_origin'"));
+    expect(locked.replace(lock, '')).toBe(fn(trim, 'save_product')!);
+    // before applying, the block accepts exactly catalog_trim's save_product (or this one, after a rollback)
+    expect(block).toContain(await md5(body(trim, 'save_product')!));
+    // save_origin locks its row before every check of an edit
+    const origin = fn(migration, 'save_origin')!;
+    expect(origin.indexOf('for update;')).toBeGreaterThan(origin.indexOf('  else\n'));
+    expect(origin.indexOf('for update;')).toBeLessThan(origin.indexOf("raise exception 'needs_price'"));
+    expect(origin.indexOf('for update;')).toBeLessThan(origin.indexOf("raise exception 'origin_in_use'"));
+  });
+
+  it('the migration changes no row: no insert, update or delete outside its function bodies', () => {
+    const outside = migration.replace(/\$\$.*?\$\$/gs, '');
+    expect(outside).not.toMatch(/\b(insert into|update public\.|delete from)\b/i);
+  });
+
+  it('the rollback restores save_origin and save_shipping_rate of their migrations, check_order without the cap, and keeps the gate', async () => {
+    const trim = read('supabase/migrations/20261013100000_catalog_trim.sql');
+    const config = read('supabase/migrations/20261013090048_config_trim.sql');
+    expect(rollback).toContain(fn(trim, 'save_origin')!);
+    expect(rollback).toContain(await md5(body(trim, 'save_origin')!));
+    expect(rollback).toContain(fn(config, 'save_shipping_rate')!);
+    expect(rollback).toContain(await md5(body(config, 'save_shipping_rate')!));
+    const check = fn(rollback, 'check_order')!;
+    expect(check).not.toContain('max_fee');
+    expect(check).toContain("raise exception 'sales_closed'"); // the gate stays: undoing it would open the sales
+    expect(check.replace(/ *v_fee := round\(v_rate\.base_fee \+ v_extra_kg \* v_rate\.extra_per_kg\);\n/, '')).toBe(
+      fn(migration, 'check_order')!.replace(/ *-- at most the city's cap.*\n *v_fee := round\(least\(.*\)\);\n/, ''),
+    ); // the migration's check_order but the cap, nothing else
+    for (const name of ['commit_order', 'commit_quote_request', 'set_sales_open', 'save_product']) {
+      expect(rollback, name).not.toMatch(new RegExp(`function public\\.${name}\\(`));
+      expect(rollback, `${name} still checked`).toContain(await md5(body(migration, name)!));
+    }
+    expect(rollback).toContain('stop: % origin(s) without a price');
+    expect(rollback).toContain('stop: % city(ies) with a delivery cap');
+    expect(rollback.match(/^commit;$/gm)).toHaveLength(1);
+  });
+});
+
+describe('expiry_lock_order (the expiry cron in the orders\' lock order)', () => {
+  const migration = read('supabase/migrations/20261016180000_expiry_lock_order.sql');
+  const rollback = read('supabase/manual/20261016180000_expiry_lock_order.rollback.sql');
+  const init = read('supabase/migrations/20260927000000_init.sql');
+  // without CR, as the guards compare it (md5(replace(prosrc, E'\r', ''))): a CRLF checkout gives the same digest
+  const md5 = async (text: string) => (await import('node:crypto')).createHash('md5').update(text.replace(/\r/g, '')).digest('hex');
+  const body = (sql: string) => /create or replace function public\.expire_unpaid_orders\(.*?\$\$(.*?)\$\$/s.exec(sql)?.[1];
+  const fn = (sql: string) => /create or replace function public\.expire_unpaid_orders\(.*?\nend \$\$;/s.exec(sql)?.[0];
+
+  it('replaces only init\'s function or itself (md5 guard), and changes no row', async () => {
+    expect(migration).toContain(`'${await md5(body(init)!)}', '${await md5(body(migration)!)}'`);
+    expect(migration.indexOf("raise exception 'stop:")).toBeLessThan(migration.indexOf('create or replace function'));
+    // a missing function stops it too (md5 of nothing is NULL, and NULL not in (...) would let it through)
+    expect(migration).toMatch(/if coalesce\(\(select md5\(replace\(prosrc, E'\\r', ''\)\) from pg_proc .*?\), ''\)\s+not in \(/s);
+    // the rights as init set them, whatever the database's default privileges
+    expect(migration).toMatch(
+      /revoke all on function public\.expire_unpaid_orders\(\) from public, anon, authenticated;\ngrant execute on function public\.expire_unpaid_orders\(\) to service_role;\n$/,
+    );
+    const outside = migration.replace(/\$\$.*?\$\$/gs, '');
+    expect(outside).not.toMatch(/\b(insert into|update public\.|delete from|drop )/i);
+  });
+
+  it('locks the orders (skip locked), then every origin in id order, before any stock is given back', () => {
+    const b = body(migration)!;
+    const orders = b.search(/order by o\.created_at\s+for update skip locked/);
+    // the origins of the locked orders whose stock is not back yet, all in one statement
+    const origins = b.search(
+      /perform 1 from public\.origins o\s+where o\.id in \(select x ->> 'originId'\s+from public\.orders r, jsonb_array_elements\(r\.stock_deductions\) x\s+where r\.id = any\(v_ids\) and not r\.stock_returned\)\s+order by o\.id\s+for no key update;/,
+    );
+    expect(orders).toBeGreaterThan(-1);
+    expect(origins).toBeGreaterThan(orders);
+    expect(origins).toBeLessThan(b.indexOf('for v_order in'));
+    expect(b.indexOf('for v_order in')).toBeLessThan(b.indexOf('update public.origins set stock_kg'));
+  });
+
+  it('gives the stock back exactly as init did (once, one history line per origin, one status.expired)', () => {
+    const steps = /    if not v_order\.stock_returned then.*?values \(v_order\.id, 'status\.expired'\);\n/s;
+    const before = body(init)!.match(steps)?.[0];
+    expect(before).toBeDefined();
+    expect(body(migration)!.match(steps)?.[0]).toBe(before);
+  });
+
+  it('the rollback puts init\'s function back, guarded by both md5s, in one commit', async () => {
+    expect(rollback).toContain(fn(init)!);
+    expect(rollback).toContain(await md5(body(migration)!));
+    expect(rollback).toContain(await md5(body(init)!));
+    expect(rollback.match(/^commit;$/gm)).toHaveLength(1);
+  });
+});

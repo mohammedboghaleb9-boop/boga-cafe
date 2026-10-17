@@ -9,7 +9,9 @@
  *
  * Answers (once Turnstile passed, below): 400 malformed body (or one the site's forms never send); 200
  * {ok: false, errors} for every refusal the customer can act on (form errors,
- * stock, 'unavailable', 'too_many', 'captcha'); 200 {ok: true, …}. Limits: see guard.ts.
+ * stock, 'unavailable', 'sales_closed', 'too_many', 'captcha'); 200 {ok: true, …}. Limits: see guard.ts.
+ * Sales closed (settings.salesOpen not true, slice 12): src/core refuses first, and the database
+ * again at the commit (the owner may close them meanwhile); either way 'sales_closed'.
  * Cloudflare Turnstile comes first (slice 4): without a valid token nothing else
  * runs, not a read, not a count; without the secret or the hostnames every form is refused (500).
  * A token counts only if it was solved for this form (`action` = the route) on one of the
@@ -101,6 +103,8 @@ async function order(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
   const r = await deps.db.rpc('commit_order', key ? { ...p.args, p_idempotency_key: key } : p.args);
   // someone bought the last kilos between our check and the commit
   if (r.error?.message.startsWith('out_of_stock:')) return unlessSaved(refuse('out_of_stock'));
+  // the owner closed the sales between our check and the commit
+  if (r.error?.message === 'sales_closed') return unlessSaved(refuse('sales_closed'));
   const row = saved(r);
   if (!row) return BAD_REQUEST;
   // sent twice at the same moment: the other request saved it first
@@ -121,7 +125,9 @@ async function quote(raw: unknown, deps: Deps, now: Date): Promise<Reply> {
   // a cart at or under the threshold is an order, and an empty one is nothing: not what the site sends
   if (!p.aboveThreshold) return BAD_REQUEST;
   if (!(await withinLimits(deps.db, 'quote', p.phone, deps.ip, deps.ipKey))) return refuse('too_many');
-  const row = saved(await deps.db.rpc('commit_quote_request', p.args));
+  const r = await deps.db.rpc('commit_quote_request', p.args);
+  if (r.error?.message === 'sales_closed') return refuse('sales_closed');
+  const row = saved(r);
   if (!row) return BAD_REQUEST;
   return { status: 200, body: { ok: true, quote: { ...p.quote, ...row } } satisfies QuoteResult };
 }

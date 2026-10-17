@@ -48,6 +48,7 @@ export const product: Product = {
 
 export const settings: Settings = {
   currency: 'MAD',
+  salesOpen: true,
   b2bThresholdKg: 10,
   customBlend: { enabled: true, minPercent: 5, maxOrigins: 4, feeBySize: { 250: 10, 500: 15, 1000: 20 } },
   roastLossPercent: 0,

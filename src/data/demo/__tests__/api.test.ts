@@ -270,10 +270,10 @@ describe('admin protection (phase 2)', () => {
   it('editing an origin never changes its stock (only adjustStock does, with a history line)', async () => {
     const { api, db } = t;
     const o = db.get().origins[0];
-    expect(await api.saveOrigin({ ...o, stockKg: 999, pricePerKg: o.pricePerKg + 10 })).toBe(true);
+    expect(await api.saveOrigin({ ...o, stockKg: 999, pricePerKg: o.pricePerKg! + 10 })).toBe(true);
     const after = db.get().origins.find((x) => x.id === o.id)!;
     expect(after.stockKg).toBe(o.stockKg);
-    expect(after.pricePerKg).toBe(o.pricePerKg + 10);
+    expect(after.pricePerKg).toBe(o.pricePerKg! + 10);
     expect(await api.saveOrigin({ ...o, id: 'ghost' })).toBe(false);
   });
 

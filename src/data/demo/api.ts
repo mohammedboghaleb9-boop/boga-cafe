@@ -25,7 +25,7 @@ import {
 } from '@/core/config';
 import { buildOrder, expiredUnpaidOrders, type CheckoutInput } from '@/core/order';
 import { buildQuoteRequest, type QuoteInput } from '@/core/requests';
-import { isPrice } from '@/core/pricing';
+import { originPriceOk } from '@/core/pricing';
 import { adjustOriginStock, applyStock, isLowStock } from '@/core/stock';
 import type {
   Order,
@@ -273,11 +273,11 @@ export const demoApi: Api = {
     db.update((s) => ({ ...s, products: s.products.filter((p) => p.id !== id) }));
   },
 
-  /** New origin at 0 kg (its first lot goes through adjustStock); never replaces an existing one. Null without a real price per kg. */
+  /** New origin, hidden, at 0 kg (its first lot goes through adjustStock); never replaces an existing one. Its price may be empty. */
   async createOrigin(draft: Origin) {
-    if (!isPrice(draft.pricePerKg)) return null;
     const clean = trimmedOrigin(draft);
-    const origin = { ...clean, id: newOriginId(clean.name.fr, db.get().origins), stockKg: 0 };
+    const origin = { ...clean, id: newOriginId(clean.name.fr, db.get().origins), stockKg: 0, active: false };
+    if (!originPriceOk(origin)) return null;
     db.update((s) => ({ ...s, origins: [...s.origins, origin] }));
     return origin;
   },
@@ -285,7 +285,7 @@ export const demoApi: Api = {
   /** Saves origin details. Stock is changed only through `adjustStock` so every change is logged. */
   async saveOrigin(draft: Origin) {
     const origin = trimmedOrigin(draft);
-    if (!isPrice(origin.pricePerKg) || !db.get().origins.some((o) => o.id === origin.id)) return false;
+    if (!originPriceOk(origin) || !db.get().origins.some((o) => o.id === origin.id)) return false;
     db.update((s) => ({ ...s, origins: s.origins.map((o) => (o.id === origin.id ? { ...origin, stockKg: o.stockKg } : o)) }));
     return true;
   },
@@ -332,6 +332,10 @@ export const demoApi: Api = {
 
   async saveRules(rules: BusinessRules, role: AdminRole) {
     return savePart(rules, role, rulesOk(rules));
+  },
+
+  async setSalesOpen(open: boolean, role: AdminRole) {
+    return savePart({ salesOpen: open }, role, typeof open === 'boolean');
   },
 
   async saveFreeShipping(amount: number, role: AdminRole) {
