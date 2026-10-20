@@ -145,18 +145,18 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
   <p class="lead">متجر قهوة الحبوب من وجدة: B2C وB2B وCustom Blend، بثلاث لغات. هاد الصفحة كتجاوب فدقيقة، والتفاصيل من تحت. كل «مكتمل» عندو دليل حداه.</p>
   <div class="meta">
     <span class="chip">آخر تحديث: <b class="mono">2026-10-20</b></span>
-    <span class="chip">main: <b class="mono">de858f6</b> (PR #16)</span>
-    <span class="chip">CI: أخضر على PR #16</span>
-    <span class="chip">فرع محلي: <b class="mono">feat/p5-s13-demo-removal</b> (بلا commit)</span>
+    <span class="chip">main: <b class="mono">2920f70</b> (PR #17)</span>
+    <span class="chip">CI ديال main: <b style="color:var(--blocked)">database حمر</b></span>
+    <span class="chip">migration + storefront: <b style="color:var(--blocked)">موقوفين</b></span>
     <span class="chip">الإنتاج: صفحة «قريباً»</span>
     <span class="chip">البيع: <b style="color:var(--blocked)">مسدود</b></span>
   </div>
 </header>
 
 <div class="grid g7">
-  <div class="card ans"><h2>فين وصلنا؟</h2><p class="k num">73٪ <span class="mono" style="font-size:12px">Estimated</span></p><p>الخادم الحقيقي خدام وحي، والبيانات نظيفة. المتجر مازال مسدود: الإنتاج كيبيّن «قريباً» حتى يكمل مرسل الرسائل والتسعيرة.</p></div>
-  <div class="card ans"><h2>شنو سالا؟</h2><p class="k num">35 / 50</p><p>النموذج، التدقيق، الشرائح 1-12 حية، «قريباً» فالإنتاج، إصلاح expiry، تنظيف live.</p></div>
-  <div class="card ans"><h2>شنو دابا؟</h2><p class="k">إغلاق الشريحة 13</p><p>موافق عليها (2026-10-20): commit وPR، CI، الدمج، الـ migration فالـ SQL Editor، نشر storefront. حتى دابا: ما مدموجاش، ما منشوراش، ما مطبّقاش.</p></div>
+  <div class="card ans"><h2>فين وصلنا؟</h2><p class="k num">73٪ <span class="mono" style="font-size:12px">Estimated</span></p><p>الخادم الحقيقي خدام وحي، والبيانات نظيفة، والشريحة 13 مدموجة. المتجر مازال مسدود: الإنتاج كيبيّن «قريباً» حتى يكمل مرسل الرسائل والتسعيرة.</p></div>
+  <div class="card ans"><h2>شنو سالا؟</h2><p class="k num">35 / 50</p><p>النموذج، التدقيق، الشرائح 1-12 حية، «قريباً» فالإنتاج، إصلاح expiry، تنظيف live، دمج الشريحة 13 (الكود فقط).</p></div>
+  <div class="card ans"><h2>شنو دابا؟</h2><p class="k">وقفة بعد الدمج</p><p>PR #17 مدموج (2920f70). CI ديال main طاح فاختبار ضغط عشوائي، فوقفنا: الـ migration ما مطبّقاش وstorefront ما منشوراش. الخطوة الجاية: إصلاح الاختبار بإذنك.</p></div>
   <div class="card ans"><h2>شنو باقي؟</h2><p class="k num">6 + 6 + 3</p><p>مخطط + معطّل + جزئي/قيد العمل: المرسل، SEO، القانوني، QA، الإطلاق، ومحتوى المالك.</p></div>
   <div class="card ans"><h2>شحال باقي؟</h2><p class="k">3-4 أسابيع <span class="mono" style="font-size:12px">Estimated</span></p><p>12-17 يوم خدمة تقنية (القسم 8)، بلا انتظارات خارجية (ANRT، CNDP، CMI، أثمنة المالك). ماشي وعد.</p></div>
   <div class="card ans" style="border-top-color:var(--blocked)"><h2>شنو كيحبسنا؟</h2><p class="k num" style="color:var(--blocked)">6</p><p>الأثمنة والتسعيرة، البنك، مفاتيح الإرسال، النطاق، CNDP، CMI.</p></div>
@@ -167,16 +167,16 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
   <div class="card kpi"><div class="v num">354</div><div class="l">اختبار وحدات ناجح (محلي)</div></div>
   <div class="card kpi"><div class="v num">81</div><div class="l">اختبار متصفح ناجح</div></div>
   <div class="card kpi"><div class="v num">308</div><div class="l">فحص قاعدة بيانات على 17.11 (محلي)</div></div>
-  <div class="card kpi"><div class="v num">17</div><div class="l">migration حية = 17 ملف</div></div>
-  <div class="card kpi"><div class="v num">10</div><div class="l">مخاطر مفتوحة / كتتعالج</div></div>
-  <div class="card kpi"><div class="v num">6</div><div class="l">قرارات/إذونات مازال كتتسناك</div></div>
+  <div class="card kpi"><div class="v num">17</div><div class="l">migration حية (18 ملف فـ main، وحدة ما مطبّقاش)</div></div>
+  <div class="card kpi"><div class="v num">11</div><div class="l">مخاطر مفتوحة / كتتعالج</div></div>
+  <div class="card kpi"><div class="v num">7</div><div class="l">قرارات/إذونات مازال كتتسناك</div></div>
 </div>
 
 <div class="card" style="margin-top:12px">
   <div class="legend"><b>المفتاح:</b>
     <span class="b b-done">COMPLETED</span> مكتمل بدليل
     <span class="b b-partial">PARTIAL</span> جزئي (مكتوب شنو ناقص)
-    <span class="b b-progress">IN PROGRESS</span> فرع ما مدموجش
+    <span class="b b-progress">IN PROGRESS</span> قيد العمل، ما كملش
     <span class="b b-planned">PLANNED</span> مخطط
     <span class="b b-blocked">BLOCKED</span> كيتسنى المالك/طرف خارجي
     <span class="b b-none">NOT STARTED</span>
@@ -186,18 +186,19 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 </div>
 
 <section class="ch" id="approvals"><h2><span class="n">00</span>الإذونات والقرارات</h2>
-<p class="lead">1-4 عندهم موافقتك (2026-10-20) وكيتنفّذو بالترتيب، وكيوقفو عند أي فشل. الباقي كيتسنى إذنك.</p>
+<p class="lead">1-4 عندهم موافقتك (2026-10-20). 1 و2 تدارو؛ 3 و4 موقوفين حيت CI ديال main حمر (شرطك: عند أي فشل، وقفة). 11 جديد وكيتسنى إذنك.</p>
 <div class="tbl"><table><thead><tr><th>#</th><th>الخطوة</th><th>شكون</th><th>الحالة</th><th>الدليل</th><th>ملاحظة</th></tr></thead><tbody>
-<tr><td class="num">1</td><td>commit + push ديال الشريحة 13 وفتح PR</td><td>المالك</td><td><span class="b b-progress" title="قيد العمل">IN PROGRESS</span></td><td>موافقة 2026-10-20 · كل الفحوص المحلية خضر</td><td>كيتسنى CI على آخر SHA</td></tr>
-<tr><td class="num">2</td><td>دمج PR الشريحة 13 فـ main (merge commit)</td><td>المالك</td><td><span class="b b-progress" title="قيد العمل">IN PROGRESS</span></td><td>موافقة 2026-10-20 بشرط CI أخضر كامل</td><td>كل دمج = إصدار؛ الإنتاج خاصو يبقى «قريباً»</td></tr>
-<tr><td class="num">3</td><td>تطبيق migration 20261020090000_city_shown_needs_fee</td><td>المالك</td><td><span class="b b-progress" title="قيد العمل">IN PROGRESS</span></td><td>موافقة 2026-10-20: SQL Editor + تسجيل النسخة الأصلية مرة وحدة</td><td>block مجرّب على 17.11: مرة، ثانية كتوقف، مدينة ظاهرة بـ0 كتوقف</td></tr>
-<tr><td class="num">4</td><td>نشر storefront من main المدموج</td><td>المالك</td><td><span class="b b-progress" title="قيد العمل">IN PROGRESS</span></td><td>موافقة 2026-10-20</td><td>verify_jwt=false والأسرار يبقاو؛ تحقق بلا طلبات</td></tr>
+<tr><td class="num">1</td><td>commit + push ديال الشريحة 13 وفتح PR</td><td>المالك</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td>تدار: PR #17 · head 6623583 · CI 7/7 success</td><td>بلا أسرار ولا ملف استرجاع فالـ diff</td></tr>
+<tr><td class="num">2</td><td>دمج PR الشريحة 13 فـ main (merge commit)</td><td>المالك</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td>تدار: 2920f70 (merge commit، بلا حذف فروع)</td><td>CI ديال main من بعد: 3/4، database حمر (القسم 13)</td></tr>
+<tr><td class="num">3</td><td>تطبيق migration 20261020090000_city_shown_needs_fee</td><td>المالك</td><td><span class="b b-blocked" title="معطّل">BLOCKED</span></td><td>موقوف: شرط main أخضر ما تحققش</td><td>block مجرّب على 17.11؛ live ما تبدّلش (17 سطر)</td></tr>
+<tr><td class="num">4</td><td>نشر storefront من main المدموج</td><td>المالك</td><td><span class="b b-blocked" title="معطّل">BLOCKED</span></td><td>موقوف: نفس السبب</td><td>v10 باقية؛ bundle ديال 2920f70 واجد (sha256 b613a27b…)</td></tr>
 <tr><td class="num">5</td><td>مرسل الـ outbox (المرحلة 4) + مفاتيح الإرسال</td><td>المالك</td><td><span class="b b-planned" title="مخطط">PLANNED</span></td><td>شرط قبل فتح البيع</td><td>أسرار فـ Supabase فقط، ماشي فالريبو</td></tr>
 <tr><td class="num">6</td><td>إدخال التسعيرة الحقيقية (المدن، المنتجات، الأصول)</td><td>المالك</td><td><span class="b b-blocked" title="معطّل">BLOCKED</span></td><td>المدينة كتبان غير مع ثمن &gt; 0</td><td>3 كلغ مشمولة، نص واضح للزبون</td></tr>
 <tr><td class="num">7</td><td>حذف wildcard الـ previews من TURNSTILE_HOSTNAMES</td><td>المالك</td><td><span class="b b-planned" title="مخطط">PLANNED</span></td><td>قبل الإطلاق</td><td>Supabase secrets + widget Cloudflare</td></tr>
 <tr><td class="num">8</td><td>فتح البيع (set_sales_open)</td><td>المالك</td><td><span class="b b-planned" title="مخطط">PLANNED</span></td><td>بعد المرسل وتجربة توصيل</td><td>بإذن منفصل</td></tr>
 <tr><td class="num">9</td><td>سطور التدقيق اللي كتذكر عناصر TEST (7)</td><td>المالك</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td>محفوظين (قرار 2026-10-20)</td><td>ما يتمسحوش</td></tr>
 <tr><td class="num">10</td><td>نشر هاد الصفحة فنفس رابط Artifact</td><td>المالك</td><td><span class="b b-planned" title="مخطط">PLANNED</span></td><td>الملف فالريبو؛ النشر ما تدارش</td><td>رابط واحد، ماشي صفحة ثانية</td></tr>
+<tr><td class="num">11</td><td>إصلاح شرط «كافي من الطلبات» فـ lock-stress.sh (فرع جديد + PR)</td><td>المالك</td><td><span class="b b-planned" title="مخطط">PLANNED</span></td><td>خاصو إذن: تبديل كود خارج إذن 2026-10-20</td><td>من بعدو: CI أخضر على main ثم 3 و4</td></tr>
 </tbody></table></div></section>
 
 <section class="ch" id="c1"><h2><span class="n">01</span>نظرة عامة</h2>
@@ -228,7 +229,8 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <li class="tl-done"><div class="tl-d mono">2026-10-17</div><div><b>الشريحة 12 مدموجة</b> <span class="b b-done" title="مكتمل">COMPLETED</span><p>الكتالوج جاهز، بوابة البيع، إصلاح السباق، Version URLs طافيين، CI بلا صور.</p><p class="ev">PR #16 · de858f6</p></div></li>
 <li class="tl-done"><div class="tl-d mono">2026-10-18</div><div><b>catalog_ready حية + storefront v10</b> <span class="b b-done" title="مكتمل">COMPLETED</span><p>طبّقها المالك فالـ SQL Editor؛ تحققت البصمات والحقوق.</p><p class="ev">20261016120000 · v10</p></div></li>
 <li class="tl-done"><div class="tl-d mono">2026-10-19</div><div><b>إصلاح expiry حي + تنظيف live ★</b> <span class="b b-done" title="مكتمل">COMPLETED</span><p>deadlock الـ cron تصلح؛ صفوف TEST تحيّدو، الكتالوج مسودات، المدن مخفية بـ 0.</p><p class="ev">20261019200936 · cleanup.editor.sql</p></div></li>
-<li class="tl-progress"><div class="tl-d mono">2026-10-19</div><div><b>الشريحة 13 (محلي)</b> <span class="b b-progress" title="قيد العمل">IN PROGRESS</span><p>إزالة fallback الأمثلة، migration فحص المدينة، تسمية expiry، 3 كلغ.</p><p class="ev">feat/p5-s13-demo-removal</p></div></li>
+<li class="tl-done"><div class="tl-d mono">2026-10-19</div><div><b>الشريحة 13 (محلي)</b> <span class="b b-done" title="مكتمل">COMPLETED</span><p>إزالة fallback الأمثلة، migration فحص المدينة، تسمية expiry، 3 كلغ.</p><p class="ev">feat/p5-s13-demo-removal · 6623583</p></div></li>
+<li class="tl-progress"><div class="tl-d mono">2026-10-20</div><div><b>الشريحة 13 مدموجة · وقفة</b> <span class="b b-progress" title="قيد العمل">IN PROGRESS</span><p>PR #17 مدموج بعد CI 7/7. CI ديال main طاح فاختبار ضغط عشوائي (database)؛ وقفنا قبل الـ migration والنشر.</p><p class="ev">PR #17 · 2920f70 · run 39409622366</p></div></li>
 <li class="tl-planned"><div class="tl-d mono">بعد</div><div><b>مرسل الرسائل ← فتح البيع ← SEO/قانوني ← QA ← الإطلاق</b> <span class="b b-planned" title="مخطط">PLANNED</span><p>كل خطوة بإذن ديالها.</p><p class="ev">—</p></div></li>
 </ol></section>
 
@@ -316,7 +318,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <tr data-st="done"><td class="num">45</td><td>الشريحة 12: الكتالوج جاهز + بوابة البيع + إصلاح السباق</td><td class="mono">P5</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">PR #16 de858f6 · catalog_ready حية 2026-10-18 · storefront v10</td></tr>
 <tr data-st="done"><td class="num">46</td><td>إصلاح deadlock ديال cron الانتهاء</td><td class="mono">P5</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">20261019200936 حية 2026-10-19 · md5 6314ee39 · cron ناجح</td></tr>
 <tr data-st="done"><td class="num">47</td><td>تنظيف بيانات live (البداية الحقيقية) ★</td><td class="mono">P5</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">SQL Editor 2026-10-19 · النتيجة مطابقة · تحقق read-only</td></tr>
-<tr data-st="progress"><td class="num">48</td><td>الشريحة 13: إزالة الأمثلة + فحص المدينة + تسمية expiry + مراجعة الاتساق</td><td class="mono">P5</td><td><span class="b b-progress" title="قيد العمل">IN PROGRESS</span></td><td class="ev">موافقة 2026-10-20: commit + PR + CI ثم الدمج والنشر والـ migration؛ حتى دابا ما مدموجش، ما منشورش، ما مطبّقش</td></tr>
+<tr data-st="progress"><td class="num">48</td><td>الشريحة 13: إزالة الأمثلة + فحص المدينة + تسمية expiry + مراجعة الاتساق</td><td class="mono">P5</td><td><span class="b b-progress" title="قيد العمل">IN PROGRESS</span></td><td class="ev">مدموجة: PR #17 · main 2920f70 (CI الفرع 7/7). واقفة: CI ديال main حمر (database)، الـ migration ما مطبّقاش، storefront ما منشوراش</td></tr>
 <tr data-st="planned"><td class="num">49</td><td>مرسل الـ outbox + تجربة توصيل الرسائل</td><td class="mono">P5</td><td><span class="b b-planned" title="مخطط">PLANNED</span></td><td class="ev">شرط قبل فتح البيع (قرار 2026-10-05)</td></tr>
 <tr data-st="blocked"><td class="num">50</td><td>تسعيرة التوصيل الحقيقية + نص واضح «3 كلغ مشمولة»</td><td class="mono">P8</td><td><span class="b b-blocked" title="معطّل">BLOCKED</span></td><td class="ev">قرار المالك 2026-10-19: 3 كلغ؛ الرسوم كتتسنى</td></tr>
 </tbody></table></div></section>
@@ -329,22 +331,23 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <tr><td>P5</td><td>الإنتاج = «قريباً» ★</td><td><span class="b b-done">COMPLETED</span></td><td class="ev">PR #15 · 8830180 · 21 ملف SHA-256</td><td>نسخة الرجوع: 60569f1c</td></tr>
 <tr><td>P5 · 12</td><td>الكتالوج جاهز، بوابة البيع، سباق الأقفال</td><td><span class="b b-done">COMPLETED</span></td><td class="ev">PR #16 · de858f6 · catalog_ready حية 10-18 · storefront v10</td><td>طبّقها المالك فالـ SQL Editor</td></tr>
 <tr><td>P5</td><td>deadlock ديال cron الانتهاء</td><td><span class="b b-done">COMPLETED</span></td><td class="ev">20261019200936 · md5 6314ee39 · cron 20:15/20:30 ناجح</td><td>Sonnet راجعها: OK</td></tr>
+<tr><td>P5 · 13</td><td>إزالة الأمثلة، فحص المدينة، تسمية expiry، 3 كلغ</td><td><span class="b b-progress">IN PROGRESS</span></td><td class="ev">PR #17 · 2920f70 · CI الفرع 7/7</td><td>مدموجة؛ main حمر؛ ما مطبّقاش وما منشوراش</td></tr>
 <tr><td>P5</td><td>تنظيف live (البداية الحقيقية) ★</td><td><span class="b b-done">COMPLETED</span></td><td class="ev">cleanup.editor.sql (sha256 667fe4b5…) · نتيجة 0|0|0|0|6|0|0|0.000|10|0|0|22|20|0|0|false</td><td>تجربة محلية 25/25؛ الاسترجاع عند المالك</td></tr>
 </tbody></table></div></section>
 
 <section class="ch" id="c5"><h2><span class="n">05</span>العمل الحالي · لوحة المهام</h2>
-<div class="callout info"><b>سالا دابا (محلي):</b> الشريحة 13: <code>src/data/defaults.ts</code> بلاصة fallback الأمثلة، المدينة الظاهرة خاصها ثمن أساسي &gt; 0 (واجهة + migration)، تسمية expiry لـ <span class="mono">20261019200936</span>، 3 كلغ مشمولة. الاختبارات: 354 وحدات، 81 متصفح، 308 قاعدة بيانات على 17.11. مراجعة Sonnet: OK. مراجعة الاتساق (2026-10-20): README والوثائق والتعليقات وseed.sql وparity على 3 كلغ. <b>هادشي كامل محلي: ما مدموجش، ما منشورش، وما مطبّقش على القاعدة.</b></div>
+<div class="callout"><b>الحالة دابا (2026-10-20):</b> الشريحة 13 <b>مدموجة</b> فـ main (<span class="mono">2920f70</span>، PR #17، CI الفرع 7/7). CI ديال main: web وe2e وWorkers Builds خضر، <b>database حمر</b>: <code>lock-stress.sh</code> لقى 16 طلب والحد 20؛ نفس الشجرة نجحت قبل بـ 125، و12 دورة محلية عطاو 70-301. فحوص الأمان (deadlock 0، الحالة الخاطئة 0) دازو. <b>ما مطبّقش:</b> migration <span class="mono">20261020090000</span>. <b>ما منشورش:</b> storefront (باقية v10). الإنتاج «قريباً» 21/21 مطابق.</div>
 <div class="kanban">
-<section class="kcol"><h3>موافق، قيد التنفيذ <span class="num">4</span></h3><div class="kcard">commit/push/PR الشريحة 13</div><div class="kcard">دمج بعد CI</div><div class="kcard">تطبيق migration فحص المدينة (SQL Editor)</div><div class="kcard">نشر storefront</div></section>
-<section class="kcol"><h3>قيد العمل <span class="num">1</span></h3><div class="kcard">الشريحة 13: CI على آخر SHA</div></section>
+<section class="kcol"><h3>موافق، موقوف (main حمر) <span class="num">2</span></h3><div class="kcard">تطبيق migration فحص المدينة (SQL Editor)</div><div class="kcard">نشر storefront</div></section>
+<section class="kcol"><h3>كيتسنى إذنك <span class="num">1</span></h3><div class="kcard">إصلاح شرط lock-stress.sh (فرع + PR)</div></section>
 <section class="kcol"><h3>مخطط <span class="num">8</span></h3><div class="kcard">مرسل الـ outbox</div><div class="kcard">إزالة canWrite/ComingSoon الميتين</div><div class="kcard">drop commit_order_before_3b</div><div class="kcard">نص «3 كلغ مشمولة» فالدفع</div><div class="kcard">SEO</div><div class="kcard">القانوني</div><div class="kcard">QA نهائي</div><div class="kcard">نشر صفحة الحالة</div></section>
 <section class="kcol"><h3>معطّل (المالك/خارجي) <span class="num">6</span></h3><div class="kcard">الأثمنة والتسعيرة</div><div class="kcard">البنك</div><div class="kcard">مفاتيح الإرسال</div><div class="kcard">النطاق</div><div class="kcard">CNDP</div><div class="kcard">CMI</div></section>
-<section class="kcol"><h3>سالي مؤخراً <span class="num">6</span></h3><div class="kcard">مراجعة الاتساق</div><div class="kcard">تنظيف live ★</div><div class="kcard">expiry حي</div><div class="kcard">catalog_ready حي</div><div class="kcard">PR #16 مدموج</div><div class="kcard">«قريباً» فالإنتاج ★</div></section>
+<section class="kcol"><h3>سالي مؤخراً <span class="num">7</span></h3><div class="kcard">PR #17 مدموج (2920f70)</div><div class="kcard">مراجعة الاتساق</div><div class="kcard">تنظيف live ★</div><div class="kcard">expiry حي</div><div class="kcard">catalog_ready حي</div><div class="kcard">PR #16 مدموج</div><div class="kcard">«قريباً» فالإنتاج ★</div></section>
 </div></section>
 
 <section class="ch" id="c6"><h2><span class="n">06</span>الطريق المتبقي</h2>
 <ol class="tl">
-<li class="tl-progress"><div class="tl-d">1</div><div><b>إغلاق الشريحة 13</b> <span class="b b-progress">IN PROGRESS</span><p>commit → PR → CI → دمج → migration → نشر storefront.</p></div></li>
+<li class="tl-progress"><div class="tl-d">1</div><div><b>إغلاق الشريحة 13</b> <span class="b b-progress">IN PROGRESS</span><p>commit ✔ → PR ✔ → CI ✔ → دمج ✔ → <b>CI main ✘ (وقفة)</b> → إصلاح lock-stress.sh (إذن) → migration → نشر storefront.</p></div></li>
 <li class="tl-planned"><div class="tl-d">2</div><div><b>مرسل الرسائل (المرحلة 4)</b> <span class="b b-planned">PLANNED</span><p>من <code>notification_outbox</code> لـ Gmail/WhatsApp، وتجربة توصيل.</p></div></li>
 <li class="tl-planned"><div class="tl-d">3</div><div><b>التسعيرة والمحتوى</b> <span class="b b-blocked">BLOCKED</span><p>المالك: أثمنة المنتجات والأصول والمدن (3 كلغ مشمولة).</p></div></li>
 <li class="tl-planned"><div class="tl-d">4</div><div><b>P6 SEO · P7 القانوني</b> <span class="b b-planned">PLANNED</span></div></li>
@@ -353,7 +356,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 
 <section class="ch" id="c7"><h2><span class="n">07</span>المراحل</h2>
 <div class="grid g2">
-<article class="card ph"><header><span class="mono ph-id">P5</span><h3>الخادم الحقيقي (Supabase)</h3><span class="b b-progress" title="قيد العمل">IN PROGRESS</span></header><p>حفظ وحماية حقيقيين: الموقع ما كيثيقش فالمتصفح.</p><ul class="check"><li class="ok">الشرائح 1-12 مدموجة وحية</li><li class="ok">تنظيف live</li><li class="todo">الشريحة 13 (محلي)</li><li class="todo">مرسل الـ outbox</li><li class="todo">نشر storefront الجديد</li></ul><dl><dt>الاعتمادات</dt><dd>الإذونات 1-5</dd><dt>المدة</dt><dd>2-3 أيام باقيين (Estimated)</dd><dt>الأولوية</dt><dd>عالية</dd></dl></article>
+<article class="card ph"><header><span class="mono ph-id">P5</span><h3>الخادم الحقيقي (Supabase)</h3><span class="b b-progress" title="قيد العمل">IN PROGRESS</span></header><p>حفظ وحماية حقيقيين: الموقع ما كيثيقش فالمتصفح.</p><ul class="check"><li class="ok">الشرائح 1-12 مدموجة وحية</li><li class="ok">تنظيف live</li><li class="ok">الشريحة 13 مدموجة</li><li class="todo">CI ديال main أخضر</li><li class="todo">migration فحص المدينة</li><li class="todo">نشر storefront الجديد</li><li class="todo">مرسل الـ outbox</li></ul><dl><dt>الاعتمادات</dt><dd>الإذونات 1-5</dd><dt>المدة</dt><dd>2-3 أيام باقيين (Estimated)</dd><dt>الأولوية</dt><dd>عالية</dd></dl></article>
 <article class="card ph"><header><span class="mono ph-id">P6</span><h3>أساس SEO</h3><span class="b b-planned" title="مخطط">PLANNED</span></header><p>Google يلقى الموقع ويفهمو بثلاث لغات.</p><ul class="check"><li class="todo">رابط لكل لغة + hreflang</li><li class="todo">prerender</li><li class="todo">Schema.org</li><li class="todo">sitemap/robots</li><li class="todo">الأداء ورؤوس الأمان</li></ul><dl><dt>الاعتمادات</dt><dd>النطاق النهائي، المحتوى النهائي</dd><dt>المدة</dt><dd>4-5 أيام (Estimated)</dd><dt>الأولوية</dt><dd>متوسطة</dd></dl></article>
 <article class="card ph"><header><span class="mono ph-id">P7</span><h3>القانوني والموافقة</h3><span class="b b-planned" title="مخطط">PLANNED</span></header><p>القانون 09-08 والإعلانات بلا تتبع قبل الموافقة.</p><ul class="check"><li class="todo">صفحة الخصوصية</li><li class="todo">CGV والإشعارات القانونية</li><li class="todo">شريط موافقة عند الإعلانات</li><li class="todo">تصريح CNDP</li></ul><dl><dt>الاعتمادات</dt><dd>CNDP (المالك)</dd><dt>المدة</dt><dd>2-3 أيام (Estimated)</dd><dt>الأولوية</dt><dd>متوسطة</dd></dl></article>
 <article class="card ph"><header><span class="mono ph-id">P8</span><h3>محتوى وقرارات المالك (موازي)</h3><span class="b b-blocked" title="معطّل">BLOCKED</span></header><p>كل اللي ما كيقدرش المطوّر يدير بلا المالك.</p><ul class="check"><li class="todo">المنتجات والأثمنة والصور</li><li class="todo">تسعيرة التوصيل</li><li class="todo">البنك</li><li class="todo">مفاتيح الإرسال</li><li class="todo">النطاق</li><li class="todo">CMI</li></ul><dl><dt>الاعتمادات</dt><dd>المالك وأطراف خارجية</dd><dt>المدة</dt><dd>خارج يد المطوّر</dd><dt>الأولوية</dt><dd>عالية</dd></dl></article>
@@ -365,7 +368,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <p class="lead">أسابيع من 2026-10-20. تقدير، ماشي وعد؛ بلا الانتظارات الخارجية. المجموع التقني: 12-17 يوم خدمة (P5 الباقي 2-3 + P6 4-5 + P7 2-3 + P9 2-3 + P10 1-2).</p>
 <div class="card">
 <div class="g-scale"><span></span><div><span>الأسبوع 1</span><span>الأسبوع 2</span><span>الأسبوع 3</span><span>الأسبوع 4</span></div></div>
-<div class="g-row"><span class="g-l">P5 الباقي (الشريحة 13، المرسل، النشر)</span><div class="g-track"><i class="g-progress" style="inset-inline-start:0.0%;width:25.0%"></i></div></div>
+<div class="g-row"><span class="g-l">P5 الباقي (CI main، migration، النشر، المرسل)</span><div class="g-track"><i class="g-progress" style="inset-inline-start:0.0%;width:25.0%"></i></div></div>
 <div class="g-row"><span class="g-l">P8 قرارات المالك (موازي)</span><div class="g-track"><i class="g-blocked" style="inset-inline-start:0.0%;width:100.0%"></i></div></div>
 <div class="g-row"><span class="g-l">P6 SEO</span><div class="g-track"><i class="g-planned" style="inset-inline-start:25.0%;width:25.0%"></i></div></div>
 <div class="g-row"><span class="g-l">P7 القانوني</span><div class="g-track"><i class="g-planned" style="inset-inline-start:37.5%;width:18.8%"></i></div></div>
@@ -378,7 +381,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <div class="tbl"><table><thead><tr><th>هادي</th><th>كتتسنى</th></tr></thead><tbody>
 <tr><td><b>فتح البيع</b></td><td>← مرسل الرسائل + تجربة توصيل + التسعيرة + معلومات الدفع</td></tr>
 <tr><td><b>التسعيرة فالموقع</b></td><td>← migration فحص المدينة (مستحسن قبل) + قرار المالك</td></tr>
-<tr><td><b>نشر storefront الجديد</b></td><td>← دمج الشريحة 13</td></tr>
+<tr><td><b>نشر storefront الجديد + الـ migration</b></td><td>← CI أخضر على main ← إصلاح lock-stress.sh</td></tr>
 <tr><td><b>SEO (canonical/sitemap)</b></td><td>← النطاق النهائي</td></tr>
 <tr><td><b>الإطلاق</b></td><td>← كل ما فوق + QA + CNDP + Turnstile بلا wildcard</td></tr>
 <tr><td><b>الدفع بالبطاقة</b></td><td>← عقد CMI (بعد الإطلاق ممكن)</td></tr>
@@ -409,29 +412,31 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 
 <section class="ch" id="c13"><h2><span class="n">13</span>التقنية والبيئة الحية</h2>
 <div class="tbl"><table><thead><tr><th>العنصر</th><th>الحالة</th><th>الوضع</th><th>الدليل</th></tr></thead><tbody>
-<tr><td>الإنتاج (Cloudflare Workers)</td><td>صفحة «قريباً» وحدها، 21 ملف</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">PR #15 · نسخة الرجوع الآمنة 60569f1c = 8830180</td></tr>
-<tr><td>main</td><td>de858f6 (PR #16، 2026-10-17)، CI 4/4 أخضر</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">GitHub check runs 2026-10-17</td></tr>
-<tr><td>Supabase (PostgreSQL 17.11)</td><td>17 سطر فالسجل = 17 ملف؛ محتواهم مقفول بـ sha256 فاختبار</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">قراءة 2026-10-19 · tests/manual-sql.test.ts</td></tr>
-<tr><td>migration 20261020090000 (فحص المدينة)</td><td>محلية فقط، ما مطبّقاش</td><td><span class="b b-progress" title="قيد العمل">IN PROGRESS</span></td><td class="ev">كتتسنى إذن المالك</td></tr>
-<tr><td>storefront</td><td>v10 من de858f6، verify_jwt=false</td><td><span class="b b-partial" title="جزئي">PARTIAL</span></td><td class="ev">فيها قيم الأمثلة الافتراضية حتى النشر الجاي</td></tr>
-<tr><td>بوابة البيع</td><td>مسدود (salesOpen غير موجود)</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">قراءة 2026-10-19</td></tr>
+<tr><td>الإنتاج (Cloudflare Workers)</td><td>صفحة «قريباً» وحدها، 21 ملف</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">تحميل من live 2026-10-20: 21/21 مطابقين بـ SHA-256 · Workers Builds نجح على 2920f70</td></tr>
+<tr><td>main</td><td>2920f70 (PR #17، 2026-10-20)، CI 3/4: database حمر</td><td><span class="b b-blocked" title="معطّل">BLOCKED</span></td><td class="ev">run 39409622366 · نفس الشجرة نجحت على 6623583</td></tr>
+<tr><td>Supabase (PostgreSQL 17.11)</td><td>17 سطر فالسجل، آخر نسخة 20261019200936</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">قراءة 2026-10-20 بعد الوقفة · tests/manual-sql.test.ts</td></tr>
+<tr><td>migration 20261020090000 (فحص المدينة)</td><td>مدموجة فـ main، ما مطبّقاش (القيد ما كاينش)</td><td><span class="b b-blocked" title="معطّل">BLOCKED</span></td><td class="ev">موقوفة حتى CI ديال main أخضر</td></tr>
+<tr><td>storefront</td><td>v10 من de858f6، verify_jwt=false</td><td><span class="b b-partial" title="جزئي">PARTIAL</span></td><td class="ev">قراءة 2026-10-20 · فيها قيم الأمثلة الافتراضية حتى النشر الجاي</td></tr>
+<tr><td>بوابة البيع</td><td>مسدود (salesOpen غير موجود)</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">قراءة 2026-10-20</td></tr>
 <tr><td>الكتالوج</td><td>6 أصول و10 منتجات مخفيين بلا ثمن ولا مخزون، 22 وصفة</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">نتيجة التنظيف + تحقق read-only</td></tr>
-<tr><td>المدن</td><td>20 مخفية، رسوم 0، 3 كلغ مشمولة</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">تحقق read-only 22:17 UTC</td></tr>
-<tr><td>الطلبات / B2B / الرسائل / الحركات</td><td>0 / 0 / 0 / 0</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">تحقق read-only</td></tr>
+<tr><td>المدن</td><td>20 مخفية، رسوم 0، 3 كلغ مشمولة</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">قراءة 2026-10-20</td></tr>
+<tr><td>الطلبات / B2B / الرسائل / الحركات</td><td>0 / 0 / 0 / 0</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">تحقق read-only (الطلبات وB2B: 0 فـ 2026-10-20)</td></tr>
 <tr><td>cron</td><td>expire-unpaid-orders كل 15 د، forget-rate-limits يومي</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">تشغيلات 20:15 و20:30 ناجحة</td></tr>
 <tr><td>الحسابات وMFA</td><td>2 owners، 2 TOTP verified</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">تحقق read-only</td></tr>
-<tr><td>Version URLs (previews)</td><td>طافيين</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">المالك 2026-10-17 · wrangler.jsonc preview_urls=false</td></tr>
+<tr><td>Version URLs (previews)</td><td>طافيين</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td class="ev">wrangler.jsonc preview_urls=false فـ 2920f70 · alias قديم كيرجع 404 (1042) · alias ديال الشريحة 13 ما تشافش من هنا (proxy)</td></tr>
 </tbody></table></div>
 <details><summary>الطبقات والمجلدات</summary>
-<p><code>src/core</code> قواعد العمل بلا React · <code>src/data</code> العقد والـ backends (<code>demo</code> للاختبارات المعزولة، <code>supabase</code> للحي، <code>defaults.ts</code> القيم الافتراضية = ديال القاعدة) · <code>src/server</code> منطق storefront · <code>src/features</code> قسم لكل صفحة · <code>supabase/migrations</code> 17 حية + 1 محلية · <code>supabase/tests</code> smoke, pgTAP, parity, race, stress · <code>e2e</code> Playwright.</p>
+<p><code>src/core</code> قواعد العمل بلا React · <code>src/data</code> العقد والـ backends (<code>demo</code> للاختبارات المعزولة، <code>supabase</code> للحي، <code>defaults.ts</code> القيم الافتراضية = ديال القاعدة) · <code>src/server</code> منطق storefront · <code>src/features</code> قسم لكل صفحة · <code>supabase/migrations</code> 17 حية + 1 مدموجة ما مطبّقاش · <code>supabase/tests</code> smoke, pgTAP, parity, race, stress · <code>e2e</code> Playwright.</p>
 </details></section>
 
 <section class="ch" id="c14"><h2><span class="n">14</span>الجودة والاختبار</h2>
 <div class="tbl"><table><thead><tr><th>المجموعة</th><th>النتيجة</th><th>التفاصيل</th></tr></thead><tbody>
-<tr><td>اختبارات الوحدات (Vitest)</td><td class="num"><b>354 / 354</b></td><td class="ev">38 ملف · محلي 2026-10-20 (الشريحة 13، فرع ما مدموجش)</td></tr>
-<tr><td>المتصفح (Playwright + axe)</td><td class="num"><b>81 / 81</b></td><td class="ev">Chromium · محلي 2026-10-19 (بعد آخر تغيير فالواجهة)</td></tr>
+<tr><td>اختبارات الوحدات (Vitest)</td><td class="num"><b>354 / 354</b></td><td class="ev">38 ملف · محلي 2026-10-20 + CI web على 6623583 و2920f70</td></tr>
+<tr><td>المتصفح (Playwright + axe)</td><td class="num"><b>81 / 81</b></td><td class="ev">Chromium · محلي + CI e2e على 6623583 و2920f70</td></tr>
 <tr><td>قاعدة البيانات PostgreSQL 17.11</td><td class="num"><b>308 ok · 0 فشل</b></td><td class="ev">محلي 2026-10-20 · smoke + pgTAP + parity (45 طلب، حدود 3 كلغ) + race + lock stress</td></tr>
-<tr><td>CI على main (de858f6)</td><td class="num"><b>4 / 4 success</b></td><td class="ev">web · e2e · database (PG16) · Workers Builds (GitHub check runs)</td></tr>
+<tr><td>CI على PR #17 (6623583)</td><td class="num"><b>7 / 7 success</b></td><td class="ev">web · e2e · database (PG16) ×2 + Workers Builds</td></tr>
+<tr><td>CI على main (2920f70)</td><td class="num"><b>3 / 4 · database FAILURE</b></td><td class="ev">lock-stress.sh: 16 طلب &lt; 20 المطلوبة؛ deadlock 0، الحالة الخاطئة 0</td></tr>
+<tr><td>تكرار lock-stress محلياً (PG16، 2920f70)</td><td class="num"><b>12 / 12 ناجحين</b></td><td class="ev">الطلبات بين 70 و301 (الحد 20): الشرط عشوائي، ماشي عيب فالقفل</td></tr>
 <tr><td>تجربة التنظيف المحلية</td><td class="num"><b>25 / 25</b></td><td class="ev">UTC + Africa/Casablanca</td></tr>
 <tr><td>Builds</td><td class="num"><b>coming soon · demo · supabase · functions</b></td><td class="ev">check:real-build ✔</td></tr>
 <tr><td>الطفرات (audit)</td><td class="num"><b>كود 3/58 · SQL 3/31 كيعيشو</b></td><td class="ev">docs/10 §6</td></tr>
@@ -483,7 +488,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <div class="ax">3</div>
 <div class="hm h-lo" title="الأثر 3 × الاحتمال 1"></div>
 <div class="hm h-lo" title="الأثر 3 × الاحتمال 2">R2 R6</div>
-<div class="hm h-md" title="الأثر 3 × الاحتمال 3">R4 R10 R12</div>
+<div class="hm h-md" title="الأثر 3 × الاحتمال 3">R4 R10 R12 R14</div>
 <div class="hm h-md" title="الأثر 3 × الاحتمال 4"></div>
 <div class="hm h-hi" title="الأثر 3 × الاحتمال 5">R9</div>
 <div class="ax">2</div>
@@ -511,12 +516,13 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <tr><td class="mono">2026-10-17</td><td>Version URLs طافيين؛ CI database على PostgreSQL ديال الـ runner</td></tr>
 <tr><td class="mono">2026-10-19</td><td>تنظيف live: المدن مخفية بـ 0 (0 = ماشي مسعّر، ماشي توصيل مجاني)</td></tr>
 <tr><td class="mono">2026-10-19</td><td>الوزن المشمول 3 كلغ (ماشي 4)؛ المعروض والحساب متطابقين</td></tr>
+<tr><td class="mono">2026-10-20</td><td>دمج الشريحة 13 والنشر بشرط CI أخضر؛ عند أي فشل: وقفة وتقرير، بلا تكرار أعمى ولا rollback</td></tr>
 </tbody></table></div></div>
 </div>
 <div class="tbl" style="margin-top:12px"><table><thead><tr><th>ID</th><th>الخطر</th><th>أثر</th><th>احتمال</th><th>درجة</th><th>المعالجة</th><th>شكون</th><th>الحالة</th></tr></thead><tbody>
 <tr data-lvl="hi"><td class="mono">R1</td><td>مرسل الرسائل ما كاينش: الطلبات كتتسجل والرسائل كتبقى فالـ outbox</td><td class="num">5</td><td class="num">5</td><td><span class="score s-hi">25</span></td><td>مرسل Supabase (المرحلة 4) قبل فتح البيع</td><td>Claude + المالك</td><td>مفتوح</td></tr>
-<tr data-lvl="lo"><td class="mono">R2</td><td>storefront المنشور (v10) فيه قيم الأمثلة الافتراضية (Custom Blend مفعّل، رسوم 10/15/20)</td><td class="num">3</td><td class="num">2</td><td><span class="score s-lo">6</span></td><td>البيع مسدود؛ live فيه كل المفاتيح؛ النشر بعد دمج الشريحة 13</td><td>Claude</td><td>مفتوح</td></tr>
-<tr data-lvl="md"><td class="mono">R3</td><td>مدينة تتبان بثمن 0 = توصيل مجاني</td><td class="num">4</td><td class="num">2</td><td><span class="score s-md">8</span></td><td>المدن مخفية + فحص الواجهة (محلي) + migration (محلية، ما تطبقاتش)</td><td>Claude</td><td>كيتعالج</td></tr>
+<tr data-lvl="lo"><td class="mono">R2</td><td>storefront المنشور (v10) فيه قيم الأمثلة الافتراضية (Custom Blend مفعّل، رسوم 10/15/20)</td><td class="num">3</td><td class="num">2</td><td><span class="score s-lo">6</span></td><td>البيع مسدود؛ live فيه كل المفاتيح؛ الكود المصلّح مدموج والنشر واقف حتى main أخضر</td><td>Claude</td><td>مفتوح</td></tr>
+<tr data-lvl="md"><td class="mono">R3</td><td>مدينة تتبان بثمن 0 = توصيل مجاني</td><td class="num">4</td><td class="num">2</td><td><span class="score s-md">8</span></td><td>المدن مخفية + فحص الواجهة (مدموج، ما منشورش) + migration (مدموجة، ما مطبّقاش)</td><td>Claude</td><td>كيتعالج</td></tr>
 <tr data-lvl="md"><td class="mono">R4</td><td>wildcard الـ previews مازال فـ TURNSTILE_HOSTNAMES</td><td class="num">3</td><td class="num">3</td><td><span class="score s-md">9</span></td><td>نحيّدوه قبل الإطلاق ونزيدو bogacafe.ma بالسمية</td><td>المالك</td><td>مفتوح</td></tr>
 <tr data-lvl="md"><td class="mono">R5</td><td>أداة SQL كتوقف (timeout) على DELETE/DROP</td><td class="num">2</td><td class="num">5</td><td><span class="score s-md">10</span></td><td>هاد العمليات كتمشي للـ SQL Editor عند المالك</td><td>المالك</td><td>مقبول</td></tr>
 <tr data-lvl="lo"><td class="mono">R6</td><td>ملف الاسترجاع فيه بيانات شخصية</td><td class="num">3</td><td class="num">2</td><td><span class="score s-lo">6</span></td><td>عند المالك فقط، خارج GitHub؛ صالح غير قبل أي طلب جديد</td><td>المالك</td><td>مقبول</td></tr>
@@ -527,12 +533,13 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <tr data-lvl="md"><td class="mono">R11</td><td>Supabase free plan: توقف المشروع إلا ما كانش نشاط</td><td class="num">4</td><td class="num">2</td><td><span class="score s-md">8</span></td><td>نتأكدو من سياسة التوقف قبل الإطلاق (Needs Verification)</td><td>المالك</td><td>مفتوح</td></tr>
 <tr data-lvl="md"><td class="mono">R12</td><td>الجلسات ما كتفكرش: المعرفة فـ PROJECT_NOTES وحدو</td><td class="num">3</td><td class="num">3</td><td><span class="score s-md">9</span></td><td>Hook كيحبس الإنهاء بلا تحديث الملاحظات</td><td>Claude</td><td>كيتعالج</td></tr>
 <tr data-lvl="lo"><td class="mono">R13</td><td>أكثر من 1000 طلب: أعداد لوحة الإدارة كتنقص بلا تنبيه</td><td class="num">2</td><td class="num">1</td><td><span class="score s-lo">2</span></td><td>مستقبلاً: pagination</td><td>Claude</td><td>مقبول</td></tr>
+<tr data-lvl="md"><td class="mono">R14</td><td>اختبار lock-stress.sh كيطيح بالصدفة: شرط ≥ 20 طلب على مسار عشوائي (CI: 16 مرة و125 مرة؛ محلياً 70-301 فـ 12 دورة)</td><td class="num">3</td><td class="num">3</td><td><span class="score s-md">9</span></td><td>إصلاح الاختبار بإذن؛ فحوص الأمان (deadlock، الحالة الخاطئة) دازو حتى فالدورة اللي طاحت</td><td>Claude</td><td>مفتوح</td></tr>
 </tbody></table></div></section>
 
 <section class="ch" id="c18"><h2><span class="n">18</span>الخريطة النهائية</h2>
 <div class="map">
 <div class="col"><h3>P1-P4 ✔</h3><p>النموذج</p><p>الحماية</p><p>الأساس الحديث</p><p>a11y + E2E</p><p>التدقيق ✔</p></div>
-<div class="col"><h3>P5 ⟳</h3><p>Supabase ✔</p><p>الشرائح 1-12 ✔</p><p>«قريباً» ★ ✔</p><p>تنظيف live ★ ✔</p><p>الشريحة 13 ⟳</p><p>المرسل ○</p></div>
+<div class="col"><h3>P5 ⟳</h3><p>Supabase ✔</p><p>الشرائح 1-12 ✔</p><p>«قريباً» ★ ✔</p><p>تنظيف live ★ ✔</p><p>الشريحة 13 مدموجة ✔، CI main ✘</p><p>migration + نشر ⏸</p><p>المرسل ○</p></div>
 <div class="col"><h3>P6 ○</h3><p>SEO</p><p>الأداء</p><p>رؤوس الأمان</p></div>
 <div class="col"><h3>P7 ○</h3><p>الخصوصية</p><p>CGV</p><p>CNDP</p></div>
 <div class="col"><h3>P8 ✘</h3><p>الأثمنة</p><p>التسعيرة</p><p>البنك</p><p>النطاق</p><p>CMI</p></div>
@@ -540,7 +547,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 </div></section>
 
 <footer>
-  <p>نسخة 2026-10-16 ديال هاد الصفحة (66٪ على 43 بند) باقية فتاريخ git. مصادر هاد الصفحة: <code>PROJECT_NOTES.md</code>، <code>CHANGELOG.md</code>، git log، نتائج الاختبارات المحلية، وقراءات read-only ديال live بتاريخ 2026-10-20. التقديرات مكتوبة «Estimated» مع طريقة الحساب. الملف محلي، ما تنشرش.</p>
+  <p>نسخة 2026-10-16 ديال هاد الصفحة (66٪ على 43 بند) باقية فتاريخ git. مصادر هاد الصفحة: <code>PROJECT_NOTES.md</code>، <code>CHANGELOG.md</code>، git log، نتائج الاختبارات المحلية، وقراءات read-only ديال live بتاريخ 2026-10-20. التقديرات مكتوبة «Estimated» مع طريقة الحساب. الملف فالريبو؛ رابط Artifact ما تحدّثش (الإذن 10).</p>
 </footer>
 </main>
 
