@@ -9,7 +9,7 @@
  * never logged, never kept in the browser's storage, dropped at sign-out.
  */
 import type { AdminRole } from '@/core/orderFlow';
-import { seedContent, seedSettings } from '../seed/config';
+import { EMPTY_CONTENT, LIVE_DEFAULT_SETTINGS } from '../defaults';
 import { STATE_VERSION, type ConfigPart, type DbState } from '../state';
 import type { AdminAuth, AdminData, DataStatus } from '../types';
 import { loadCatalog } from './catalog';
@@ -27,8 +27,8 @@ const empty = (): DbState => ({
   products: [],
   shippingRates: [],
   paymentMethods: [],
-  settings: seedSettings,
-  content: seedContent,
+  settings: LIVE_DEFAULT_SETTINGS,
+  content: EMPTY_CONTENT,
   orders: [],
   quotes: [],
   stockMovements: [],
@@ -83,8 +83,8 @@ async function readAll(db: Client, role: AdminRole): Promise<DbState> {
     products: catalog.products,
     shippingRates: catalog.shippingRates,
     paymentMethods: catalog.paymentMethods,
-    settings: settingsFromRows(siteRow?.settings, recipients, seedSettings),
-    content: contentFromRow(siteRow?.content, seedContent),
+    settings: settingsFromRows(siteRow?.settings, recipients, LIVE_DEFAULT_SETTINGS),
+    content: contentFromRow(siteRow?.content, EMPTY_CONTENT),
     orders: rows(orders).map(({ order_events, ...order }) => orderFromRow(order, order_events)),
     quotes: rows(quotes).map(quoteFromRow),
     stockMovements: rows(movements).map(stockMovementFromRow),

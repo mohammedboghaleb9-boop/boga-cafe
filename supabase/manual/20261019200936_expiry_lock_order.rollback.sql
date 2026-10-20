@@ -1,9 +1,11 @@
--- ROLLBACK of 20261016180000_expiry_lock_order: puts back expire_unpaid_orders of 20260927000000_init, unchanged.
+-- ROLLBACK of 20261019200936_expiry_lock_order: puts back expire_unpaid_orders of 20260927000000_init, unchanged.
+-- (Written as 20261016180000_expiry_lock_order; live recorded it as 20261019200936, so both files carry that version.
+--  The migration's own comment still names this file by its old name: the applied text is kept as it was run.)
 -- Supabase SQL Editor, ONE transaction. Only if the new lock order must be undone: the old function can deadlock
 -- with orders in progress under load (supabase/tests/lock-stress-expiry.sh), which is why it was replaced.
--- It stops ("stop:", nothing changed) if the function on live is not the one of 20261016180000 (never a hand
+-- It stops ("stop:", nothing changed) if the function on live is not the one of 20261019200936 (never a hand
 -- change overwritten unseen). Grants stay as they are (create or replace keeps them: service_role only).
--- RESULT: the last select reads restored = true. AFTER: remove the history row of 20261016180000 (a separate step).
+-- RESULT: the last select reads restored = true. AFTER: remove the history row of 20261019200936 (a separate step).
 -- Tests: tests/manual-sql.test.ts keeps the restored function equal to init's.
 
 begin;
@@ -13,7 +15,7 @@ do $$
 begin
   if (select md5(replace(prosrc, E'\r', '')) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'expire_unpaid_orders')
        is distinct from '6314ee398d46b45d0534dbe79d1b6091' then
-    raise exception 'stop: expire_unpaid_orders is not the one of 20261016180000_expiry_lock_order: tell Claude before going on';
+    raise exception 'stop: expire_unpaid_orders is not the one of 20261019200936_expiry_lock_order: tell Claude before going on';
   end if;
 end $$;
 

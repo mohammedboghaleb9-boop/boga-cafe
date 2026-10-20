@@ -206,7 +206,7 @@ export const demoApi: Api = {
   /**
    * Cancels the orders not paid by their deadline and gives their coffee back to
    * stock (rule in core: reservationDeadline). Runs when the shop or the admin
-   * opens; a scheduled job does it on the server in phase 2.
+   * opens (demo only; on the live database the expire-unpaid-orders job does it every 15 minutes).
    */
   async expireUnpaidOrders() {
     const s = db.get();

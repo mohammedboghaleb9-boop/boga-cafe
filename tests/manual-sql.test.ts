@@ -194,8 +194,8 @@ describe('catalog_ready (slice 12)', () => {
 });
 
 describe('expiry_lock_order (the expiry cron in the orders\' lock order)', () => {
-  const migration = read('supabase/migrations/20261016180000_expiry_lock_order.sql');
-  const rollback = read('supabase/manual/20261016180000_expiry_lock_order.rollback.sql');
+  const migration = read('supabase/migrations/20261019200936_expiry_lock_order.sql');
+  const rollback = read('supabase/manual/20261019200936_expiry_lock_order.rollback.sql');
   const init = read('supabase/migrations/20260927000000_init.sql');
   // without CR, as the guards compare it (md5(replace(prosrc, E'\r', ''))): a CRLF checkout gives the same digest
   const md5 = async (text: string) => (await import('node:crypto')).createHash('md5').update(text.replace(/\r/g, '')).digest('hex');
@@ -240,5 +240,67 @@ describe('expiry_lock_order (the expiry cron in the orders\' lock order)', () =>
     expect(rollback).toContain(await md5(body(migration)!));
     expect(rollback).toContain(await md5(body(init)!));
     expect(rollback.match(/^commit;$/gm)).toHaveLength(1);
+  });
+});
+
+/** The migration files carry the versions recorded in live's history (read 2026-10-19), in order; a new one comes after. */
+describe('migration versions', () => {
+  const files = readdirSync(new URL('../supabase/migrations/', import.meta.url)).filter((f) => f.endsWith('.sql')).sort();
+  const LIVE = [
+    '20260927000000_init', '20261001165327_harden', '20261001180234_rate_limits', '20261001180317_quote_requests',
+    '20261001180333_expiry_cron', '20261001184715_pg_net', '20261001191318_pg_net_private', '20261007005011_order_idempotency_key',
+    '20261007080308_order_idempotency_commit', '20261008205033_admin_aal2', '20261009165916_quote_follow_up',
+    '20261009200000_catalog_writes', '20261012183912_settings_writes', '20261013090048_config_trim', '20261013100000_catalog_trim',
+    '20261016120000_catalog_ready', '20261019200936_expiry_lock_order',
+  ];
+
+  it('the applied ones are named as live recorded them (the expiry fix: 20261019200936, the apply tool\'s version)', () => {
+    expect(files.slice(0, LIVE.length).map((f) => f.replace(/\.sql$/, ''))).toEqual(LIVE);
+  });
+
+  it('an applied migration is never rewritten: each file keeps the text it had when it was applied (sha256 prefix)', async () => {
+    const { createHash } = await import('node:crypto');
+    const APPLIED: Record<string, string> = {
+    '20260927000000_init': 'c6d2c5240ca7abd1',
+    '20261001165327_harden': 'cbd161b15d9a4254',
+    '20261001180234_rate_limits': 'd3bf445d679a4e54',
+    '20261001180317_quote_requests': 'fe7333441b108693',
+    '20261001180333_expiry_cron': 'c83c8a2a00dcb421',
+    '20261001184715_pg_net': 'dea2536df83767c4',
+    '20261001191318_pg_net_private': '7b454009c95caa66',
+    '20261007005011_order_idempotency_key': '7180e1aca4a3f55d',
+    '20261007080308_order_idempotency_commit': 'a6ec2033b6b00789',
+    '20261008205033_admin_aal2': '10585025ffd8fba0',
+    '20261009165916_quote_follow_up': '828979f2587d7c67',
+    '20261009200000_catalog_writes': '6a1cf24f0966679f',
+    '20261012183912_settings_writes': 'ca3213335c36c2e3',
+    '20261013090048_config_trim': 'fcd6ac5bbe1f35b0',
+    '20261013100000_catalog_trim': 'fc2b85d1bdbfdcb9',
+    '20261016120000_catalog_ready': '55ea7116397183b0',
+    '20261019200936_expiry_lock_order': '443b936370fc0352',
+    };
+    expect(Object.keys(APPLIED)).toEqual(LIVE);
+    for (const [name, sha] of Object.entries(APPLIED)) {
+      expect(createHash('sha256').update(read(`supabase/migrations/${name}.sql`)).digest('hex').slice(0, 16), name).toBe(sha);
+    }
+  });
+
+  it('city_shown_needs_fee: after them, a check only (no row changed), with its rollback', () => {
+    expect(files.slice(LIVE.length)).toEqual(['20261020090000_city_shown_needs_fee.sql']);
+    const sql = read('supabase/migrations/20261020090000_city_shown_needs_fee.sql').replace(/^--.*$/gm, '');
+    expect(sql.trim()).toBe('alter table public.shipping_rates\n  add constraint shipping_rates_shown_needs_fee check (not active or base_fee > 0);');
+    const block = read('supabase/manual/20261020090000_city_shown_needs_fee.editor.sql');
+    const migration = read('supabase/migrations/20261020090000_city_shown_needs_fee.sql').trimEnd();
+    expect(block).toContain(`-- >>> 20261020090000_city_shown_needs_fee.sql\n${migration}\n-- <<< 20261020090000_city_shown_needs_fee.sql`);
+    expect(block.indexOf('\nbegin;')).toBeLessThan(block.indexOf("raise exception 'stop:"));
+    expect(block.indexOf("raise exception 'stop:")).toBeLessThan(block.indexOf('-- >>>'));
+    // the file's own version, recorded once, inside the same transaction
+    expect(block.match(/insert into supabase_migrations\.schema_migrations \(version, name\) values \('20261020090000', 'city_shown_needs_fee'\);/g)).toHaveLength(1);
+    expect(block.indexOf('-- <<<')).toBeLessThan(block.indexOf('insert into supabase_migrations'));
+    expect(block.indexOf('insert into supabase_migrations')).toBeLessThan(block.indexOf('\ncommit;'));
+    expect(block.match(/^commit;$/gm)).toHaveLength(1);
+    expect(read('supabase/manual/20261020090000_city_shown_needs_fee.rollback.sql')).toContain(
+      'alter table public.shipping_rates drop constraint shipping_rates_shown_needs_fee;',
+    );
   });
 });

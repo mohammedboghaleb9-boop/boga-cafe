@@ -18,10 +18,12 @@ const NEW_CITY: ShippingRate = {
   id: '',
   city: { ar: '', fr: '', en: '' },
   distanceKm: 0,
-  baseFee: 40,
+  // no example fee: a new city is priced by the owner before it is shown (shippingRateOk); the included
+  // weight is the owner's rule (3 kg, 2026-10-19), so a forgotten field never charges every kilo
+  baseFee: 0,
   includedKg: 3,
-  extraPerKg: 5,
-  deliveryDays: '2–3',
+  extraPerKg: 0,
+  deliveryDays: '',
   active: false,
 };
 

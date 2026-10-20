@@ -1,15 +1,14 @@
 /**
- * What this build starts with (VITE_DATA_MODE, see .env.example).
+ * What this build starts with (VITE_DATA_MODE, see .env.example and scripts/build-target.mjs).
  *
  * 'demo' (npm run build:demo, the browser-test build, the unit tests): example
  * orders and requests, payment details marked DÉMO, and the admin panel with its
- * public demo password — all of it kept in the visitor's own browser.
+ * public demo password — all of it kept in the visitor's own browser, isolated test data.
  *
- * Anything else, the real site: the catalog and the business rules only. No
- * example customers, no payment details (so no payment method is offered until
- * the owner's real account exists), and no admin panel: it needs a real sign-in
- * and a shared database (Supabase, phase 2), a browser-only panel would show the
- * owner nothing a customer did.
+ * 'supabase': the real shop, on the live database, with the real Admin Panel (Supabase Auth + 2FA).
+ * Empty: the production build, which is the "coming soon" page and loads none of the shop
+ * (src/coming-soon); only `npm run dev` without a mode still runs the shop on the browser store
+ * (example catalog, no admin, no payment method).
  */
 export const DEMO_DATA: boolean = import.meta.env.VITE_DATA_MODE === 'demo';
 

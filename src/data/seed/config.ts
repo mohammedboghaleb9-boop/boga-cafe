@@ -1,10 +1,10 @@
 /**
- * Business configuration: delivery fees, payment methods, settings and site
- * texts, editable from the Admin Panel. Contact details are the real BOGA CAFÉ
- * accounts. Delivery fees are estimates until the courier's price list is
- * confirmed. Payment details are empty: nothing is invented for them, so bank
- * transfer and Cash Plus stay closed until the owner enters the real account
- * (the demo build fills in values marked DÉMO, see seed/activity.ts).
+ * The prototype's configuration: delivery fees, payment methods, settings and site texts, for the demo
+ * build, the browser tests and local databases (supabase/seed.sql). EXAMPLES, not the live values: the live
+ * site reads its own rows and falls back to ../defaults.ts, never to this file (tests/live-defaults.test.ts).
+ * Contact details are the real BOGA CAFÉ accounts (kept equal to ../contact.ts). The delivery fees are old
+ * estimates (the owner's tariff is not set yet; included weight 3 kg, owner 2026-10-19). Payment details are
+ * empty: nothing is invented for them (the demo build fills in values marked DÉMO, see seed/activity.ts).
  */
 import type { PaymentMethodConfig, Settings, ShippingRate, SiteContent } from '@/core/types';
 

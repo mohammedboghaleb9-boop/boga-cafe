@@ -6,22 +6,22 @@
  * Orders: only the ones this visitor placed or opened by their link.
  */
 import type { Order } from '@/core/types';
-import { seedContent, seedSettings } from '../seed/config';
+import { EMPTY_CONTENT, LIVE_DEFAULT_SETTINGS } from '../defaults';
 import { STATE_VERSION, type DbState } from '../state';
 import type { DataStatus, ReadStore } from '../types';
 import { loadCatalog } from './catalog';
 import type { Client } from './client';
 import { contentFromRow, settingsFromRows } from './rows';
 
-// settings and texts: stored values over the code defaults (rows.ts settingsFromRows), like the server does
+// settings and texts: stored values over the live defaults (../defaults.ts: the database's own, no example), like the server does
 const empty = (): DbState => ({
   version: STATE_VERSION,
   origins: [],
   products: [],
   shippingRates: [],
   paymentMethods: [],
-  settings: seedSettings,
-  content: seedContent,
+  settings: LIVE_DEFAULT_SETTINGS,
+  content: EMPTY_CONTENT,
   orders: [],
   quotes: [],
   stockMovements: [],
@@ -69,8 +69,8 @@ export function createCatalogStore(client: Client): CatalogStore {
         products: c.products,
         shippingRates: c.shippingRates,
         paymentMethods: c.paymentMethods,
-        settings: settingsFromRows(c.siteSettings, null, seedSettings),
-        content: contentFromRow(c.content, seedContent),
+        settings: settingsFromRows(c.siteSettings, null, LIVE_DEFAULT_SETTINGS),
+        content: contentFromRow(c.content, EMPTY_CONTENT),
       };
       status = 'ready';
     } catch (e) {
