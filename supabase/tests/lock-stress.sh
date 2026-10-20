@@ -4,8 +4,10 @@
 # admins hide and show those origins, two customers buy those products (commit_order locks the origins
 # for update, in id order). A monitor (one session) reads, every 2 ms, whether a shown product is made of a hidden
 # origin. Expected: no deadlock, no error other than the refusals listed below, the monitor never sees
-# that state, and the final state is consistent too.
-# Usage: lock-stress.sh <database> [statements per session] (a database already prepared by race.sh:
+# that state, and the final state is consistent too. Every session makes its N calls, then keeps calling until all six
+# have made theirs: the sessions run at different speeds (a refused order is cheap, an admin save is not), and without
+# this the buyers ended in a third of the run and the rest raced nobody (CI run 39409622366: 16 orders, under the floor).
+# Usage: lock-stress.sh <database> [calls per session, at least] (a database already prepared by race.sh:
 # its admins, payment method and city; fresh origins and products are added here).
 set -euo pipefail
 DB="$1"
@@ -71,7 +73,15 @@ MON=
 trap '[ -n "$MON" ] && { psql -q -X -d "$DB" -c "update public.stress_control set done = true" >/dev/null 2>&1; kill "$MON" 2>/dev/null; }; rm -rf "$OUT"' EXIT
 AS() { echo "set role authenticated; select set_config('request.jwt.claims', '{\"sub\": \"$1\", \"aal\": \"aal2\"}', false);"; }
 # each session's last line says it reached the end (a session that died midway never prints it)
-script() { echo "$1"; for _ in $(seq "$N"); do echo "select public.$2();"; done; echo "select 'session done';"; }
+# then up to 30 N more calls (a refused order is several times faster than an admin save), each made only while a
+# session has not made its N yet (shared counter);
+# 'kept on…' says the session was still calling when the last one got there (one that ran out of calls first never prints it)
+script() {
+  echo "$1"; for _ in $(seq "$N"); do echo "select public.$2();"; done
+  echo "update public.stress_control set finished = finished + 1;"
+  for _ in $(seq $((30 * N))); do echo "select public.$2() from public.stress_control where finished < 6;"; done
+  echo "select 'kept on until all were done' from public.stress_control where finished = 6;"; echo "select 'session done';"
+}
 script "$(AS 00000000-0000-0000-0000-0000000000a1)" stress_product >"$OUT/w1.sql"
 script "$(AS 00000000-0000-0000-0000-0000000000a2)" stress_product >"$OUT/w2.sql"
 script "$(AS 00000000-0000-0000-0000-0000000000a1)" stress_origin >"$OUT/w3.sql"
@@ -84,7 +94,8 @@ read -r PROD0 ORIG0 < <(SAVED)
 ORD0=$($PSQL -t -A -c "select count(*) from public.orders")
 # the monitor: one session, one loop, reading every 2 ms until told to stop or after 10 minutes (in READ COMMITTED
 # each read sees what is committed at that instant); it reports how many reads it made and how many saw the bad state
-$PSQL -c "create table public.stress_control (done boolean not null); insert into public.stress_control values (false)" >/dev/null
+$PSQL -c "create table public.stress_control (done boolean not null, finished int not null); insert into public.stress_control values (false, 0);
+  grant select, update on public.stress_control to authenticated" >/dev/null
 psql -q -X -d "$DB" -c "do \$m\$ declare n int := 0; bad int := 0; t0 timestamptz := clock_timestamp(); begin
   loop
     exit when (select done from public.stress_control) or clock_timestamp() - t0 > interval '10 minutes';
@@ -125,4 +136,6 @@ PSAVED=$((PROD1 - PROD0)); OSAVED=$((ORIG1 - ORIG0)); ORDERS=$(( $($PSQL -t -A -
 MIN=$((N / 10))
 [ "$PSAVED" -ge "$MIN" ] && [ "$OSAVED" -ge "$MIN" ] && [ "$ORDERS" -ge $((N / 50)) ] \
   || { echo "TEST FAILED: too little went through to test the locks ($PSAVED product saves, $OSAVED origin saves, $ORDERS orders)"; exit 1; }
-echo " ok race - 6 sessions × $N calls: $PSAVED product saves, $OSAVED origin saves and $ORDERS orders went through; no deadlock, only expected refusals ($(echo "$ERRORS" | awk '{printf "%s %s; ", $1, $3}')), the monitor never saw a shown product of a hidden origin in $READS reads over ${MS} ms"
+# and all of it while the others ran: no session stopped while another was still making its N calls
+for w in 1 2 3 4 5 6; do grep -qx 'kept on until all were done' "$OUT/w$w.out" || { echo "TEST FAILED: session $w ran out of calls before the others had made their $N"; exit 1; }; done
+echo " ok race - 6 sessions × at least $N calls, all calling until the last had made its $N: $PSAVED product saves, $OSAVED origin saves and $ORDERS orders went through; no deadlock, only expected refusals ($(echo "$ERRORS" | awk '{printf "%s %s; ", $1, $3}')), the monitor never saw a shown product of a hidden origin in $READS reads over ${MS} ms"

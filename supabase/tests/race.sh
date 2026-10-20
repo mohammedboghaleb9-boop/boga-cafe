@@ -212,10 +212,11 @@ grep -q "out_of_stock:o3" "$OUT/ic" || { echo "TEST FAILED: not refused as out_o
 $PSQL -c "update public.origins set active = true where id = 'o3'" >/dev/null
 echo " ok race - a product of a hidden origin (written directly) is not sold: no order, no stock moved"
 
-# Many sessions at once, 1000 calls each (deadlocks are not proved by design alone): two admins show and hide products
-# made of 2 or 3 origins (recipes sent in shuffled order), two hide and show those origins, two customers buy
-# them (commit_order locks the origins for update). Expected: no deadlock, no other error than the refusals
-# below, and at no moment a shown product made of a hidden origin (a monitor reads it every 2 ms).
+# Many sessions at once, at least 1000 calls each, all calling until the last has made its 1000 (deadlocks are not proved
+# by design alone): two admins show and hide products made of 2 or 3 origins (recipes sent in shuffled order), two hide
+# and show those origins, two customers buy them (commit_order locks the origins for update). Expected: no deadlock, no
+# other error than the refusals below, and at no moment a shown product made of a hidden origin (a monitor reads it
+# every 2 ms).
 bash "$(dirname "$0")/lock-stress.sh" "$DB" 1000
 # The expiry cron against admin saves (its stock returns take origins order after order, not in one sorted pass)
 bash "$(dirname "$0")/lock-stress-expiry.sh" "$DB" 300
