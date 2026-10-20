@@ -2,8 +2,8 @@
  * Cloudflare Turnstile ("I am not a robot", most visitors just see a tick) on the
  * two public forms of the live site (VITE_DATA_MODE=supabase): checkout and the
  * B2B request. The storefront function refuses any form without a valid token
- * (src/server/storefront.ts). Off everywhere else: the demo and the browser-only
- * site have no server to check a token. Ported from map-test (f9ba067).
+ * (src/server/storefront.ts). Off everywhere else: the demo build and `npm run dev`
+ * without a mode have no server to check a token. Ported from map-test (f9ba067).
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { SERVER_DATA } from '@/data/mode';

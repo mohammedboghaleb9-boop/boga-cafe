@@ -28,7 +28,7 @@ jobs:
           VITE_DATA_MODE: supabase
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
-          # Cloudflare's Turnstile test key that always passes (the real one comes in slice 11)
+          # Cloudflare's Turnstile test key that always passes (CI only; the real site key is in .env.workers-preview)
           VITE_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
       - run: "! grep -l boga-signature dist-supabase/assets/*.js"
       # its Admin Panel signs in with Supabase Auth: the prototype's public password never ships

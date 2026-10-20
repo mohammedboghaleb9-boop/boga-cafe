@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { seedProducts } from '@/data/seed/catalog';
-import { seedSettings } from '@/data/seed/config';
+import { LIVE_DEFAULT_SETTINGS } from '@/data/defaults';
 import type { Client } from '../client';
 import type { Json } from '../database.types';
 import { originFromRow, settingsFromRows, shippingRateFromRow } from '../rows';
@@ -57,15 +57,15 @@ describe('live catalog store', () => {
     expect(s.paymentMethods.map((m) => m.id)).toEqual(['cashplus']);
     // a stored setting wins over the code default; others keep the default
     expect(s.settings.b2bThresholdKg).toBe(25);
-    expect(s.settings.customBlend).toEqual(seedSettings.customBlend);
+    expect(s.settings.customBlend).toEqual(LIVE_DEFAULT_SETTINGS.customBlend); // off, no fee: never the examples
     expect(s.settings.salesOpen).toBe(false); // not stored: closed
   });
 
   it('slice 12: the sales open only on an explicit true; no price and no cap stay none', () => {
-    const open = (stored: Record<string, unknown>, defaults = seedSettings) => settingsFromRows(stored as Json, null, defaults).salesOpen;
+    const open = (stored: Record<string, unknown>, defaults = LIVE_DEFAULT_SETTINGS) => settingsFromRows(stored as Json, null, defaults).salesOpen;
     expect(open({ salesOpen: true })).toBe(true);
     for (const v of [false, 'true', 1, null, undefined]) expect(open({ salesOpen: v })).toBe(false);
-    expect(open({}, { ...seedSettings, salesOpen: true })).toBe(false); // a default never opens them
+    expect(open({}, { ...LIVE_DEFAULT_SETTINGS, salesOpen: true })).toBe(false); // a default never opens them
     const [row] = tables.origins as Parameters<typeof originFromRow>[0][];
     expect(originFromRow({ ...row, price_per_kg: null }).pricePerKg).toBeNull(); // never 0
     const [city] = tables.shipping_rates as Parameters<typeof shippingRateFromRow>[0][];

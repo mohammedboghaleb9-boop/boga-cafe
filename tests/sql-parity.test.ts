@@ -35,9 +35,10 @@ const settings = {
   cashplus: { beneficiary: 'Test', city: 'Oujda', phone: '0600000000' },
 };
 const origins = seedOrigins.map((o) => ({ ...o, stockKg: 5000 }));
-// the owner's tariff (2026-10-16) on three cities: 20 DH up to 4 kg (4 included), 30 DH above, at any weight
+// a capped tariff on three cities, with the owner's included weight (3 kg, 2026-10-19; the fees are not set yet):
+// 20 DH up to 3 kg (3 included), 30 DH above, at any weight
 const CAPPED = ['oujda', 'berkane', 'nador'];
-const shippingRates = seedShippingRates.map((r) => (CAPPED.includes(r.id) ? { ...r, baseFee: 20, includedKg: 4, extraPerKg: 10, maxFee: 30 } : r));
+const shippingRates = seedShippingRates.map((r) => (CAPPED.includes(r.id) ? { ...r, baseFee: 20, includedKg: 3, extraPerKg: 10, maxFee: 30 } : r));
 const ctx: CheckoutContext = {
   catalog: { products: seedProducts, origins: indexOrigins(origins) },
   settings,
@@ -91,9 +92,9 @@ function orders() {
   const signature = products.find((p) => offeredSizes(p).includes(1000))!;
   const kilos = (id: string, qty: number, extra: CartItem[] = []): CartItem[] => [{ id, type: 'product', productId: signature.id, size: 1000, qty }, ...extra];
   carts.push({ items: kilos('edge-10kg', 10) });
-  // the cap: 4 kg (included: 20 DH), 4.25 kg (30 DH), 6 kg (30 DH, not 40; still under the 1500 DH free delivery)
-  carts.push({ items: kilos('cap-4kg', 4), cityId: 'oujda' });
-  carts.push({ items: kilos('cap-4.25kg', 4, [{ id: 'cap-250g', type: 'product', productId: signature.id, size: 250, qty: 1 }]), cityId: 'berkane' });
+  // the cap: 3 kg (included: 20 DH), 3.25 kg (30 DH: the 4th kg is charged), 6 kg (30 DH, not 50; still under the 1500 DH free delivery)
+  carts.push({ items: kilos('cap-3kg', 3), cityId: 'oujda' });
+  carts.push({ items: kilos('cap-3.25kg', 3, [{ id: 'cap-250g', type: 'product', productId: signature.id, size: 250, qty: 1 }]), cityId: 'berkane' });
   carts.push({ items: kilos('cap-6kg', 6), cityId: 'nador' });
   // three bags with 7 % Brazil each: 3 × 250 × 7 % / 84 % = 0.0625 kg exactly, a half gram
   // that per-bag sums in decimals would make 0.06249… (the database divides once)
@@ -176,8 +177,8 @@ describe('site and database compute orders the same way', () => {
     const { sql, count } = parityFile();
     expect(count).toBeGreaterThanOrEqual(30); // enough orders survive the 10 kg limit
     // the three capped carts, last but one to last but three: the database must agree on 20, 30 and 30 DH
-    const capped = orders().filter((o) => CAPPED.includes(o.customer.cityId) && [4, 4.25, 6].includes(o.weightKg) && o.lines.every((l) => l.productId === 'boga-signature'));
-    expect(capped.map((o) => [o.customer.cityId, o.weightKg, o.shippingFee])).toEqual([['oujda', 4, 20], ['berkane', 4.25, 30], ['nador', 6, 30]]);
+    const capped = orders().filter((o) => CAPPED.includes(o.customer.cityId) && [3, 3.25, 6].includes(o.weightKg) && o.lines.every((l) => l.productId === 'boga-signature'));
+    expect(capped.map((o) => [o.customer.cityId, o.weightKg, o.shippingFee])).toEqual([['oujda', 3, 20], ['berkane', 3.25, 30], ['nador', 6, 30]]);
     await expect(sql).toMatchFileSnapshot('../supabase/tests/parity.sql');
   });
 });

@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { useI18n } from '@/i18n';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 
-/** /admin on the real site until phase 2 (src/data/mode.ts): nothing to sign in to yet. */
+/** /admin in a build of neither mode (`npm run dev` with no mode, src/data/mode.ts): no Admin Panel in it. */
 export function AdminUnavailable() {
   const { t } = useI18n();
   usePageTitle(t.admin.unavailableTitle);

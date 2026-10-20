@@ -433,7 +433,7 @@ export const en = {
     ownerOnly: 'Owner only: these details receive customers’ orders and payments.',
     title: 'Admin Panel',
     unavailableTitle: 'Admin panel unavailable',
-    unavailableText: 'The admin panel opens with secure sign-in and the shared database (phase 2).',
+    unavailableText: 'The admin panel is not part of this build: it lives in the build connected to the database, with secure sign-in.',
     loginTitle: 'Sign in to the Admin Panel',
     loginText: 'Prototype: choose a role to see its permissions. Password: {pwd}',
     role: 'Role',
@@ -630,7 +630,7 @@ export const en = {
       simWeight: 'Weight (kg)',
       simResult: 'Delivery fee: {fee}',
       createdHidden: 'A new city is created hidden: show it afterwards with its switch, once checked.',
-      rowInvalid: 'French city name required; distance a whole number up to 3000 km; amounts up to 1000 DH; included kg up to 100; cap at least the base fee.',
+      rowInvalid: 'French city name required; distance a whole number up to 3000 km; amounts up to 1000 DH; included kg up to 100; cap at least the base fee; a shown city needs a base fee above 0.',
     },
     payments: {
       cardOff: 'Not offered on the site until the CMI gateway is connected (phase D). Customers see it as “coming soon”.',

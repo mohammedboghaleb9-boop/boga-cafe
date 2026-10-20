@@ -6,7 +6,7 @@ import { db } from './store';
 const ready: DataStatus = 'ready';
 const readyStatus = { get: () => ready, subscribe: () => () => {} };
 
-/** The browser-only real site has no Admin Panel (src/app/App.tsx): nobody signs in, and no demo password ships. */
+/** Without the demo mode (`npm run dev` with no mode) there is no Admin Panel (src/app/App.tsx): nobody signs in, and no demo password ships. */
 const noAdmin: AdminAuth = {
   session: { get: () => ({ state: 'signed_out' }), subscribe: () => () => {} },
   signIn: async () => 'credentials',

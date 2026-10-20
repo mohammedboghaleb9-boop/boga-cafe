@@ -7,7 +7,7 @@ import { buildOrder, type CheckoutContext, type CheckoutInput } from '@/core/ord
 import { payeeReady } from '@/core/orderFlow';
 import { indexOrigins } from '@/core/recipe';
 import { buildQuoteRequest, type QuoteInput } from '@/core/requests';
-import { seedSettings } from '@/data/seed/config';
+import { LIVE_DEFAULT_SETTINGS } from '@/data/defaults';
 import type { CatalogData } from '@/data/supabase/catalog';
 import type { Json } from '@/data/supabase/database.types';
 import { settingsFromRows } from '@/data/supabase/rows';
@@ -31,7 +31,7 @@ const templates = (c: CatalogData): TemplateContext => ({
  * the card never, until the CMI callback is on this server (phase D).
  */
 function checkout(c: CatalogData): CheckoutContext {
-  const settings = settingsFromRows(c.siteSettings, null, seedSettings);
+  const settings = settingsFromRows(c.siteSettings, null, LIVE_DEFAULT_SETTINGS);
   return {
     catalog: { products: c.products, origins: indexOrigins(c.origins) },
     settings,

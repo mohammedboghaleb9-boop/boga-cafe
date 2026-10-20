@@ -3,7 +3,7 @@
 #  A. Against admin saves (slice 12 schema review): save_product's lock on the recipe's origins never deadlocks
 #     with the cron's stock returns. Two admins save products of 2 or 3 origins while one session ages three
 #     random unpaid orders and expires them, in one transaction, again and again.
-#  B. Against orders and an admin cancelling them (20261016180000_expiry_lock_order): two customers order, an
+#  B. Against orders and an admin cancelling them (20261019200936_expiry_lock_order): two customers order, an
 #     admin cancels random new orders, the cron expires three random aged ones at a time. The old cron (stock
 #     returned order after order) deadlocked here with commit_order. Then every order is checked: its stock
 #     taken once, given back at most once and only when it is cancelled, one history line per origin each way,

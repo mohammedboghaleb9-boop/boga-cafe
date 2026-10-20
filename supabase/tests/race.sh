@@ -220,7 +220,7 @@ bash "$(dirname "$0")/lock-stress.sh" "$DB" 1000
 # The expiry cron against admin saves (its stock returns take origins order after order, not in one sorted pass)
 bash "$(dirname "$0")/lock-stress-expiry.sh" "$DB" 300
 
-# The expiry cron and an admin cancelling the same aged unpaid order (20261016180000_expiry_lock_order): whoever
+# The expiry cron and an admin cancelling the same aged unpaid order (20261019200936_expiry_lock_order): whoever
 # goes first closes it, the stock comes back once, one closing event. Each case holds the first side open 2 s.
 $PSQL <<'SQL' >/dev/null
 update public.site_config set settings = settings || '{"salesOpen": true}' where id = 1;

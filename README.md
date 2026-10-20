@@ -140,14 +140,14 @@ flowchart TD
 | المهنيون | `/b2b` | الخلطات الثلاث (عيّنة مدفوعة 250/500 غ)، القواعد، تواصل للطلبات الكبيرة |
 | السلة | `/cart` | مقياس الوزن حتى 10 كلغ، فحص المخزون، مسار B2B |
 | الدفع | `/checkout` | صفحة واحدة: المعلومات، طريقة الدفع، الملخص وتكلفة التوصيل |
-| الطلب | `/order/:id` | الدفع، التعليمات، والحالة كما يحفظها هذا المتصفح (تتبّع حقيقي للحالة مع قاعدة البيانات، المرحلة 2) |
+| الطلب | `/order/:id` | الدفع، التعليمات، والحالة (من قاعدة البيانات برابط الطلب فالنسخة الحقيقية) |
 | اتصل بنا | `/contact` | واتساب، البريد، العنوان، الشبكات |
 
 ## 9. لوحة الإدارة والصلاحيات
 
 لوحة الإدارة (`/admin`) هي نظام التسيير المركزي: المنتجات، الخلطات، المخزون، الطلبات، B2B، التوصيل، الدفع، والمحتوى، **بدون تعديل الكود** في العمل اليومي.
 
-> **الوضع الحالي:** اللوحة موجودة في **النسخة التجريبية فقط** (`build:demo`) وتعمل على بيانات متصفح من يفتحها. في الموقع الحقيقي (`npm run build`) تعرض `/admin` صفحة «غير متوفرة» حتى ربط Supabase وتسجيل الدخول الآمن (المرحلة 2)، لأن لوحة داخل المتصفح لا ترى طلبات الزبائن، وكلمة سرها مكتوبة في الكود.
+> **الوضع الحالي (2026-10-20):** اللوحة الحقيقية خدامة على Supabase فالنسخة `VITE_DATA_MODE=supabase`: دخول بالبريد وكلمة السر + تحقق بخطوتين (TOTP) إجباري فقاعدة البيانات (`aal2`)، وكل الأقسام كتقرا وكتكتب. ولكن الموقع المنشور دابا هو صفحة «قريباً» وحدها، والمتجر واللوحة ما منشورينش للعموم حتى يتفتح البيع. النسخة التجريبية (`build:demo`) عندها لوحة على بيانات المتصفح بكلمة سر تجريبية، للتجربة والاختبارات فقط.
 
 | القسم | ما يُدار فيه |
 |---|---|
@@ -174,20 +174,21 @@ flowchart TD
 |---|---|---|
 | 0 | تحضير المعلومات الحقيقية، الحسابات، البنك، طلب CMI | ⏳ عند صاحب المشروع |
 | 1 | **النموذج الكامل**: كل الصفحات، الخلطة الخاصة، B2B، الدفع، لوحة الإدارة، 3 لغات، مخطط قاعدة البيانات | ✅ مكتملة |
-| 2 | قاعدة البيانات الحقيقية (Supabase)، تسجيل دخول الإدارة، النشر على الإنترنت | التالية |
-| 3 | الدفع الحقيقي: CMI بالبطاقة، رفع وصل كاش بلوس/التحويل، إلغاء الطلبات غير المدفوعة | |
-| 4 | الإشعارات الحقيقية: Gmail + واتساب عبر CallMeBot (الكود جاهز في `api/notify.ts`، ينقص المفتاحان)، ثم WhatsApp Cloud API عند نمو الطلبات | |
+| 2 | قاعدة البيانات الحقيقية (Supabase)، تسجيل دخول الإدارة + 2FA، الطلبات عبر الخادم | ⏳ شبه مكتملة: حية، والموقع المنشور «قريباً» حتى يتفتح البيع |
+| 3 | الدفع الحقيقي: CMI بالبطاقة، رفع وصل كاش بلوس/التحويل (الإلغاء الآلي ديال غير المدفوع خدام) | |
+| 4 | الإشعارات الحقيقية: مرسل من الخادم للرسائل اللي كتتسجل فـ `notification_outbox` (شرط قبل فتح البيع). `api/notify.ts` دالة Vercel ما منشوراش | |
 | 5 | الصور والنصوص النهائية، الصفحات القانونية، SEO | |
 | 6 | الاختبار الكامل والإطلاق | |
 | 7 | حسابات الزبائن، الفواتير PDF، تتبع دفعات التحميص، تتبع الشحن | |
 
-**نسختان من نفس الكود (`src/data/mode.ts`):**
-- **النسخة التجريبية** (`build:demo`): طلبات وزبائن أمثلة، معلومات دفع مكتوب عليها «DÉMO»، ولوحة الإدارة بكلمة سر تجريبية. كل شيء في متصفح الزائر.
-- **الموقع الحقيقي** (`npm run build`): الكتالوج والقواعد فقط. لا زبائن أمثلة، لا لوحة إدارة، و**لا طريقة دفع مفعّلة**: التحويل وكاش بلوس يُفتحان عندما تُدخل معلومات الحساب الحقيقي، والبطاقة عند ربط CMI. أي أنه **لا يستقبل طلبات مدفوعة بعد**. `npm run check:real-build` يتأكد في CI أن هذه النسخة لا تحمل شيئاً من التجريبية.
+**ثلاث نسخ من نفس الكود (`scripts/build-target.mjs`، `src/data/mode.ts`):**
+- **الإنتاج** (`npm run build`، بلا `VITE_DATA_MODE`): صفحة «قريباً» وحدها، بلا كتالوج ولا أثمنة ولا فورم. هادي هي المنشورة دابا. `npm run check:real-build` كيتأكد أنها ما فيها حتى حاجة من المتجر.
+- **المتجر الحقيقي** (`VITE_DATA_MODE=supabase`): الكتالوج والطلبات والإدارة على Supabase. البيع مسدود فقاعدة البيانات حتى يفتحو المالك.
+- **النسخة التجريبية** (`build:demo`): طلبات وزبائن أمثلة، معلومات دفع «DÉMO»، ولوحة بكلمة سر تجريبية، فمتصفح الزائر. للتجربة واختبارات المتصفح فقط.
 
-ما تبقى: [`docs/05-roadmap.md`](docs/05-roadmap.md).
+الحالة المفصّلة والخطوات الجاية: [`PROJECT_STATUS.html`](PROJECT_STATUS.html) و[`PROJECT_NOTES.md`](PROJECT_NOTES.md). (`docs/05-roadmap.md` هي الخطة الأولى، تاريخية.)
 
-> المنتجات والأسعار والمخزون الموجودة حالياً **أمثلة** تُستبدل بالمعلومات الحقيقية في `src/data/seed` الآن، ومن لوحة الإدارة بعد ربط قاعدة البيانات (تعديلات اللوحة اليوم تبقى في متصفح من عدّلها ولا تصل للزبائن).
+> **البداية الحقيقية (2026-10-19):** فقاعدة البيانات الحية، المنتجات العشرة والأصول الستة مسودات مخفية بلا ثمن ولا مخزون، والمدن مخفية برسوم 0 حتى تتدخل التسعيرة الحقيقية (الوزن المشمول 3 كلغ). الأثمنة فـ `src/data/seed` أمثلة النموذج والاختبارات فقط.
 > **قنوات التواصل حقيقية:** WhatsApp ‎+212 6 09 03 63 78 · bogacafe1@gmail.com · Instagram [@boga.cafe1](https://www.instagram.com/boga.cafe1) · TikTok [@bogacafe795](https://www.tiktok.com/@bogacafe795) · [Facebook](https://www.facebook.com/profile.php?id=61594620729419).
 
 ## 11. التقنيات
@@ -199,10 +200,10 @@ flowchart TD
 | اللغات | قواميس TypeScript للعربية والفرنسية والإنجليزية (نسيان ترجمة = المشروع يرفض البناء) |
 | منطق الأعمال | `src/core` بـ TypeScript خالص: يعمل اليوم في المتصفح، ومكتوب ليُستعمل في الخادم (المرحلة 2)؛ قاعدة البيانات تطبّق نفس القواعد بـ SQL، ومختبر أنهما متطابقان |
 | الإنتاج | Supabase: PostgreSQL + أمان على مستوى الصفوف (RLS) + Auth + Storage + Edge Functions |
-| الاستضافة | Vercel (مُجهّز: `vercel.json` ودالة `api/notify.ts`، Node 24). Cloudflare Pages بديل ممكن بنقل ملف واحد |
-| الاختبارات | Vitest (139 اختباراً: منطق الأعمال، طبقة البيانات، الإرسال، حدود الأقسام) · قاعدة البيانات على PostgreSQL (25 فحصاً + فحص التطابق + فحص جلستين متزامنتين) · 36 اختبار متصفح (Playwright) مع فحص آلي بـ axe لقواعد WCAG 2.2 A/AA (الفحص الآلي لا يغطي كل المعايير) · فحص الكود بـ Oxlint · CI على GitHub Actions |
+| الاستضافة | Cloudflare Workers (Workers Builds كينشر `main` أوتوماتيكياً: كل دمج = إصدار). `api/notify.ts` دالة Vercel قديمة ما منشوراش |
+| الاختبارات | Vitest (354 اختبار) · قاعدة البيانات على PostgreSQL 16 فـ CI و17.11 محلياً (smoke، pgTAP، تطابق الموقع والقاعدة، سباقات، ضغط الأقفال) · 81 اختبار متصفح (Playwright) مع axe لـ WCAG 2.2 A/AA (الفحص الآلي ما كيغطيش كل المعايير) · Oxlint · CI على GitHub Actions. الأرقام ديال 2026-10-20 (فرع محلي) |
 
-**الأمان:** الموقع اليوم يحفظ البيانات في متصفح كل زائر، ولا خادم يستقبل الطلبات بعد. في قاعدة البيانات الجاهزة للمرحلة 2، **قاعدة البيانات نفسها تعيد حساب كل رقم في الطلب قبل حفظه** (`check_order`: الأسعار، الأحجام، الكميات، الوزن، قاعدة 10 كلغ، التوصيل، طريقة الدفع، المخزون، قواعد الخلطة) وترفض أي طلب لا يطابق؛ وهذا مختبر بطلبات مزوّرة وبـ 42 طلباً يبنيها كود الموقع (فحص التطابق). المخزون يُخصم بعملية ذرّية تمنع بيع نفس الكيلو مرتين، وكل دور لا يرى إلا ما يخصه. **كل حجز للمخزون ينتهي:** الطلب غير المدفوع يُلغى بعد 48 ساعة، والذي أعلن الزبون دفعه ولم يُؤكَّد بعد 120 ساعة (قابلتان للتعديل، ولا يمكن إيقافهما). «لقد دفعت» لا تجعل الطلب مدفوعاً أبداً: **المالك وحده** يسجّل الدفع بعد رؤية المبلغ في الحساب، وهو وحده يلغي طلباً أعلن الزبون دفعه، والطلب المدفوع لا يُلغى إلا بالاسترجاع. دالة الخادم التي تستقبل الطلب من المتصفح (`create-order`) تُكتب في المرحلة 2 (ربط Supabase). التفاصيل: [`docs/03-architecture.md`](docs/03-architecture.md).
+**الأمان:** فالمتجر الحقيقي، الطلب كيمشي لدالة الخادم `storefront` (Turnstile + حدود)، و**قاعدة البيانات نفسها تعيد حساب كل رقم في الطلب قبل حفظه** (`check_order`: الأسعار، الأحجام، الكميات، الوزن، قاعدة 10 كلغ، التوصيل، طريقة الدفع، المخزون، قواعد الخلطة) وترفض أي طلب لا يطابق؛ وهذا مختبر بطلبات مزوّرة وبـ 42 طلباً يبنيها كود الموقع (فحص التطابق). المخزون يُخصم بعملية ذرّية تمنع بيع نفس الكيلو مرتين، وكل دور لا يرى إلا ما يخصه. **كل حجز للمخزون ينتهي:** الطلب غير المدفوع يُلغى بعد 48 ساعة، والذي أعلن الزبون دفعه ولم يُؤكَّد بعد 120 ساعة (قابلتان للتعديل، ولا يمكن إيقافهما). «لقد دفعت» لا تجعل الطلب مدفوعاً أبداً: **المالك وحده** يسجّل الدفع بعد رؤية المبلغ في الحساب، وهو وحده يلغي طلباً أعلن الزبون دفعه، والطلب المدفوع لا يُلغى إلا بالاسترجاع. البيع مسدود فقاعدة البيانات (`salesOpen`) حتى يفتحو المالك. التفاصيل الحالية: `PROJECT_NOTES.md` (`docs/03-architecture.md` هي البنية الأولى).
 
 ## 12. تنظيم الكود
 
@@ -211,7 +212,9 @@ flowchart TD
 ```
 src/
   core/          منطق الأعمال: الأسعار، الخلطة، المخزون، السلة، التوصيل، الطلب + الاختبارات
-  data/          البيانات: التجريبية الآن (seed + store)، Supabase في المرحلة 2
+  data/          البيانات: supabase/ (الحي)، demo/ + seed/ (أمثلة النموذج والاختبارات)، defaults.ts (القيم الافتراضية = ديال القاعدة)
+  server/        منطق دالة storefront (يتجمع فـ supabase/functions/storefront)
+  coming-soon/   صفحة «قريباً» (الإنتاج دابا)
   services/      الدفع والإشعارات كمحوّلات قابلة للاستبدال
   i18n/          العربية / الفرنسية / الإنجليزية
   shared/        مكونات مشتركة: الرأس والتذييل، حالة السلة، بطاقة المنتج، صورة المنتج وملصقه، قنوات التواصل
@@ -219,9 +222,9 @@ src/
     home/ shop/ product/ single-origin/ custom-blend/ b2b/ cart/ checkout/ contact/
     admin/       dashboard/ orders/ b2b/ products/ stock/ shipping/ payments/ notifications/ content/ settings/
   styles/        الألوان والخطوط
-api/             دالة الخادم التي ترسل الطلبات إلى واتساب و Gmail (Vercel Function) + اختباراتها
+api/             دالة Vercel قديمة للإرسال (ما منشوراش؛ المرسل الجديد من الخادم = المرحلة 4)
 tests/           اختبار حدود الأقسام (يفشل إذا اعتمد قسم على داخل قسم آخر)
-supabase/        مخطط قاعدة البيانات للإنتاج + اختباره
+supabase/        migrations (17 مطبّقة على live + الجديدة)، manual/ (سكريبتات SQL Editor والاسترجاع)، tests/، functions/
 brand/           الشعار المتجهي بكل نسخه، PNG، صور مواقع التواصل، ودليل الاستعمال
 docs/            التحليل والدراسة والخطة
 ```
@@ -232,16 +235,17 @@ docs/            التحليل والدراسة والخطة
 
 ```bash
 npm install
-npm run dev          # تشغيل محلي على http://localhost:5173 مثل الموقع الحقيقي (بدون أمثلة ولا إدارة ولا دفع)
+npm run dev          # المتجر محلياً على بيانات المتصفح (كتالوج الأمثلة، بلا إدارة ولا دفع)؛ ماشي الموقع المنشور
 npm run dev -- --mode demo   # النموذج التجريبي محلياً: أمثلة، لوحة الإدارة، ومحاكاة الدفع بالبطاقة
 npm test             # كل الاختبارات: منطق الأعمال، الإرسال، حدود الأقسام
 npm run lint         # فحص الكود (Oxlint): قواعد React، سهولة الاستعمال، الاختبارات
 npm run build:e2e && npm run test:e2e   # اختبارات المتصفح: إعدادات الموقع الحقيقي مع البيانات التجريبية (Playwright + axe)
 npm run typecheck    # فحص الأنواع (الموقع + دالة الخادم)
-npm run build        # نسخة الإنتاج ← dist/
-npm run check:real-build   # بعد build: لا كلمة سر تجريبية ولا زبائن أمثلة ولا معلومات دفع تجريبية في dist/
+npm run build        # نسخة الإنتاج = صفحة «قريباً» ← dist/
+npm run check:real-build   # بعد build: الصفحة ما فيها حتى حاجة من المتجر (لا كتالوج، لا أثمنة، لا Supabase)
 npm run build:demo   # النموذج في ملف HTML واحد يفتح مباشرة في المتصفح ← dist-demo/index.html
-./supabase/tests/run-local.sh   # اختبار قاعدة البيانات (يتطلب PostgreSQL)
+./supabase/tests/run-local.sh   # اختبار قاعدة البيانات (يتطلب PostgreSQL + pgTAP 1.3.2؛ قاعدة اختبار boga_test فقط)
+npm run build:functions   # يجمع دالة storefront ← supabase/functions/storefront/dist/index.js (النشر بإذن المالك)
 ```
 
 **لوحة الإدارة (النسخة التجريبية فقط):** `/admin` · كلمة المرور التجريبية: `boga2026` (اختر الدور: مالك، مسيّر، موظف).
@@ -263,11 +267,11 @@ npm run build:demo   # النموذج في ملف HTML واحد يفتح مبا�
 |---|---|
 | الكود | GitHub |
 | قاعدة البيانات والخادم | Supabase |
-| الاستضافة | Vercel |
+| الاستضافة | Cloudflare Workers |
 | الدفع بالبطاقة | CMI عبر البنك (أو بوابة دفع مغربية أخرى بعد المقارنة) |
 | الدفع نقداً | Cash Plus |
-| إشعارات واتساب | CallMeBot الآن، ثم WhatsApp Cloud API (Meta Business) عند نمو الطلبات |
-| إشعارات البريد | Gmail (SMTP) ثم بريد مهني |
+| إشعارات واتساب | مرسل من الخادم (المرحلة 4، ما مبنيش): CallMeBot أو WhatsApp Cloud API |
+| إشعارات البريد | نفس المرسل: Gmail (SMTP) ثم بريد مهني |
 | التوصيل | Amana، CTM Messagerie، أو شركات توصيل التجارة الإلكترونية |
 | القياس | Google Search Console، Google Analytics أو Plausible |
 
@@ -281,21 +285,21 @@ npm run build:demo   # النموذج في ملف HTML واحد يفتح مبا�
 | [02 · دراسة الفكرة](docs/02-study.md) | التجاري، التشغيلي، القانوني، المالي، التسويق، المخاطر |
 | [03 · البنية التقنية](docs/03-architecture.md) | التقنيات، المخططات، الأمان |
 | [04 · المواقع والخدمات](docs/04-services.md) | كل خدمة: لماذا، متى، التكلفة |
-| [05 · خطوات البناء](docs/05-roadmap.md) | المراحل 0 → 7 وشروط الإنهاء |
+| [05 · خطوات البناء](docs/05-roadmap.md) | المراحل 0 → 7 وشروط الإنهاء (الخطة الأولى، تاريخية؛ الحالة: `PROJECT_STATUS.html`) |
 | [06 · دليل الأقسام](docs/06-modules.md) | كيف تعدّل كل قسم |
 | [07 · أسئلة مفتوحة](docs/07-open-questions.md) | ما ينتظر قرار صاحب المشروع |
 | [08 · الصور والهوية البصرية](docs/08-visual-assets.md) | الأصول المعتمدة، المرفوضة، وقواعد طلب صور جديدة |
-| [09 · وصول الطلبات إلى واتساب و Gmail](docs/09-notifications.md) | الإرسال من طرف الزبون (يعمل الآن) والإرسال الآلي من الخادم (3 مفاتيح + النشر) |
+| [09 · وصول الطلبات إلى واتساب و Gmail](docs/09-notifications.md) | الخطة الأولى للإرسال (تاريخية: Vercel ما مستعملش؛ الرسائل كتتسجل فـ `notification_outbox` والمرسل = المرحلة 4) |
 | [10 · المراجعات وما بعد النموذج](docs/10-review-and-roadmap.md) | نتائج المراجعات المستقلة، دفعات الإصلاح، خطة SEO والكوكيز والإطلاق |
 | [دليل الشعار](brand/README.md) | نسخ الشعار، الألوان (HEX / CMYK / Pantone)، الأحجام الدنيا، الممنوعات، إعادة البناء |
 | [التقرير الأصلي](docs/source/BOGA_CAFE_Project_Website_Concept.docx) | Project & Website Concept |
 
 ## 16. En bref · In short
 
-**FR :** BOGA CAFÉ est une marque de café d'Oujda. Elle définit ses recettes et spécifications ; un torréfacteur partenaire produit selon ce cahier des charges ; le café est conditionné dans les sachets BOGA CAFÉ et vendu **en grains uniquement** (250 g, 500 g, 1 kg). Le site réunit : boutique, Single Origin, **Custom Blend** relié au stock de chaque origine (en kg), B2B/HORECA (3 blends, échantillon de 500 g, commandes de plus de 10 kg traitées par l'administration), paiement sans contre-remboursement (carte CMI, Cash Plus, virement), livraison dans tout le Maroc, notifications WhatsApp et Gmail, et un Panel Admin complet. Trois langues : arabe, français, anglais.
+**FR :** BOGA CAFÉ est une marque de café d'Oujda. Elle définit ses recettes et spécifications ; un torréfacteur partenaire produit selon ce cahier des charges ; le café est conditionné dans les sachets BOGA CAFÉ et vendu **en grains uniquement** (250 g, 500 g, 1 kg). Le site réunit : boutique, Single Origin, **Custom Blend** relié au stock de chaque origine (en kg), B2B/HORECA (3 blends, échantillons payants 250/500 g, commandes de plus de 10 kg traitées par l'administration), paiement sans contre-remboursement (carte CMI, Cash Plus, virement), livraison dans tout le Maroc, notifications WhatsApp et Gmail, et un Panel Admin complet. Trois langues : arabe, français, anglais.
 
-**EN:** BOGA CAFÉ is a coffee brand from Oujda, Morocco. It owns the recipes and specifications, a partner roaster produces to spec, and the coffee is sold in BOGA CAFÉ bags as **whole beans only**. This repository contains the full website: shop, single origins, a **Custom Blend** builder tied to per-origin stock in kg, B2B/HORECA with sample requests and a 10 kg B2B threshold, one-page checkout without cash on delivery, delivery across Morocco, WhatsApp and email notifications, and an admin panel with roles. Phase 1 (working prototype on sample data) is complete; the next phases connect Supabase, the CMI payment gateway and the WhatsApp/Gmail notifications.
+**EN:** BOGA CAFÉ is a coffee brand from Oujda, Morocco. It owns the recipes and specifications, a partner roaster produces to spec, and the coffee is sold in BOGA CAFÉ bags as **whole beans only**. This repository contains the full website: shop, single origins, a **Custom Blend** builder tied to per-origin stock in kg, B2B/HORECA with paid 250/500 g samples and a 10 kg B2B threshold, one-page checkout without cash on delivery, delivery across Morocco, and an admin panel with roles and two-factor sign-in. Status (2026-10-20): the Supabase backend is live and the published site is a "coming soon" page; sales stay closed until the message sender, the real prices and the delivery tariff are ready. The CMI card gateway comes later.
 
 ---
 
-<p align="center">© BOGA CAFÉ · Oujda, Maroc · جميع الحقوق محفوظة. مستودع خاص.</p>
+<p align="center">© BOGA CAFÉ · Oujda, Maroc · جميع الحقوق محفوظة. المستودع عام: حتى سر ما كيتكتب فيه.</p>

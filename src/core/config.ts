@@ -112,7 +112,10 @@ export const shippingRateOk = (r: ShippingRate) =>
   between(r.includedKg, 0, 100) &&
   between(r.extraPerKg, 0, 1000) &&
   (r.maxFee === undefined || (wholeBetween(r.maxFee, 0, 1000) && r.maxFee >= r.baseFee)) &&
-  trimEnds(r.deliveryDays).length <= 20;
+  trimEnds(r.deliveryDays).length <= 20 &&
+  // a shown city has a base fee: 0 is the "not priced yet" of the real start, never free delivery (that is
+  // freeShippingOver); with a base above 0 the cap (at least the base) cannot bring it back to 0 either
+  !(r.active && r.baseFee < 0.005); // below 0.005 the database's 2 decimals store 0
 
 /** What each form sends: every text trimmed, as the database keeps it. */
 export const trimmedContent = (c: SiteContent): SiteContent => ({

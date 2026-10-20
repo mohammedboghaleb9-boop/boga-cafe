@@ -431,7 +431,7 @@ export const fr: Dict = {
     ownerOnly: 'Réservé au propriétaire : ces coordonnées reçoivent les commandes et les paiements des clients.',
     title: 'Panel Admin',
     unavailableTitle: 'Panneau d’administration indisponible',
-    unavailableText: 'Le panneau d’administration ouvrira avec la connexion sécurisée et la base de données partagée (phase 2).',
+    unavailableText: 'Le panneau d’administration ne fait pas partie de cette version : il se trouve dans la version reliée à la base de données, avec connexion sécurisée.',
     loginTitle: 'Connexion au Panel Admin',
     loginText: 'Prototype : choisissez un rôle pour voir ses permissions. Mot de passe : {pwd}',
     role: 'Rôle',
@@ -628,7 +628,7 @@ export const fr: Dict = {
       simWeight: 'Poids (kg)',
       simResult: 'Frais de livraison : {fee}',
       createdHidden: 'Une nouvelle ville est créée masquée : affichez-la ensuite avec son interrupteur, après vérification.',
-      rowInvalid: 'Ville en français obligatoire ; distance entière jusqu’à 3000 km ; montants jusqu’à 1000 DH ; kg inclus jusqu’à 100 ; plafond au moins égal au forfait.',
+      rowInvalid: 'Ville en français obligatoire ; distance entière jusqu’à 3000 km ; montants jusqu’à 1000 DH ; kg inclus jusqu’à 100 ; plafond au moins égal au forfait ; une ville affichée a un forfait supérieur à 0.',
     },
     payments: {
       cardOff: 'Non proposée sur le site tant que la passerelle CMI n’est pas branchée (phase D). Les clients la voient « bientôt ».',
