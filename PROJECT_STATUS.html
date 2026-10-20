@@ -156,7 +156,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <div class="grid g7">
   <div class="card ans"><h2>فين وصلنا؟</h2><p class="k num">73٪ <span class="mono" style="font-size:12px">Estimated</span></p><p>الخادم الحقيقي خدام وحي، والبيانات نظيفة، والشريحة 13 مدموجة. المتجر مازال مسدود: الإنتاج كيبيّن «قريباً» حتى يكمل مرسل الرسائل والتسعيرة.</p></div>
   <div class="card ans"><h2>شنو سالا؟</h2><p class="k num">35 / 50</p><p>النموذج، التدقيق، الشرائح 1-12 حية، «قريباً» فالإنتاج، إصلاح expiry، تنظيف live، دمج الشريحة 13 (الكود فقط).</p></div>
-  <div class="card ans"><h2>شنو دابا؟</h2><p class="k">وقفة بعد الدمج</p><p>PR #17 مدموج (2920f70). CI ديال main طاح فاختبار ضغط عشوائي، فوقفنا: الـ migration ما مطبّقاش وstorefront ما منشوراش. الخطوة الجاية: إصلاح الاختبار بإذنك.</p></div>
+  <div class="card ans"><h2>شنو دابا؟</h2><p class="k">وقفة بعد الدمج</p><p>PR #17 مدموج (2920f70). CI ديال main طاح فاختبار ضغط؛ السبب تعرف وتصلّح فرع fix/p5-lock-stress-floor (موافقتك الثانية). من بعد CI أخضر: الـ migration ونشر storefront.</p></div>
   <div class="card ans"><h2>شنو باقي؟</h2><p class="k num">6 + 6 + 3</p><p>مخطط + معطّل + جزئي/قيد العمل: المرسل، SEO، القانوني، QA، الإطلاق، ومحتوى المالك.</p></div>
   <div class="card ans"><h2>شحال باقي؟</h2><p class="k">3-4 أسابيع <span class="mono" style="font-size:12px">Estimated</span></p><p>12-17 يوم خدمة تقنية (القسم 8)، بلا انتظارات خارجية (ANRT، CNDP، CMI، أثمنة المالك). ماشي وعد.</p></div>
   <div class="card ans" style="border-top-color:var(--blocked)"><h2>شنو كيحبسنا؟</h2><p class="k num" style="color:var(--blocked)">6</p><p>الأثمنة والتسعيرة، البنك، مفاتيح الإرسال، النطاق، CNDP، CMI.</p></div>
@@ -186,7 +186,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 </div>
 
 <section class="ch" id="approvals"><h2><span class="n">00</span>الإذونات والقرارات</h2>
-<p class="lead">1-4 عندهم موافقتك (2026-10-20). 1 و2 تدارو؛ 3 و4 موقوفين حيت CI ديال main حمر (شرطك: عند أي فشل، وقفة). 11 جديد وكيتسنى إذنك.</p>
+<p class="lead">1-4 عندهم موافقتك (2026-10-20). 1 و2 تدارو؛ 3 و4 موقوفين حتى يولّي CI ديال main أخضر؛ 11 (إصلاح الاختبار) موافق عليه وقيد التنفيذ، ومن بعدو كيكمّلو 3 و4 بلا إذن جديد.</p>
 <div class="tbl"><table><thead><tr><th>#</th><th>الخطوة</th><th>شكون</th><th>الحالة</th><th>الدليل</th><th>ملاحظة</th></tr></thead><tbody>
 <tr><td class="num">1</td><td>commit + push ديال الشريحة 13 وفتح PR</td><td>المالك</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td>تدار: PR #17 · head 6623583 · CI 7/7 success</td><td>بلا أسرار ولا ملف استرجاع فالـ diff</td></tr>
 <tr><td class="num">2</td><td>دمج PR الشريحة 13 فـ main (merge commit)</td><td>المالك</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td>تدار: 2920f70 (merge commit، بلا حذف فروع)</td><td>CI ديال main من بعد: 3/4، database حمر (القسم 13)</td></tr>
@@ -198,7 +198,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <tr><td class="num">8</td><td>فتح البيع (set_sales_open)</td><td>المالك</td><td><span class="b b-planned" title="مخطط">PLANNED</span></td><td>بعد المرسل وتجربة توصيل</td><td>بإذن منفصل</td></tr>
 <tr><td class="num">9</td><td>سطور التدقيق اللي كتذكر عناصر TEST (7)</td><td>المالك</td><td><span class="b b-done" title="مكتمل">COMPLETED</span></td><td>محفوظين (قرار 2026-10-20)</td><td>ما يتمسحوش</td></tr>
 <tr><td class="num">10</td><td>نشر هاد الصفحة فنفس رابط Artifact</td><td>المالك</td><td><span class="b b-planned" title="مخطط">PLANNED</span></td><td>الملف فالريبو؛ النشر ما تدارش</td><td>رابط واحد، ماشي صفحة ثانية</td></tr>
-<tr><td class="num">11</td><td>إصلاح شرط «كافي من الطلبات» فـ lock-stress.sh (فرع جديد + PR)</td><td>المالك</td><td><span class="b b-planned" title="مخطط">PLANNED</span></td><td>خاصو إذن: تبديل كود خارج إذن 2026-10-20</td><td>من بعدو: CI أخضر على main ثم 3 و4</td></tr>
+<tr><td class="num">11</td><td>إصلاح lock-stress.sh (فرع جديد + PR)</td><td>المالك</td><td><span class="b b-progress" title="قيد العمل">IN PROGRESS</span></td><td>موافقة 2026-10-20 (الثانية) · فرع fix/p5-lock-stress-floor · 56 دورة ناجحة + 4 طفرات مكشوفة</td><td>من بعدو: CI أخضر على main ثم 3 و4</td></tr>
 </tbody></table></div></section>
 
 <section class="ch" id="c1"><h2><span class="n">01</span>نظرة عامة</h2>
@@ -339,7 +339,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <div class="callout"><b>الحالة دابا (2026-10-20):</b> الشريحة 13 <b>مدموجة</b> فـ main (<span class="mono">2920f70</span>، PR #17، CI الفرع 7/7). CI ديال main: web وe2e وWorkers Builds خضر، <b>database حمر</b>: <code>lock-stress.sh</code> لقى 16 طلب والحد 20؛ نفس الشجرة نجحت قبل بـ 125، و12 دورة محلية عطاو 70-301. فحوص الأمان (deadlock 0، الحالة الخاطئة 0) دازو. <b>ما مطبّقش:</b> migration <span class="mono">20261020090000</span>. <b>ما منشورش:</b> storefront (باقية v10). الإنتاج «قريباً» 21/21 مطابق.</div>
 <div class="kanban">
 <section class="kcol"><h3>موافق، موقوف (main حمر) <span class="num">2</span></h3><div class="kcard">تطبيق migration فحص المدينة (SQL Editor)</div><div class="kcard">نشر storefront</div></section>
-<section class="kcol"><h3>كيتسنى إذنك <span class="num">1</span></h3><div class="kcard">إصلاح شرط lock-stress.sh (فرع + PR)</div></section>
+<section class="kcol"><h3>قيد العمل <span class="num">1</span></h3><div class="kcard">إصلاح lock-stress.sh: PR + CI + دمج</div></section>
 <section class="kcol"><h3>مخطط <span class="num">8</span></h3><div class="kcard">مرسل الـ outbox</div><div class="kcard">إزالة canWrite/ComingSoon الميتين</div><div class="kcard">drop commit_order_before_3b</div><div class="kcard">نص «3 كلغ مشمولة» فالدفع</div><div class="kcard">SEO</div><div class="kcard">القانوني</div><div class="kcard">QA نهائي</div><div class="kcard">نشر صفحة الحالة</div></section>
 <section class="kcol"><h3>معطّل (المالك/خارجي) <span class="num">6</span></h3><div class="kcard">الأثمنة والتسعيرة</div><div class="kcard">البنك</div><div class="kcard">مفاتيح الإرسال</div><div class="kcard">النطاق</div><div class="kcard">CNDP</div><div class="kcard">CMI</div></section>
 <section class="kcol"><h3>سالي مؤخراً <span class="num">7</span></h3><div class="kcard">PR #17 مدموج (2920f70)</div><div class="kcard">مراجعة الاتساق</div><div class="kcard">تنظيف live ★</div><div class="kcard">expiry حي</div><div class="kcard">catalog_ready حي</div><div class="kcard">PR #16 مدموج</div><div class="kcard">«قريباً» فالإنتاج ★</div></section>
@@ -533,7 +533,7 @@ footer{color:var(--muted);font-size:13px;padding:30px 0 50px;border-top:1px soli
 <tr data-lvl="md"><td class="mono">R11</td><td>Supabase free plan: توقف المشروع إلا ما كانش نشاط</td><td class="num">4</td><td class="num">2</td><td><span class="score s-md">8</span></td><td>نتأكدو من سياسة التوقف قبل الإطلاق (Needs Verification)</td><td>المالك</td><td>مفتوح</td></tr>
 <tr data-lvl="md"><td class="mono">R12</td><td>الجلسات ما كتفكرش: المعرفة فـ PROJECT_NOTES وحدو</td><td class="num">3</td><td class="num">3</td><td><span class="score s-md">9</span></td><td>Hook كيحبس الإنهاء بلا تحديث الملاحظات</td><td>Claude</td><td>كيتعالج</td></tr>
 <tr data-lvl="lo"><td class="mono">R13</td><td>أكثر من 1000 طلب: أعداد لوحة الإدارة كتنقص بلا تنبيه</td><td class="num">2</td><td class="num">1</td><td><span class="score s-lo">2</span></td><td>مستقبلاً: pagination</td><td>Claude</td><td>مقبول</td></tr>
-<tr data-lvl="md"><td class="mono">R14</td><td>اختبار lock-stress.sh كيطيح بالصدفة: شرط ≥ 20 طلب على مسار عشوائي (CI: 16 مرة و125 مرة؛ محلياً 70-301 فـ 12 دورة)</td><td class="num">3</td><td class="num">3</td><td><span class="score s-md">9</span></td><td>إصلاح الاختبار بإذن؛ فحوص الأمان (deadlock، الحالة الخاطئة) دازو حتى فالدورة اللي طاحت</td><td>Claude</td><td>مفتوح</td></tr>
+<tr data-lvl="md"><td class="mono">R14</td><td>اختبار lock-stress.sh كيطيح بالصدفة: شرط ≥ 20 طلب على مسار عشوائي (CI: 16 مرة و125 مرة؛ محلياً 70-301 فـ 12 دورة)</td><td class="num">3</td><td class="num">3</td><td><span class="score s-md">9</span></td><td>السبب: المشترين كيساليو فثلث الوقت. الإصلاح: كل الجلسات كيبقاو خدامين حتى تكمل آخر وحدة؛ 56 دورة: 479-826 طلب</td><td>Claude</td><td>كيتعالج</td></tr>
 </tbody></table></div></section>
 
 <section class="ch" id="c18"><h2><span class="n">18</span>الخريطة النهائية</h2>
