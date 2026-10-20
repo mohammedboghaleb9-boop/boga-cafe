@@ -5,6 +5,8 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-20
+- 2026-10-20 [live] `20261020090000_city_shown_needs_fee` applied (SQL Editor block run once from `main`, result `t|0|1`, 18 history rows); `storefront` v11 deployed from `dcf47cb` (`verify_jwt` false; probes without writes: 401/404/captcha). Sales still closed. `tests/manual-sql.test.ts` pins the 18th migration.
+- 2026-10-20 [main] PR #18 merged (`dcf47cb`): stress-test fix; CI on `main` green again.
 - 2026-10-20 [fix/p5-lock-stress-floor] `lock-stress.sh`: every session keeps calling until all six have made their N calls (shared counter), and fails if one ran out first; the buyers used to end in a third of the run, which made the order floor depend on chance (CI run 39409622366). Floors and safety checks unchanged; 56 local runs 479-826 orders; 4 mutants caught.
 - 2026-10-20 [main] Slice 13 merged (PR #17, merge commit `2920f70`; head `6623583` CI 7/7). CI on `main` red: `database` failed `lock-stress.sh`'s "enough went through" floor (16 orders < 20; safety checks passed; 12 local runs 70-301 orders). Stopped before applying `20261020090000` and deploying `storefront`; production still "coming soon" (21/21 files match).
 - 2026-10-20 [feat/p5-s13-demo-removal] SQL Editor block for `20261020090000_city_shown_needs_fee` (guards, the migration unchanged between markers, the file's own version recorded once in the history, one commit); rehearsed on PostgreSQL 17.11: applies once, a second run stops, a shown city at fee 0 stops it with nothing changed.

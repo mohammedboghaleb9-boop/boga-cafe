@@ -243,7 +243,7 @@ describe('expiry_lock_order (the expiry cron in the orders\' lock order)', () =>
   });
 });
 
-/** The migration files carry the versions recorded in live's history (read 2026-10-19), in order; a new one comes after. */
+/** The migration files carry the versions recorded in live's history (read 2026-10-20: 18 rows), in order; a new one comes after. */
 describe('migration versions', () => {
   const files = readdirSync(new URL('../supabase/migrations/', import.meta.url)).filter((f) => f.endsWith('.sql')).sort();
   const LIVE = [
@@ -251,7 +251,7 @@ describe('migration versions', () => {
     '20261001180333_expiry_cron', '20261001184715_pg_net', '20261001191318_pg_net_private', '20261007005011_order_idempotency_key',
     '20261007080308_order_idempotency_commit', '20261008205033_admin_aal2', '20261009165916_quote_follow_up',
     '20261009200000_catalog_writes', '20261012183912_settings_writes', '20261013090048_config_trim', '20261013100000_catalog_trim',
-    '20261016120000_catalog_ready', '20261019200936_expiry_lock_order',
+    '20261016120000_catalog_ready', '20261019200936_expiry_lock_order', '20261020090000_city_shown_needs_fee',
   ];
 
   it('the applied ones are named as live recorded them (the expiry fix: 20261019200936, the apply tool\'s version)', () => {
@@ -278,6 +278,7 @@ describe('migration versions', () => {
     '20261013100000_catalog_trim': 'fc2b85d1bdbfdcb9',
     '20261016120000_catalog_ready': '55ea7116397183b0',
     '20261019200936_expiry_lock_order': '443b936370fc0352',
+    '20261020090000_city_shown_needs_fee': 'afd8c508c4bd8886',
     };
     expect(Object.keys(APPLIED)).toEqual(LIVE);
     for (const [name, sha] of Object.entries(APPLIED)) {
@@ -285,8 +286,11 @@ describe('migration versions', () => {
     }
   });
 
-  it('city_shown_needs_fee: after them, a check only (no row changed), with its rollback', () => {
-    expect(files.slice(LIVE.length)).toEqual(['20261020090000_city_shown_needs_fee.sql']);
+  it('no file waits to be applied: every migration is in live\'s history', () => {
+    expect(files.slice(LIVE.length)).toEqual([]);
+  });
+
+  it('city_shown_needs_fee (applied 2026-10-20 by its SQL Editor block): a check only (no row changed), with its rollback', () => {
     const sql = read('supabase/migrations/20261020090000_city_shown_needs_fee.sql').replace(/^--.*$/gm, '');
     expect(sql.trim()).toBe('alter table public.shipping_rates\n  add constraint shipping_rates_shown_needs_fee check (not active or base_fee > 0);');
     const block = read('supabase/manual/20261020090000_city_shown_needs_fee.editor.sql');
