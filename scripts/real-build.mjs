@@ -1,4 +1,4 @@
-// What the real site (no VITE_DATA_MODE) may ship: until the shop opens, the "coming soon" page only
+// What the "coming soon" page (no VITE_DATA_MODE; production's fallback, scripts/build-target.mjs) may ship
 // (vite.config.ts). None of the demo (admin password, example customers, DÉMO payment details), none of
 // the example catalog (products, prices, delivery tariff), no database, form or source map. Run by the
 // build itself on the folder it wrote (vite.config.ts) and by `npm run check:real-build` (CI). The

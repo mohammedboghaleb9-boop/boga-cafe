@@ -18,6 +18,8 @@ export const fr: Dict = {
 
   common: {
     currency: 'DH',
+    salesNotice: 'Le site est en préparation : les commandes ne sont pas encore ouvertes.',
+    noOrigins: 'Aucune origine disponible pour le moment.',
     addToCart: 'Ajouter au panier',
     added: 'Ajouté au panier',
     viewCart: 'Voir le panier',

@@ -45,11 +45,15 @@ export function B2BPage() {
 
         <section className="section">
           <h2 className="b2b-h2">{t.b2b.blendsTitle}</h2>
-          <div className="pgrid">
-            {blends.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
+          {blends.length === 0 ? (
+            <p className="muted">{t.shop.empty}</p>
+          ) : (
+            <div className="pgrid">
+              {blends.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          )}
         </section>
 
         <div className="b2b-forms">

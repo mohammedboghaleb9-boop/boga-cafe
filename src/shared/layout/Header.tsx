@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import type { Locale } from '@/core/types';
-import { useDb } from '@/data/hooks';
+import { useDb, useSettings } from '@/data/hooks';
 import { DEMO_DATA } from '@/data/mode';
 import { useCart } from '@/shared/cart/CartProvider';
 import { LOCALES, useI18n } from '@/i18n';
@@ -31,6 +31,7 @@ export function Header() {
   const { t, l } = useI18n();
   const { count } = useCart();
   const { content } = useDb();
+  const { salesOpen } = useSettings();
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   // Escape closes the open menu and gives the focus back to its button
@@ -64,6 +65,11 @@ export function Header() {
       <div className="announce">
         <div className="container">{l(content.announcement)}</div>
       </div>
+      {!salesOpen && (
+        <p className="sales-notice">
+          <span className="container">{t.common.salesNotice}</span>
+        </p>
+      )}
       {DEMO_DATA && (
         <div className="demo-bar">
           <div className="container spread">

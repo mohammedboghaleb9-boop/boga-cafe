@@ -7,8 +7,9 @@ import { describe, expect, it } from 'vitest';
 
 /**
  * The real `vite build` command, as Workers Builds runs it (WORKERS_CI, WORKERS_CI_BRANCH), into a fresh
- * folder: what the production build of main can ship (scripts/build-target.mjs), and that the "coming soon"
- * build fails on its own when its files hold what they must not (scripts/real-build.mjs, vite.config.ts).
+ * folder: what the production build of main can ship (scripts/build-target.mjs: the live shop, from the committed
+ * values only), and that the "coming soon" build (the fallback, local default) fails on its own when its files hold
+ * what they must not (scripts/real-build.mjs, vite.config.ts).
  */
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const VITE = join(ROOT, 'node_modules/vite/bin/vite.js');
@@ -27,28 +28,34 @@ function build(cwd: string, args: string[], vars: Record<string, string>) {
   });
   const files = readdirSync(outDir, { recursive: true }).map(String);
   const html = existsSync(join(outDir, 'index.html')) ? readFileSync(join(outDir, 'index.html'), 'utf8') : '';
-  const shop = files.some((f) => f.endsWith('.js') && readFileSync(join(outDir, f), 'utf8').includes('boga-signature'));
+  const js = files.filter((f) => f.endsWith('.js')).map((f) => readFileSync(join(outDir, f), 'utf8'));
+  // the example catalog (a demo build), and the live project's address (a build on the live database)
+  const shop = js.some((t) => t.includes('boga-signature'));
+  const live = js.some((t) => t.includes('https://ldzagzskfmnjbkizbayr.supabase.co'));
   rmSync(outDir, { recursive: true, force: true });
   // a build killed by the timeout is never read as one that stopped on its own
   expect(r.signal, `${r.stdout}${r.stderr}`).toBeNull();
-  return { status: r.status, log: `${r.stdout}${r.stderr}`, comingSoon: html.includes('data-site="coming-soon"'), shop };
+  const noindex = html.includes('<meta name="robots" content="noindex" />');
+  return { status: r.status, log: `${r.stdout}${r.stderr}`, comingSoon: html.includes('data-site="coming-soon"'), shop, live, noindex };
 }
 
 const LIVE = { VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test', VITE_TURNSTILE_SITE_KEY: '1x00000000000000000000AA' };
 // every mode whose committed .env.<mode> file builds the shop
 const SHOP_MODES = ['demo', 'e2e', 'e2e-supabase', 'workers-preview'];
 
-describe('the production build of main: "coming soon", or a stopped build, never the shop', { timeout: 60_000 }, () => {
+describe('the production build of main: the live shop from the committed values, or a stopped build', { timeout: 60_000 }, () => {
   for (const branch of ['main', '']) {
     const workers = { WORKERS_CI: '1', WORKERS_CI_BRANCH: branch };
     const where = branch || 'no branch name';
 
-    it(`${where}: the default build is the checked "coming soon" page`, () => {
+    it(`${where}: the default build is the live shop, not indexed, without the example catalog`, () => {
       const r = build(ROOT, [], workers);
       expect(r.status, r.log).toBe(0);
-      expect(r.comingSoon).toBe(true);
+      expect(r.comingSoon).toBe(false);
+      expect(r.live).toBe(true);
+      expect(r.noindex).toBe(true);
       expect(r.shop).toBe(false);
-      expect(r.log).toMatch(/coming soon: "coming soon" only/);
+      expect(r.log).toMatch(/production build, live values ON/);
     });
 
     for (const mode of SHOP_MODES) {
@@ -60,24 +67,28 @@ describe('the production build of main: "coming soon", or a stopped build, never
       });
     }
 
-    it(`${where}: a VITE_DATA_MODE variable stops the build`, () => {
-      const r = build(ROOT, [], { ...workers, ...LIVE, VITE_DATA_MODE: 'supabase' });
-      expect(r.status).not.toBe(0);
-      expect(r.log).toMatch(/production build of main/);
-      expect(r.shop).toBe(false);
-    });
+    const dashboard: Record<string, string>[] = [{ VITE_DATA_MODE: 'demo' }, { VITE_DATA_MODE: 'supabase', ...LIVE }, { VITE_SUPABASE_URL: 'https://example.supabase.co' }];
+    for (const vars of dashboard) {
+      it(`${where}: a dashboard variable (${Object.keys(vars).join(', ')}) stops the build`, () => {
+        const r = build(ROOT, [], { ...workers, ...vars });
+        expect(r.status).not.toBe(0);
+        expect(r.log).toMatch(/in the production build of main/);
+        expect(r.shop).toBe(false);
+      });
+    }
   }
 
   it('a preview branch still builds the shop with the live-site values', () => {
     const r = build(ROOT, [], { WORKERS_CI: '1', WORKERS_CI_BRANCH: 'feat/x' });
     expect(r.status, r.log).toBe(0);
     expect(r.comingSoon).toBe(false);
-    expect(r.log).toMatch(/preview values ON/);
+    expect(r.log).toMatch(/branch build, live values ON/);
+    expect(r.noindex).toBe(true);
   });
 });
 
 describe('the "coming soon" build checks the folder it wrote', { timeout: 60_000 }, () => {
-  /** A copy of the project (its node_modules linked), changed by `change`, built as production. */
+  /** A copy of the project (its node_modules linked), changed by `change`, built as "coming soon". */
   function buildCopy(change: (dir: string) => void) {
     const dir = mkdtempSync(join(tmpdir(), 'boga-copy-'));
     for (const f of ['index.html', 'vite.config.ts', 'package.json', 'tsconfig.json', 'src', 'public', 'scripts', '.env.workers-preview']) {
@@ -86,7 +97,8 @@ describe('the "coming soon" build checks the folder it wrote', { timeout: 60_000
     symlinkSync(join(ROOT, 'node_modules'), join(dir, 'node_modules'), 'junction');
     try {
       change(dir);
-      return build(dir, [], { WORKERS_CI: '1', WORKERS_CI_BRANCH: 'main' });
+      // the local default build: "coming soon" (production's fallback, scripts/build-target.mjs PRODUCTION_SITE)
+      return build(dir, [], {});
     } finally {
       // removes the link to node_modules, never what it points to (rm does not follow links)
       rmSync(dir, { recursive: true, force: true });

@@ -48,10 +48,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build:e2e
       - run: npm run test:e2e
-      # the "coming soon" files the browser tests used (dist-coming-soon, checked by its own build): the
-      # production command must rebuild them byte for byte (every file and its SHA-256, the list included),
+      # the "coming soon" files the browser tests used (dist-coming-soon, checked by its own build; production's
+      # fallback since the live shop, scripts/build-target.mjs PRODUCTION_SITE): the default command must rebuild them byte for byte (every file and its SHA-256, the list included),
       # then they go up with their sums and pictures for the owner's review. No deploy, no secret in them.
-      - name: 'coming soon: the production command rebuilds the tested files byte for byte'
+      - name: 'coming soon (the fallback page): the default command rebuilds the tested files byte for byte'
         run: |
           set -o pipefail
           npm run build -- --outDir dist-coming-soon-rebuilt

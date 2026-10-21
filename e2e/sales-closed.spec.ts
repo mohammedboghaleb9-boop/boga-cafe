@@ -65,3 +65,66 @@ test.describe('sales closed on the live site', () => {
     });
   }
 });
+
+/**
+ * The live site as production shows it from 2026-10-21 (owner): the real start, every product, origin and city hidden,
+ * the sales closed. Each page says the orders are not open, the lists say they are empty, and the Custom Blend shows
+ * no builder (so no bag fee priced on its own); the pages ask not to be indexed.
+ */
+async function emptySite(page: Page) {
+  await page.route('https://challenges.cloudflare.com/**', (r) => r.abort('blockedbyclient'));
+  await page.route(`${SUPABASE}/**`, (r) => {
+    const req = r.request();
+    if (req.method() === 'OPTIONS') return r.fulfill({ status: 204, headers: CORS });
+    const table = new URL(req.url()).pathname.split('/').at(-1) ?? '';
+    const single = (req.headers()['accept'] ?? '').includes('vnd.pgrst.object');
+    if (table === 'site_config') {
+      const [row] = tables.site_config as { settings: Record<string, unknown> }[];
+      const { salesOpen: _, ...settings } = row.settings;
+      // the home page's title is the owner's text (live has one; the e2e catalog has none)
+      // the Custom Blend on with its bag fee, as live has it: the page must still show no builder and no fee
+      const customBlend = { enabled: true, minPercent: 5, maxOrigins: 4, feeBySize: { 250: 10, 500: 15, 1000: 20 } };
+      const closed = { ...row, settings: { ...settings, customBlend }, content: { heroTitle: { ar: 'بوكا كافي', fr: 'BOGA CAFÉ', en: 'BOGA CAFÉ' } } };
+      return r.fulfill({ headers: CORS, contentType: 'application/json', json: single ? closed : [closed] });
+    }
+    // hidden rows are not returned to visitors (row security): an empty catalog
+    if (['products', 'origins', 'shipping_rates'].includes(table)) return r.fulfill({ headers: CORS, contentType: 'application/json', json: [] });
+    return answerCatalog(r);
+  });
+}
+
+test.describe('the live site before the launch: empty catalog, sales closed', () => {
+  test('every page says the orders are not open; lists are empty; no builder; not indexed', async ({ page }) => {
+    await emptySite(page);
+    for (const path of ['/', '/shop', '/single-origin', '/custom-blend', '/b2b', '/contact']) {
+      await open(page, path);
+      await expect(page.locator('.sales-notice'), path).toHaveText('Le site est en préparation : les commandes ne sont pas encore ouvertes.');
+      await expect(page.locator('meta[name="robots"]'), path).toHaveAttribute('content', 'noindex');
+      await expectNoSideScroll(page);
+    }
+    await open(page, '/shop');
+    await expect(page.getByText('Aucun café dans cette catégorie pour le moment.')).toBeVisible();
+    await open(page, '/b2b');
+    await expect(page.getByText('Aucun café dans cette catégorie pour le moment.')).toBeVisible();
+    await open(page, '/single-origin');
+    await expect(page.getByText('Aucune origine disponible pour le moment.')).toBeVisible();
+    await open(page, '/');
+    await expect(page.getByText('Aucune origine disponible pour le moment.')).toBeVisible();
+    await open(page, '/custom-blend');
+    await expect(page.locator('.notice-warn')).toHaveText('Aucune origine disponible pour le moment.');
+    await expect(page.getByRole('button', { name: /Ajouter au panier/ })).toHaveCount(0);
+    await expect(page.getByText(/\d+\s*DH/)).toHaveCount(0);
+    await scanA11y(page, 'custom blend, empty catalog');
+  });
+
+  test.describe('390px ar-MA', () => {
+    test.use({ locale: 'ar-MA', viewport: { width: 390, height: 844 } });
+    test('the notice reads in Arabic, inside the window', async ({ page }) => {
+      await emptySite(page);
+      await open(page, '/');
+      await expect(page.locator('.sales-notice')).toHaveText('الموقع قيد التجهيز: الطلبات غير مفتوحة بعد.');
+      await expectNoSideScroll(page);
+      await page.screenshot({ path: 'test-results/live-empty-home-ar-390.png' });
+    });
+  });
+});

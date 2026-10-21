@@ -7,7 +7,7 @@ import { RoastChip } from '@/shared/ui/Roast';
 
 export function OriginsBand() {
   const { t, l } = useI18n();
-  const { origins } = useCatalog();
+  const shown = useCatalog().origins.filter((o) => o.active);
   return (
     <section className="section container origins-band">
       <figure className="origins-photo">
@@ -23,26 +23,25 @@ export function OriginsBand() {
             {t.nav.singleOrigin}
           </Link>
         </div>
+        {shown.length === 0 && <p className="muted">{t.common.noOrigins}</p>}
         <ul className="origin-rows">
-          {origins
-            .filter((o) => o.active)
-            .map((o) => (
-              <li key={o.id} className="reveal">
-                <Flag code={o.countryCode} title={l(o.name)} size={28} />
-                <div>
-                  <strong>{l(o.name)}</strong>
-                  <span className="muted small">
-                    {' '}
-                    · {o.region} · {t.common[o.species]}
-                  </span>
-                  <p className="small origin-notes">{l(o.tastingNotes)}</p>
-                </div>
-                <span className="small muted origin-roast">
-                  <RoastChip level={o.roastLevel} size={44} />
-                  {t.roast[o.roastLevel]}
+          {shown.map((o) => (
+            <li key={o.id} className="reveal">
+              <Flag code={o.countryCode} title={l(o.name)} size={28} />
+              <div>
+                <strong>{l(o.name)}</strong>
+                <span className="muted small">
+                  {' '}
+                  · {o.region} · {t.common[o.species]}
                 </span>
-              </li>
-            ))}
+                <p className="small origin-notes">{l(o.tastingNotes)}</p>
+              </div>
+              <span className="small muted origin-roast">
+                <RoastChip level={o.roastLevel} size={44} />
+                {t.roast[o.roastLevel]}
+              </span>
+            </li>
+          ))}
         </ul>
       </div>
     </section>

@@ -11,6 +11,7 @@ export function SingleOriginPage() {
   usePageTitle(t.nav.singleOrigin);
   const { products, origins } = useCatalog();
   const singles = products.filter((p) => p.active && p.kind === 'single-origin');
+  const shown = origins.filter((o) => o.active);
 
   return (
     <div className="container page">
@@ -24,32 +25,33 @@ export function SingleOriginPage() {
         <Photo name="greenBeans" alt={t.media.greenBeans} priority sizes="(min-width: 1180px) 1180px, 100vw" />
       </figure>
 
+      {shown.length === 0 && <p className="muted">{t.common.noOrigins}</p>}
       <div className="origin-strip">
-        {origins
-          .filter((o) => o.active)
-          .map((o) => (
-            <div key={o.id} className="origin-chip">
-              <Flag code={o.countryCode} title={l(o.name)} size={26} />
-              <span>
-                <strong>{l(o.name)}</strong>
-                <span className="muted small"> · {t.common[o.species]}</span>
+        {shown.map((o) => (
+          <div key={o.id} className="origin-chip">
+            <Flag code={o.countryCode} title={l(o.name)} size={26} />
+            <span>
+              <strong>{l(o.name)}</strong>
+              <span className="muted small"> · {t.common[o.species]}</span>
+            </span>
+            {o.stockKg > 0 ? (
+              <span className="pill pill-ok">{t.common.inStock}</span>
+            ) : (
+              <span className="pill pill-bad" title={o.restockDate ? fmt(t.common.backAround, { date: date(o.restockDate) }) : undefined}>
+                {t.common.outOfStock}
               </span>
-              {o.stockKg > 0 ? (
-                <span className="pill pill-ok">{t.common.inStock}</span>
-              ) : (
-                <span className="pill pill-bad" title={o.restockDate ? fmt(t.common.backAround, { date: date(o.restockDate) }) : undefined}>
-                  {t.common.outOfStock}
-                </span>
-              )}
-            </div>
-          ))}
-      </div>
-
-      <div className="pgrid">
-        {singles.map((p) => (
-          <ProductCard key={p.id} product={p} headingLevel={2} />
+            )}
+          </div>
         ))}
       </div>
+
+      {singles.length > 0 && (
+        <div className="pgrid">
+          {singles.map((p) => (
+            <ProductCard key={p.id} product={p} headingLevel={2} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

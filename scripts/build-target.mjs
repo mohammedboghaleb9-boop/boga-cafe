@@ -1,10 +1,14 @@
-// What a build ships (vite.config.ts), decided from VITE_DATA_MODE alone, failing closed:
-//  - empty: the production site, the "coming soon" page (owner 2026-10-16), nothing of the shop;
-//  - "demo" or "supabase": the shop (prototype, browser tests, previews);
-//  - anything else (a typo, "Supabase", "prod"): the build stops instead of shipping the shop.
-// A Workers Builds build of main (production) is "coming soon" only, whatever the dashboard sets
-// (a build variable, or a `--mode` that loads a committed .env.<mode> file): opening the shop is a change
-// to this file, reviewed and merged. This guards the build; it cannot stop a deploy command that skips it.
+// What a build ships (vite.config.ts), failing closed:
+//  - the production deploy (Workers Builds, main): what PRODUCTION_SITE below says. Since 2026-10-21 (owner) the live
+//    shop on the live database with its own public values (.env.workers-preview), the sales still closed by the
+//    database (settings.salesOpen): a site being prepared, not a launch. "coming-soon" brings the page back.
+//  - any other build, from VITE_DATA_MODE: empty = the "coming soon" page; "demo" or "supabase" = the shop
+//    (prototype, browser tests, previews); anything else (a typo, "Supabase", "prod") stops the build.
+// A dashboard variable or a `--mode` never changes what production ships: that is a change to this file, reviewed
+// and merged. This guards the build; it cannot stop a deploy command that skips it.
+
+/** What the production deploy ships: 'shop' (the live shop, sales closed until the owner opens them) or 'coming-soon'. */
+export const PRODUCTION_SITE = 'shop';
 
 /**
  * A Workers Builds build of main, or of no named branch: the production deploy, whatever `--mode` the
@@ -18,14 +22,21 @@ export function isProductionDeploy(env) {
   return branch === '' || branch === 'main';
 }
 
-/** @param {{ dataMode?: string; productionDeploy: boolean }} build */
-export function buildTarget({ dataMode = '', productionDeploy }) {
-  if (dataMode === '') return 'coming-soon';
-  if (dataMode !== 'demo' && dataMode !== 'supabase') {
-    throw new Error(`VITE_DATA_MODE="${dataMode}" is not a build: leave it empty (production, "coming soon"), or set demo or supabase.`);
+/** @param {{ dataMode?: string; productionDeploy: boolean; productionSite?: 'shop' | 'coming-soon' }} build */
+export function buildTarget({ dataMode = '', productionDeploy, productionSite = PRODUCTION_SITE }) {
+  if (dataMode !== '' && dataMode !== 'demo' && dataMode !== 'supabase') {
+    throw new Error(`VITE_DATA_MODE="${dataMode}" is not a build: leave it empty ("coming soon"), or set demo or supabase.`);
   }
+  if (productionDeploy && productionSite === 'shop') {
+    // the live shop only: never the prototype, never the page by accident
+    if (dataMode !== 'supabase') {
+      throw new Error(`VITE_DATA_MODE="${dataMode}" in the production build of main: production is the live shop (scripts/build-target.mjs PRODUCTION_SITE), built from .env.workers-preview. Remove the variable from the Cloudflare build settings.`);
+    }
+    return 'shop';
+  }
+  if (dataMode === '') return 'coming-soon';
   if (productionDeploy) {
-    throw new Error(`VITE_DATA_MODE="${dataMode}" in the production build of main: production is the "coming soon" page until the owner opens the shop (scripts/build-target.mjs). Remove the variable from the Cloudflare build settings.`);
+    throw new Error(`VITE_DATA_MODE="${dataMode}" in the production build of main: production is the "coming soon" page (scripts/build-target.mjs PRODUCTION_SITE). Remove the variable from the Cloudflare build settings.`);
   }
   return 'shop';
 }

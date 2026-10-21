@@ -20,6 +20,9 @@ export const en = {
 
   common: {
     currency: 'DH',
+    // shown on every page while the owner keeps the sales closed (settings.salesOpen)
+    salesNotice: 'The site is being prepared: orders are not open yet.',
+    noOrigins: 'No origin is available for now.',
     addToCart: 'Add to cart',
     added: 'Added to cart',
     viewCart: 'View cart',
