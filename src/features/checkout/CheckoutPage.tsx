@@ -7,7 +7,7 @@ import { shippingFee } from '@/core/shipping';
 import type { CustomerInfo, PaymentMethodId } from '@/core/types';
 import { api, GUARD_ERRORS, type GuardError } from '@/data/api';
 import { methodAvailable } from '@/services/payments';
-import { useCatalog, useDb } from '@/data/hooks';
+import { useBrowseOnly, useCatalog, useDb } from '@/data/hooks';
 import { useCart } from '@/shared/cart/CartProvider';
 import { LineDetails } from '@/shared/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
@@ -16,6 +16,7 @@ import { Icon, type IconName } from '@/shared/ui/Icon';
 import { Field } from '@/shared/ui/bits';
 import './checkout.css';
 import { TEXT_MAX } from '@/core/limits';
+import { OrdersClosed } from '@/shared/layout/OrdersClosed';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 const methodIcon: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
@@ -52,8 +53,15 @@ function focusField(error: CheckoutError | GuardError | undefined) {
 }
 
 export function CheckoutPage() {
-  const { t, l, money, locale } = useI18n();
+  const { t } = useI18n();
+  const browseOnly = useBrowseOnly();
   usePageTitle(t.checkout.title);
+  // sales closed: no form at all (src/core/showcase.ts); the server and the database refuse an order anyway
+  return browseOnly ? <OrdersClosed title={t.checkout.title} /> : <CheckoutForm />;
+}
+
+function CheckoutForm() {
+  const { t, l, money, locale } = useI18n();
   const cart = useCart();
   const navigate = useNavigate();
   const { products, originIndex } = useCatalog();
@@ -86,12 +94,6 @@ export function CheckoutPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    // the button is off, but a form can still be submitted (Enter in a field, a script): nothing is sent
-    if (!settings.salesOpen) {
-      setErrors(['sales_closed']);
-      focusField('sales_closed');
-      return;
-    }
     if (!method) {
       setErrors(['payment_method']);
       focusField('payment_method');
@@ -127,11 +129,6 @@ export function CheckoutPage() {
         <p className="muted">{t.checkout.noAccount}</p>
       </div>
 
-      {!settings.salesOpen && (
-        <p className="notice notice-warn" role="status" style={{ marginBlockEnd: 16 }}>
-          {t.checkout.errors.sales_closed}
-        </p>
-      )}
 
       {(summary.isB2B || summary.hasProblems) && (
         <p className="notice notice-warn" style={{ marginBlockEnd: 16 }}>
@@ -319,7 +316,7 @@ export function CheckoutPage() {
           <button
             type="submit"
             className="btn btn-primary btn-block"
-            disabled={busy || !settings.salesOpen || summary.isB2B || summary.hasProblems}
+            disabled={busy || summary.isB2B || summary.hasProblems}
           >
             {busy ? t.common.loading : fmt(t.checkout.place, { total: money(summary.subtotal + (fee ?? 0)) })}
           </button>

@@ -1,3 +1,4 @@
+import { onDisplay } from '@/core/showcase';
 import { useCatalog, useDb } from '@/data/hooks';
 import { ProductCard } from '@/shared/product/ProductCard';
 import { fmt, useI18n } from '@/i18n';
@@ -15,7 +16,7 @@ export function B2BPage() {
   const { settings } = useDb();
   // one business value, Admin → Settings (10 kg by default), in every text
   const kg = settings.b2bThresholdKg;
-  const blends = products.filter((p) => p.active && p.kind === 'b2b');
+  const blends = products.filter((p) => onDisplay(p) && p.kind === 'b2b');
 
 
   return (

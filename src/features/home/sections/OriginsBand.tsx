@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { onDisplay } from '@/core/showcase';
 import { useCatalog } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
@@ -7,7 +8,7 @@ import { RoastChip } from '@/shared/ui/Roast';
 
 export function OriginsBand() {
   const { t, l } = useI18n();
-  const shown = useCatalog().origins.filter((o) => o.active);
+  const shown = useCatalog().origins.filter(onDisplay);
   return (
     <section className="section container origins-band">
       <figure className="origins-photo">

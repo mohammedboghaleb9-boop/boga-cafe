@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { onDisplay } from '@/core/showcase';
 import { useCatalog, useSettings } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
@@ -8,7 +9,7 @@ export function B2BTeaser() {
   const { t, l } = useI18n();
   const { products } = useCatalog();
   const kg = useSettings().b2bThresholdKg;
-  const b2b = products.filter((p) => p.active && p.kind === 'b2b');
+  const b2b = products.filter((p) => onDisplay(p) && p.kind === 'b2b');
   return (
     <section className="b2b-band">
       <Photo name="barista" alt={t.media.barista} className="b2b-band-img parallax" sizes="100vw" />

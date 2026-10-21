@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router';
+import { onDisplay } from '@/core/showcase';
 import type { ProductKind } from '@/core/types';
 import { useCatalog } from '@/data/hooks';
 import { useI18n } from '@/i18n';
@@ -14,7 +15,7 @@ export function ShopPage() {
   const { products } = useCatalog();
   const [params, setParams] = useSearchParams();
   const filter = (params.get('kind') as Filter) || 'all';
-  const visible = products.filter((p) => p.active && (filter === 'all' || p.kind === filter));
+  const visible = products.filter((p) => onDisplay(p) && (filter === 'all' || p.kind === filter));
 
   const filters: { id: Filter; label: string }[] = [
     { id: 'all', label: t.shop.filterAll },

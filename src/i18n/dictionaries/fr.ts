@@ -18,7 +18,8 @@ export const fr: Dict = {
 
   common: {
     currency: 'DH',
-    salesNotice: 'Le site est en préparation : les commandes ne sont pas encore ouvertes.',
+    salesNotice: 'La boutique est en préparation — les commandes ne sont pas disponibles pour le moment.',
+    browseOnly: 'Découvrez nos cafés et contactez-nous pour toute question.',
     noOrigins: 'Aucune origine disponible pour le moment.',
     addToCart: 'Ajouter au panier',
     added: 'Ajouté au panier',

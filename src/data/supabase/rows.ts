@@ -34,7 +34,7 @@ export type ProductRow = Tables<'products'> & {
   product_recipes: Pick<Tables<'product_recipes'>, 'origin_id' | 'percent'>[];
 };
 
-const loc = (j: Json): Localized => ({ ar: '', fr: '', en: '', ...(j as Partial<Localized>) });
+export const loc = (j: Json): Localized => ({ ar: '', fr: '', en: '', ...(j as Partial<Localized>) });
 
 export const originFromRow = (r: Tables<'origins'>): Origin => ({
   id: r.id,

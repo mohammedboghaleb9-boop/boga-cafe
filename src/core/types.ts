@@ -37,6 +37,8 @@ export interface Origin {
   /** Estimated date when stock comes back (ISO yyyy-mm-dd), shown to customers. */
   restockDate?: string;
   active: boolean;
+  /** Shown on the site while the sales are closed, without price or stock (live site: showcase_catalog). Never for sale by itself. */
+  listed?: boolean;
   /** Live site: when the origin last changed (a save from an older copy is refused). */
   updatedAt?: string;
 }
@@ -70,6 +72,8 @@ export interface Product {
   image?: string;
   featured: boolean;
   active: boolean;
+  /** Shown on the site while the sales are closed, without price (live site: showcase_catalog). Never for sale by itself. */
+  listed?: boolean;
   sortOrder: number;
   /** Live site: when the product last changed (a save from an older copy is refused). */
   updatedAt?: string;

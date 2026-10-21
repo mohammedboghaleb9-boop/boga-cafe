@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { onDisplay } from '@/core/showcase';
 import { useCatalog } from '@/data/hooks';
 import { ProductCard } from '@/shared/product/ProductCard';
 import { useI18n } from '@/i18n';
@@ -6,7 +7,7 @@ import { useI18n } from '@/i18n';
 export function Featured() {
   const { t } = useI18n();
   const { products } = useCatalog();
-  const featured = products.filter((p) => p.active && p.featured).slice(0, 3);
+  const featured = products.filter((p) => onDisplay(p) && p.featured).slice(0, 3);
   if (featured.length === 0) return null;
   return (
     <section className="section container">
