@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-21
+- 2026-10-21 [main 8959564] PR #20 merged and deployed: production shows the live shop for review, sales closed (salesOpen null, 0 orders, nothing shown to buy); noindex and security headers checked on production. Notes: resume log; status page updated (notifications on hold until Abderrahim is available, legal inventory proposed only, domain steps with the owner).
 - 2026-10-21 [feat/p5-shop-preview] Production builds the live shop (sales closed) instead of "coming soon" (`PRODUCTION_SITE`), from the committed public values only; pre-launch `noindex`; a notice on every page while the sales are closed; empty states; Custom Blend shows no builder without a blendable origin. Coming soon kept as the fallback.
 - 2026-10-21 [feat/p5-shop-preview] Security review fixes: every live-database build scans its own files (demo strings, secret keys, source maps, the live project in production); shop builds ship `_headers` (no framing, nosniff, referrer policy, noindex); CI's greps fail on an empty glob.
 
