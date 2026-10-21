@@ -21,7 +21,9 @@ export const en = {
   common: {
     currency: 'DH',
     // shown on every page while the owner keeps the sales closed (settings.salesOpen)
-    salesNotice: 'The site is being prepared: orders are not open yet.',
+    salesNotice: 'The shop is being prepared — orders are not available at the moment.',
+    // the cart and the checkout while the sales are closed (the notice above is said once, in the header)
+    browseOnly: 'Browse our coffees and contact us with any question.',
     noOrigins: 'No origin is available for now.',
     addToCart: 'Add to cart',
     added: 'Added to cart',
@@ -234,6 +236,8 @@ export const en = {
     blendsTitle: 'The 3 B2B blends',
     largeTitle: 'Large order?',
     largeText: 'Above {kg} kg, contact the team directly or fill your cart and send it as a request.',
+    // while the sales are closed: no cart
+    largeTextBrowse: 'Above {kg} kg, contact the team directly.',
     largeCta: 'Contact on WhatsApp',
     businessType: 'Business type',
     types: {

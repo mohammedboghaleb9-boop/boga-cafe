@@ -19,12 +19,12 @@ const product = (id: string, kind: string, prices: Record<string, number>, recip
   product_recipes: recipe.map(([origin_id, percent]) => ({ origin_id, percent })),
 });
 const PAYEE = { bank: { holder: 'BOGA', bankName: 'Banque', rib: '0123' }, cashplus: { beneficiary: 'BOGA', city: 'Oujda', phone: '0600000000' } };
-const rowsWith = (settings: Record<string, unknown>, cardEnabled = false, origins: Record<string, object> = {}): Record<string, unknown[]> => ({
+const rowsWith = (settings: Record<string, unknown>, cardEnabled = false, origins: Record<string, object> = {}, products: Record<string, object> = {}): Record<string, unknown[]> => ({
   origins: [origin('brazil', 'arabica', 50, 200), origin('vietnam', 'robusta', 1, 100)].map((o) => ({ ...o, ...origins[o.id] })),
   products: [
     product('signature', 'signature', { '250': 60, '1000': 200 }, [['brazil', 80], ['vietnam', 20]]),
     product('horeca', 'b2b', { '250': 50, '1000': 150 }, [['brazil', 100]]),
-  ],
+  ].map((p) => ({ ...p, ...products[p.id] })),
   shipping_rates: [
     { id: 'oujda', city: L('Oujda'), distance_km: 0, base_fee: 20, included_kg: 3, extra_per_kg: 5, delivery_days: '1', active: true },
     { id: 'closed', city: L('Fermée'), distance_km: 9, base_fee: 30, included_kg: 3, extra_per_kg: 5, delivery_days: '2', active: false },
@@ -48,6 +48,8 @@ interface FakeOptions {
   openOrders?: number;
   /** fields of origin rows, by id (stock_kg 0, active false…) */
   origins?: Record<string, object>;
+  /** fields of product rows, by id (active false, listed true…) */
+  products?: Record<string, object>;
   /** order rows saved under an idempotency key; with `afterCommit`, only once commit_order ran (the other request won) */
   saved?: Record<string, unknown>[];
   afterCommit?: boolean;
@@ -57,7 +59,7 @@ interface FakeOptions {
 
 /** Enough of supabase-js for loadCatalog(), the open-orders count and rpc(); records every call. */
 function fakeDb(opts: FakeOptions = {}) {
-  const tables = rowsWith(opts.settings ?? PAYEE, opts.cardEnabled, opts.origins);
+  const tables = rowsWith(opts.settings ?? PAYEE, opts.cardEnabled, opts.origins, opts.products);
   const hits = new Map<string, number>();
   const calls: { name: string; args: Record<string, unknown> }[] = [];
   const reads: string[] = [];
@@ -378,6 +380,16 @@ describe('storefront: sales gate (slice 12)', () => {
     const { db } = fakeDb({ commitError: 'sales_closed' });
     expect((await handleStorefront('order', orderBody(), deps(db))).body).toEqual({ ok: false, errors: ['sales_closed'] });
     expect((await handleStorefront('quote', { ...contact, items: b2bItems }, deps(db))).body).toEqual({ ok: false, errors: ['sales_closed'] });
+  });
+
+  it('the catalog shown without prices is never for sale, even with the sales open (owner 2026-10-21)', async () => {
+    // listed for display, not for sale: the server reads it (secret key) and its cart line is unavailable
+    const shownOnly = { active: false, listed: true };
+    const { db, calls } = fakeDb({ products: { signature: shownOnly, horeca: shownOnly } });
+    expect((await handleStorefront('order', orderBody(), deps(db))).body).toEqual({ ok: false, errors: ['cart_problem'] });
+    // a B2B request of it weighs nothing: not a request the site sends, refused before the database
+    expect((await handleStorefront('quote', { ...contact, items: b2bItems }, deps(db))).status).toBe(400);
+    expect(committed(calls)).toBe(false);
   });
 });
 

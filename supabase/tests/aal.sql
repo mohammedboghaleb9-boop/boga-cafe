@@ -16,6 +16,8 @@ insert into public.admin_users values
 insert into public.origins (id, name, country_code, species, roast_level, price_per_kg, active) values
   ('brazil', '{"fr": "Brésil"}', 'BR', 'arabica', 'medium', 220, true),
   ('hidden', '{"fr": "Caché"}',  'ET', 'arabica', 'light',  300, false);
+-- the sales open: visitors read the rows for sale (closed, they read none: showcase.sql)
+insert into public.site_config (id, settings, content) values (1, '{"salesOpen": true}', '{}');
 
 -- the signed-in user's token, as the API sets it for the request
 create function pg_temp.token(p_sub text, p_aal text) returns text language sql as $$

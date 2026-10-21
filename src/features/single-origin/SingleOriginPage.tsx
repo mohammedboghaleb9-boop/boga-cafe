@@ -1,4 +1,5 @@
-import { useCatalog } from '@/data/hooks';
+import { onDisplay } from '@/core/showcase';
+import { useBrowseOnly, useCatalog } from '@/data/hooks';
 import { ProductCard } from '@/shared/product/ProductCard';
 import { fmt, useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
@@ -10,8 +11,9 @@ export function SingleOriginPage() {
   const { t, l, date } = useI18n();
   usePageTitle(t.nav.singleOrigin);
   const { products, origins } = useCatalog();
-  const singles = products.filter((p) => p.active && p.kind === 'single-origin');
-  const shown = origins.filter((o) => o.active);
+  const browseOnly = useBrowseOnly();
+  const singles = products.filter((p) => onDisplay(p) && p.kind === 'single-origin');
+  const shown = origins.filter(onDisplay);
 
   return (
     <div className="container page">
@@ -34,7 +36,7 @@ export function SingleOriginPage() {
               <strong>{l(o.name)}</strong>
               <span className="muted small"> · {t.common[o.species]}</span>
             </span>
-            {o.stockKg > 0 ? (
+            {browseOnly ? null : o.stockKg > 0 ? (
               <span className="pill pill-ok">{t.common.inStock}</span>
             ) : (
               <span className="pill pill-bad" title={o.restockDate ? fmt(t.common.backAround, { date: date(o.restockDate) }) : undefined}>

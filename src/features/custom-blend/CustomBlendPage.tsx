@@ -4,9 +4,10 @@ import { CUSTOM_BLEND_NAME } from '@/core/cart';
 import { formatNumber, formatSize } from '@/core/format';
 import { customBlendPrice, isPrice } from '@/core/pricing';
 import { composition, recipeTotal } from '@/core/recipe';
+import { onDisplay } from '@/core/showcase';
 import { kgNeeded } from '@/core/stock';
 import { PACK_SIZES, type Origin, type PackSize, type RecipeLine } from '@/core/types';
-import { useCatalog, useSettings } from '@/data/hooks';
+import { useBrowseOnly, useCatalog, useSettings } from '@/data/hooks';
 import { useCart } from '@/shared/cart/CartProvider';
 import { fmt, useI18n } from '@/i18n';
 import { recipeView } from '@/shared/recipe-view';
@@ -35,9 +36,13 @@ export function CustomBlendPage() {
   const { origins, originIndex } = useCatalog();
   const settings = useSettings();
   const cart = useCart();
+  // sales closed: the builder stays to compose and look, without price, stock or cart button (src/core/showcase.ts)
+  const browseOnly = useBrowseOnly();
   const { minPercent, maxOrigins } = settings.customBlend;
 
-  const [lines, setLines] = useState<RecipeLine[]>(() => EXAMPLE.filter((e) => originIndex[e.originId]));
+  const [picked, setLines] = useState<RecipeLine[]>(() => EXAMPLE.filter((e) => originIndex[e.originId]));
+  // an origin that left the catalog since (a new read) drops out of the blend instead of breaking the page
+  const lines = picked.filter((x) => originIndex[x.originId]);
   const [size, setSize] = useState<PackSize>(1000);
   const [qty, setQty] = useState(1);
 
@@ -51,6 +56,10 @@ export function CustomBlendPage() {
 
   /** Why an origin cannot be picked right now (null = it can). */
   function blockReason(o: Origin): string | null {
+    if (browseOnly) {
+      if (!o.customBlendEnabled) return t.common.unavailable;
+      return !selected.has(o.id) && lines.length >= maxOrigins ? fmt(t.blend.maxReached, { max: maxOrigins }) : null;
+    }
     const back = o.restockDate ? ` · ${fmt(t.common.backAround, { date: date(o.restockDate) })}` : '';
     if (!o.active || !o.customBlendEnabled || !isPrice(o.pricePerKg)) return t.common.unavailable + back;
     if (o.stockKg < kgNeeded(size, minPercent, qty, settings.roastLossPercent)) return t.common.outOfStock + back;
@@ -64,7 +73,7 @@ export function CustomBlendPage() {
     );
 
   // paused, or no origin can go in a blend yet (none shown with a price): a notice, never a builder with only the bag fee
-  const blendable = origins.some((o) => o.active && o.customBlendEnabled && isPrice(o.pricePerKg));
+  const blendable = origins.some((o) => (browseOnly ? onDisplay(o) : o.active && isPrice(o.pricePerKg)) && o.customBlendEnabled);
   if (!settings.customBlend.enabled || !blendable) {
     return (
       <div className="container page">
@@ -98,7 +107,7 @@ export function CustomBlendPage() {
             <p className="muted small">{fmt(t.blend.step1Hint, { max: maxOrigins })}</p>
             <div className="origin-tiles">
               {origins
-                .filter((o) => o.active)
+                .filter(onDisplay)
                 .map((o) => {
                   const reason = blockReason(o);
                   const isOn = selected.has(o.id);
@@ -132,7 +141,7 @@ export function CustomBlendPage() {
                       <span className="small origin-tile-notes">{l(o.tastingNotes)}</span>
                       <span className="origin-tile-foot small">
                         <span className="num">
-                          {isPrice(o.pricePerKg) && `${money(o.pricePerKg)} ${t.common.perKg}`}
+                          {!browseOnly && isPrice(o.pricePerKg) && `${money(o.pricePerKg)} ${t.common.perKg}`}
                         </span>
                         {reason && !isOn && <span className="pill pill-bad pill-plain">{reason}</span>}
                       </span>
@@ -232,7 +241,7 @@ export function CustomBlendPage() {
                   </button>
                 ))}
               </div>
-              <QtyStepper value={qty} onChange={setQty} max={50} label={t.common.qty} />
+              {!browseOnly && <QtyStepper value={qty} onChange={setQty} max={50} label={t.common.qty} />}
             </div>
           </section>
 
@@ -263,35 +272,40 @@ export function CustomBlendPage() {
           />
           {lines.length > 0 && <SpeciesBar {...view.split} />}
 
-          <div className="summary-price">
-            <span className="spread">
-              <span>{t.blend.unitPrice}</span>
-              <strong className="num">{money(price.total)}</strong>
-            </span>
-            <span className="spread big">
-              <span>
-                {t.common.total} ×{qty}
-              </span>
-              <strong className="num">{money(price.total * qty)}</strong>
-            </span>
-          </div>
+          {!browseOnly && (
+            <>
+              <div className="summary-price">
+                <span className="spread">
+                  <span>{t.blend.unitPrice}</span>
+                  <strong className="num">{money(price.total)}</strong>
+                </span>
+                <span className="spread big">
+                  <span>
+                    {t.common.total} ×{qty}
+                  </span>
+                  <strong className="num">{money(price.total * qty)}</strong>
+                </span>
+              </div>
 
-          {issues.length > 0 && lines.length > 0 && (
-            <ul className="issues">
-              {issues.map((issue, i) => (
-                <li key={i}>{issueText(issue, t, originIndex, l, date)}</li>
-              ))}
-            </ul>
+              {issues.length > 0 && lines.length > 0 && (
+                <ul className="issues">
+                  {issues.map((issue, i) => (
+                    <li key={i}>{issueText(issue, t, originIndex, l, date)}</li>
+                  ))}
+                </ul>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                disabled={issues.length > 0}
+                onClick={() => cart.addCustom({ lines, size }, qty, `${t.blend.added} · ${formatSize(size)} ×${qty}`)}
+              >
+                <Icon name="cart" size={18} /> {t.common.addToCart}
+              </button>
+            </>
           )}
 
-          <button
-            type="button"
-            className="btn btn-primary btn-block"
-            disabled={issues.length > 0}
-            onClick={() => cart.addCustom({ lines, size }, qty, `${t.blend.added} · ${formatSize(size)} ×${qty}`)}
-          >
-            <Icon name="cart" size={18} /> {t.common.addToCart}
-          </button>
           <p className="small muted icon-line">
             <Icon name="bean" size={16} /> {t.common.wholeBeansOnly}
           </p>
@@ -313,14 +327,16 @@ export function CustomBlendPage() {
                         </td>
                         <td className="num">{x.percent}%</td>
                         <td className="num">{formatNumber(p?.grams ?? 0, 1)} g</td>
-                        <td className="num end">{formatNumber(p?.cost ?? 0, 1)} {t.common.currency}</td>
+                        {!browseOnly && <td className="num end">{formatNumber(p?.cost ?? 0, 1)} {t.common.currency}</td>}
                       </tr>
                     );
                   })}
-                  <tr>
-                    <td colSpan={3}>{t.blend.bagFee}</td>
-                    <td className="num end">{formatNumber(price.fee, 1)} {t.common.currency}</td>
-                  </tr>
+                  {!browseOnly && (
+                    <tr>
+                      <td colSpan={3}>{t.blend.bagFee}</td>
+                      <td className="num end">{formatNumber(price.fee, 1)} {t.common.currency}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

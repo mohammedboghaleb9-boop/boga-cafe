@@ -25,6 +25,9 @@ export const useCatalog = () => useCatalogOf(useDb());
 
 export const useSettings = () => useDb().settings;
 
+/** The sales are closed: the shop shows its catalog without prices or stock and offers no way to buy (src/core/showcase.ts). */
+export const useBrowseOnly = () => !useDb().settings.salesOpen;
+
 /**
  * The Admin Panel's state: on the live site, what the admin's session reads
  * (every order, inactive products…), apart from the shop's copy; in the

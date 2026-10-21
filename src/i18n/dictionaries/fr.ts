@@ -18,7 +18,8 @@ export const fr: Dict = {
 
   common: {
     currency: 'DH',
-    salesNotice: 'Le site est en préparation : les commandes ne sont pas encore ouvertes.',
+    salesNotice: 'La boutique est en préparation — les commandes ne sont pas disponibles pour le moment.',
+    browseOnly: 'Découvrez nos cafés et contactez-nous pour toute question.',
     noOrigins: 'Aucune origine disponible pour le moment.',
     addToCart: 'Ajouter au panier',
     added: 'Ajouté au panier',
@@ -231,6 +232,7 @@ export const fr: Dict = {
     blendsTitle: 'Les 3 blends B2B',
     largeTitle: 'Grosse commande ?',
     largeText: 'Au-delà de {kg} kg, contactez directement l’équipe ou remplissez votre panier et envoyez-le en demande.',
+    largeTextBrowse: 'Au-delà de {kg} kg, contactez directement l’équipe.',
     largeCta: 'Contacter sur WhatsApp',
     businessType: 'Type d’activité',
     types: {

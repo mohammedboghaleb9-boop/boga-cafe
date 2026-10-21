@@ -1,3 +1,4 @@
+import { onDisplay } from '@/core/showcase';
 import { useCatalog, useDb } from '@/data/hooks';
 import { ProductCard } from '@/shared/product/ProductCard';
 import { fmt, useI18n } from '@/i18n';
@@ -15,8 +16,9 @@ export function B2BPage() {
   const { settings } = useDb();
   // one business value, Admin → Settings (10 kg by default), in every text
   const kg = settings.b2bThresholdKg;
-  const blends = products.filter((p) => p.active && p.kind === 'b2b');
-
+  const blends = products.filter((p) => onDisplay(p) && p.kind === 'b2b');
+  // sales closed: the large-order box offers the contact only, not the cart (src/core/showcase.ts)
+  const browseOnly = !settings.salesOpen;
 
   return (
     <>
@@ -59,7 +61,7 @@ export function B2BPage() {
         <div className="b2b-forms">
           <section className="panel stack b2b-large">
             <h2>{t.b2b.largeTitle}</h2>
-            <p className="muted">{fmt(t.b2b.largeText, { kg })}</p>
+            <p className="muted">{fmt(browseOnly ? t.b2b.largeTextBrowse : t.b2b.largeText, { kg })}</p>
             <a
               className="btn btn-primary"
               href={whatsappLink(settings.contact.whatsapp, `${t.contact.whatsappText} B2B / HORECA`)}

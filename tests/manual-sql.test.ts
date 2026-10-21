@@ -7,6 +7,9 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
+/** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). */
+const PENDING = ['20261021120000_catalog_showcase'];
+
 describe('SQL Editor blocks', () => {
   it('catalog_trim: the block holds the migration unchanged, between begin and commit', () => {
     const block = read('supabase/manual/20261013100000_catalog_trim.editor.sql');
@@ -286,8 +289,8 @@ describe('migration versions', () => {
     }
   });
 
-  it('no file waits to be applied: every migration is in live\'s history', () => {
-    expect(files.slice(LIVE.length)).toEqual([]);
+  it('only the reviewed pending migration waits to be applied: every other one is in live\'s history', () => {
+    expect(files.slice(LIVE.length).map((f) => f.replace(/\.sql$/, ''))).toEqual(PENDING);
   });
 
   it('city_shown_needs_fee (applied 2026-10-20 by its SQL Editor block): a check only (no row changed), with its rollback', () => {
@@ -306,5 +309,73 @@ describe('migration versions', () => {
     expect(read('supabase/manual/20261020090000_city_shown_needs_fee.rollback.sql')).toContain(
       'alter table public.shipping_rates drop constraint shipping_rates_shown_needs_fee;',
     );
+  });
+});
+
+describe('catalog_showcase (the catalog shown without prices, owner 2026-10-21)', () => {
+  const migration = read('supabase/migrations/20261021120000_catalog_showcase.sql').trimEnd();
+  const block = read('supabase/manual/20261021120000_catalog_showcase.editor.sql');
+  const listing = read('supabase/manual/20261021120000_catalog_showcase.listing.sql');
+
+  it('the editor block holds the migration unchanged, after its guards, with its version, in one commit', () => {
+    expect(block).toContain(`-- >>> 20261021120000_catalog_showcase.sql\n${migration}\n-- <<< 20261021120000_catalog_showcase.sql`);
+    expect(block.indexOf('\nbegin;')).toBeLessThan(block.indexOf("raise exception 'stop:"));
+    expect(block.indexOf("raise exception 'stop:")).toBeLessThan(block.indexOf('-- >>>'));
+    expect(block.match(/insert into supabase_migrations\.schema_migrations \(version, name\) values \('20261021120000', 'catalog_showcase'\);/g)).toHaveLength(1);
+    expect(block.indexOf('-- <<<')).toBeLessThan(block.indexOf('insert into supabase_migrations'));
+    expect(block.match(/^commit;$/gm)).toHaveLength(1);
+  });
+
+  it('the migration lists nothing and writes no row: two columns false by default, one read function', () => {
+    const sql = migration.replace(/^--.*$/gm, '');
+    expect(sql).not.toMatch(/\b(insert|update|delete)\b/i);
+    expect(sql.match(/add column listed boolean not null default false;/g)).toHaveLength(2);
+    expect(sql).toMatch(/security definer\nset search_path = public, pg_temp/);
+    expect(sql).toContain('revoke all on function public.showcase_catalog() from public;');
+    // no price leaves the database while the sales are closed: visitors read the rows for sale only once they open
+    expect(sql).toContain('alter policy "catalog read" on public.products using ((active and public.sales_open()) or public.is_admin());');
+    expect(sql).toContain('alter policy "catalog read" on public.origins using ((active and public.sales_open()) or public.is_admin());');
+    expect(block).toContain("and qual = '(active OR is_admin())') <> 2 then"); // replaces init's rules only
+  });
+
+  it('the listing block lists exactly the 16 compared rows, and stops on any other catalog', () => {
+    const ids = (name: string) => JSON.parse(`[${new RegExp(`v_${name} text\\[\\] := array\\[([^\\]]*)\\]`, 's').exec(listing)![1].replace(/'/g, '"')}]`);
+    expect(ids('products')).toEqual(['boga-signature', 'douceur-arabica', 'horeca-crema-forte', 'horeca-espresso-bar', 'horeca-premium-arabica',
+      'oriental-intense', 'so-brazil', 'so-colombia', 'so-ethiopia', 'so-honduras']);
+    expect(ids('origins')).toEqual(['brazil', 'colombia', 'ethiopia', 'honduras', 'uganda', 'vietnam']);
+    // the fingerprint read on live on 2026-10-21 (and given by supabase/seed.sql: tests/showcase-listing.sh)
+    expect(listing).toContain("v_fingerprint is distinct from 'd8ad4e21d30eeba84bc109c635204f3e'");
+    // its only writes are the flag, after every check
+    expect(listing.match(/\bupdate public\.\w+ set [^;]*;/g)).toEqual([
+      'update public.products set listed = true where id = any (v_products) and not listed;',
+      'update public.origins set listed = true where id = any (v_origins) and not listed;',
+    ]);
+    for (const stop of ['is not applied', 'not the 10 compared', 'not the 6 compared', 'fingerprint', 'not the 22 compared', 'already listed', 'for sale (active)']) {
+      expect(listing.indexOf(stop), stop).toBeGreaterThan(0);
+      expect(listing.indexOf(stop), stop).toBeLessThan(listing.indexOf('update public.products set listed'));
+    }
+    expect(listing.match(/^commit;$/gm)).toHaveLength(1);
+  });
+
+  it('the production build reads the display only once the migration is applied (merge first, then the database, then the flag)', () => {
+    // while pending, the site must not ask for a function live does not have (the flag is turned on after the apply)
+    const flagOn = /^VITE_SHOWCASE=on$/m.test(read('.env.workers-preview'));
+    expect(flagOn && PENDING.includes('20261021120000_catalog_showcase')).toBe(false);
+  });
+
+  it('the undo touches the flag only; the rollback puts back what the migration changed', () => {
+    expect(read('supabase/manual/20261021120000_catalog_showcase.unlist.sql').match(/\bupdate [^;]*;/g)).toEqual([
+      'update public.products set listed = false where listed;',
+      'update public.origins set listed = false where listed;',
+    ]);
+    const rollback = read('supabase/manual/20261021120000_catalog_showcase.rollback.sql');
+    expect(rollback.match(/^(drop|alter) [^;]*;/gm)).toEqual([
+      'alter policy "catalog read" on public.products using (active or public.is_admin());',
+      'alter policy "catalog read" on public.origins using (active or public.is_admin());',
+      'drop function public.sales_open();',
+      'drop function public.showcase_catalog();',
+      'alter table public.products drop column listed;',
+      'alter table public.origins drop column listed;',
+    ]);
   });
 });

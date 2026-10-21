@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { lowestPrice, offeredSizes } from '@/core/pricing';
 import type { Product } from '@/core/types';
-import { useCatalog, useSettings } from '@/data/hooks';
+import { useBrowseOnly, useCatalog, useSettings } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { recipeView } from '@/shared/recipe-view';
 import { productSticker } from '@/shared/sticker';
@@ -16,6 +16,8 @@ export function ProductCard({ product, headingLevel = 3 }: { product: Product; h
   const { t, l, money } = useI18n();
   const { originIndex } = useCatalog();
   const settings = useSettings();
+  // sales closed: no price and no stock state (src/core/showcase.ts)
+  const browseOnly = useBrowseOnly();
   const view = recipeView(product.recipe, originIndex, l);
   const sizes = offeredSizes(product);
   const from = lowestPrice(product);
@@ -42,12 +44,12 @@ export function ProductCard({ product, headingLevel = 3 }: { product: Product; h
           <strong>{t.roast[product.roastLevel]}</strong> · {l(product.tastingNotes)}
         </p>
         <div className="pcard-foot">
-          {from !== undefined && (
+          {from !== undefined && !browseOnly && (
             <span className="pcard-price">
               <span className="muted small">{t.common.from}</span> <strong className="num">{money(from)}</strong>
             </span>
           )}
-          {sizes[0] && (
+          {sizes[0] && !browseOnly && (
             <Availability
               recipe={product.recipe}
               size={sizes[0]}

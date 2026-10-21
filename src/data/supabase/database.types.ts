@@ -189,6 +189,7 @@ export type Database = {
           country_code: string;
           custom_blend_enabled: boolean;
           id: string;
+          listed: boolean;
           low_stock_kg: number;
           name: Json;
           price_per_kg: number | null;
@@ -205,6 +206,7 @@ export type Database = {
           country_code: string;
           custom_blend_enabled?: boolean;
           id: string;
+          listed?: boolean;
           low_stock_kg?: number;
           name: Json;
           price_per_kg?: number | null;
@@ -221,6 +223,7 @@ export type Database = {
           country_code?: string;
           custom_blend_enabled?: boolean;
           id?: string;
+          listed?: boolean;
           low_stock_kg?: number;
           name?: Json;
           price_per_kg?: number | null;
@@ -269,6 +272,7 @@ export type Database = {
           id: string;
           image_url: string | null;
           kind: string;
+          listed: boolean;
           name: Json;
           prices: Json;
           roast_level: string;
@@ -285,6 +289,7 @@ export type Database = {
           id: string;
           image_url?: string | null;
           kind: string;
+          listed?: boolean;
           name: Json;
           prices?: Json;
           roast_level: string;
@@ -301,6 +306,7 @@ export type Database = {
           id?: string;
           image_url?: string | null;
           kind?: string;
+          listed?: boolean;
           name?: Json;
           prices?: Json;
           roast_level?: string;
@@ -537,6 +543,7 @@ export type Database = {
       set_order_status: { Args: { p_order_id: string; p_status: string }; Returns: undefined };
       set_sales_open: { Args: { p_open: boolean; p_seen: string | null }; Returns: undefined };
       set_payment_status: { Args: { p_order_id: string; p_status: string }; Returns: undefined };
+      showcase_catalog: { Args: never; Returns: Json };
       update_quote_request: {
         Args: { p_admin_notes: string; p_final_price: number | null; p_id: string; p_seen_at: string; p_status: string };
         Returns: undefined;

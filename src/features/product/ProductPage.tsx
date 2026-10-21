@@ -3,10 +3,11 @@ import { Link, useParams } from 'react-router';
 import { formatSize } from '@/core/format';
 import { isBulkOnly } from '@/core/cart';
 import { offeredSizes, productPrice } from '@/core/pricing';
+import { onDisplay } from '@/core/showcase';
 import { isProductAvailable, maxBags } from '@/core/stock';
-import { PACK_SIZES, type PackSize } from '@/core/types';
+import { PACK_SIZES, type PackSize, type Product } from '@/core/types';
 import { NotFound } from '@/app/NotFound';
-import { useCatalog, useSettings } from '@/data/hooks';
+import { useBrowseOnly, useCatalog, useSettings } from '@/data/hooks';
 import { useCart } from '@/shared/cart/CartProvider';
 import { ProductCard } from '@/shared/product/ProductCard';
 import { fmt, useI18n } from '@/i18n';
@@ -27,32 +28,28 @@ export function ProductPage() {
 }
 
 function ProductDetails({ slug }: { slug?: string }) {
-  const { t, l, money } = useI18n();
+  const { t, l } = useI18n();
   const { products, originIndex } = useCatalog();
   const settings = useSettings();
-  const cart = useCart();
-  const product = products.find((p) => p.slug === slug && p.active);
+  // sales closed: the product is shown without price, size choice or cart button (src/core/showcase.ts)
+  const browseOnly = useBrowseOnly();
+  const product = products.find((p) => p.slug === slug && onDisplay(p));
   const sizes = product ? offeredSizes(product) : [];
   // B2B blends open on their smallest bag (the paid sample); the others on 1 kg
   const start = product?.kind !== 'b2b' && sizes.includes(1000) ? 1000 : sizes[0];
   const [chosen, setSize] = useState<PackSize | undefined>(start);
   // a size that stops being offered while the page is open (price removed in the admin) is never kept
   const size = chosen && sizes.includes(chosen) ? chosen : start;
-  const [qty, setQty] = useState(1);
-  usePageTitle(product && size ? l(product.name) : t.common.notFound);
+  // for sale: a size with a price; on display (sales closed): the product alone
+  const showable = product !== undefined && (browseOnly || size !== undefined);
+  usePageTitle(showable ? l(product.name) : t.common.notFound);
 
-  if (!product || !size) return <NotFound />;
+  if (!showable) return <NotFound />;
 
   const view = recipeView(product.recipe, originIndex, l);
-  const price = productPrice(product, size) ?? 0;
-  const inCart = cart.items.reduce(
-    (s, i) => (i.type === 'product' && i.productId === product.id && i.size === size ? s + i.qty : s),
-    0,
-  );
-  // an empty or switched-off origin makes every size unavailable (src/core/stock.ts isProductAvailable)
-  const sellable = isProductAvailable(product.recipe, originIndex);
-  const available = sellable ? Math.max(0, maxBags(product.recipe, size, originIndex, settings.roastLossPercent) - inCart) : 0;
-  const related = products.filter((p) => p.active && p.kind === product.kind && p.id !== product.id).slice(0, 3);
+  // the bag drawn: the chosen size, or 1 kg while nothing is for sale
+  const shownSize = size ?? 1000;
+  const related = products.filter((p) => onDisplay(p) && p.kind === product.kind && p.id !== product.id).slice(0, 3);
 
   return (
     <div className="container page">
@@ -63,8 +60,8 @@ function ProductDetails({ slug }: { slug?: string }) {
       <div className="product">
         <div className="product-media">
           <ProductVisual
-            sticker={productSticker(product.name.fr, product.recipe, product.roastLevel, size, originIndex)}
-            alt={fmt(t.media.pouch, { name: l(product.name), size: formatSize(size) })}
+            sticker={productSticker(product.name.fr, product.recipe, product.roastLevel, shownSize, originIndex)}
+            alt={fmt(t.media.pouch, { name: l(product.name), size: formatSize(shownSize) })}
             image={product.image}
             priority
           />
@@ -116,57 +113,10 @@ function ProductDetails({ slug }: { slug?: string }) {
             </ul>
           </div>
 
-          <div className="buy panel stack">
-            <span className="label">{t.product.chooseSize}</span>
-            <div className="seg" role="group" aria-label={t.common.size}>
-              {PACK_SIZES.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  aria-pressed={size === s}
-                  disabled={!sizes.includes(s)}
-                  title={!sizes.includes(s) ? t.product.notOffered : undefined}
-                  onClick={() => {
-                    setSize(s);
-                    setQty(1);
-                  }}
-                >
-                  {formatSize(s)}
-                  {sizes.includes(s) && <span className="seg-price num"> · {money(productPrice(product, s)!)}</span>}
-                </button>
-              ))}
-            </div>
-            {product.kind === 'b2b' && (
-              <p className={isBulkOnly(product, size) ? 'notice small' : 'small muted'}>
-                {isBulkOnly(product, size) ? fmt(t.product.bulkOnly, { kg: settings.b2bThresholdKg }) : t.product.sampleBadge}
-              </p>
-            )}
-            <div className="spread">
-              <QtyStepper value={qty} onChange={setQty} max={Math.max(1, available)} label={t.common.qty} />
-              <Availability
-                recipe={product.recipe}
-                size={size}
-                origins={originIndex}
-                roastLossPercent={settings.roastLossPercent}
-              />
-            </div>
-            <div className="spread">
-              <strong className="buy-total num">{money(price * qty)}</strong>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={available < qty || price < 1}
-                onClick={() => cart.addProduct(product.id, size, qty, `${l(product.name)} · ${formatSize(size)} ×${qty}`)}
-              >
-                <Icon name="cart" size={18} /> {t.common.addToCart}
-              </button>
-            </div>
-            <p className="small muted icon-line">
-              <Icon name="bean" size={16} /> {t.product.grindTip}
-            </p>
-          </div>
+          {!browseOnly && size && <BuyPanel product={product} size={size} sizes={sizes} onSize={setSize} />}
 
-          {product.kind === 'b2b' && (
+          {/* how to order a B2B blend: only while it can be ordered */}
+          {!browseOnly && product.kind === 'b2b' && (
             <div className="notice">
               {fmt(t.product.b2bNote, { kg: settings.b2bThresholdKg })} <Link to="/b2b">
                 {t.product.b2bMore} <span className="dir-arrow" aria-hidden="true">→</span>
@@ -186,6 +136,75 @@ function ProductDetails({ slug }: { slug?: string }) {
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+/** Size, quantity and the cart button: only while the sales are open. */
+function BuyPanel({ product, size, sizes, onSize }: { product: Product; size: PackSize; sizes: PackSize[]; onSize: (s: PackSize) => void }) {
+  const { t, l, money } = useI18n();
+  const { originIndex } = useCatalog();
+  const settings = useSettings();
+  const cart = useCart();
+  const [qty, setQty] = useState(1);
+  const price = productPrice(product, size) ?? 0;
+  const inCart = cart.items.reduce(
+    (s, i) => (i.type === 'product' && i.productId === product.id && i.size === size ? s + i.qty : s),
+    0,
+  );
+  // an empty or switched-off origin makes every size unavailable (src/core/stock.ts isProductAvailable)
+  const sellable = isProductAvailable(product.recipe, originIndex);
+  const available = sellable ? Math.max(0, maxBags(product.recipe, size, originIndex, settings.roastLossPercent) - inCart) : 0;
+
+  return (
+    <div className="buy panel stack">
+      <span className="label">{t.product.chooseSize}</span>
+      <div className="seg" role="group" aria-label={t.common.size}>
+        {PACK_SIZES.map((s) => (
+          <button
+            key={s}
+            type="button"
+            aria-pressed={size === s}
+            disabled={!sizes.includes(s)}
+            title={!sizes.includes(s) ? t.product.notOffered : undefined}
+            onClick={() => {
+              onSize(s);
+              setQty(1);
+            }}
+          >
+            {formatSize(s)}
+            {sizes.includes(s) && <span className="seg-price num"> · {money(productPrice(product, s)!)}</span>}
+          </button>
+        ))}
+      </div>
+      {product.kind === 'b2b' && (
+        <p className={isBulkOnly(product, size) ? 'notice small' : 'small muted'}>
+          {isBulkOnly(product, size) ? fmt(t.product.bulkOnly, { kg: settings.b2bThresholdKg }) : t.product.sampleBadge}
+        </p>
+      )}
+      <div className="spread">
+        <QtyStepper value={qty} onChange={setQty} max={Math.max(1, available)} label={t.common.qty} />
+        <Availability
+          recipe={product.recipe}
+          size={size}
+          origins={originIndex}
+          roastLossPercent={settings.roastLossPercent}
+        />
+      </div>
+      <div className="spread">
+        <strong className="buy-total num">{money(price * qty)}</strong>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={available < qty || price < 1}
+          onClick={() => cart.addProduct(product.id, size, qty, `${l(product.name)} · ${formatSize(size)} ×${qty}`)}
+        >
+          <Icon name="cart" size={18} /> {t.common.addToCart}
+        </button>
+      </div>
+      <p className="small muted icon-line">
+        <Icon name="bean" size={16} /> {t.product.grindTip}
+      </p>
     </div>
   );
 }

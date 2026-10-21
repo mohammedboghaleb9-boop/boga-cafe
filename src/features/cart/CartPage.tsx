@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { summarizeCart } from '@/core/cart';
 import { formatKg, formatNumber, formatSize } from '@/core/format';
-import { useCatalog, useSettings } from '@/data/hooks';
+import { useBrowseOnly, useCatalog, useSettings } from '@/data/hooks';
 import { QuoteRequestForm } from '@/features/b2b';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink, type MessageDraft } from '@/services/notifications';
@@ -11,12 +11,20 @@ import { Icon } from '@/shared/ui/Icon';
 import { QtyStepper } from '@/shared/ui/bits';
 import { useCart } from '@/shared/cart/CartProvider';
 import { LineDetails } from '@/shared/cart/CartLineView';
+import { OrdersClosed } from '@/shared/layout/OrdersClosed';
 import './cart.css';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 export function CartPage() {
-  const { t, l, money, date } = useI18n();
+  const { t } = useI18n();
+  const browseOnly = useBrowseOnly();
   usePageTitle(t.cart.title);
+  // sales closed: no line, total, checkout or B2B form (src/core/showcase.ts); the server and the database refuse anyway
+  return browseOnly ? <OrdersClosed title={t.cart.title} /> : <CartContents />;
+}
+
+function CartContents() {
+  const { t, l, money, date } = useI18n();
   const cart = useCart();
   const { products, originIndex } = useCatalog();
   const settings = useSettings();
@@ -121,13 +129,7 @@ export function CartPage() {
             </p>
           ))}
 
-          {/* a B2B cart says it once, in its own box below */}
-          {!settings.salesOpen && !summary.isB2B && (
-            <p className="notice notice-warn small" role="status">
-              {t.checkout.errors.sales_closed}
-            </p>
-          )}
-          {!summary.isB2B && settings.salesOpen && (
+          {!summary.isB2B && (
             <Link
               to="/checkout"
               className="btn btn-primary btn-block"
@@ -158,11 +160,7 @@ export function CartPage() {
           >
             <Icon name="whatsapp" size={18} /> {t.b2b.largeCta}
           </a>
-          {!settings.salesOpen ? (
-            <p className="notice notice-warn" role="status">
-              {t.checkout.errors.sales_closed}
-            </p>
-          ) : unavailable ? (
+          {unavailable ? (
             <p className="notice notice-bad" role="alert">
               {t.checkout.errors.unavailable}
             </p>

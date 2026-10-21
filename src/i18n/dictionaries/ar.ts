@@ -18,7 +18,8 @@ export const ar: Dict = {
 
   common: {
     currency: 'درهم',
-    salesNotice: 'الموقع قيد التجهيز: الطلبات غير مفتوحة بعد.',
+    salesNotice: 'المتجر قيد التجهيز — الطلبات غير متاحة حالياً',
+    browseOnly: 'اكتشف قهوتنا وتواصل معنا لأي سؤال.',
     noOrigins: 'لا يوجد أي مصدر متاح حالياً.',
     addToCart: 'أضف إلى السلة',
     added: 'أُضيف إلى السلة',
@@ -228,6 +229,7 @@ export const ar: Dict = {
     blendsTitle: 'الخلطات الثلاث للمهنيين',
     largeTitle: 'طلب كبير؟',
     largeText: 'فوق {kg} كلغ، تواصل مباشرة مع الفريق أو املأ سلتك وأرسلها كطلب.',
+    largeTextBrowse: 'فوق {kg} كلغ، تواصل مباشرة مع الفريق.',
     largeCta: 'تواصل عبر واتساب',
     businessType: 'نوع النشاط',
     types: {
