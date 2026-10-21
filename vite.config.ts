@@ -33,8 +33,8 @@ function isPublishableKey(key: string): boolean {
 const PREVIEW_MODE = 'workers-preview';
 
 /**
- * The production build (no VITE_DATA_MODE: the real site before the shop opens) gets the "coming soon"
- * page as its entry instead of the shop: src/coming-soon, nothing of src/app, so no example catalog,
+ * A build without VITE_DATA_MODE (the local default, and production's fallback: scripts/build-target.mjs) gets the
+ * "coming soon" page as its entry instead of the shop: src/coming-soon, nothing of src/app, so no example catalog,
  * price, cart or form ships (owner, 2026-10-16). Every replacement must apply, or the build stops:
  * a changed index.html never ships the shop by accident. When the files are written, the build checks the
  * folder it wrote (scripts/real-build.mjs) and fails on anything the page must not ship.
@@ -118,7 +118,7 @@ function prelaunchNoindex() {
 
 export default defineConfig(({ command, mode: asked }) => {
   const inWorkersBuilds = command === 'build' && process.env.WORKERS_CI === '1';
-  // production (main), whatever `--mode` the build command passes: "coming soon" or a stopped build, below
+  // production (main), whatever `--mode` the build command passes: the live shop or a stopped build, below
   const productionDeploy = command === 'build' && isProductionDeploy(process.env);
   // a preview: the default build of another branch (`--mode demo|e2e…` builds stay what they ask for)
   const preview = inWorkersBuilds && asked === 'production' && !productionDeploy;
@@ -131,7 +131,8 @@ export default defineConfig(({ command, mode: asked }) => {
   const mode = preview || liveSite ? PREVIEW_MODE : asked;
   const demo = mode === 'demo';
   const env = { ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env };
-  // what ships, decided first: "coming soon" without VITE_DATA_MODE; on production nothing else, or the build stops
+  // what ships, decided first (scripts/build-target.mjs): on production the live shop or a stopped build; elsewhere
+  // "coming soon" without VITE_DATA_MODE
   const comingSoon = command === 'build' && buildTarget({ dataMode: env.VITE_DATA_MODE, productionDeploy }) === 'coming-soon';
   // the simulated card page must never reach real customers (docs/09, .env.example)
   if (command === 'build' && !demo && env.VITE_CARD_GATEWAY === 'demo') {

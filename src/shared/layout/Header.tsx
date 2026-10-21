@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import type { Locale } from '@/core/types';
-import { useDb, useSettings } from '@/data/hooks';
+import { useDb } from '@/data/hooks';
 import { DEMO_DATA } from '@/data/mode';
 import { useCart } from '@/shared/cart/CartProvider';
 import { LOCALES, useI18n } from '@/i18n';
@@ -30,8 +30,8 @@ export function LanguageSwitcher() {
 export function Header() {
   const { t, l } = useI18n();
   const { count } = useCart();
-  const { content } = useDb();
-  const { salesOpen } = useSettings();
+  const { content, settings } = useDb();
+  const { salesOpen } = settings;
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   // Escape closes the open menu and gives the focus back to its button

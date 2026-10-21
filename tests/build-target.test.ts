@@ -9,7 +9,7 @@ describe('what a build ships', () => {
 
   it('never ships the prototype, or the page by accident, on the production build of main', () => {
     expect(() => buildTarget({ dataMode: 'demo', productionDeploy: true })).toThrow(/production is the live shop/);
-    expect(() => buildTarget({ productionDeploy: true })).toThrow(/production is the live shop/);
+    expect(() => buildTarget({ productionDeploy: true })).toThrow(/must set VITE_DATA_MODE=supabase/);
   });
 
   it('"coming soon" again is a change to PRODUCTION_SITE: then the page, and no shop from a variable', () => {

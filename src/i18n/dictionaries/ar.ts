@@ -19,7 +19,7 @@ export const ar: Dict = {
   common: {
     currency: 'درهم',
     salesNotice: 'الموقع قيد التجهيز: الطلبات غير مفتوحة بعد.',
-    noOrigins: 'لا يوجد أي أصل متاح حالياً.',
+    noOrigins: 'لا يوجد أي مصدر متاح حالياً.',
     addToCart: 'أضف إلى السلة',
     added: 'أُضيف إلى السلة',
     viewCart: 'عرض السلة',

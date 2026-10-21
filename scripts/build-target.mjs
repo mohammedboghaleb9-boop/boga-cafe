@@ -29,6 +29,7 @@ export function buildTarget({ dataMode = '', productionDeploy, productionSite = 
   }
   if (productionDeploy && productionSite === 'shop') {
     // the live shop only: never the prototype, never the page by accident
+    if (dataMode === '') throw new Error('No VITE_DATA_MODE in the production build of main: production is the live shop (scripts/build-target.mjs PRODUCTION_SITE), and .env.workers-preview must set VITE_DATA_MODE=supabase.');
     if (dataMode !== 'supabase') {
       throw new Error(`VITE_DATA_MODE="${dataMode}" in the production build of main: production is the live shop (scripts/build-target.mjs PRODUCTION_SITE), built from .env.workers-preview. Remove the variable from the Cloudflare build settings.`);
     }
