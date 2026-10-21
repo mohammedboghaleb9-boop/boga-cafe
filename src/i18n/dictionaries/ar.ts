@@ -229,6 +229,7 @@ export const ar: Dict = {
     blendsTitle: 'الخلطات الثلاث للمهنيين',
     largeTitle: 'طلب كبير؟',
     largeText: 'فوق {kg} كلغ، تواصل مباشرة مع الفريق أو املأ سلتك وأرسلها كطلب.',
+    largeTextBrowse: 'فوق {kg} كلغ، تواصل مباشرة مع الفريق.',
     largeCta: 'تواصل عبر واتساب',
     businessType: 'نوع النشاط',
     types: {

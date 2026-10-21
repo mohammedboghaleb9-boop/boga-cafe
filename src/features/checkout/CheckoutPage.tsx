@@ -129,7 +129,6 @@ function CheckoutForm() {
         <p className="muted">{t.checkout.noAccount}</p>
       </div>
 
-
       {(summary.isB2B || summary.hasProblems) && (
         <p className="notice notice-warn" style={{ marginBlockEnd: 16 }}>
           {summary.isB2B

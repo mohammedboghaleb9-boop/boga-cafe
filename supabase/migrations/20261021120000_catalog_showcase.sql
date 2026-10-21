@@ -11,6 +11,9 @@
 -- level, restock date, sale switch or change time), and a product only when every origin of its recipe is listed
 -- too. Nobody gets a new write: no grant on the tables changes, save_product and save_origin keep their column lists
 -- (a new row starts unlisted, an edit keeps the flag), and only the SQL Editor sets `listed`.
+-- While the sales are closed no price leaves the database at all: the visitors' read of the products and origins
+-- tables (prices, price per kg, stock, restock date) shows the rows for sale only once the sales are open
+-- (sales_open(): exactly true, as the gate of commit_order); admins still read every row.
 -- Rollback: supabase/manual/20261021120000_catalog_showcase.rollback.sql (SQL Editor).
 
 alter table public.products add column listed boolean not null default false;
@@ -51,3 +54,19 @@ $$;
 
 revoke all on function public.showcase_catalog() from public;
 grant execute on function public.showcase_catalog() to anon, authenticated, service_role;
+
+create function public.sales_open()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce((select c.settings -> 'salesOpen' = 'true'::jsonb from public.site_config c where c.id = 1), false);
+$$;
+
+revoke all on function public.sales_open() from public;
+grant execute on function public.sales_open() to anon, authenticated, service_role;
+
+alter policy "catalog read" on public.products using ((active and public.sales_open()) or public.is_admin());
+alter policy "catalog read" on public.origins using ((active and public.sales_open()) or public.is_admin());

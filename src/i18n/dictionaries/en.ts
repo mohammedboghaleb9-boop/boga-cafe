@@ -236,6 +236,8 @@ export const en = {
     blendsTitle: 'The 3 B2B blends',
     largeTitle: 'Large order?',
     largeText: 'Above {kg} kg, contact the team directly or fill your cart and send it as a request.',
+    // while the sales are closed: no cart
+    largeTextBrowse: 'Above {kg} kg, contact the team directly.',
     largeCta: 'Contact on WhatsApp',
     businessType: 'Business type',
     types: {

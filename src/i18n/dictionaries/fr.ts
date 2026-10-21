@@ -232,6 +232,7 @@ export const fr: Dict = {
     blendsTitle: 'Les 3 blends B2B',
     largeTitle: 'Grosse commande ?',
     largeText: 'Au-delà de {kg} kg, contactez directement l’équipe ou remplissez votre panier et envoyez-le en demande.',
+    largeTextBrowse: 'Au-delà de {kg} kg, contactez directement l’équipe.',
     largeCta: 'Contacter sur WhatsApp',
     businessType: 'Type d’activité',
     types: {

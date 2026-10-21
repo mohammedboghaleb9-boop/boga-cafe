@@ -40,10 +40,11 @@ function ProductDetails({ slug }: { slug?: string }) {
   const [chosen, setSize] = useState<PackSize | undefined>(start);
   // a size that stops being offered while the page is open (price removed in the admin) is never kept
   const size = chosen && sizes.includes(chosen) ? chosen : start;
-  const buyable = !browseOnly && size !== undefined;
-  usePageTitle(product && (buyable || browseOnly) ? l(product.name) : t.common.notFound);
+  // for sale: a size with a price; on display (sales closed): the product alone
+  const showable = product !== undefined && (browseOnly || size !== undefined);
+  usePageTitle(showable ? l(product.name) : t.common.notFound);
 
-  if (!product || !(buyable || browseOnly)) return <NotFound />;
+  if (!showable) return <NotFound />;
 
   const view = recipeView(product.recipe, originIndex, l);
   // the bag drawn: the chosen size, or 1 kg while nothing is for sale
@@ -112,9 +113,10 @@ function ProductDetails({ slug }: { slug?: string }) {
             </ul>
           </div>
 
-          {buyable && size && <BuyPanel product={product} size={size} sizes={sizes} onSize={setSize} />}
+          {!browseOnly && size && <BuyPanel product={product} size={size} sizes={sizes} onSize={setSize} />}
 
-          {product.kind === 'b2b' && (
+          {/* how to order a B2B blend: only while it can be ordered */}
+          {!browseOnly && product.kind === 'b2b' && (
             <div className="notice">
               {fmt(t.product.b2bNote, { kg: settings.b2bThresholdKg })} <Link to="/b2b">
                 {t.product.b2bMore} <span className="dir-arrow" aria-hidden="true">→</span>

@@ -99,6 +99,18 @@ describe('the shop reads the display', () => {
     expect(calls).toEqual([]);
   });
 
+  it('the owner opens the sales: the next read drops the listed rows (only what is for sale stays)', async () => {
+    const settings: Record<string, unknown> = {};
+    const { calls, client } = fakeClient(settings, answers);
+    const store = createCatalogStore(client, { showcase: true });
+    await store.load();
+    expect(store.db.get().products).toHaveLength(1);
+    settings.salesOpen = true;
+    await store.refresh();
+    expect(store.db.get().products).toEqual([]);
+    expect(calls).toEqual(['showcase_catalog']); // asked once, while closed
+  });
+
   it('the display read fails: the site stays up with its empty lists', async () => {
     const { client } = fakeClient({}, async () => ({ data: null, error: new Error('function showcase_catalog does not exist') }));
     const store = createCatalogStore(client, { showcase: true });

@@ -1,13 +1,14 @@
 -- SQL Editor block for 20261021120000_catalog_showcase (P5, owner 2026-10-21: the catalog shown without prices).
 -- WHEN: after the PR is merged into main, before the site reads the showcase (VITE_SHOWCASE stays off until then).
--- WHAT IT CHANGES: a `listed` column on products and origins, false for every row (nothing is shown yet), and the
--- public read showcase_catalog(). NO ROW changes: no price, stock, sale switch or setting. Then the version is
+-- WHAT IT CHANGES: a `listed` column on products and origins, false for every row (nothing is shown yet), the
+-- public read showcase_catalog(), and the visitors' read of products and origins limited to the rows for sale once the
+-- sales are open (sales_open()). NO ROW changes: no price, stock, sale switch or setting. Then the version is
 -- recorded once in the migration history (the file's own version, as for 20261020090000).
 -- HOW: paste ALL of it (from "begin;" to the last select), select nothing, press Run. One transaction: any check that
 -- fails raises "stop: ..." and nothing is changed. The text between the two markers is the migration file unchanged
 -- (tests/manual-sql.test.ts keeps them equal).
 -- RESULT: the last select reads columns 2, listed_rows 0, definer true, path_set true, anon_can_run true,
--- public_can_run false, history_rows 1.
+-- public_can_run false, history_rows 1, read_rules 2.
 -- NEXT (its own approval): supabase/manual/20261021120000_catalog_showcase.listing.sql lists the 16 compared rows.
 -- ROLLBACK (after a commit): supabase/manual/20261021120000_catalog_showcase.rollback.sql, then remove the history row.
 
@@ -19,8 +20,13 @@ begin
   if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name in ('products', 'origins') and column_name = 'listed') then
     raise exception 'stop: a listed column is already there (nothing to do): tell Claude';
   end if;
-  if to_regprocedure('public.showcase_catalog()') is not null then
-    raise exception 'stop: showcase_catalog() is already there: tell Claude';
+  if to_regprocedure('public.showcase_catalog()') is not null or to_regprocedure('public.sales_open()') is not null then
+    raise exception 'stop: showcase_catalog() or sales_open() is already there: tell Claude';
+  end if;
+  -- the two read rules this replaces are init's (nothing else changed them since)
+  if (select count(*) from pg_policies where schemaname = 'public' and tablename in ('products', 'origins') and policyname = 'catalog read'
+        and qual = '(active OR is_admin())') <> 2 then
+    raise exception 'stop: the catalog read rules of products and origins are not the ones expected: tell Claude';
   end if;
   if exists (select 1 from supabase_migrations.schema_migrations where version = '20261021120000') then
     raise exception 'stop: 20261021120000 is already in the history: tell Claude';
@@ -44,6 +50,9 @@ end $$;
 -- level, restock date, sale switch or change time), and a product only when every origin of its recipe is listed
 -- too. Nobody gets a new write: no grant on the tables changes, save_product and save_origin keep their column lists
 -- (a new row starts unlisted, an edit keeps the flag), and only the SQL Editor sets `listed`.
+-- While the sales are closed no price leaves the database at all: the visitors' read of the products and origins
+-- tables (prices, price per kg, stock, restock date) shows the rows for sale only once the sales are open
+-- (sales_open(): exactly true, as the gate of commit_order); admins still read every row.
 -- Rollback: supabase/manual/20261021120000_catalog_showcase.rollback.sql (SQL Editor).
 
 alter table public.products add column listed boolean not null default false;
@@ -84,6 +93,22 @@ $$;
 
 revoke all on function public.showcase_catalog() from public;
 grant execute on function public.showcase_catalog() to anon, authenticated, service_role;
+
+create function public.sales_open()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce((select c.settings -> 'salesOpen' = 'true'::jsonb from public.site_config c where c.id = 1), false);
+$$;
+
+revoke all on function public.sales_open() from public;
+grant execute on function public.sales_open() to anon, authenticated, service_role;
+
+alter policy "catalog read" on public.products using ((active and public.sales_open()) or public.is_admin());
+alter policy "catalog read" on public.origins using ((active and public.sales_open()) or public.is_admin());
 -- <<< 20261021120000_catalog_showcase.sql
 
 insert into supabase_migrations.schema_migrations (version, name) values ('20261021120000', 'catalog_showcase');
@@ -98,4 +123,6 @@ select
   (select proconfig @> array['search_path=public, pg_temp'] from pg_proc where oid = 'public.showcase_catalog()'::regprocedure) as path_set,
   has_function_privilege('anon', 'public.showcase_catalog()', 'execute') as anon_can_run,
   exists (select 1 from pg_proc p, aclexplode(p.proacl) a where p.oid = 'public.showcase_catalog()'::regprocedure and a.grantee = 0) as public_can_run,
-  (select count(*) from supabase_migrations.schema_migrations where version = '20261021120000') as history_rows;
+  (select count(*) from supabase_migrations.schema_migrations where version = '20261021120000') as history_rows,
+  (select count(*) from pg_policies where schemaname = 'public' and tablename in ('products', 'origins') and policyname = 'catalog read'
+     and qual like '%sales_open()%') as read_rules;

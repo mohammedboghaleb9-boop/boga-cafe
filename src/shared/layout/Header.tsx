@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import type { Locale } from '@/core/types';
-import { useDb } from '@/data/hooks';
+import { useBrowseOnly, useDb } from '@/data/hooks';
 import { DEMO_DATA } from '@/data/mode';
 import { useCart } from '@/shared/cart/CartProvider';
 import { LOCALES, useI18n } from '@/i18n';
@@ -30,8 +30,9 @@ export function LanguageSwitcher() {
 export function Header() {
   const { t, l } = useI18n();
   const { count } = useCart();
-  const { content, settings } = useDb();
-  const { salesOpen } = settings;
+  const { content } = useDb();
+  // sales closed: one notice here, and no cart count (the cart page offers nothing to buy)
+  const browseOnly = useBrowseOnly();
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   // Escape closes the open menu and gives the focus back to its button
@@ -65,7 +66,7 @@ export function Header() {
       <div className="announce">
         <div className="container">{l(content.announcement)}</div>
       </div>
-      {!salesOpen && (
+      {browseOnly && (
         <p className="sales-notice">
           <span className="container">{t.common.salesNotice}</span>
         </p>
@@ -94,7 +95,7 @@ export function Header() {
             <LanguageSwitcher />
             <Link to="/cart" className="cart-btn" aria-label={`${t.nav.cart} (${count})`}>
               <Icon name="cart" />
-              {count > 0 && <span className="cart-count num">{count}</span>}
+              {count > 0 && !browseOnly && <span className="cart-count num">{count}</span>}
             </Link>
             <button
               ref={menuButton}

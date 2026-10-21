@@ -45,8 +45,8 @@ fresh
 [ "$(q -c "select count(*) from public.products")/$(q -c "select count(*) from public.origins")" = "10/6" ] || fail "the seed is not 10 products and 6 origins"
 stops "$M.listing.sql" "is not applied"
 out=$(q -f "$M.editor.sql")
-[ "$(tail -1 <<<"$out")" = "2|0|t|t|t|f|1" ] || fail "editor result: $(tail -1 <<<"$out")"
-echo "ok - editor block: columns 2, nothing listed, definer, path set, anon may run it, PUBLIC may not, history 1"
+[ "$(tail -1 <<<"$out")" = "2|0|t|t|t|f|1|2" ] || fail "editor result: $(tail -1 <<<"$out")"
+echo "ok - editor block: columns 2, nothing listed, definer, path set, anon may run it, PUBLIC may not, history 1, both read rules gated"
 stops "$M.editor.sql" "already there"
 [ "$(q -c "set role anon; select public.showcase_catalog()")" = '{"origins": [], "products": []}' ] || fail "before the listing a visitor must see nothing"
 echo "ok - before the listing a visitor reads empty lists"
@@ -67,8 +67,8 @@ out=$(q -f "$M.unlist.sql")
 [ "$(tail -1 <<<"$out")" = "0|0" ] || fail "unlist result: $(tail -1 <<<"$out")"
 echo "ok - unlist: nothing listed, nothing shown"
 out=$(q -f "$M.rollback.sql")
-[ "$(tail -1 <<<"$out")" = "f|0" ] || fail "rollback result: $(tail -1 <<<"$out")"
-echo "ok - rollback: no function, no column"
+[ "$(tail -1 <<<"$out")" = "f|0|2" ] || fail "rollback result: $(tail -1 <<<"$out")"
+echo "ok - rollback: no function, no column, init's read rules back"
 
 # the listing stops, changing nothing, when the catalog is not the compared one
 for change in \

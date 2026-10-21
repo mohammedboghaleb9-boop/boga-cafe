@@ -40,7 +40,9 @@ export function CustomBlendPage() {
   const browseOnly = useBrowseOnly();
   const { minPercent, maxOrigins } = settings.customBlend;
 
-  const [lines, setLines] = useState<RecipeLine[]>(() => EXAMPLE.filter((e) => originIndex[e.originId]));
+  const [picked, setLines] = useState<RecipeLine[]>(() => EXAMPLE.filter((e) => originIndex[e.originId]));
+  // an origin that left the catalog since (a new read) drops out of the blend instead of breaking the page
+  const lines = picked.filter((x) => originIndex[x.originId]);
   const [size, setSize] = useState<PackSize>(1000);
   const [qty, setQty] = useState(1);
 

@@ -7,7 +7,7 @@ set client_min_messages = warning;
 create extension if not exists pgtap;
 
 begin;
-select plan(30);
+select plan(33);
 
 insert into auth.users values ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000003');
 insert into public.admin_users values
@@ -19,13 +19,16 @@ insert into public.site_config (id, settings, content) values (1, '{"b2bThreshol
 insert into public.origins (id, name, country_code, species, roast_level, stock_kg, low_stock_kg, price_per_kg, restock_date, active) values
   ('brazil', '{"fr": "Brésil"}', 'BR', 'arabica', 'medium', 40, 7, null, '2026-11-12', false),
   ('vietnam', '{"fr": "Viêt Nam"}', 'VN', 'robusta', 'medium-dark', 0, 5, null, null, false),
-  ('uganda', '{"fr": "Ouganda"}', 'UG', 'robusta', 'dark', 0, 5, null, null, false);
+  ('uganda', '{"fr": "Ouganda"}', 'UG', 'robusta', 'dark', 0, 5, null, null, false),
+  -- for sale, with a price: readable by visitors only once the sales are open
+  ('colombia', '{"fr": "Colombie"}', 'CO', 'arabica', 'medium', 30, 5, 220, null, true);
 -- a stored price on a hidden product: it must never reach a visitor
 insert into public.products (id, slug, kind, name, roast_level, prices, active, sort_order) values
   ('shown', 'shown', 'signature', '{"fr": "Montré"}', 'medium', '{"1000": 200}', false, 2),
   ('mixed', 'mixed', 'signature', '{"fr": "Mélange"}', 'medium', '{}', false, 1),
-  ('hidden', 'hidden', 'signature', '{"fr": "Caché"}', 'medium', '{}', false, 3);
-insert into public.product_recipes values ('shown', 'brazil', 70), ('shown', 'vietnam', 30), ('mixed', 'brazil', 50), ('mixed', 'uganda', 50), ('hidden', 'brazil', 100);
+  ('hidden', 'hidden', 'signature', '{"fr": "Caché"}', 'medium', '{}', false, 3),
+  ('onsale', 'onsale', 'single-origin', '{"fr": "En vente"}', 'medium', '{"1000": 250}', true, 4);
+insert into public.product_recipes values ('shown', 'brazil', 70), ('shown', 'vietnam', 30), ('mixed', 'brazil', 50), ('mixed', 'uganda', 50), ('hidden', 'brazil', 100), ('onsale', 'colombia', 100);
 insert into public.shipping_rates (id, city, base_fee, included_kg, extra_per_kg, active) values ('oujda', '{"fr": "Oujda"}', 20, 3, 10, true);
 insert into public.payment_methods (id, label) values ('card', '{"fr": "Carte"}');
 
@@ -61,6 +64,9 @@ select ok(has_function_privilege('anon', 'public.showcase_catalog()', 'execute')
   'visitors and signed-in users may run it');
 select ok(not exists (select 1 from pg_proc p, aclexplode(p.proacl) a where p.oid = 'public.showcase_catalog()'::regprocedure and a.grantee = 0),
   'PUBLIC may not (only the roles granted)');
+select ok((select prosecdef and proconfig @> array['search_path=public, pg_temp'] from pg_proc where oid = 'public.sales_open()'::regprocedure)
+      and not exists (select 1 from pg_proc p, aclexplode(p.proacl) a where p.oid = 'public.sales_open()'::regprocedure and a.grantee = 0),
+  'sales_open() too: its owner, a fixed path, not PUBLIC');
 
 -- ── what a visitor reads ──
 set local role anon;
@@ -79,9 +85,14 @@ select is((select j -> 'products' -> 0 -> 'recipe' from shown), '[{"percent": 70
 select ok((select j::text !~ '"(prices|price_per_kg|stock_kg|low_stock_kg|restock_date|active|updated_at|listed)"' and j::text !~ '(200|2026-11-12)' from shown),
   'no price, stock, low-stock level, restock date, sale switch or change time anywhere in the answer (the stored 200 DH and the date stay inside)');
 set local role anon;
-select is((select count(*)::int from public.products) + (select count(*)::int from public.origins) + (select count(*)::int from public.product_recipes), 0,
-  'the tables still show visitors only the rows for sale: none (a listed row is not readable there, with its price)');
+select is((select count(*)::int from public.products) + (select count(*)::int from public.origins), 0,
+  'sales closed: the tables show visitors nothing, not even a row for sale (no price, stock or date leaves the database)');
 reset role;
+select pg_temp.token('00000000-0000-0000-0000-000000000003', 'aal2');
+set local role authenticated;
+select is((select count(*)::int from public.products) || '/' || (select count(*)::int from public.origins), '4/4', 'an admin still reads every row');
+reset role;
+select set_config('request.jwt.claims', '', true);
 
 -- ── nobody lists a row from the site: no write on the tables, the panel's saves keep the flag ──
 set local role anon;
@@ -114,6 +125,11 @@ update public.site_config set settings = settings || '{"salesOpen": true}';
 set local role service_role;
 select throws_ok($$select * from public.commit_order(pg_temp.order_of(), '', '', '')$$, 'P0001', 'invalid_order:product', 'sales open: a listed product is still not for sale');
 select throws_ok($$select public.check_order(pg_temp.order_of())$$, 'P0001', 'invalid_order:product', 'check_order says so too');
+reset role;
+select set_config('request.jwt.claims', '', true);
+set local role anon;
+select is((select string_agg(id, ',' order by id) from public.products) || ' ' || (select string_agg(id, ',' order by id) from public.origins), 'onsale colombia',
+  'sales open: visitors read the rows for sale, and only those (listed rows stay out)');
 reset role;
 -- a B2B request reaches the database only through the storefront function (service_role), which drops a line that is
 -- not for sale (src/core/requests.ts; src/server/__tests__/storefront.test.ts): visitors cannot call it themselves. The

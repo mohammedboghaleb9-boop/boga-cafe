@@ -332,6 +332,10 @@ describe('catalog_showcase (the catalog shown without prices, owner 2026-10-21)'
     expect(sql.match(/add column listed boolean not null default false;/g)).toHaveLength(2);
     expect(sql).toMatch(/security definer\nset search_path = public, pg_temp/);
     expect(sql).toContain('revoke all on function public.showcase_catalog() from public;');
+    // no price leaves the database while the sales are closed: visitors read the rows for sale only once they open
+    expect(sql).toContain('alter policy "catalog read" on public.products using ((active and public.sales_open()) or public.is_admin());');
+    expect(sql).toContain('alter policy "catalog read" on public.origins using ((active and public.sales_open()) or public.is_admin());');
+    expect(block).toContain("and qual = '(active OR is_admin())') <> 2 then"); // replaces init's rules only
   });
 
   it('the listing block lists exactly the 16 compared rows, and stops on any other catalog', () => {
@@ -359,13 +363,16 @@ describe('catalog_showcase (the catalog shown without prices, owner 2026-10-21)'
     expect(flagOn && PENDING.includes('20261021120000_catalog_showcase')).toBe(false);
   });
 
-  it('the undo and the rollback touch the flag and the function only', () => {
+  it('the undo touches the flag only; the rollback puts back what the migration changed', () => {
     expect(read('supabase/manual/20261021120000_catalog_showcase.unlist.sql').match(/\bupdate [^;]*;/g)).toEqual([
       'update public.products set listed = false where listed;',
       'update public.origins set listed = false where listed;',
     ]);
     const rollback = read('supabase/manual/20261021120000_catalog_showcase.rollback.sql');
     expect(rollback.match(/^(drop|alter) [^;]*;/gm)).toEqual([
+      'alter policy "catalog read" on public.products using (active or public.is_admin());',
+      'alter policy "catalog read" on public.origins using (active or public.is_admin());',
+      'drop function public.sales_open();',
       'drop function public.showcase_catalog();',
       'alter table public.products drop column listed;',
       'alter table public.origins drop column listed;',
