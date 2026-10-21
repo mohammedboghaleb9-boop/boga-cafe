@@ -4,6 +4,10 @@ One dated line per meaningful change, newest first. Built from `git log`. Hashes
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
+## 2026-10-21
+- 2026-10-21 [feat/p5-shop-preview] Production builds the live shop (sales closed) instead of "coming soon" (`PRODUCTION_SITE`), from the committed public values only; pre-launch `noindex`; a notice on every page while the sales are closed; empty states; Custom Blend shows no builder without a blendable origin. Coming soon kept as the fallback.
+- 2026-10-21 [feat/p5-shop-preview] Security review fixes: every live-database build scans its own files (demo strings, secret keys, source maps, the live project in production); shop builds ship `_headers` (no framing, nosniff, referrer policy, noindex); CI's greps fail on an empty glob.
+
 ## 2026-10-20
 - 2026-10-20 [live] `20261020090000_city_shown_needs_fee` applied (SQL Editor block run once from `main`, result `t|0|1`, 18 history rows); `storefront` v11 deployed from `dcf47cb` (`verify_jwt` false; probes without writes: 401/404/captcha). Sales still closed. `tests/manual-sql.test.ts` pins the 18th migration.
 - 2026-10-20 [main] PR #18 merged (`dcf47cb`): stress-test fix; CI on `main` green again.

@@ -30,9 +30,10 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
           # Cloudflare's Turnstile test key that always passes (CI only; the real site key is in .env.workers-preview)
           VITE_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
-      - run: "! grep -l boga-signature dist-supabase/assets/*.js"
+      # ls first: a glob that matches nothing would let the grep pass
+      - run: "ls dist-supabase/assets/*.js > /dev/null && ! grep -l boga-signature dist-supabase/assets/*.js"
       # its Admin Panel signs in with Supabase Auth: the prototype's public password never ships
-      - run: "! grep -l boga2026 dist-supabase/assets/*.js"
+      - run: "ls dist-supabase/assets/*.js > /dev/null && ! grep -l boga2026 dist-supabase/assets/*.js"
 
   # the site in a browser (real settings, demo data): shop, checkout, admin roles, phone widths, axe;
   # and the live-site build's Turnstile forms against a Supabase and a widget the tests answer
@@ -48,10 +49,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build:e2e
       - run: npm run test:e2e
-      # the "coming soon" files the browser tests used (dist-coming-soon, checked by its own build): the
-      # production command must rebuild them byte for byte (every file and its SHA-256, the list included),
+      # the "coming soon" files the browser tests used (dist-coming-soon, checked by its own build; production's
+      # fallback since the live shop, scripts/build-target.mjs PRODUCTION_SITE): the default command must rebuild them byte for byte (every file and its SHA-256, the list included),
       # then they go up with their sums and pictures for the owner's review. No deploy, no secret in them.
-      - name: 'coming soon: the production command rebuilds the tested files byte for byte'
+      - name: 'coming soon (the fallback page): the default command rebuilds the tested files byte for byte'
         run: |
           set -o pipefail
           npm run build -- --outDir dist-coming-soon-rebuilt

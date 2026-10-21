@@ -63,12 +63,14 @@ export function CustomBlendPage() {
       cur.map((x) => (x.originId === originId ? { ...x, percent: Math.max(0, Math.min(100, Math.round(percent || 0))) } : x)),
     );
 
-  if (!settings.customBlend.enabled) {
+  // paused, or no origin can go in a blend yet (none shown with a price): a notice, never a builder with only the bag fee
+  const blendable = origins.some((o) => o.active && o.customBlendEnabled && isPrice(o.pricePerKg));
+  if (!settings.customBlend.enabled || !blendable) {
     return (
       <div className="container page">
         <h1>{t.blend.title}</h1>
         <p className="notice notice-warn" style={{ marginBlockStart: 16 }}>
-          {t.blend.disabled}
+          {settings.customBlend.enabled ? t.common.noOrigins : t.blend.disabled}
         </p>
       </div>
     );

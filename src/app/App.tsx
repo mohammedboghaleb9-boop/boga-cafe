@@ -40,7 +40,7 @@ const Router = pickRouter();
 // The Admin Panel is loaded only when someone opens /admin, and exists only in the
 // demo build and the live-database build (src/data/mode.ts), which signs in with
 // Supabase Auth. The test is written out here (not DEMO_DATA) so a build of neither mode
-// (`npm run dev` with no mode; production is the "coming soon" page, src/coming-soon) drops the admin code and the demo password entirely (scripts/check-real-build.mjs
+// (`npm run dev` with no mode; the "coming soon" page, src/coming-soon) drops the admin code and the demo password entirely (scripts/check-real-build.mjs
 // checks it; CI checks the supabase build has no demo password).
 const withAdmin = import.meta.env.VITE_DATA_MODE === 'demo' || import.meta.env.VITE_DATA_MODE === 'supabase';
 const AdminApp = withAdmin ? lazy(() => import('@/features/admin/AdminApp').then((m) => ({ default: m.AdminApp }))) : null;

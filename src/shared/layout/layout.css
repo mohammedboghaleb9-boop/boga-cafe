@@ -16,6 +16,19 @@
   padding-block: 7px;
   letter-spacing: 0.02em;
 }
+.sales-notice {
+  margin: 0;
+  background: var(--warn-soft);
+  color: var(--ink);
+  border-block-end: 1px solid var(--line);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  padding-block: 8px;
+}
+.sales-notice .container {
+  display: block;
+}
 .demo-bar {
   background: var(--warn-soft);
   color: var(--ink);

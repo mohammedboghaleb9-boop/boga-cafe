@@ -30,7 +30,8 @@ export function LanguageSwitcher() {
 export function Header() {
   const { t, l } = useI18n();
   const { count } = useCart();
-  const { content } = useDb();
+  const { content, settings } = useDb();
+  const { salesOpen } = settings;
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   // Escape closes the open menu and gives the focus back to its button
@@ -64,6 +65,11 @@ export function Header() {
       <div className="announce">
         <div className="container">{l(content.announcement)}</div>
       </div>
+      {!salesOpen && (
+        <p className="sales-notice">
+          <span className="container">{t.common.salesNotice}</span>
+        </p>
+      )}
       {DEMO_DATA && (
         <div className="demo-bar">
           <div className="container spread">

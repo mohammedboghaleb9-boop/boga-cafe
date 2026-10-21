@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { clippedContent, expectNoSideScroll, open, scanA11y, watchErrors } from './helpers';
 
 /**
- * The production build until the shop opens (dist-coming-soon, served like Cloudflare: any unknown
+ * The "coming soon" page, production's fallback (scripts/build-target.mjs; dist-coming-soon, served like Cloudflare: any unknown
  * path answered with index.html). Every old shop or admin link shows the "coming soon" page: no
  * product, price, cart or form, and no request to the database or any other site.
  */

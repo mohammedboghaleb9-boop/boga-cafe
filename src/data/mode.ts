@@ -5,8 +5,9 @@
  * orders and requests, payment details marked DÉMO, and the admin panel with its
  * public demo password — all of it kept in the visitor's own browser, isolated test data.
  *
- * 'supabase': the real shop, on the live database, with the real Admin Panel (Supabase Auth + 2FA).
- * Empty: the production build, which is the "coming soon" page and loads none of the shop
+ * 'supabase': the real shop, on the live database, with the real Admin Panel (Supabase Auth + 2FA); the
+ * production build since 2026-10-21 (sales closed by the database until the owner opens them).
+ * Empty: the "coming soon" page (production's fallback), which loads none of the shop
  * (src/coming-soon); only `npm run dev` without a mode still runs the shop on the browser store
  * (example catalog, no admin, no payment method).
  */

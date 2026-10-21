@@ -1,4 +1,4 @@
-// What the real site (no VITE_DATA_MODE) may ship: until the shop opens, the "coming soon" page only
+// What the "coming soon" page (no VITE_DATA_MODE; production's fallback, scripts/build-target.mjs) may ship
 // (vite.config.ts). None of the demo (admin password, example customers, DÉMO payment details), none of
 // the example catalog (products, prices, delivery tariff), no database, form or source map. Run by the
 // build itself on the folder it wrote (vite.config.ts) and by `npm run check:real-build` (CI). The
@@ -88,4 +88,47 @@ export function realBuildProblems(dir) {
   else if (!readFileSync(join(dir, scripts[0]), 'utf8').includes('soon-contact-title')) problems.push(`${scripts[0]} is not the "coming soon" page`);
   const sizes = Object.entries(groups).map(([name, v]) => `${name} ${v.length}`).join(', ');
   return { problems, summary: `"coming soon" only: ${strings.length} strings (${sizes}) checked in ${texts.length} of ${files.length} files, no product prices, one script` };
+}
+
+// a secret key in any shape a build could ship: Supabase's new secret keys, and legacy JWTs of a role other than anon
+const SECRET_KEY = /sb_secret_[A-Za-z0-9_-]{20,}/;
+const JWT = /eyJ[\w-]{10,}\.eyJ[\w-]{10,}\.[\w-]{10,}/g;
+const jwtRole = (token) => {
+  try {
+    return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')).role ?? '';
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * What is wrong with a shop build on the live database (`dir`, VITE_DATA_MODE=supabase: production, the previews, CI):
+ * none of the demo or the example catalog (the same strings as above, but the live project itself is expected here),
+ * no secret key, no source map; `liveUrl` (production) must be the project it reads. Run by the build on the folder it
+ * wrote (vite.config.ts), after the files are written: it checks what ships, not what the build was asked to do.
+ * @param {string} dir
+ * @param {{ liveUrl?: string }} [expect]
+ */
+export function shopBuildProblems(dir, { liveUrl } = {}) {
+  const { groups } = forbiddenStrings();
+  const { 'live project': _live, ...shopGroups } = groups;
+  const strings = [...new Set(Object.values(shopGroups).flat())];
+  const files = readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((d) => d.isFile())
+    .map((d) => relative(dir, join(d.parentPath, d.name)).split(sep).join('/'));
+  const problems = files.filter((f) => f.endsWith('.map')).map((f) => `${f} is a source map`);
+  const texts = files.filter((f) => /\.(js|html|css|svg)$/.test(f));
+  let readsLive = false;
+  for (const f of texts) {
+    const text = readFileSync(join(dir, f), 'utf8');
+    for (const s of strings) if (text.includes(s)) problems.push(`${f} contains "${s}"`);
+    // the live defaults are a bag fee of 0 for every size (src/data/defaults.ts): only a price above 0 is an example
+    const priced = [...text.matchAll(new RegExp(PRICES.source, 'g'))].map((m) => m[0]).filter((m) => /:[1-9]/.test(m));
+    if (priced.length) problems.push(`${f} contains product prices (${priced[0]})`);
+    if (SECRET_KEY.test(text)) problems.push(`${f} contains a Supabase secret key`);
+    for (const token of text.match(JWT) ?? []) if (jwtRole(token) !== 'anon') problems.push(`${f} contains a key that is not the anon key`);
+    if (liveUrl && text.includes(liveUrl)) readsLive = true;
+  }
+  if (liveUrl && !readsLive) problems.push(`no file reads the live project (${liveUrl})`);
+  return { problems, summary: `live shop: ${strings.length} demo and example strings, secret keys and source maps checked in ${texts.length} of ${files.length} files${liveUrl ? ', reads the live project' : ''}` };
 }
