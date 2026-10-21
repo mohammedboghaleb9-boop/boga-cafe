@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-/** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). */
-const PENDING = ['20261021120000_catalog_showcase'];
+/** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). None now. */
+const PENDING: string[] = [];
 
 describe('SQL Editor blocks', () => {
   it('catalog_trim: the block holds the migration unchanged, between begin and commit', () => {
@@ -255,6 +255,7 @@ describe('migration versions', () => {
     '20261007080308_order_idempotency_commit', '20261008205033_admin_aal2', '20261009165916_quote_follow_up',
     '20261009200000_catalog_writes', '20261012183912_settings_writes', '20261013090048_config_trim', '20261013100000_catalog_trim',
     '20261016120000_catalog_ready', '20261019200936_expiry_lock_order', '20261020090000_city_shown_needs_fee',
+    '20261021120000_catalog_showcase',
   ];
 
   it('the applied ones are named as live recorded them (the expiry fix: 20261019200936, the apply tool\'s version)', () => {
@@ -282,6 +283,7 @@ describe('migration versions', () => {
     '20261016120000_catalog_ready': '55ea7116397183b0',
     '20261019200936_expiry_lock_order': '443b936370fc0352',
     '20261020090000_city_shown_needs_fee': 'afd8c508c4bd8886',
+    '20261021120000_catalog_showcase': '089ac8c1a3a84bc5',
     };
     expect(Object.keys(APPLIED)).toEqual(LIVE);
     for (const [name, sha] of Object.entries(APPLIED)) {
