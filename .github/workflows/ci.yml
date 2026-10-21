@@ -30,9 +30,10 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
           # Cloudflare's Turnstile test key that always passes (CI only; the real site key is in .env.workers-preview)
           VITE_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
-      - run: "! grep -l boga-signature dist-supabase/assets/*.js"
+      # ls first: a glob that matches nothing would let the grep pass
+      - run: "ls dist-supabase/assets/*.js > /dev/null && ! grep -l boga-signature dist-supabase/assets/*.js"
       # its Admin Panel signs in with Supabase Auth: the prototype's public password never ships
-      - run: "! grep -l boga2026 dist-supabase/assets/*.js"
+      - run: "ls dist-supabase/assets/*.js > /dev/null && ! grep -l boga2026 dist-supabase/assets/*.js"
 
   # the site in a browser (real settings, demo data): shop, checkout, admin roles, phone widths, axe;
   # and the live-site build's Turnstile forms against a Supabase and a widget the tests answer

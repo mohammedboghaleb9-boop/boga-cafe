@@ -28,15 +28,18 @@ function build(cwd: string, args: string[], vars: Record<string, string>) {
   });
   const files = readdirSync(outDir, { recursive: true }).map(String);
   const html = existsSync(join(outDir, 'index.html')) ? readFileSync(join(outDir, 'index.html'), 'utf8') : '';
+  const headers = existsSync(join(outDir, '_headers')) ? readFileSync(join(outDir, '_headers'), 'utf8') : '';
   const js = files.filter((f) => f.endsWith('.js')).map((f) => readFileSync(join(outDir, f), 'utf8'));
   // the example catalog (a demo build), and the live project's address (a build on the live database)
   const shop = js.some((t) => t.includes('boga-signature'));
   const live = js.some((t) => t.includes('https://ldzagzskfmnjbkizbayr.supabase.co'));
+  // the demo: the prototype's public admin password and its DÉMO payment details
+  const demo = js.some((t) => t.includes('boga2026') || t.includes('DÉMO'));
   rmSync(outDir, { recursive: true, force: true });
   // a build killed by the timeout is never read as one that stopped on its own
   expect(r.signal, `${r.stdout}${r.stderr}`).toBeNull();
   const noindex = html.includes('<meta name="robots" content="noindex" />');
-  return { status: r.status, log: `${r.stdout}${r.stderr}`, comingSoon: html.includes('data-site="coming-soon"'), shop, live, noindex };
+  return { status: r.status, log: `${r.stdout}${r.stderr}`, comingSoon: html.includes('data-site="coming-soon"'), shop, live, demo, noindex, headers };
 }
 
 const LIVE = { VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test', VITE_TURNSTILE_SITE_KEY: '1x00000000000000000000AA' };
@@ -55,7 +58,11 @@ describe('the production build of main: the live shop from the committed values,
       expect(r.live).toBe(true);
       expect(r.noindex).toBe(true);
       expect(r.shop).toBe(false);
+      expect(r.demo).toBe(false);
+      expect(r.headers).toMatch(/^\/\*\n {2}X-Frame-Options: DENY\n/);
+      expect(r.headers).toMatch(/X-Robots-Tag: noindex/);
       expect(r.log).toMatch(/production build, live values ON/);
+      expect(r.log).toMatch(/live shop: .* reads the live project/);
     });
 
     for (const mode of SHOP_MODES) {
@@ -87,9 +94,9 @@ describe('the production build of main: the live shop from the committed values,
   });
 });
 
-describe('the "coming soon" build checks the folder it wrote', { timeout: 60_000 }, () => {
-  /** A copy of the project (its node_modules linked), changed by `change`, built as "coming soon". */
-  function buildCopy(change: (dir: string) => void) {
+describe('the "coming soon" build and the production shop check the folder they wrote', { timeout: 60_000 }, () => {
+  /** A copy of the project (its node_modules linked), changed by `change`, built as "coming soon" (or with `vars`). */
+  function buildCopy(change: (dir: string) => void, vars: Record<string, string> = {}) {
     const dir = mkdtempSync(join(tmpdir(), 'boga-copy-'));
     for (const f of ['index.html', 'vite.config.ts', 'package.json', 'tsconfig.json', 'src', 'public', 'scripts', '.env.workers-preview']) {
       cpSync(join(ROOT, f), join(dir, f), { recursive: true });
@@ -97,8 +104,8 @@ describe('the "coming soon" build checks the folder it wrote', { timeout: 60_000
     symlinkSync(join(ROOT, 'node_modules'), join(dir, 'node_modules'), 'junction');
     try {
       change(dir);
-      // the local default build: "coming soon" (production's fallback, scripts/build-target.mjs PRODUCTION_SITE)
-      return build(dir, [], {});
+      // by default the local build: "coming soon" (production's fallback, scripts/build-target.mjs PRODUCTION_SITE)
+      return build(dir, [], vars);
     } finally {
       // removes the link to node_modules, never what it points to (rm does not follow links)
       rmSync(dir, { recursive: true, force: true });
@@ -151,5 +158,12 @@ describe('the "coming soon" build checks the folder it wrote', { timeout: 60_000
     const r = buildCopy((dir) => appendFileSync(join(dir, 'src/coming-soon/main.tsx'), "\nconsole.log('https://ldzagzskfmnjbkizbayr.supabase.co');\n"));
     expect(r.status).not.toBe(0);
     expect(r.log).toMatch(/contains "ldzagzskfmnjbkizbayr"/);
+  });
+
+  it('the production shop fails when it writes an example product name (checked in the files written)', () => {
+    const r = buildCopy((dir) => appendFileSync(join(dir, 'src/main.tsx'), "\nconsole.log('Éthiopie Sidamo');\n"), { WORKERS_CI: '1', WORKERS_CI_BRANCH: 'main' });
+    expect(r.status).not.toBe(0);
+    expect(r.log).toMatch(/live shop: the build ships what it must not/);
+    expect(r.log).toMatch(/contains "Éthiopie Sidamo"/);
   });
 });
