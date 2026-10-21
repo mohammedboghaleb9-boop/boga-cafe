@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-21
+- 2026-10-21 [main 1fda077] PR #23 merged and deployed: production shows the previous catalog (10 products, 6 origins) without prices or any way to buy, checked in fr/ar on desktop and phone; sales closed (0 orders, 0 active rows). Status page: catalog display done, domain connected by the owner (needs verification over HTTP from here).
 - 2026-10-21 [main 5fc341c + live] PR #22 merged and deployed (flag off); owner-approved: migration 20261021120000 applied on live by its editor block, the 16 compared rows listed; public API checked (catalog without price, tables empty for visitors). [feat/p5-showcase-on] PR #23 turns the production read on.
 - 2026-10-21 [feat/p5-catalog-showcase] The catalog shown without prices while the sales are closed: migration 20261021120000 (`listed`, `showcase_catalog()`), SQL Editor blocks (schema, listing of the 16 compared rows, undo, rollback) rehearsed locally; the site reads it behind `VITE_SHOWCASE` (off until applied), browse-only pages, one notice. Not applied, not merged.
 - 2026-10-21 [main 8959564] PR #20 merged and deployed: production shows the live shop for review, sales closed (salesOpen null, 0 orders, nothing shown to buy); noindex and security headers checked on production. Notes: resume log; status page updated (notifications on hold until Abderrahim is available, legal inventory proposed only, domain steps with the owner).
