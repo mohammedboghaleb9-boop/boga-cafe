@@ -4,6 +4,12 @@ One dated line per meaningful change, newest first. Built from `git log`. Hashes
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
+## 2026-10-22
+- 2026-10-22 [feat/p5-home-premium] WhatsApp button: phones start with it aside and show it once its spot is clear (no fade-out on load); CI 41fb803 web, database, e2e green on push.
+- 2026-10-22 [feat/p5-home-premium] Pre-merge fixes (owner): the prototype notice's texts no longer ship in production (DemoBar.tsx, build check), the WhatsApp button steps aside on phones while a button is under it, the web logo line reads "SÉLECTION & VENTE · OUJDA" (bags unchanged).
+- 2026-10-22 [feat/p5-home-premium] Review fixes: the phone menu closes after "About" on the home page (e2e), the home video stays once loaded, focus returns to the language button, one language switcher, Admin hints for gold words and the unused subtitle, README picture, home styles split into hero.css / shelf.css / home.css.
+- 2026-10-22 [feat/p5-home-premium] Home page and header redesign approved from previews: lockup logo (CAFÉ in copper, from the official paths), flag language pill and phone menu, video hero (owner's file, lazy, paused off screen, none under reduced motion or Save-Data), three path cards, ribbon of confirmed facts, signature cards with icons (pouch pictures unchanged, no price), Arabic headings in Noto Kufi Arabic. Not merged, not deployed.
+
 ## 2026-10-21
 - 2026-10-21 [main 1fda077] PR #23 merged and deployed: production shows the previous catalog (10 products, 6 origins) without prices or any way to buy, checked in fr/ar on desktop and phone; sales closed (0 orders, 0 active rows). Status page: catalog display done, domain connected by the owner (needs verification over HTTP from here).
 - 2026-10-21 [main 5fc341c + live] PR #22 merged and deployed (flag off); owner-approved: migration 20261021120000 applied on live by its editor block, the 16 compared rows listed; public API checked (catalog without price, tables empty for visitors). [feat/p5-showcase-on] PR #23 turns the production read on.

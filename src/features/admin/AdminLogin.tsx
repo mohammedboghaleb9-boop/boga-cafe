@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { adminAuth, type SignInResult } from '@/data/api';
 import { useAdminSession } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
-import { LanguageSwitcher } from '@/shared/layout/Header';
+import { LanguageSwitcher } from '@/shared/layout/Language';
 import { Logo } from '@/shared/layout/Logo';
 import { Field } from '@/shared/ui/bits';
 import { ROLES, type Role } from './permissions';

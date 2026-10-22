@@ -50,8 +50,8 @@ export function ContentPage() {
       <div className="detail-grid">
         <fieldset className="plain-fieldset panel stack" disabled={!writable}>
           <LocalizedInput id="c-ann" label={t.admin.content.announcement} value={content.announcement} onChange={(v) => setC('announcement', v)} maxLength={CONTENT_MAX.announcement} />
-          <LocalizedInput id="c-ht" label={t.admin.content.heroTitle} value={content.heroTitle} onChange={(v) => setC('heroTitle', v)} maxLength={CONTENT_MAX.heroTitle} />
-          <LocalizedInput id="c-hs" label={t.admin.content.heroSubtitle} value={content.heroSubtitle} onChange={(v) => setC('heroSubtitle', v)} multiline maxLength={CONTENT_MAX.heroSubtitle} />
+          <LocalizedInput id="c-ht" label={t.admin.content.heroTitle} value={content.heroTitle} onChange={(v) => setC('heroTitle', v)} maxLength={CONTENT_MAX.heroTitle} hint={t.admin.content.heroTitleHint} />
+          <LocalizedInput id="c-hs" label={t.admin.content.heroSubtitle} value={content.heroSubtitle} onChange={(v) => setC('heroSubtitle', v)} multiline maxLength={CONTENT_MAX.heroSubtitle} hint={t.admin.content.heroSubtitleHint} />
           <LocalizedInput id="c-at" label={t.admin.content.aboutTitle} value={content.aboutTitle} onChange={(v) => setC('aboutTitle', v)} maxLength={CONTENT_MAX.aboutTitle} />
           <LocalizedInput id="c-ax" label={t.admin.content.aboutText} value={content.aboutText} onChange={(v) => setC('aboutText', v)} multiline maxLength={CONTENT_MAX.aboutText} />
         </fieldset>

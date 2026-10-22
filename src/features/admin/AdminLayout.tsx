@@ -4,7 +4,7 @@ import { adminAuth, api } from '@/data/api';
 import { DEMO_DATA, SERVER_DATA } from '@/data/mode';
 import { useAdminDataStatus, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
-import { LanguageSwitcher } from '@/shared/layout/Header';
+import { LanguageSwitcher } from '@/shared/layout/Language';
 import { Logo } from '@/shared/layout/Logo';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { isLowStock } from '@/core/stock';

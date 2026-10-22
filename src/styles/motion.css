@@ -1,25 +1,11 @@
 /*
  * Motion: slow, subtle, and never needed to read the page.
- * - one entrance moment on the hero (photo settles, a light glint crosses the pouches)
+ * - one entrance moment on the hero (the text rises over the video)
  * - scroll-driven reveals and parallax (CSS only, no JavaScript; browsers without
  *   support simply show the page still)
  * - nothing moves for visitors who ask their device to reduce motion
  */
 @media (prefers-reduced-motion: no-preference) {
-  .hero-img {
-    animation: hero-settle 2.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  }
-  .hero-media::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    pointer-events: none;
-    background: linear-gradient(104deg, transparent 38%, rgb(255 236 208 / 0.28) 50%, transparent 62%) no-repeat;
-    background-size: 260% 100%;
-    mix-blend-mode: soft-light;
-    animation: glint 2.4s ease-out 0.7s both;
-  }
   .hero-text > * {
     animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
@@ -64,7 +50,7 @@
       animation-timeline: scroll(root);
       animation-range: 0 140px;
     }
-    .logo-mark {
+    .logo svg {
       animation: logo-compact linear both;
       animation-timeline: scroll(root);
       animation-range: 0 140px;
@@ -72,22 +58,6 @@
   }
 }
 
-@keyframes hero-settle {
-  from {
-    transform: scale(1.09);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-@keyframes glint {
-  from {
-    background-position: 130% 0;
-  }
-  to {
-    background-position: -30% 0;
-  }
-}
 @keyframes rise {
   from {
     opacity: 0;

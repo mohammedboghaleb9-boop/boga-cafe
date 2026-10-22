@@ -8,12 +8,15 @@ import { Icon } from '../ui/Icon';
 import { Footer } from './Footer';
 import { Header } from './Header';
 import { SkipLink } from './SkipLink';
+import { WhatsAppButton } from './WhatsAppButton';
 import { sectionId } from './sectionId';
 import './layout.css';
 import { api } from '@/data/api';
 
 export function StoreLayout() {
-  const { pathname, hash } = useLocation();
+  const { pathname, hash, key } = useLocation();
+  // the same section link followed again (/#about, then up the page) lands on it again
+  const sectionVisit = hash ? key : '';
   const { toast, dismissToast } = useCart();
   const { settings } = useDb();
   const { status, retry } = useDataStatus();
@@ -42,8 +45,8 @@ export function StoreLayout() {
       window.clearTimeout(timer);
       moves.forEach((e) => window.removeEventListener(e, stop));
     };
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs again on each new page, and once the live catalog has arrived (the section exists only then)
-  }, [pathname, hash, status]);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs again on each new page or section link, and once the live catalog has arrived (the section exists only then)
+  }, [pathname, hash, sectionVisit, status]);
 
   // unpaid orders past the time limit give their stock back
   useEffect(() => {
@@ -61,15 +64,7 @@ export function StoreLayout() {
         <Outlet />
       </main>
       <Footer />
-      <a
-        className="wa-fab"
-        href={whatsappLink(settings.contact.whatsapp, t.contact.whatsappText)}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="WhatsApp"
-      >
-        <Icon name="whatsapp" size={26} />
-      </a>
+      <WhatsAppButton href={whatsappLink(settings.contact.whatsapp, t.contact.whatsappText)} />
       {toast && (
         <div className="toast" role="status">
           <span>
