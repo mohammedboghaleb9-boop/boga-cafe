@@ -61,6 +61,23 @@ const flags: Record<string, ReactElement> = {
       <path d="m15 5.2 1.4 4.3h-2.8zM11 8.6h8l-6.5 4.7 2.5-7.6 2.5 7.6z" fill="none" stroke="#006233" strokeWidth="0.9" />
     </>
   ),
+  FR: (
+    <>
+      <rect width="10" height="20" fill="#0055a4" />
+      <rect x="10" width="10" height="20" fill="#fff" />
+      <rect x="20" width="10" height="20" fill="#ef4135" />
+    </>
+  ),
+  // Union flag, simplified at this size: the red diagonals are centred instead of counterchanged
+  GB: (
+    <>
+      <rect width="30" height="20" fill="#012169" />
+      <path d="M0 0 30 20M30 0 0 20" stroke="#fff" strokeWidth="4" />
+      <path d="M0 0 30 20M30 0 0 20" stroke="#c8102e" strokeWidth="1.4" />
+      <path d="M15 0v20M0 10h30" stroke="#fff" strokeWidth="6" />
+      <path d="M15 0v20M0 10h30" stroke="#c8102e" strokeWidth="3.6" />
+    </>
+  ),
 };
 
 export function Flag({ code, size = 22, title }: { code: string; size?: number; title?: string }) {
@@ -74,7 +91,14 @@ export function Flag({ code, size = 22, title }: { code: string; size?: number; 
     );
   }
   return (
-    <svg className="flag" width={size} height={height} viewBox="0 0 30 20" role="img" aria-label={title ?? code}>
+    // title "" = decorative: the name is already said next to it (the language buttons)
+    <svg
+      className="flag"
+      width={size}
+      height={height}
+      viewBox="0 0 30 20"
+      {...(title === '' ? { 'aria-hidden': true } : { role: 'img', 'aria-label': title ?? code })}
+    >
       {drawing}
     </svg>
   );

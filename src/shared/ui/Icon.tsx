@@ -30,6 +30,10 @@ const paths: Record<string, string> = {
   cash: 'M3 7h18v10H3zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 10v4m12-4v4',
   external: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
+  chevron: 'm6 9 6 6 6-6',
+  beans: 'M10.6 4.4c1.8 1.4 1.8 4.6 0 7.2s-4.8 3.6-6.6 2.2-1.8-4.6 0-7.2 4.8-3.6 6.6-2.2ZM4 13.8c0-2.6 2.4-3.4 3.8-5s1.8-3.3 2.8-4.4M20 9.4c1.8 1.4 1.8 4.6 0 7.2s-4.8 3.6-6.6 2.2-1.8-4.6 0-7.2 4.8-3.6 6.6-2.2ZM13.4 18.8c0-2.6 2.4-3.4 3.8-5s1.8-3.3 2.8-4.4',
+  cup: 'M4 9h12v4a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 10h1.5a2.5 2.5 0 0 1 0 5H15.6M3 21h15M8 3c-.8 1 .8 2 0 3M11.5 3c-.8 1 .8 2 0 3',
+  pouch: 'M7 3h10l1 4v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7zM6 7h12M10 11h4',
 };
 
 /** Platform marks are the official filled glyphs, in the current text colour. */

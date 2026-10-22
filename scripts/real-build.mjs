@@ -61,7 +61,7 @@ const ALLOWED = [
   /^(index\.html|favicon\.svg|apple-touch-icon\.png|og-image\.png)$/,
   /^assets\/index-[\w-]+\.(js|css)$/,
   /^assets\/label-[\w-]+\.webp$/,
-  /^assets\/(cinzel|montserrat|reem-kufi|tajawal)-[\w-]+\.woff2$/,
+  /^assets\/(cinzel|montserrat|noto-kufi-arabic|tajawal)-[\w-]+\.woff2$/,
 ];
 
 /**

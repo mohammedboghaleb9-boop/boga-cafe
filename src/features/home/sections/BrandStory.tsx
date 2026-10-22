@@ -7,7 +7,7 @@ export function BrandStory() {
   const { t, l } = useI18n();
   const { content } = useDb();
   return (
-    <section className="section container story">
+    <section id="about" className="section container story">
       <div className="story-media">
         <figure className="story-photo">
           <Photo name="roaster" alt={t.media.roaster} className="parallax" sizes="(min-width: 900px) 50vw, 100vw" />

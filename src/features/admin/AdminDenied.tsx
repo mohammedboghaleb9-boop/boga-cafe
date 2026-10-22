@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { adminAuth } from '@/data/api';
 import { useI18n } from '@/i18n';
-import { LanguageSwitcher } from '@/shared/layout/Header';
+import { LanguageSwitcher } from '@/shared/layout/Language';
 import { Logo } from '@/shared/layout/Logo';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 

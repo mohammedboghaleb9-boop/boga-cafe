@@ -1,31 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
-import type { Locale } from '@/core/types';
 import { useBrowseOnly, useDb } from '@/data/hooks';
 import { DEMO_DATA } from '@/data/mode';
 import { useCart } from '@/shared/cart/CartProvider';
-import { LOCALES, useI18n } from '@/i18n';
-import { ar } from '@/i18n/dictionaries/ar';
-import { en } from '@/i18n/dictionaries/en';
-import { fr } from '@/i18n/dictionaries/fr';
+import { useI18n } from '@/i18n';
 import { Icon } from '../ui/Icon';
+import { LanguageMenu, LanguageSwitcher } from './Language';
 import { Logo } from './Logo';
-
-const labels: Record<Locale, string> = { ar: ar.meta.label, fr: fr.meta.label, en: en.meta.label };
-
-
-export function LanguageSwitcher() {
-  const { locale, setLocale, t } = useI18n();
-  return (
-    <div className="lang" role="group" aria-label={t.nav.language}>
-      {LOCALES.map((l) => (
-        <button key={l} type="button" aria-pressed={l === locale} onClick={() => setLocale(l)} lang={l}>
-          {labels[l]}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export function Header() {
   const { t, l } = useI18n();
@@ -53,23 +34,33 @@ export function Header() {
     setOpen(false);
   }
 
+  // the shop's own filters (ShopPage reads ?kind=)
+  const shopLinks = [
+    { to: '/shop', label: t.shop.filterAll },
+    { to: '/shop?kind=signature', label: t.shop.filterSignature },
+    { to: '/shop?kind=single-origin', label: t.shop.filterSingle },
+    { to: '/shop?kind=b2b', label: t.shop.filterB2B },
+  ];
   const links = [
-    { to: '/shop', label: t.nav.shop },
     { to: '/single-origin', label: t.nav.singleOrigin },
     { to: '/custom-blend', label: t.nav.customBlend },
     { to: '/b2b', label: t.nav.b2b },
-    { to: '/contact', label: t.nav.contact },
   ];
+  // the brand story on the home page until an About page exists
+  const about = { to: '/#about', label: t.nav.about };
+  const contact = { to: '/contact', label: t.nav.contact };
 
   return (
     <>
-      <div className="announce">
-        <div className="container">{l(content.announcement)}</div>
-      </div>
-      {browseOnly && (
+      {/* sales closed: the notice takes the announcement's place (its facts are in the home page ribbon) */}
+      {browseOnly ? (
         <p className="sales-notice">
           <span className="container">{t.common.salesNotice}</span>
         </p>
+      ) : (
+        <div className="announce">
+          <div className="container">{l(content.announcement)}</div>
+        </div>
       )}
       {DEMO_DATA && (
         <div className="demo-bar">
@@ -82,17 +73,36 @@ export function Header() {
         </div>
       )}
       <header className="site-header">
-        <div className="container site-header-row">
+        <div className="container wide site-header-row">
           <Logo />
           <nav className="main-nav" aria-label={t.a11y.mainNav}>
+            <div className="nav-item">
+              <NavLink to="/shop" className="nav-top">
+                {t.nav.shop} <Icon name="chevron" size={14} />
+              </NavLink>
+              <div className="nav-sub">
+                {shopLinks.map((link) => (
+                  <Link key={link.to} to={link.to}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
             {links.map((link) => (
-              <NavLink key={link.to} to={link.to}>
+              <NavLink key={link.to} to={link.to} className="nav-top">
                 {link.label}
               </NavLink>
             ))}
+            <Link to={about.to} className="nav-top">
+              {about.label}
+            </Link>
+            <NavLink to={contact.to} className="nav-top">
+              {contact.label}
+            </NavLink>
           </nav>
           <div className="header-tools">
             <LanguageSwitcher />
+            <LanguageMenu />
             <Link to="/cart" className="cart-btn" aria-label={`${t.nav.cart} (${count})`}>
               <Icon name="cart" />
               {count > 0 && !browseOnly && <span className="cart-count num">{count}</span>}
@@ -112,11 +122,13 @@ export function Header() {
         </div>
         <nav id="mobile-nav" className="mobile-nav" hidden={!open} aria-label={t.a11y.mobileNav}>
           <div className="container stack">
-            {links.map((link) => (
+            {[{ to: '/shop', label: t.nav.shop }, ...links].map((link) => (
               <NavLink key={link.to} to={link.to}>
                 {link.label}
               </NavLink>
             ))}
+            <Link to={about.to}>{about.label}</Link>
+            <NavLink to={contact.to}>{contact.label}</NavLink>
             <LanguageSwitcher />
           </div>
         </nav>

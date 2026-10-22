@@ -1,49 +1,69 @@
 import { Link } from 'react-router';
-import { useDb } from '@/data/hooks';
-import { useI18n } from '@/i18n';
+import { onDisplay } from '@/core/showcase';
+import heroVideo from '@/assets/video/hero-1080.mp4';
+import heroVideoPortrait from '@/assets/video/hero-mobile.mp4';
+import { useCatalog, useDb } from '@/data/hooks';
+import { fmt, useI18n } from '@/i18n';
+import { media } from '@/shared/media';
+import { AmbientVideo } from '@/shared/ui/AmbientVideo';
 import { Icon, type IconName } from '@/shared/ui/Icon';
-import { Photo } from '@/shared/ui/Photo';
-import { cardGateway } from '@/services/payments';
+import { goldParts } from '../goldTitle';
 
-/** The three real pouch sizes open the site: the whole offer in one image. */
+const sources = {
+  video: heroVideo,
+  videoPortrait: heroVideoPortrait,
+  poster: media.heroPoster.src,
+  posterPortrait: media.heroPosterPortrait.src,
+  width: media.heroPoster.width,
+  height: media.heroPoster.height,
+};
+
+/** The roaster's beans turning behind the title (owner's video), the two ways in, three facts. */
 export function Hero() {
-  const { t, l } = useI18n();
+  const { t, l, locale } = useI18n();
   const { content } = useDb();
-  const facts: { icon: IconName; text: string }[] = [
-    { icon: 'bean', text: t.home.factBeans },
-    { icon: 'scale', text: t.home.factSizes },
-    { icon: 'truck', text: t.home.factDelivery },
-    { icon: 'lock', text: cardGateway === 'off' ? t.home.factPaymentSoon : t.home.factPayment },
+  const { origins } = useCatalog();
+  const shown = origins.filter(onDisplay);
+  const names = shown.slice(0, 3).map((o) => l(o.name));
+  const feats: { icon: IconName; title: string; text: string }[] = [
+    { icon: 'bean', title: t.home.featSpecies, text: t.home.featSpeciesText },
+    ...(shown.length > 0
+      ? [{ icon: 'globe' as const, title: fmt(t.home.featOrigins, { n: shown.length }), text: names.join(locale === 'ar' ? '، ' : ', ') + (shown.length > 3 ? '…' : '') }]
+      : []),
+    { icon: 'pin', title: t.home.featPlace, text: t.home.featPlaceText },
   ];
+
   return (
-    <section className="hero">
-      <div className="hero-grid">
+    <section className="hero" aria-labelledby="hero-title">
+      <AmbientVideo sources={sources} />
+      <div className="container wide hero-inner">
         <div className="hero-text">
           <span className="eyebrow">{t.home.eyebrow}</span>
-          <h1>{l(content.heroTitle)}</h1>
-          <p className="lead">{l(content.heroSubtitle)}</p>
-          <div className="row">
-            <Link to="/shop" className="btn btn-primary">
-              {t.home.ctaShop}
+          <h1 id="hero-title">
+            {goldParts(l(content.heroTitle)).map((part, i) => (part.gold ? <em key={i}>{part.text}</em> : part.text))}
+          </h1>
+          <div className="hero-actions">
+            <Link to="/shop" className="btn btn-gold btn-lg">
+              {t.home.ctaShop} <Icon name="arrow" size={18} className="flip-rtl" />
             </Link>
-            <Link to="/custom-blend" className="btn btn-ghost">
-              {t.home.ctaBlend} <Icon name="arrow" size={16} className="flip-rtl" />
+            <Link to="/custom-blend" className="btn btn-veil btn-lg">
+              {t.home.ctaBlend} <Icon name="beans" size={18} />
             </Link>
           </div>
+          <ul className="hero-feats">
+            {feats.map((f) => (
+              <li key={f.icon}>
+                <span className="ring">
+                  <Icon name={f.icon} size={22} />
+                </span>
+                <span>
+                  <b>{f.title}</b>
+                  <small>{f.text}</small>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
-        <figure className="hero-media">
-          <Photo name="bagsTrio" alt={t.media.hero} className="hero-img" priority sizes="(min-width: 900px) 55vw, 100vw" />
-        </figure>
-      </div>
-      <div className="container">
-        <ul className="facts-strip">
-          {facts.map((f) => (
-            <li key={f.icon}>
-              <Icon name={f.icon} size={20} />
-              <span>{f.text}</span>
-            </li>
-          ))}
-        </ul>
       </div>
     </section>
   );

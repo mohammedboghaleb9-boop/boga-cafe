@@ -40,9 +40,9 @@
   color: var(--accent);
 }
 
-/* a link to a section (/b2b#sample) lands below the sticky header (67 px), not under it */
+/* a link to a section (/b2b#sample) lands below the sticky header (84 px), not under it */
 .store main [id] {
-  scroll-margin-block-start: 84px;
+  scroll-margin-block-start: 100px;
 }
 .site-header {
   position: sticky;
@@ -55,64 +55,121 @@
 .site-header-row {
   display: flex;
   align-items: center;
-  gap: 18px;
-  min-height: 66px;
+  gap: 20px;
+  min-height: 84px;
 }
 
+/* the lockup (Logo.tsx): the mark silver on the dark store, the name in the text colour, CAFÉ in copper */
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  color: var(--ink);
   flex-shrink: 0;
-}
-.logo-mark {
-  display: inline-flex;
-  inline-size: 25px;
-  block-size: 39px;
   color: var(--ink);
-  transform-origin: center;
+  text-decoration: none;
 }
-.logo-mark svg {
-  inline-size: 100%;
-  block-size: 100%;
+.logo svg {
+  display: block;
+  inline-size: auto;
+  transform-origin: left center;
 }
-.logo-word {
-  font-family: 'Cinzel', Georgia, serif;
-  font-weight: 700;
-  font-size: 1.2rem;
-  letter-spacing: 0.06em;
-  direction: ltr;
+:root[dir='rtl'] .logo svg {
+  transform-origin: right center;
 }
-.logo-word span {
-  color: var(--accent);
+.logo-full svg {
+  block-size: 64px;
+}
+.logo-compact {
+  display: none;
+}
+.logo-compact svg {
+  block-size: 44px;
+}
+.lockup .lk-mark {
+  fill: var(--logo-mark, currentColor);
+}
+.lockup .lk-cafe {
+  fill: var(--accent);
+}
+.lockup .lk-tag {
+  fill: var(--ink-2);
 }
 
 .main-nav {
   display: none;
-  gap: 4px;
-  margin-inline-start: 12px;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(2px, 0.8vw, 12px);
 }
-.main-nav a,
+.nav-item {
+  position: relative;
+}
+.main-nav .nav-top,
 .mobile-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   text-decoration: none;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   color: var(--ink-2);
+  white-space: nowrap;
 }
-.main-nav a:hover,
+.main-nav .nav-top:hover,
+.nav-item:focus-within > .nav-top,
 .mobile-nav a:hover {
   color: var(--ink);
-  background: var(--surface-2);
 }
-.main-nav a.active,
+.main-nav .nav-top.active,
 .mobile-nav a.active {
   color: var(--ink);
   box-shadow: inset 0 -2px 0 var(--accent);
   border-radius: 0;
+}
+/* Boutique: the shop's filters, on hover or keyboard focus */
+.nav-sub {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: -8px;
+  z-index: 5;
+  display: grid;
+  min-inline-size: 220px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition:
+    opacity 0.18s,
+    transform 0.18s,
+    visibility 0.18s;
+}
+.nav-item:hover .nav-sub,
+.nav-item:focus-within .nav-sub {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+.nav-sub a {
+  display: flex;
+  align-items: center;
+  min-block-size: 42px;
+  padding: 0 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+.nav-sub a:hover,
+.nav-sub a:focus-visible {
+  background: var(--surface-2);
+  color: var(--ink);
 }
 
 .header-tools {
@@ -121,37 +178,108 @@
   align-items: center;
   gap: 8px;
 }
-.header-tools > .lang {
-  display: none;
-}
 
+/* languages: flag + code; the selected one in copper */
 .lang {
   display: inline-flex;
-  border: 1px solid var(--line-strong);
+  gap: 2px;
+  padding: 3px;
   border-radius: 999px;
-  padding: 2px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
 }
-.lang button {
-  border: none;
-  background: transparent;
-  padding: 4px 10px;
+.lang button,
+.lang-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-block-size: 36px;
+  padding: 0 12px;
   border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font: 600 0.78rem/1 'Montserrat', 'Segoe UI', sans-serif;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--ink-2);
+}
+.lang button:hover {
+  color: var(--ink);
 }
 .lang button[aria-pressed='true'] {
-  background: var(--primary);
-  color: var(--primary-ink);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+@media (pointer: coarse) {
+  .lang button {
+    min-block-size: 44px;
+  }
+}
+.lang .flag,
+.lang-menu .flag {
+  flex: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.3);
+}
+.lang-menu {
+  position: relative;
+  display: none;
+}
+.lang-chip {
+  gap: 6px;
+  min-block-size: 44px;
+  padding: 0 10px;
+  border-color: var(--line);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  color: var(--ink);
+}
+.lang-list {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 45;
+  display: grid;
+  inline-size: 210px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+.lang-list[hidden] {
+  display: none;
+}
+.lang-list button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-block-size: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 0.95rem/1 var(--font-body);
+  cursor: pointer;
+  text-align: start;
+}
+.lang-list button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.lang-code {
+  margin-inline-start: auto;
+  font: 600 0.75rem/1 'Montserrat', 'Segoe UI', sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--muted);
 }
 
 .cart-btn {
   position: relative;
   display: inline-grid;
   place-items: center;
-  inline-size: 42px;
-  block-size: 42px;
+  inline-size: 44px;
+  block-size: 44px;
   border-radius: 999px;
   color: var(--ink);
   text-decoration: none;
@@ -192,16 +320,68 @@
   align-self: flex-start;
 }
 
-@media (min-width: 1000px) {
-  .main-nav {
-    display: flex;
+/* phones: compact lockup, one language button, the menu */
+@media (max-width: 699px) {
+  .site-header-row {
+    min-height: 66px;
+    gap: 8px;
+  }
+  .logo-full {
+    display: none;
+  }
+  .logo-compact {
+    display: block;
+  }
+  .header-tools {
+    gap: 2px;
   }
   .header-tools > .lang {
-    display: inline-flex;
+    display: none;
+  }
+  .lang-menu {
+    display: block;
+  }
+}
+@media (max-width: 379px) {
+  .logo-compact svg {
+    block-size: 40px;
+  }
+  .lang-chip svg:last-child {
+    display: none;
+  }
+}
+@media (max-width: 359px) {
+  .logo-compact svg {
+    block-size: 30px;
+  }
+  /* the flag alone; the button's name still says the language */
+  .lang-chip span {
+    display: none;
+  }
+}
+/* the full menu needs about 1100 px of header: from 1200 px wide, a little tighter until 1440 px */
+@media (min-width: 1200px) {
+  .main-nav {
+    display: flex;
   }
   .menu-btn,
   .mobile-nav {
     display: none !important;
+  }
+}
+@media (min-width: 1200px) and (max-width: 1439px) {
+  .site-header-row {
+    gap: 14px;
+  }
+  .logo-full svg {
+    block-size: 52px;
+  }
+  .main-nav .nav-top {
+    font-size: 0.86rem;
+    padding-inline: 6px;
+  }
+  .lang button {
+    padding-inline: 9px;
   }
 }
 

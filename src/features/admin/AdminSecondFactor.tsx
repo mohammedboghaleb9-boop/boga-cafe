@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { adminAuth, type CodeResult, type TotpSetup } from '@/data/api';
 import { useAdminSession } from '@/data/hooks';
 import { useI18n } from '@/i18n';
-import { LanguageSwitcher } from '@/shared/layout/Header';
+import { LanguageSwitcher } from '@/shared/layout/Language';
 import { Logo } from '@/shared/layout/Logo';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 import { Field } from '@/shared/ui/bits';

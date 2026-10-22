@@ -9,10 +9,12 @@ import { Featured } from './sections/Featured';
 import { Follow } from './sections/Follow';
 import { Hero } from './sections/Hero';
 import { OriginsBand } from './sections/OriginsBand';
+import { Paths } from './sections/Paths';
+import { Ribbon } from './sections/Ribbon';
 import './home.css';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 
-const sections = [Hero, Featured, BlendTeaser, OriginsBand, B2BTeaser, BrandStory, Follow];
+const sections = [Hero, Paths, Ribbon, Featured, BlendTeaser, OriginsBand, B2BTeaser, BrandStory, Follow];
 
 export function HomePage() {
   usePageTitle();

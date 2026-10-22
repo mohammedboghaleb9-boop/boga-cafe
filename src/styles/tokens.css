@@ -54,7 +54,7 @@
 }
 
 :root[lang='ar'] {
-  --font-display: 'Reem Kufi', 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
+  --font-display: 'Noto Kufi Arabic', 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
   --font-body: 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
 }
 
@@ -128,6 +128,21 @@
  * The Admin Panel keeps the light / system palette above for long reading sessions.
  */
 :root:has(.store) {
+  --logo-mark: #d6d6d3; /* the silver of the brand guide */
+  --gold-hi: #ddb283;
+  --gold-lo: #b07e4a;
+  --on-gold: #1a120a;
+  /* the cream shelf of the home page (signature blends) */
+  --cream: #eee4d4;
+  --cream-card: #fffbf4;
+  --cream-line: #e2d3bd;
+  --cream-ink: #1c1713;
+  --cream-text: #44392f;
+  --bronze: #8a5a2b;
+  --recipe-ink: #5a3818;
+  --brown: #74492a;
+  --brown-hi: #5e3a20;
+  --on-brown: #fff8ee;
   --paper: #0f0d0b;
   --surface: #181513;
   --surface-2: #221e1a;

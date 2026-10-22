@@ -1,14 +1,17 @@
 import { Link } from 'react-router';
-import { Monogram } from './Monogram';
+import lockup from '@/assets/brand/lockup.svg?raw';
+import lockupCompact from '@/assets/brand/lockup-compact.svg?raw';
 
-/** Header wordmark: the approved monogram, then the brand name. */
+/**
+ * Header lockup: the monogram, BOGA CAFÉ with CAFÉ in copper, the approved tagline under the name.
+ * Built from the official paths by brand/source/build_lockup.py; phones get the compact one (small
+ * monogram, no tagline). Colours come from CSS (.lk-mark, .lk-boga, .lk-cafe, .lk-tag in layout.css).
+ */
 export function Logo({ to = '/' }: { to?: string }) {
   return (
     <Link to={to} className="logo" aria-label="BOGA CAFÉ">
-      <Monogram className="logo-mark" />
-      <span className="logo-word">
-        BOGA <span>CAFÉ</span>
-      </span>
+      <span className="logo-full" aria-hidden="true" dangerouslySetInnerHTML={{ __html: lockup }} />
+      <span className="logo-compact" aria-hidden="true" dangerouslySetInnerHTML={{ __html: lockupCompact }} />
     </Link>
   );
 }

@@ -7,7 +7,8 @@
 import label from '@/assets/brand/label.webp';
 import seal from '@/assets/brand/seal.webp';
 import bagOpen from '@/assets/photos/bag-open.webp';
-import bagsTrio from '@/assets/photos/bags-trio.webp';
+import heroPoster from '@/assets/photos/hero-poster.webp';
+import heroPosterPortrait from '@/assets/photos/hero-poster-mobile.webp';
 import barista from '@/assets/photos/barista.webp';
 import greenBeans from '@/assets/photos/green-beans.webp';
 import packshot from '@/assets/photos/packshot.webp';
@@ -29,7 +30,9 @@ export interface Media {
 export const media = {
   /** 1 kg pouch, front view, approved label composited on the plain template. */
   packshot: { src: packshot, width: 1000, height: 1250 },
-  bagsTrio: { src: bagsTrio, width: 1586, height: 992 },
+  /** Stills of the home video (beans turning in the roaster's cooling tray), wide and upright. */
+  heroPoster: { src: heroPoster, width: 1920, height: 1080 },
+  heroPosterPortrait: { src: heroPosterPortrait, width: 608, height: 1080 },
   bagOpen: { src: bagOpen, width: 900, height: 1125 },
   ritualTray: { src: ritualTray, width: 900, height: 1125 },
   barista: { src: barista, width: 1400, height: 788 },
