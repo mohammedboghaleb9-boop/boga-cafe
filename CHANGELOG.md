@@ -5,6 +5,8 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-22
+- 2026-10-22 [feat/p5-store-style] One product card everywhere (the home's cream card), on the cream shelf in the shop, Single Origin, B2B and related products; the store's main buttons in gold.
+- 2026-10-22 [main 359f5db] PR #25 merged (owner-approved) and deployed: the new home and header live on bogacafe.ma, checked with live data (no prototype text, sales notice, no price or buy button, 0 page errors); CI on main green.
 - 2026-10-22 [feat/p5-home-premium] WhatsApp button: phones start with it aside and show it once its spot is clear (no fade-out on load); CI 41fb803 web, database, e2e green on push.
 - 2026-10-22 [feat/p5-home-premium] Pre-merge fixes (owner): the prototype notice's texts no longer ship in production (DemoBar.tsx, build check), the WhatsApp button steps aside on phones while a button is under it, the web logo line reads "SÉLECTION & VENTE · OUJDA" (bags unchanged).
 - 2026-10-22 [feat/p5-home-premium] Review fixes: the phone menu closes after "About" on the home page (e2e), the home video stays once loaded, focus returns to the language button, one language switcher, Admin hints for gold words and the unused subtitle, README picture, home styles split into hero.css / shelf.css / home.css.
