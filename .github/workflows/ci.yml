@@ -4,9 +4,13 @@ on:
   push:
   pull_request:
 
+# Every job has its own limit, at least twice its slowest successful run among the last 40 (web 5.5 min,
+# e2e 12.3 min, database 1.8 min): without one, GitHub waits 6 hours, and a job stuck in `playwright install`
+# held a run for over 4 hours on 2026-10-22. A job past its limit is cancelled, which is not a pass.
 jobs:
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -39,6 +43,7 @@ jobs:
   # and the live-site build's Turnstile forms against a Supabase and a widget the tests answer
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -83,6 +88,7 @@ jobs:
     # and then AWS's public mirror ("toomanyrequests: Data limit exceeded", 2026-10-17) failed this
     # job before any test ran. ubuntu-24.04 ships PostgreSQL 16, its service off by default.
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       PGHOST: localhost
       PGUSER: postgres
