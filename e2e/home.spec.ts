@@ -63,6 +63,8 @@ test.describe('home page', () => {
       await expect(intro.locator('img, picture, ol')).toHaveCount(0);
       expect(((await intro.locator('p').innerText()).match(/\S+/g) ?? []).length).toBeLessThan(40);
       await expect(page.getByText(x.intro)).toHaveCount(1);
+      // no roasting claim of our own
+      await expect(intro).not.toContainText(/Oujda|وجدة/);
       // the details: titled, five steps, the existing photos, no repeat of the intro
       const how = page.locator('.story');
       await expect(how.getByRole('heading', { level: 2, name: x.how })).toBeVisible();
@@ -125,7 +127,7 @@ test.describe('home page', () => {
       await expect(whatsapp).toBeVisible();
     });
 
-    test('the menu link to the brand story, on the home page itself, closes the menu and shows the story', async ({ page }) => {
+    test('the menu link to the short intro, on the home page itself, closes the menu and shows it', async ({ page }) => {
       await open(page, '/');
       await page.locator('.menu-btn').click();
       await page.locator('#mobile-nav a[href$="#about"]').click();
