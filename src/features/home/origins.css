@@ -1,0 +1,198 @@
+/* ───── Origins: six origin cards beside the harvest photo ─────
+   Phones and tablets: title, photo, then the cards. From 1200 px: the cards on the left and the
+   photo on the right in every language (RTL swaps the columns back). */
+.origins-band {
+  --origins-copper: rgb(201 154 102 / 0.55);
+  --origins-edge: rgb(201 154 102 / 0.18);
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgb(201 154 102 / 0.07), transparent 70%),
+    var(--paper);
+  padding-block: clamp(44px, 6vw, 76px);
+}
+.origins-grid {
+  display: grid;
+  gap: 26px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'head' 'photo' 'list';
+}
+@media (min-width: 1200px) {
+  .origins-grid {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 3fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas: 'head photo' 'list photo';
+    column-gap: clamp(32px, 3.4vw, 52px);
+  }
+  :root[dir='rtl'] .origins-grid {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 4fr);
+    grid-template-areas: 'photo head' 'photo list';
+  }
+}
+
+/* the title under a copper bean between two lines; the button on the other side */
+.origins-head {
+  grid-area: head;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+.origins-head-text {
+  display: grid;
+  gap: 6px;
+}
+.origins-title {
+  display: grid;
+  justify-items: center;
+  justify-self: start;
+  gap: 4px;
+}
+.origins-ornament {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--accent);
+}
+.origins-ornament::before,
+.origins-ornament::after {
+  content: '';
+  inline-size: 64px;
+  block-size: 1px;
+  background: var(--origins-copper);
+}
+.origins-title h2 {
+  color: var(--cream);
+  font-size: clamp(2rem, 3.4vw, 3rem);
+}
+.origins-lead {
+  color: var(--ink-2);
+}
+.origins-all {
+  border-color: var(--origins-copper);
+  color: var(--cream);
+  padding-inline: 18px;
+}
+
+/* the photo fills its column on large screens; phones and tablets get a fixed frame */
+.origins-photo {
+  grid-area: photo;
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgb(238 228 212 / 0.28);
+  box-shadow: 0 24px 50px -24px rgb(0 0 0 / 0.9);
+  aspect-ratio: 4 / 5;
+}
+.origins-photo img {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  /* the face, both hands and the bucket stay in the frame */
+  object-position: 50% 40%;
+}
+@media (min-width: 600px) and (max-width: 1199.98px) {
+  .origins-photo {
+    aspect-ratio: 1;
+    inline-size: min(100%, 620px);
+    justify-self: center;
+  }
+  .origins-photo img {
+    object-position: 50% 28%;
+  }
+}
+@media (min-width: 1200px) {
+  .origins-photo {
+    aspect-ratio: auto;
+    min-block-size: 460px;
+  }
+  /* a tall, narrow frame: keep the hat and the face, which sit right of centre */
+  .origins-photo img {
+    object-position: 68% 34%;
+  }
+}
+
+/* six cards, two per row from 600 px */
+.origin-cards {
+  grid-area: list;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+@media (min-width: 600px) {
+  .origin-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.origin-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--origins-edge);
+  background: linear-gradient(135deg, rgb(255 240 222 / 0.05), rgb(255 240 222 / 0.015));
+  box-shadow: 0 12px 26px -16px rgb(0 0 0 / 0.85);
+}
+/* the reference's copper accent on the first card: a fixed accent, not a selection */
+.origin-card:first-child {
+  border-color: var(--origins-copper);
+  background: linear-gradient(135deg, rgb(201 154 102 / 0.12), rgb(201 154 102 / 0.03));
+}
+.origin-card-text {
+  display: grid;
+  gap: 4px;
+  min-inline-size: 0;
+}
+.origin-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.15rem;
+  color: var(--cream);
+}
+.origin-name .flag {
+  flex-shrink: 0;
+}
+.origin-meta,
+.origin-notes {
+  font-size: 0.92rem;
+  color: var(--ink-2);
+}
+.origin-notes {
+  color: var(--ink);
+}
+.origin-roast-name {
+  margin-block-start: 2px;
+  font-size: 0.92rem;
+  color: var(--accent);
+}
+.origin-card-media {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.origin-card .roast-chip {
+  box-shadow:
+    0 0 0 1.5px var(--origins-copper),
+    0 10px 18px -8px rgb(0 0 0 / 0.85);
+}
+.origin-beans {
+  display: inline-flex;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--origins-edge);
+  background: rgb(0 0 0 / 0.35);
+  color: #3b2f26;
+}
+.origin-beans .is-on {
+  color: var(--accent);
+}

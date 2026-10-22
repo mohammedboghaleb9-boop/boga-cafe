@@ -109,6 +109,7 @@ export const fr: Dict = {
     roaster: 'Grains de café torréfiés dans le bac de refroidissement d’un torréfacteur',
     roastery: 'Un torréfacteur et des sacs de jute de café vert',
     greenBeans: 'Sacs de jute remplis de café vert avec une pelle en bois',
+    harvest: 'Un homme cueille des cerises de café sur l’arbuste, à côté d’un seau rempli de cerises rouges et jaunes',
     barista: 'Un barista prépare un double espresso à côté d’un sachet BOGA CAFÉ',
     tray: 'Tasse de café sur un plateau marocain en laiton, à côté d’un sachet BOGA CAFÉ',
     flatlay: 'Trois tas de café torréfié, du plus clair au plus foncé, à côté d’une balance en laiton et d’une pelle en cuivre',
@@ -137,7 +138,8 @@ export const fr: Dict = {
     blendText:
       'Choisissez vos cafés, fixez chaque pourcentage, puis 250 g, 500 g ou 1 kg. Le prix se calcule en direct et nous reproduisons votre recette à l’identique.',
     blendExample: 'Exemple pour 1 kg',
-    originsTitle: 'Nos origines',
+    originsTitle: 'Les origines du café',
+    originsAll: 'Voir toutes les origines',
     originsText: 'Chaque origine a son propre stock, compté en kilogrammes.',
     processTitle: 'Comment est préparé le café BOGA',
     process: [

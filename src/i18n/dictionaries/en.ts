@@ -113,6 +113,7 @@ export const en = {
     roaster: 'Roasted coffee beans in the cooling tray of a coffee roaster',
     roastery: 'A coffee roaster and jute sacks of green coffee',
     greenBeans: 'Jute sacks of green coffee beans with a wooden scoop',
+    harvest: 'A man picking coffee cherries from the shrub, beside a bucket full of red and yellow cherries',
     barista: 'A barista pulling a double espresso next to a BOGA CAFÉ pouch',
     tray: 'Coffee cup on a Moroccan brass tray beside a BOGA CAFÉ pouch',
     flatlay: 'Three piles of roasted coffee, from light to dark, beside a brass scale and a copper scoop',
@@ -141,7 +142,8 @@ export const en = {
     blendText:
       'Pick your coffees, set each percentage, choose 250 g, 500 g or 1 kg. The price updates as you go, and we reproduce your recipe exactly.',
     blendExample: 'Example for 1 kg',
-    originsTitle: 'Our origins',
+    originsTitle: 'Coffee origins',
+    originsAll: 'Browse all origins',
     originsText: 'Each origin has its own stock, counted in kilograms.',
     processTitle: 'How BOGA coffee is made',
     process: [

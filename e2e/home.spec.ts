@@ -80,6 +80,45 @@ test.describe('home page', () => {
     });
   }
 
+  // the origins section (owner's reference 2026-10-22): six cards from the catalog beside the harvest photo
+  const ORIGINS = {
+    fr: { lang: 'Français', title: 'Les origines du café', all: 'Voir toutes les origines', roast: { Claire: 1, Moyenne: 2, 'Moyenne-foncée': 3, Foncée: 4 } },
+    ar: { lang: 'العربية', title: 'مصادر القهوة', all: 'تصفح كل المصادر', roast: { فاتح: 1, متوسط: 2, 'متوسط إلى داكن': 3, داكن: 4 } },
+  } as const;
+  for (const [code, x] of Object.entries(ORIGINS)) {
+    test(`origins: catalog cards on the left, the harvest photo on the right (${code})`, async ({ page }) => {
+      const errors = watchErrors(page);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await open(page, '/');
+      await page.locator('.header-tools .lang').getByRole('button', { name: x.lang }).click();
+      const band = page.locator('.origins-band');
+      await expect(band.getByRole('heading', { level: 2, name: x.title })).toBeVisible();
+      const cards = band.locator('.origin-card');
+      await expect(cards).toHaveCount(6);
+      for (const card of await cards.all()) {
+        await expect(card.locator('h3 .flag')).toHaveCount(1);
+        await expect(card.locator('.origin-meta')).toContainText(/Arabica|Robusta|أرابيكا|روبوستا/);
+        await expect(card.locator('.origin-notes')).not.toBeEmpty();
+        // the lit beans follow the roast level written on the card
+        const levels: Record<string, number> = x.roast;
+        const roast = (await card.locator('.origin-roast-name').innerText()).split(':').pop()!.trim();
+        expect(levels[roast], roast).toBeGreaterThan(0);
+        await expect(card.locator('.origin-beans .is-on')).toHaveCount(levels[roast]);
+      }
+      // nothing to buy: no price, no stock figure, no form
+      await expect(band).not.toContainText(/\d\s?(DH|MAD|درهم|kg|كلغ)/i);
+      await expect(band.locator('form, button')).toHaveCount(0);
+      await expect(band.getByRole('link', { name: x.all })).toHaveAttribute('href', '/single-origin');
+      const photo = band.locator('.origins-photo img');
+      await expect(photo).toHaveAttribute('loading', 'lazy');
+      await expect(photo).toHaveAttribute('width', '1046');
+      await expect(photo).not.toHaveAttribute('alt', '');
+      const [p, list] = [await band.locator('.origins-photo').boundingBox(), await band.locator('.origin-cards').boundingBox()];
+      expect(p!.x, 'the photo is on the right in every language').toBeGreaterThan(list!.x + list!.width);
+      errors.check();
+    });
+  }
+
   test('the intro stays editable from the Admin About fields', async ({ page }) => {
     await signIn(page, 'owner');
     await open(page, '/admin/content');
@@ -103,6 +142,17 @@ test.describe('home page', () => {
 
   test.describe('phone', () => {
     test.use({ viewport: { width: 390, height: 800 } });
+
+    test('origins on a phone: title, then the photo, then the cards, inside the window', async ({ page }) => {
+      await open(page, '/');
+      const band = page.locator('.origins-band');
+      const [head, photo, list] = await Promise.all(['.origins-head', '.origins-photo', '.origin-cards'].map((q) => band.locator(q).boundingBox()));
+      expect(head!.y + head!.height).toBeLessThanOrEqual(photo!.y);
+      expect(photo!.y + photo!.height).toBeLessThanOrEqual(list!.y);
+      expect(photo!.width).toBeLessThanOrEqual(390);
+      await expect(band.locator('.origin-card')).toHaveCount(6);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    });
 
     test('one language button opens the three languages', async ({ page }) => {
       await open(page, '/');

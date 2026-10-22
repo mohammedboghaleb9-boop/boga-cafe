@@ -2,48 +2,44 @@ import { Link } from 'react-router';
 import { onDisplay } from '@/core/showcase';
 import { useCatalog } from '@/data/hooks';
 import { useI18n } from '@/i18n';
-import { Flag } from '@/shared/ui/Flag';
+import { Icon } from '@/shared/ui/Icon';
 import { Photo } from '@/shared/ui/Photo';
-import { RoastChip } from '@/shared/ui/Roast';
+import { BeanGlyph, OriginCard } from './OriginCard';
 
+/** The origins on show, as cards beside the harvest photo (always on the right on large screens). */
 export function OriginsBand() {
-  const { t, l } = useI18n();
+  const { t } = useI18n();
   const shown = useCatalog().origins.filter(onDisplay);
   return (
-    <section className="section container origins-band">
-      <figure className="origins-photo">
-        <Photo name="greenBeans" alt={t.media.greenBeans} className="parallax" sizes="(min-width: 900px) 45vw, 100vw" />
-      </figure>
-      <div className="stack origins-text">
-        <div className="section-head reveal">
-          <div className="stack">
-            <h2>{t.home.originsTitle}</h2>
-            <p className="muted">{t.home.originsText}</p>
+    <section className="origins-band" aria-labelledby="origins-title">
+      <div className="container wide origins-grid">
+        <div className="origins-head">
+          <div className="origins-head-text">
+            <div className="origins-title">
+              <span className="origins-ornament" aria-hidden="true">
+                <BeanGlyph size={24} />
+              </span>
+              <h2 id="origins-title">{t.home.originsTitle}</h2>
+            </div>
+            <p className="origins-lead">{t.home.originsText}</p>
           </div>
-          <Link to="/single-origin" className="btn btn-ghost btn-sm">
-            {t.nav.singleOrigin}
+          <Link to="/single-origin" className="btn btn-ghost btn-sm origins-all">
+            {t.home.originsAll}
+            <Icon name="arrow" size={16} className="flip-rtl" />
           </Link>
         </div>
-        {shown.length === 0 && <p className="muted">{t.common.noOrigins}</p>}
-        <ul className="origin-rows">
-          {shown.map((o) => (
-            <li key={o.id} className="reveal">
-              <Flag code={o.countryCode} title={l(o.name)} size={28} />
-              <div>
-                <strong>{l(o.name)}</strong>
-                <span className="muted small">
-                  {' '}
-                  · {o.region} · {t.common[o.species]}
-                </span>
-                <p className="small origin-notes">{l(o.tastingNotes)}</p>
-              </div>
-              <span className="small muted origin-roast">
-                <RoastChip level={o.roastLevel} size={44} />
-                {t.roast[o.roastLevel]}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <figure className="origins-photo">
+          <Photo name="harvest" alt={t.media.harvest} sizes="(min-width: 1200px) 40vw, 100vw" />
+        </figure>
+        {shown.length === 0 ? (
+          <p className="muted origin-cards">{t.common.noOrigins}</p>
+        ) : (
+          <ul className="origin-cards">
+            {shown.map((o) => (
+              <OriginCard key={o.id} origin={o} />
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );
