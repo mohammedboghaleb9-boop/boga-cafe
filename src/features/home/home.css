@@ -218,7 +218,7 @@
 
 /* ───── Brand intro: two lines, no picture ───── */
 .intro {
-  max-inline-size: 760px;
+  max-inline-size: 920px;
   text-align: center;
 }
 .intro .stack {

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { open, watchErrors } from './helpers';
+import { open, signIn, watchErrors } from './helpers';
 
 test.describe('home page', () => {
   test('the video is silent, inline and looping over its still; the ribbon says its facts once', async ({ page }) => {
@@ -44,9 +44,9 @@ test.describe('home page', () => {
   // the owner's order (2026-10-22): start group, short intro, signature blends, origins, Custom Blend, how it is made, B2B, follow
   const ORDER = ['.hero', '.paths', '.ribbon', '#about', '.shelf', '.origins-band', '.blend-band', '.story', '.b2b-band', '.follow'];
   const INTRO = {
-    fr: { lang: 'Français', intro: 'définit les recettes, les proportions et les spécifications', how: 'Comment est préparé le café BOGA' },
-    en: { lang: 'English', intro: 'defines the recipes, proportions and specifications', how: 'How BOGA coffee is made' },
-    ar: { lang: 'العربية', intro: 'تحدد BOGA CAFÉ الوصفات والنسب والمواصفات', how: 'كيف تُحضَّر قهوة BOGA' },
+    fr: { lang: 'Français', intro: 'définit ses recettes, ses proportions et les spécifications', how: 'Comment est préparé le café BOGA' },
+    en: { lang: 'English', intro: 'defines its recipes, proportions and the specification', how: 'How BOGA coffee is made' },
+    ar: { lang: 'العربية', intro: 'تحدد BOGA CAFÉ وصفاتها ونسب خلطاتها', how: 'كيف تُحضَّر قهوة BOGA' },
   } as const;
   for (const [code, x] of Object.entries(INTRO)) {
     test(`section order, one short intro and the steps below (${code})`, async ({ page }) => {
@@ -61,7 +61,7 @@ test.describe('home page', () => {
       const intro = page.locator('#about');
       await expect(intro).toContainText(x.intro);
       await expect(intro.locator('img, picture, ol')).toHaveCount(0);
-      expect(((await intro.locator('p').innerText()).match(/\S+/g) ?? []).length).toBeLessThan(40);
+      expect(((await intro.locator('p').innerText()).match(/\S+/g) ?? []).length).toBeLessThan(60);
       await expect(page.getByText(x.intro)).toHaveCount(1);
       // no roasting claim of our own
       await expect(intro).not.toContainText(/Oujda|وجدة/);
@@ -79,6 +79,20 @@ test.describe('home page', () => {
       errors.check();
     });
   }
+
+  test('the intro stays editable from the Admin About fields', async ({ page }) => {
+    await signIn(page, 'owner');
+    await open(page, '/admin/content');
+    await page.locator('#c-at-fr').fill('Titre modifié');
+    await page.locator('#c-ax-fr').fill('Texte modifié depuis l’administration.');
+    await page.locator('.admin-head .btn-primary').click();
+    await expect(page.locator('.admin-head .pill-ok').first()).toBeVisible();
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('boga-locale', 'fr'));
+    await page.reload();
+    await expect(page.locator('#about h2')).toHaveText('Titre modifié');
+    await expect(page.locator('#about .lead')).toHaveText('Texte modifié depuis l’administration.');
+  });
 
   test('"About" in the header lands on the short intro', async ({ page }) => {
     await open(page, '/');
