@@ -44,7 +44,7 @@ function comingSoonEntry() {
     ['<html lang="fr" dir="ltr">', '<html lang="fr" dir="ltr" data-site="coming-soon">'],
     ['src="/src/main.tsx"', 'src="/src/coming-soon/main.tsx"'],
     [
-      'content="BOGA CAFÉ — Torréfaction & vente, Oujda. Café en grains, blends signature, single origin et Custom Blend."',
+      'content="BOGA CAFÉ — Sélection & vente, Oujda. Café en grains, blends signature, single origin et Custom Blend."',
       'content="BOGA CAFÉ, Oujda. La boutique en ligne ouvre bientôt."',
     ],
     ['content="BOGA CAFÉ — Café en grains, torréfié pour vous"', 'content="BOGA CAFÉ — Bientôt en ligne"'],
