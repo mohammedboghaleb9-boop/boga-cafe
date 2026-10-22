@@ -44,11 +44,15 @@ export function B2BPage() {
             ))}
           </ul>
         </section>
+      </div>
 
-        <section className="section">
-          <h2 className="b2b-h2">{t.b2b.blendsTitle}</h2>
+      <section className="shelf" aria-labelledby="b2b-blends">
+        <div className="container">
+          <h2 id="b2b-blends" className="shelf-title">
+            {t.b2b.blendsTitle}
+          </h2>
           {blends.length === 0 ? (
-            <p className="muted">{t.shop.empty}</p>
+            <p className="shelf-empty">{t.shop.empty}</p>
           ) : (
             <div className="pgrid">
               {blends.map((p) => (
@@ -56,8 +60,10 @@ export function B2BPage() {
               ))}
             </div>
           )}
-        </section>
+        </div>
+      </section>
 
+      <div className="container page">
         <div className="b2b-forms">
           <section className="panel stack b2b-large">
             <h2>{t.b2b.largeTitle}</h2>

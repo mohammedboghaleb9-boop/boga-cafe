@@ -1,9 +1,5 @@
-/* ───── The cream shelf: signature blends ───── */
-.shelf {
-  background: var(--cream);
-  color: var(--cream-ink);
-  padding-block: clamp(44px, 5vw, 72px) clamp(56px, 6vw, 88px);
-}
+/* ───── The cream shelf of the home page: its head and the link to the shop (the band, the title and the cards:
+   shared/product/product-card.css) ───── */
 .shelf-head {
   display: flex;
   align-items: flex-end;
@@ -12,29 +8,8 @@
   gap: 20px 32px;
   margin-block-end: 32px;
 }
-.shelf .eyebrow {
-  color: var(--bronze);
-}
-.shelf h2 {
-  margin-block-start: 10px;
-  font-size: clamp(1.9rem, 1.3rem + 1.6vw, 2.8rem);
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--cream-ink);
-}
-:root[lang='ar'] .shelf h2 {
-  font-size: clamp(1.8rem, 1.3rem + 1.3vw, 2.5rem);
-  line-height: 1.5;
-  letter-spacing: 0;
-}
-.shelf h2::after {
-  content: '';
-  display: block;
-  inline-size: 68px;
-  block-size: 2px;
-  margin-block-start: 14px;
-  background: var(--accent);
+.shelf-head .shelf-title {
+  margin-block: 10px 0;
 }
 .shelf-all {
   display: inline-flex;
@@ -43,7 +18,7 @@
   min-block-size: 46px;
   padding: 0 22px;
   border-radius: 999px;
-  border: 1px solid #cdbfa9;
+  border: 1px solid var(--cream-edge);
   background: var(--cream-card);
   color: var(--cream-ink);
   font-weight: 600;
@@ -55,158 +30,4 @@
 }
 .shelf-all svg {
   color: var(--bronze);
-}
-.shelf-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-}
-.sig-card {
-  display: grid;
-  grid-template-columns: 44% minmax(0, 1fr);
-  overflow: hidden;
-  border-radius: 16px;
-  background: var(--cream-card);
-  border: 1px solid var(--cream-line);
-  color: var(--cream-ink);
-  text-decoration: none;
-  box-shadow:
-    0 2px 6px rgb(60 40 20 / 0.06),
-    0 18px 36px -28px rgb(60 40 20 / 0.45);
-  transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
-}
-.sig-card:hover {
-  transform: translateY(-3px);
-  border-color: #d2bc9c;
-}
-/* the pouch keeps its 4:5 frame (the sticker is placed in % of it), centred on the photo's own black */
-.sig-media {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  background: #0b0908;
-}
-.sig-media .pv {
-  inline-size: 100%;
-}
-.sig-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-inline-size: 0;
-  padding: 24px 22px 22px;
-}
-.sig-kind {
-  font-size: 0.69rem;
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--bronze);
-}
-:root[lang='ar'] .sig-kind {
-  font-size: 0.81rem;
-  letter-spacing: 0;
-}
-.sig-name {
-  font-family: 'Cinzel', var(--font-display);
-  font-size: 1.25rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--cream-ink);
-}
-.sig-tag {
-  font-size: 0.94rem;
-  line-height: 1.45;
-  color: var(--cream-text);
-}
-.sig-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.sig-mark {
-  flex: none;
-  color: var(--bronze);
-}
-.sig-recipe {
-  display: grid;
-  font-weight: 700;
-  font-size: 0.9rem;
-  line-height: 1.45;
-  color: var(--recipe-ink);
-}
-.sig-notes {
-  display: grid;
-  font-size: 0.875rem;
-  line-height: 1.45;
-  color: var(--cream-text);
-}
-.sig-notes b {
-  color: var(--bronze);
-}
-.sig-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  align-self: flex-start;
-  margin-block-start: auto;
-  min-block-size: 44px;
-  padding: 0 20px;
-  border-radius: 999px;
-  background: var(--brown);
-  color: var(--on-brown);
-  font-weight: 600;
-  font-size: 0.875rem;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.15);
-  transition: background 0.2s;
-}
-:root[lang='ar'] .sig-cta {
-  font-size: 0.94rem;
-  font-weight: 700;
-}
-.sig-card:hover .sig-cta {
-  background: var(--brown-hi);
-}
-
-@media (max-width: 1099px) {
-  .sig-card {
-    grid-template-columns: 1fr;
-  }
-  .sig-body {
-    padding: 18px 18px 16px;
-  }
-}
-@media (min-width: 700px) and (max-width: 1099px) {
-  .shelf-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-  }
-}
-@media (max-width: 699px) {
-  .shelf-grid {
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-  .sig-card {
-    grid-template-columns: 40% minmax(0, 1fr);
-  }
-  .sig-body {
-    padding: 16px;
-    padding-inline-start: 14px;
-    gap: 9px;
-  }
-  .sig-cta {
-    align-self: stretch;
-    justify-content: center;
-    gap: 8px;
-    min-block-size: 40px;
-    padding: 0 12px;
-    white-space: nowrap;
-  }
-}
-/* the narrowest phones: the pouch above the text */
-@media (max-width: 379px) {
-  .sig-card {
-    grid-template-columns: 1fr;
-  }
 }

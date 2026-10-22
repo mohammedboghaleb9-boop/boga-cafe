@@ -1,7 +1,16 @@
 import { expect, test } from '@playwright/test';
-import { addSignatureBag, fillCheckout, signIn, watchErrors } from './helpers';
+import { addSignatureBag, fillCheckout, open, signIn, watchErrors } from './helpers';
 
 test.describe('customer', () => {
+  test('each product card is one link named after its product, with its price while the sales are open', async ({ page }) => {
+    await open(page, '/shop');
+    const card = page.getByRole('link', { name: 'BOGA Signature', exact: true });
+    await expect(card).toHaveCount(1);
+    await expect(card).toContainText(/\d\s?DH/);
+    await card.click();
+    await expect(page).toHaveURL(/\/product\/boga-signature$/);
+  });
+
   test('orders by bank transfer, then reports the payment', async ({ page }) => {
     const errors = watchErrors(page);
     await addSignatureBag(page);

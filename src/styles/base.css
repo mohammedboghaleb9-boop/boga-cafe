@@ -175,6 +175,10 @@ textarea {
 .page {
   padding-block: 28px 64px;
 }
+/* a page whose cards follow on the cream shelf (product-card.css) */
+.page.page-top {
+  padding-block-end: 8px;
+}
 .page-head {
   position: relative;
   isolation: isolate;
@@ -326,8 +330,11 @@ button.btn[aria-disabled='true'] {
   gap: 14px;
   font-size: 1rem;
 }
-/* the home hero: warm gold with a soft light from above, and its quiet partner */
-.btn-gold {
+/* warm gold with a soft light from above: the home hero, and every main button of the store (owner 2026-10-22);
+   the hero's quiet partner below */
+.btn-gold,
+.store .btn-primary,
+.store .btn-primary:hover:not(:disabled) {
   color: var(--on-gold);
   background: linear-gradient(180deg, var(--gold-hi) 0%, var(--accent) 52%, var(--gold-lo) 100%);
   box-shadow:
@@ -335,9 +342,17 @@ button.btn[aria-disabled='true'] {
     0 10px 26px -14px var(--accent);
   transition: filter 0.2s, transform 0.2s, box-shadow 0.2s;
 }
-.btn-gold:hover {
+.btn-gold:hover,
+.store .btn-primary:hover:not(:disabled) {
   filter: brightness(1.06);
   transform: translateY(-1px);
+}
+.store .btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: none;
+}
+.store .btn-ghost:hover:not(:disabled) {
+  border-color: var(--gold-hi);
 }
 .btn-veil {
   color: var(--ink);
