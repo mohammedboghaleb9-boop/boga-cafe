@@ -18,7 +18,7 @@
   min-block-size: 46px;
   padding: 0 22px;
   border-radius: 999px;
-  border: 1px solid #cdbfa9;
+  border: 1px solid var(--cream-edge);
   background: var(--cream-card);
   color: var(--cream-ink);
   font-weight: 600;

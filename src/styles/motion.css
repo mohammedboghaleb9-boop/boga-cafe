@@ -22,6 +22,10 @@
   .pcard:hover .pv-inner {
     transform: scale(1.035);
   }
+  /* translate, not transform: the scroll reveal of .pgrid > * holds its transform */
+  .pcard:hover {
+    translate: 0 -3px;
+  }
 
   @supports (animation-timeline: view()) {
     .reveal {

@@ -8,7 +8,7 @@
 |---|---|---|---|
 | الرئيسية | `/` | `src/features/home` | `HomePage.tsx` (ترتيب الأقسام) + `sections/*.tsx` (كل قسم ملف) |
 | المتجر | `/shop` | `src/features/shop` | `ShopPage.tsx` |
-| بطاقة المنتج | المتجر، الرئيسية، المنتج، B2B، أحادي المصدر | `src/shared/product` | `ProductCard.tsx` + `product-card.css` (البطاقة وشبكتها) |
+| بطاقة المنتج | المتجر، الرئيسية، المنتج، B2B، أحادي المصدر | `src/shared/product` | `ProductCard.tsx` + `product-card.css` (البطاقة وشبكتها والرف الكريمي `.shelf` وعنوانه) |
 | صفحة المنتج | `/product/:slug` | `src/features/product` | `ProductPage.tsx` |
 | أحادي المصدر | `/single-origin` | `src/features/single-origin` | |
 | الخلطة الخاصة | `/custom-blend` | `src/features/custom-blend` | `CustomBlendPage.tsx`، `blend-helpers.ts` |

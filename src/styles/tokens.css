@@ -132,10 +132,13 @@
   --gold-hi: #ddb283;
   --gold-lo: #b07e4a;
   --on-gold: #1a120a;
-  /* the cream shelf of the home page (signature blends) */
+  /* the cream shelf (product cards on every page; shared/product/product-card.css) */
   --cream: #eee4d4;
   --cream-card: #fffbf4;
   --cream-line: #e2d3bd;
+  --cream-edge: #cdbfa9;
+  --cream-edge-hi: #d2bc9c;
+  --pouch-black: #0b0908;
   --cream-ink: #1c1713;
   --cream-text: #44392f;
   --bronze: #8a5a2b;

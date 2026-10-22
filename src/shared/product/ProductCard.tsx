@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Link } from 'react-router';
 import { lowestPrice, offeredSizes } from '@/core/pricing';
 import { speciesSplit } from '@/core/recipe';
@@ -35,7 +36,7 @@ export function ProductCard({ product, headingLevel = 3 }: { product: Product; h
   const { arabica, robusta } = speciesSplit(product.recipe, originIndex);
   const sizes = offeredSizes(product);
   const from = lowestPrice(product);
-  const titleId = `pcard-${product.id}`;
+  const titleId = useId();
 
   return (
     <Link to={`/product/${product.slug}`} className="pcard" aria-labelledby={titleId}>

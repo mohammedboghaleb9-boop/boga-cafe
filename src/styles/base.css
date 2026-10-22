@@ -347,6 +347,10 @@ button.btn[aria-disabled='true'] {
   filter: brightness(1.06);
   transform: translateY(-1px);
 }
+.store .btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: none;
+}
 .store .btn-ghost:hover:not(:disabled) {
   border-color: var(--gold-hi);
 }
