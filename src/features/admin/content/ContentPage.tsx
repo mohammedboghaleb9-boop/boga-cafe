@@ -52,8 +52,8 @@ export function ContentPage() {
           <LocalizedInput id="c-ann" label={t.admin.content.announcement} value={content.announcement} onChange={(v) => setC('announcement', v)} maxLength={CONTENT_MAX.announcement} />
           <LocalizedInput id="c-ht" label={t.admin.content.heroTitle} value={content.heroTitle} onChange={(v) => setC('heroTitle', v)} maxLength={CONTENT_MAX.heroTitle} hint={t.admin.content.heroTitleHint} />
           <LocalizedInput id="c-hs" label={t.admin.content.heroSubtitle} value={content.heroSubtitle} onChange={(v) => setC('heroSubtitle', v)} multiline maxLength={CONTENT_MAX.heroSubtitle} hint={t.admin.content.heroSubtitleHint} />
-          <LocalizedInput id="c-at" label={t.admin.content.aboutTitle} value={content.aboutTitle} onChange={(v) => setC('aboutTitle', v)} maxLength={CONTENT_MAX.aboutTitle} />
-          <LocalizedInput id="c-ax" label={t.admin.content.aboutText} value={content.aboutText} onChange={(v) => setC('aboutText', v)} multiline maxLength={CONTENT_MAX.aboutText} />
+          <LocalizedInput id="c-at" label={t.admin.content.aboutTitle} value={content.aboutTitle} onChange={(v) => setC('aboutTitle', v)} maxLength={CONTENT_MAX.aboutTitle} hint={t.admin.content.aboutHint} />
+          <LocalizedInput id="c-ax" label={t.admin.content.aboutText} value={content.aboutText} onChange={(v) => setC('aboutText', v)} multiline maxLength={CONTENT_MAX.aboutText} hint={t.admin.content.aboutHint} />
         </fieldset>
         <section className="panel stack">
           <h2 className="admin-card-title">{t.admin.content.contactTitle}</h2>

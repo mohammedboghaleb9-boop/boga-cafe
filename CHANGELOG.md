@@ -5,6 +5,9 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-22
+- 2026-10-22 [claude/focused-brown-gitp8i] Owner review: the intro stays editable from the Admin About fields (no dictionary copy, no database change); picture alt texts no longer claim a roastery; Follow text "Discover the world of BOGA, our recipes and our news"; e2e 96/96 and the production shop build checked against live data, sales still closed.
+- 2026-10-22 [claude/focused-brown-gitp8i] Review fixes for the home sections: labelled steps section, test guard that the intro never mentions Oujda, clearer test title; e2e home + a11y 17/17.
+- 2026-10-22 [claude/focused-brown-gitp8i] Home sections reordered (start group, short BOGA intro, signature blends, origins, Custom Blend, how it is made, B2B, follow); `BrandStory` split into `BrandIntro` (two lines, no picture, the target of "About") and `HowItsMade` (photos and the five steps, titled "How BOGA coffee is made", in ar/fr/en); the intro text moved from the admin About fields to the dictionaries (hint added in Admin); no catalog, database or sales change. Not merged, not deployed.
 - 2026-10-22 [ci/p5-job-timeouts] CI jobs get time limits (web 15, database 15, e2e 30 min) after an `e2e` job hung over 4 h in `playwright install`; notes and status page record PR #28 as merged and live; owner confirmed delivery covers every Moroccan city (texts and `og:description` unchanged; cities and fees reviewed before the sales open).
 - 2026-10-22 [main 3f0b3f4] PR #28 merged (owner-approved) and live: meta description "Sélection & vente, Oujda" on bogacafe.ma (`/`, `/shop`); CI on the PR head 6/6 and on main 3/3.
 - 2026-10-22 [fix/p5-meta-description] Meta description (link previews) now "Sélection & vente, Oujda" (owner: the roasting is done by a partner outside Oujda); the coming-soon build still swaps it.

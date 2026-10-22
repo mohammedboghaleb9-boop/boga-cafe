@@ -110,8 +110,8 @@ export const en = {
     openBag: 'Open BOGA CAFÉ pouch with whole roasted beans spilling onto wood',
     seal: 'The round Custom Blend seal of BOGA CAFÉ',
     label: 'The BOGA CAFÉ hexagonal label',
-    roaster: 'Freshly roasted beans pouring into the cooling tray of the roaster',
-    roastery: 'The roaster and jute sacks of green coffee in the roastery',
+    roaster: 'Roasted coffee beans in the cooling tray of a coffee roaster',
+    roastery: 'A coffee roaster and jute sacks of green coffee',
     greenBeans: 'Jute sacks of green coffee beans with a wooden scoop',
     barista: 'A barista pulling a double espresso next to a BOGA CAFÉ pouch',
     tray: 'Coffee cup on a Moroccan brass tray beside a BOGA CAFÉ pouch',
@@ -143,7 +143,7 @@ export const en = {
     blendExample: 'Example for 1 kg',
     originsTitle: 'Our origins',
     originsText: 'Each origin has its own stock, counted in kilograms.',
-    processTitle: 'From your order to your cup',
+    processTitle: 'How BOGA coffee is made',
     process: [
       { title: 'You choose', text: 'A blend, a single origin or your own recipe, and the weight.' },
       { title: 'We check stock', text: 'Each origin is checked and reserved in kilograms.' },
@@ -156,7 +156,7 @@ export const en = {
       'Three blends designed for professionals, to taste in 250 g or 500 g (paid sample), and orders above {kg} kg handled directly by our team.',
     b2bCta: 'Discover B2B / HORECA',
     followTitle: 'Follow BOGA CAFÉ',
-    followText: 'Behind the scenes of the roastery, recipes and new origins.',
+    followText: 'Discover the world of BOGA, our recipes and our news.',
   },
 
   shop: {
@@ -699,6 +699,7 @@ export const en = {
       heroTitleHint: 'A word between asterisks (*coffee*) shows in gold.',
       heroSubtitle: 'Home subtitle',
       heroSubtitleHint: 'Not shown on the current home page (kept for later).',
+      aboutHint: 'Shown as the short introduction on the home page.',
       aboutTitle: 'About: title',
       aboutText: 'About: text',
       contactTitle: 'Contact & social media',

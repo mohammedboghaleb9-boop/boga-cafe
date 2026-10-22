@@ -216,7 +216,16 @@
   }
 }
 
-/* ───── Brand story: roaster photo, label sticker, how an order is made ───── */
+/* ───── Brand intro: two lines, no picture ───── */
+.intro {
+  max-inline-size: 920px;
+  text-align: center;
+}
+.intro .stack {
+  align-items: center;
+}
+
+/* ───── How it is made: roaster photo, label sticker, the steps ───── */
 .story {
   display: grid;
   gap: 36px;
@@ -255,12 +264,6 @@
     grid-template-columns: 1fr 1fr;
     gap: 64px;
   }
-}
-.story-steps-title {
-  margin-block-start: 10px;
-  font-size: 1.05rem;
-  font-family: var(--font-body);
-  color: var(--ink-2);
 }
 .process {
   list-style: none;

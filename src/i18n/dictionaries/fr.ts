@@ -106,8 +106,8 @@ export const fr: Dict = {
     openBag: 'Sachet BOGA CAFÉ ouvert, grains torréfiés répandus sur le bois',
     seal: 'Le sceau rond Custom Blend de BOGA CAFÉ',
     label: 'L’étiquette hexagonale BOGA CAFÉ',
-    roaster: 'Grains fraîchement torréfiés tombant dans le bac de refroidissement',
-    roastery: 'Le torréfacteur et des sacs de jute de café vert',
+    roaster: 'Grains de café torréfiés dans le bac de refroidissement d’un torréfacteur',
+    roastery: 'Un torréfacteur et des sacs de jute de café vert',
     greenBeans: 'Sacs de jute remplis de café vert avec une pelle en bois',
     barista: 'Un barista prépare un double espresso à côté d’un sachet BOGA CAFÉ',
     tray: 'Tasse de café sur un plateau marocain en laiton, à côté d’un sachet BOGA CAFÉ',
@@ -139,7 +139,7 @@ export const fr: Dict = {
     blendExample: 'Exemple pour 1 kg',
     originsTitle: 'Nos origines',
     originsText: 'Chaque origine a son propre stock, compté en kilogrammes.',
-    processTitle: 'De votre commande à votre tasse',
+    processTitle: 'Comment est préparé le café BOGA',
     process: [
       { title: 'Vous choisissez', text: 'Un blend, un single origin ou votre propre recette, et le poids.' },
       { title: 'Nous vérifions le stock', text: 'Chaque origine est vérifiée et réservée en kilogrammes.' },
@@ -152,7 +152,7 @@ export const fr: Dict = {
       'Trois blends pensés pour les professionnels, à goûter en 250 g ou 500 g (échantillon payant), et les commandes de plus de {kg} kg traitées directement par notre équipe.',
     b2bCta: 'Découvrir B2B / HORECA',
     followTitle: 'Suivre BOGA CAFÉ',
-    followText: 'Les coulisses de la torréfaction, les recettes et les nouvelles origines.',
+    followText: 'Découvrez l’univers BOGA, nos recettes et nos nouveautés.',
   },
 
   shop: {
@@ -694,6 +694,7 @@ export const fr: Dict = {
       heroTitleHint: 'Un mot entre astérisques (*café*) s’affiche en doré.',
       heroSubtitle: 'Sous-titre de l’accueil',
       heroSubtitleHint: 'Pas affiché sur la page d’accueil actuelle (gardé pour plus tard).',
+      aboutHint: 'Affiché comme courte présentation sur la page d’accueil.',
       aboutTitle: 'À propos : titre',
       aboutText: 'À propos : texte',
       contactTitle: 'Contact & réseaux sociaux',
