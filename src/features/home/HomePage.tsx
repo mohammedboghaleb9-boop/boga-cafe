@@ -4,9 +4,10 @@
  */
 import { B2BTeaser } from './sections/B2BTeaser';
 import { BlendTeaser } from './sections/BlendTeaser';
-import { BrandStory } from './sections/BrandStory';
+import { BrandIntro } from './sections/BrandIntro';
 import { Featured } from './sections/Featured';
 import { Follow } from './sections/Follow';
+import { HowItsMade } from './sections/HowItsMade';
 import { Hero } from './sections/Hero';
 import { OriginsBand } from './sections/OriginsBand';
 import { Paths } from './sections/Paths';
@@ -16,7 +17,7 @@ import './shelf.css';
 import './home.css';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 
-const sections = [Hero, Paths, Ribbon, Featured, BlendTeaser, OriginsBand, B2BTeaser, BrandStory, Follow];
+const sections = [Hero, Paths, Ribbon, BrandIntro, Featured, OriginsBand, BlendTeaser, HowItsMade, B2BTeaser, Follow];
 
 export function HomePage() {
   usePageTitle();

@@ -143,7 +143,10 @@ export const en = {
     blendExample: 'Example for 1 kg',
     originsTitle: 'Our origins',
     originsText: 'Each origin has its own stock, counted in kilograms.',
-    processTitle: 'From your order to your cup',
+    introTitle: 'Our recipes, our brand',
+    introText:
+      'BOGA CAFÉ defines the recipes, proportions and specifications. A partner roaster roasts to them, and the coffee is packed under the BOGA name as whole beans.',
+    processTitle: 'How BOGA coffee is made',
     process: [
       { title: 'You choose', text: 'A blend, a single origin or your own recipe, and the weight.' },
       { title: 'We check stock', text: 'Each origin is checked and reserved in kilograms.' },
@@ -699,6 +702,7 @@ export const en = {
       heroTitleHint: 'A word between asterisks (*coffee*) shows in gold.',
       heroSubtitle: 'Home subtitle',
       heroSubtitleHint: 'Not shown on the current home page (kept for later).',
+      aboutHint: 'Not shown on the current home page: the short introduction is written in the site texts.',
       aboutTitle: 'About: title',
       aboutText: 'About: text',
       contactTitle: 'Contact & social media',

@@ -139,7 +139,10 @@ export const fr: Dict = {
     blendExample: 'Exemple pour 1 kg',
     originsTitle: 'Nos origines',
     originsText: 'Chaque origine a son propre stock, compté en kilogrammes.',
-    processTitle: 'De votre commande à votre tasse',
+    introTitle: 'Nos recettes, notre marque',
+    introText:
+      'BOGA CAFÉ définit les recettes, les proportions et les spécifications. Un torréfacteur partenaire torréfie selon ce cahier des charges, et le café est conditionné sous le nom BOGA, en grains entiers.',
+    processTitle: 'Comment est préparé le café BOGA',
     process: [
       { title: 'Vous choisissez', text: 'Un blend, un single origin ou votre propre recette, et le poids.' },
       { title: 'Nous vérifions le stock', text: 'Chaque origine est vérifiée et réservée en kilogrammes.' },
@@ -694,6 +697,7 @@ export const fr: Dict = {
       heroTitleHint: 'Un mot entre astérisques (*café*) s’affiche en doré.',
       heroSubtitle: 'Sous-titre de l’accueil',
       heroSubtitleHint: 'Pas affiché sur la page d’accueil actuelle (gardé pour plus tard).',
+      aboutHint: 'Pas affiché sur la page d’accueil actuelle : la courte présentation est écrite dans les textes du site.',
       aboutTitle: 'À propos : titre',
       aboutText: 'À propos : texte',
       contactTitle: 'Contact & réseaux sociaux',

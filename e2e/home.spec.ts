@@ -41,6 +41,50 @@ test.describe('home page', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
   });
 
+  // the owner's order (2026-10-22): start group, short intro, signature blends, origins, Custom Blend, how it is made, B2B, follow
+  const ORDER = ['.hero', '.paths', '.ribbon', '#about', '.shelf', '.origins-band', '.blend-band', '.story', '.b2b-band', '.follow'];
+  const INTRO = {
+    fr: { lang: 'Français', intro: 'définit les recettes, les proportions et les spécifications', how: 'Comment est préparé le café BOGA' },
+    en: { lang: 'English', intro: 'defines the recipes, proportions and specifications', how: 'How BOGA coffee is made' },
+    ar: { lang: 'العربية', intro: 'تحدد BOGA CAFÉ الوصفات والنسب والمواصفات', how: 'كيف تُحضَّر قهوة BOGA' },
+  } as const;
+  for (const [code, x] of Object.entries(INTRO)) {
+    test(`section order, one short intro and the steps below (${code})`, async ({ page }) => {
+      const errors = watchErrors(page);
+      await open(page, '/');
+      await page.locator('.header-tools .lang').getByRole('button', { name: x.lang }).click();
+      await expect(page.locator('html')).toHaveAttribute('lang', code);
+      const tops = await page.evaluate((sels) => sels.map((q) => document.querySelector(q)?.getBoundingClientRect().top ?? null), ORDER);
+      expect(tops.every((y) => y !== null), `a section is missing: ${JSON.stringify(tops)}`).toBe(true);
+      expect(tops).toEqual([...tops].sort((a, b) => (a as number) - (b as number)));
+      // the intro: short, no picture, no steps; said once on the page
+      const intro = page.locator('#about');
+      await expect(intro).toContainText(x.intro);
+      await expect(intro.locator('img, picture, ol')).toHaveCount(0);
+      expect(((await intro.locator('p').innerText()).match(/\S+/g) ?? []).length).toBeLessThan(40);
+      await expect(page.getByText(x.intro)).toHaveCount(1);
+      // the details: titled, five steps, the existing photos, no repeat of the intro
+      const how = page.locator('.story');
+      await expect(how.getByRole('heading', { level: 2, name: x.how })).toBeVisible();
+      await expect(how.locator('.process li')).toHaveCount(5);
+      await expect(how.locator('img').first()).toBeVisible();
+      await expect(how.locator('p')).toHaveCount(0);
+      // one h2 each, no empty ones
+      const h2 = await page.locator('main h2').allInnerTexts();
+      expect(new Set(h2).size).toBe(h2.length);
+      // the links of the start group still go to their pages
+      await expect(page.locator('.paths a')).toHaveCount(3);
+      errors.check();
+    });
+  }
+
+  test('"About" in the header lands on the short intro', async ({ page }) => {
+    await open(page, '/');
+    await page.locator('.nav-top', { hasText: /^(About|À propos|من نحن)$/ }).first().click();
+    await expect(page.locator('#about')).toBeInViewport();
+    await expect(page.locator('#about .lead')).toBeVisible();
+  });
+
   test.describe('phone', () => {
     test.use({ viewport: { width: 390, height: 800 } });
 
