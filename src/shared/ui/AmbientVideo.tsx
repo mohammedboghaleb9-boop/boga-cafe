@@ -17,8 +17,8 @@ export interface AmbientSources {
 
 /**
  * A silent looping video behind a section, decoration only (aria-hidden). The still shows first;
- * the video is fetched once the section is near the screen, plays while it is on screen and pauses
- * when it leaves. Visitors who ask for less motion or for data saving keep the still: no download.
+ * the video is fetched once the section first comes near the screen, plays while it is on screen and
+ * pauses when it leaves. Visitors who ask for less motion or for data saving keep the still: no download.
  */
 export function AmbientVideo({ sources }: { sources: AmbientSources }) {
   const box = useRef<HTMLDivElement>(null);
@@ -33,8 +33,9 @@ export function AmbientVideo({ sources }: { sources: AmbientSources }) {
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const nearby = new IntersectionObserver(([e]) => setNear(e.isIntersecting), { rootMargin: '400px 0px' });
-    const onScreen = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.2 });
+    // the latest entry of a batch is the current state; once near, the video stays (paused when away)
+    const nearby = new IntersectionObserver((es) => es.at(-1)?.isIntersecting && setNear(true), { rootMargin: '400px 0px' });
+    const onScreen = new IntersectionObserver((es) => setVisible(es.at(-1)?.isIntersecting ?? false), { threshold: 0.2 });
     nearby.observe(el);
     onScreen.observe(el);
     return () => {

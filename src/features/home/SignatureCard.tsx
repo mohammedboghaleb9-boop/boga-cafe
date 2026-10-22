@@ -4,7 +4,7 @@ import { speciesSplit } from '@/core/recipe';
 import type { Product } from '@/core/types';
 import { useCatalog } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
-import { productSticker } from '@/shared/sticker';
+import { cardSize, productSticker } from '@/shared/sticker';
 import { Icon } from '@/shared/ui/Icon';
 import { ProductVisual } from '@/shared/ui/ProductVisual';
 
@@ -24,8 +24,7 @@ export function SignatureCard({ product }: { product: Product }) {
   const { originIndex } = useCatalog();
   const { arabica, robusta } = speciesSplit(product.recipe, originIndex);
   // the same pouch as the shop's card (ProductCard)
-  const sizes = offeredSizes(product);
-  const shownSize = sizes.includes(1000) ? 1000 : (sizes.at(-1) ?? 1000);
+  const shownSize = cardSize(offeredSizes(product));
   return (
     <Link to={`/product/${product.slug}`} className="sig-card">
       <span className="sig-media">

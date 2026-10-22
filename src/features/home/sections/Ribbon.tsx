@@ -1,7 +1,7 @@
 import { useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 
-/** Copies of the list side by side: the track slides by one copy, so the loop never shows a gap. */
+/** Copies of the list side by side: the track slides by one copy (hero.css @keyframes ribbon: 100% / 5), so the loop never shows a gap. */
 const COPIES = 5;
 
 /** The 8-point star of the zellige, between the facts. */

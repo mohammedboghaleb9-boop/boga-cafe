@@ -123,6 +123,7 @@ export function LocalizedInput({
   onChange,
   multiline,
   maxLength,
+  hint,
 }: {
   id: string;
   label: string;
@@ -131,6 +132,8 @@ export function LocalizedInput({
   multiline?: boolean;
   /** Characters per language, as the database saves them. */
   maxLength?: number;
+  /** One line under the label: how the site shows this text. */
+  hint?: string;
 }) {
   const langs: { key: keyof Localized; tag: string; dir: 'rtl' | 'ltr' }[] = [
     { key: 'ar', tag: 'ع', dir: 'rtl' },
@@ -140,6 +143,7 @@ export function LocalizedInput({
   return (
     <fieldset className="loc-input">
       <legend className="label">{label}</legend>
+      {hint && <p className="small muted">{hint}</p>}
       {langs.map((lg) => (
         <label key={lg.key} className="loc-row">
           <span className="loc-tag">{lg.tag}</span>

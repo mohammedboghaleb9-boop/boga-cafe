@@ -52,6 +52,16 @@ test.describe('home page', () => {
       await page.locator('#lang-list').getByRole('button', { name: /English/ }).click();
       await expect(page.locator('html')).toHaveAttribute('lang', 'en');
       await expect(page.locator('#lang-list')).toBeHidden();
+      // keyboard and screen reader users stay where they were
+      await expect(chip).toBeFocused();
+    });
+
+    test('the menu link to the brand story, on the home page itself, closes the menu and shows the story', async ({ page }) => {
+      await open(page, '/');
+      await page.locator('.menu-btn').click();
+      await page.locator('#mobile-nav a[href$="#about"]').click();
+      await expect(page.locator('#mobile-nav')).toBeHidden();
+      await expect(page.locator('#about')).toBeInViewport();
     });
   });
 });

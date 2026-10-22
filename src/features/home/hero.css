@@ -1,0 +1,379 @@
+/* Home page, the dark top: the video hero, the three ways in and the ribbon. */
+/* ───── Hero: the roaster's beans turning behind the title ───── */
+/* how far the three ways in rise over the hero */
+.hero,
+.paths {
+  --paths-overlap: 62px;
+}
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  min-block-size: clamp(520px, 64vh, 660px);
+  overflow: hidden;
+  --hero-shade: to right;
+}
+:root[dir='rtl'] .hero {
+  --hero-shade: to left;
+}
+/* dark only on the side of the text; the rest of the video stays clear */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(var(--hero-shade), rgb(14 12 10 / 0.9) 0%, rgb(14 12 10 / 0.72) 32%, rgb(14 12 10 / 0.22) 54%, transparent 68%),
+    linear-gradient(to bottom, transparent 84%, rgb(14 12 10 / 0.45) 100%);
+}
+.ambient {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--paper);
+}
+.ambient img,
+.ambient video {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.ambient video {
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+.ambient video.is-playing {
+  opacity: 1;
+}
+.hero-inner {
+  padding-block: clamp(48px, 7vh, 80px) calc(var(--paths-overlap) + 30px);
+}
+.hero-text {
+  max-inline-size: 820px;
+}
+.hero .eyebrow {
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.55);
+}
+:root[lang='ar'] .hero .eyebrow {
+  font-size: 0.97rem;
+  letter-spacing: 0;
+}
+.hero h1 {
+  margin-block-start: 18px;
+  max-inline-size: 15em;
+  font-size: clamp(2.15rem, 1.05rem + 2.55vw, 3.6rem);
+  line-height: 1.1;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: 0 2px 24px rgb(0 0 0 / 0.35);
+}
+:root[lang='ar'] .hero h1 {
+  font-size: clamp(1.95rem, 1.05rem + 2.2vw, 3.15rem);
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-block-start: 36px;
+}
+:root[lang='ar'] .hero-actions .btn {
+  font-size: 1.06rem;
+  font-weight: 700;
+}
+.hero-feats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 36px;
+  margin: 40px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.hero-feats li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.hero-feats .ring {
+  display: grid;
+  place-items: center;
+  inline-size: 48px;
+  block-size: 48px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  color: var(--accent);
+}
+.hero-feats b,
+.hero-feats small {
+  display: block;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.55);
+}
+.hero-feats b {
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+.hero-feats small {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+
+/* ───── Three ways in: on the edge between the dark hero and the cream shelf ───── */
+.paths {
+  position: relative;
+  z-index: 2;
+  margin-block-start: calc(var(--paths-overlap) * -1);
+  padding-block-end: 28px;
+  background: linear-gradient(to bottom, transparent var(--paths-overlap), var(--cream) var(--paths-overlap));
+}
+.paths .container.wide {
+  max-width: 1560px;
+  padding-inline: clamp(var(--gutter), 2vw, 32px);
+}
+.paths-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.path {
+  --card-a: #2b1d12;
+  --card-b: #1a120c;
+  --card-c: #110c08;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  block-size: 124px;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  background: radial-gradient(130% 150% at 100% 50%, var(--card-a) 0%, var(--card-b) 55%, var(--card-c) 100%);
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: 0 16px 30px -22px rgb(0 0 0 / 0.6);
+  transition: border-color 0.25s, transform 0.25s;
+}
+:root[dir='rtl'] .path {
+  background: radial-gradient(130% 150% at 0% 50%, var(--card-a) 0%, var(--card-b) 55%, var(--card-c) 100%);
+}
+.path:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  transform: translateY(-2px);
+}
+/* the photo melts into the card before the text starts */
+.path-media {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: -1;
+  inline-size: 54%;
+  mask-image: linear-gradient(to right, #000 34%, transparent 80%);
+}
+:root[dir='rtl'] .path-media {
+  mask-image: linear-gradient(to left, #000 34%, transparent 80%);
+}
+.path-media img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+.path:hover .path-media img {
+  transform: scale(1.05);
+}
+.path-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding-inline: 44% 22px;
+}
+.path-body > span:first-child {
+  min-inline-size: 0;
+}
+.path-title {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.16rem;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:root[lang='ar'] .path-title {
+  font-size: 1.2rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+.path-text {
+  display: block;
+  margin-block-start: 6px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #ddd3c5;
+}
+.path-arrow {
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  flex: none;
+  margin-inline-start: auto;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--ink) 55%, transparent);
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.path:hover .path-arrow {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-gold);
+}
+
+/* ───── The ribbon: confirmed facts, sliding right to left ───── */
+.ribbon {
+  position: relative; /* keeps the screen-reader list inside, clipped */
+  overflow: hidden;
+  background: #0b0907;
+  border-block: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+}
+.ribbon-track {
+  display: flex;
+  inline-size: max-content;
+  animation: ribbon 32s linear infinite;
+}
+.ribbon:hover .ribbon-track {
+  animation-play-state: paused;
+}
+.ribbon-list {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 28px;
+  margin: 0;
+  padding: 18px 14px;
+  list-style: none;
+}
+.ribbon-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 0.94rem;
+  letter-spacing: 0.04em;
+}
+:root[dir='rtl'] .ribbon-list li {
+  flex-direction: row-reverse;
+  font-size: 1.03rem;
+  letter-spacing: 0;
+}
+.ribbon-star {
+  margin-inline-start: 18px;
+  opacity: 0.75;
+}
+:root[dir='rtl'] .ribbon-star {
+  margin-inline: 0 18px;
+}
+/* one copy of the list out of the five (Ribbon.tsx COPIES): 100% / 5 */
+@keyframes ribbon {
+  to {
+    transform: translateX(-20%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-track {
+    animation: none;
+    inline-size: auto;
+    justify-content: center;
+  }
+  .ribbon-list {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 12px;
+  }
+  .ribbon-list + .ribbon-list {
+    display: none;
+  }
+  .ribbon-list li:last-child .ribbon-star {
+    display: none;
+  }
+}
+
+@media (max-width: 1099px) {
+  .paths-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .path {
+    block-size: 112px;
+  }
+  .path-media {
+    inline-size: 46%;
+  }
+  .path-body {
+    padding-inline: 38% 20px;
+  }
+}
+@media (max-width: 699px) {
+  .hero,
+  .paths {
+    --paths-overlap: 52px;
+  }
+  .hero {
+    min-block-size: 0;
+  }
+  .hero-inner {
+    padding-block: 40px calc(var(--paths-overlap) + 26px);
+  }
+  .hero-actions {
+    gap: 12px;
+  }
+  .hero-actions .btn {
+    flex: 1 1 100%;
+    min-height: 54px;
+  }
+  .hero-feats {
+    flex-direction: column;
+    gap: 14px;
+    margin-block-start: 32px;
+  }
+  .path {
+    block-size: 104px;
+  }
+  .path-media {
+    inline-size: 48%;
+    mask-image: linear-gradient(to right, #000 26%, transparent 90%);
+  }
+  :root[dir='rtl'] .path-media {
+    mask-image: linear-gradient(to left, #000 26%, transparent 90%);
+  }
+  .path-body {
+    padding-inline: 43% 14px;
+    gap: 10px;
+  }
+  .path-title {
+    font-size: 1.02rem;
+    letter-spacing: 0.02em;
+  }
+  .path-text {
+    font-size: 0.81rem;
+  }
+  .path-arrow {
+    inline-size: 40px;
+    block-size: 40px;
+  }
+}

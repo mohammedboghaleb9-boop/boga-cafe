@@ -34,6 +34,11 @@ const flagsOf = (recipe: RecipeLine[], origins: OriginIndex) =>
     .filter((l) => origins[l.originId])
     .map((l) => ({ code: origins[l.originId].countryCode, title: origins[l.originId].name.fr }));
 
+/** The pouch a product card shows: the 1 kg one when it is offered, else the largest. */
+export function cardSize(sizes: PackSize[]): PackSize {
+  return sizes.includes(1000) ? 1000 : (sizes.at(-1) ?? 1000);
+}
+
 export function productSticker(
   nameFr: string,
   recipe: RecipeLine[],

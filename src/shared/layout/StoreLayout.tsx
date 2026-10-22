@@ -13,7 +13,9 @@ import './layout.css';
 import { api } from '@/data/api';
 
 export function StoreLayout() {
-  const { pathname, hash } = useLocation();
+  const { pathname, hash, key } = useLocation();
+  // the same section link followed again (/#about, then up the page) lands on it again
+  const sectionVisit = hash ? key : '';
   const { toast, dismissToast } = useCart();
   const { settings } = useDb();
   const { status, retry } = useDataStatus();
@@ -42,8 +44,8 @@ export function StoreLayout() {
       window.clearTimeout(timer);
       moves.forEach((e) => window.removeEventListener(e, stop));
     };
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs again on each new page, and once the live catalog has arrived (the section exists only then)
-  }, [pathname, hash, status]);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs again on each new page or section link, and once the live catalog has arrived (the section exists only then)
+  }, [pathname, hash, sectionVisit, status]);
 
   // unpaid orders past the time limit give their stock back
   useEffect(() => {

@@ -264,6 +264,10 @@
   cursor: pointer;
   text-align: start;
 }
+/* the page's font follows the page's language: the Arabic row keeps its own on the French and English site */
+.lang-list button[lang='ar'] {
+  font-family: 'Tajawal', var(--font-body);
+}
 .lang-list button[aria-pressed='true'] {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
@@ -314,10 +318,6 @@
 }
 .mobile-nav .stack {
   --gap: 2px;
-}
-.mobile-nav .lang {
-  margin-block-start: 12px;
-  align-self: flex-start;
 }
 
 /* phones: compact lockup, one language button, the menu */

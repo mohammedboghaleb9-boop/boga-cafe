@@ -11,13 +11,20 @@ import { Icon } from '../ui/Icon';
 const names: Record<Locale, string> = { ar: ar.meta.label, fr: fr.meta.label, en: en.meta.label };
 const flags: Record<Locale, string> = { ar: 'MA', fr: 'FR', en: 'GB' };
 
-/** The three languages side by side: flag and code, the language's own name for screen readers. */
+/** The three languages side by side: flag and code; screen readers hear the language's own name, then the code. */
 export function LanguageSwitcher() {
   const { locale, setLocale, t } = useI18n();
   return (
     <div className="lang" role="group" aria-label={t.nav.language}>
       {LOCALES.map((l) => (
-        <button key={l} type="button" aria-pressed={l === locale} aria-label={names[l]} onClick={() => setLocale(l)} lang={l}>
+        <button
+          key={l}
+          type="button"
+          aria-pressed={l === locale}
+          aria-label={`${names[l]} (${l.toUpperCase()})`}
+          onClick={() => setLocale(l)}
+          lang={l}
+        >
           <Flag code={flags[l]} size={21} title="" />
           <span aria-hidden="true">{l.toUpperCase()}</span>
         </button>
@@ -32,7 +39,7 @@ export function LanguageMenu() {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
-  // a tap outside or Escape closes the list; Escape gives the focus back to the button
+  // a tap outside or Escape closes the list; Escape and a choice give the focus back to the button
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
@@ -52,14 +59,21 @@ export function LanguageMenu() {
   }, [open]);
 
   return (
-    <div className="lang-menu" ref={box}>
+    <div
+      className="lang-menu"
+      ref={box}
+      // Tab out of the open list closes it (a tap that moves no focus, as on Safari, is the pointerdown's job)
+      onBlur={(e) => {
+        if (e.relatedTarget && !box.current?.contains(e.relatedTarget)) setOpen(false);
+      }}
+    >
       <button
         ref={button}
         type="button"
         className="lang-chip"
         aria-expanded={open}
         aria-controls="lang-list"
-        aria-label={`${t.nav.language}: ${names[locale]}`}
+        aria-label={`${t.nav.language}: ${names[locale]} (${locale.toUpperCase()})`}
         onClick={() => setOpen((v) => !v)}
       >
         <Flag code={flags[locale]} size={21} title="" />
@@ -76,6 +90,7 @@ export function LanguageMenu() {
             onClick={() => {
               setLocale(l);
               setOpen(false);
+              button.current?.focus();
             }}
           >
             <Flag code={flags[l]} size={21} title="" />

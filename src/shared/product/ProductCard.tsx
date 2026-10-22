@@ -4,7 +4,7 @@ import type { Product } from '@/core/types';
 import { useBrowseOnly, useCatalog, useSettings } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { recipeView } from '@/shared/recipe-view';
-import { productSticker } from '@/shared/sticker';
+import { cardSize, productSticker } from '@/shared/sticker';
 import { ProductVisual } from '@/shared/ui/ProductVisual';
 import { Availability, SpeciesBar } from '@/shared/ui/bits';
 import './product-card.css';
@@ -22,7 +22,7 @@ export function ProductCard({ product, headingLevel = 3 }: { product: Product; h
   const sizes = offeredSizes(product);
   const from = lowestPrice(product);
   const url = `/product/${product.slug}`;
-  const shownSize = sizes.includes(1000) ? 1000 : (sizes.at(-1) ?? 1000);
+  const shownSize = cardSize(sizes);
 
   return (
     <article className="pcard">

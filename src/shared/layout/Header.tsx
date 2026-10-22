@@ -27,10 +27,11 @@ export function Header() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
-  const location = useLocation();
-  const [lastPath, setLastPath] = useState(location.pathname);
-  if (lastPath !== location.pathname) {
-    setLastPath(location.pathname);
+  // any followed link closes the menu, a section of the same page (/#about) too
+  const { key } = useLocation();
+  const [lastKey, setLastKey] = useState(key);
+  if (lastKey !== key) {
+    setLastKey(key);
     setOpen(false);
   }
 
@@ -129,7 +130,6 @@ export function Header() {
             ))}
             <Link to={about.to}>{about.label}</Link>
             <NavLink to={contact.to}>{contact.label}</NavLink>
-            <LanguageSwitcher />
           </div>
         </nav>
       </header>
