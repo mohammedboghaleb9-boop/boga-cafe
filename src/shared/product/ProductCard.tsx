@@ -1,16 +1,30 @@
 import { Link } from 'react-router';
 import { lowestPrice, offeredSizes } from '@/core/pricing';
+import { speciesSplit } from '@/core/recipe';
 import type { Product } from '@/core/types';
 import { useBrowseOnly, useCatalog, useSettings } from '@/data/hooks';
-import { useI18n } from '@/i18n';
-import { recipeView } from '@/shared/recipe-view';
+import { fmt, useI18n } from '@/i18n';
 import { cardSize, productSticker } from '@/shared/sticker';
+import { Icon } from '@/shared/ui/Icon';
 import { ProductVisual } from '@/shared/ui/ProductVisual';
-import { Availability, SpeciesBar } from '@/shared/ui/bits';
+import { Availability } from '@/shared/ui/bits';
 import './product-card.css';
 
-/** Product tile used by the shop, Single Origin and B2B (the home page has its own: SignatureCard). */
-/** `headingLevel`: 2 on pages where the cards come right after the page title (no h2 between). */
+/** A filled coffee bean, the mark of the Arabica / Robusta line. */
+function BeanMark() {
+  return (
+    <svg className="pcard-mark" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true" focusable="false">
+      <ellipse cx="16" cy="16" rx="9.5" ry="13" transform="rotate(35 16 16)" fill="currentColor" />
+      <path d="M21.8 6.4c-3.6 2.4-2.2 6.6-4.9 9.6s-6.3 2.3-7.6 7" fill="none" stroke="var(--cream-card)" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * The product card of every shelf (home, shop, Single Origin, B2B, related products): the pouch, the name,
+ * Arabica / Robusta and the tasting notes, the whole card opening the product page. Price and stock join
+ * it only while the sales are open. `headingLevel`: 2 where the cards come right after the page title.
+ */
 export function ProductCard({ product, headingLevel = 3 }: { product: Product; headingLevel?: 2 | 3 }) {
   const Title = headingLevel === 2 ? 'h2' : 'h3';
   const { t, l, money } = useI18n();
@@ -18,47 +32,57 @@ export function ProductCard({ product, headingLevel = 3 }: { product: Product; h
   const settings = useSettings();
   // sales closed: no price and no stock state (src/core/showcase.ts)
   const browseOnly = useBrowseOnly();
-  const view = recipeView(product.recipe, originIndex, l);
+  const { arabica, robusta } = speciesSplit(product.recipe, originIndex);
   const sizes = offeredSizes(product);
   const from = lowestPrice(product);
-  const url = `/product/${product.slug}`;
-  const shownSize = cardSize(sizes);
+  const titleId = `pcard-${product.id}`;
 
   return (
-    <article className="pcard">
-      <Link to={url} className="pcard-media" tabIndex={-1} aria-hidden="true">
+    <Link to={`/product/${product.slug}`} className="pcard" aria-labelledby={titleId}>
+      <div className="pcard-media">
         <ProductVisual
-          sticker={productSticker(product.name.fr, product.recipe, product.roastLevel, shownSize, originIndex)}
+          sticker={productSticker(product.name.fr, product.recipe, product.roastLevel, cardSize(sizes), originIndex)}
           alt=""
           image={product.image}
         />
-      </Link>
-      <div className="pcard-body">
-        <span className="eyebrow">{t.kind[product.kind]}</span>
-        <Title className="pcard-title">
-          <Link to={url}>{l(product.name)}</Link>
-        </Title>
-        <p className="muted small">{l(product.tagline)}</p>
-        <SpeciesBar {...view.split} />
-        <p className="small pcard-notes">
-          <strong>{t.roast[product.roastLevel]}</strong> · {l(product.tastingNotes)}
-        </p>
-        <div className="pcard-foot">
-          {from !== undefined && !browseOnly && (
-            <span className="pcard-price">
-              <span className="muted small">{t.common.from}</span> <strong className="num">{money(from)}</strong>
-            </span>
-          )}
-          {sizes[0] && !browseOnly && (
-            <Availability
-              recipe={product.recipe}
-              size={sizes[0]}
-              origins={originIndex}
-              roastLossPercent={settings.roastLossPercent}
-            />
-          )}
-        </div>
       </div>
-    </article>
+      <div className="pcard-body">
+        <span className="pcard-kind">{t.kind[product.kind]}</span>
+        <Title id={titleId} className="pcard-title">
+          {l(product.name)}
+        </Title>
+        <span className="pcard-tag">{l(product.tagline)}</span>
+        <span className="pcard-row">
+          <BeanMark />
+          <span className="pcard-recipe">
+            {arabica > 0 && <span>{fmt(t.product.speciesShare, { n: arabica, name: t.common.arabica })}</span>}
+            {robusta > 0 && <span>{fmt(t.product.speciesShare, { n: robusta, name: t.common.robusta })}</span>}
+          </span>
+        </span>
+        <span className="pcard-row">
+          <Icon name="cup" size={30} className="pcard-mark" />
+          <span className="pcard-notes">
+            <b>{t.product.notesLabel}</b>
+            <span>{l(product.tastingNotes)}</span>
+          </span>
+        </span>
+        {!browseOnly && (from !== undefined || sizes[0]) && (
+          <span className="pcard-buy">
+            {from !== undefined && (
+              <span className="pcard-price">
+                <span className="small">{t.common.from}</span> <strong className="num">{money(from)}</strong>
+              </span>
+            )}
+            {sizes[0] && (
+              <Availability recipe={product.recipe} size={sizes[0]} origins={originIndex} roastLossPercent={settings.roastLossPercent} />
+            )}
+          </span>
+        )}
+        {/* the card's button (WhatsAppButton steps aside from it) */}
+        <span className="pcard-cta" data-button>
+          {t.product.cardCta} <Icon name="arrow" size={16} className="flip-rtl" />
+        </span>
+      </div>
+    </Link>
   );
 }

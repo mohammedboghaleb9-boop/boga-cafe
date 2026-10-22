@@ -2,8 +2,8 @@ import { Link } from 'react-router';
 import { onDisplay } from '@/core/showcase';
 import { useCatalog } from '@/data/hooks';
 import { useI18n } from '@/i18n';
+import { ProductCard } from '@/shared/product/ProductCard';
 import { Icon } from '@/shared/ui/Icon';
-import { SignatureCard } from '../SignatureCard';
 
 /** The featured blends on the cream shelf. */
 export function Featured() {
@@ -17,15 +17,17 @@ export function Featured() {
         <div className="shelf-head">
           <div>
             <span className="eyebrow">{t.home.shelfEyebrow}</span>
-            <h2 id="shelf-title">{t.home.featuredTitle}</h2>
+            <h2 id="shelf-title" className="shelf-title">
+              {t.home.featuredTitle}
+            </h2>
           </div>
           <Link to="/shop" className="shelf-all">
             {t.home.seeAll} <Icon name="arrow" size={16} className="flip-rtl" />
           </Link>
         </div>
-        <div className="shelf-grid">
+        <div className="pgrid">
           {featured.map((p) => (
-            <SignatureCard key={p.id} product={p} />
+            <ProductCard key={p.id} product={p} />
           ))}
         </div>
       </div>

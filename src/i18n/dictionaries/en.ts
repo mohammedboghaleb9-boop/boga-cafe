@@ -136,9 +136,6 @@ export const en = {
     factDelivery: 'Delivered across Morocco',
     featuredTitle: 'Signature blends',
     shelfEyebrow: 'Our coffees',
-    speciesShare: '{n}% {name}',
-    cardCta: 'Discover this coffee',
-    notesLabel: 'Notes',
     seeAll: 'See all coffees',
     blendTitle: 'Your recipe, your proportions',
     blendText:
@@ -173,6 +170,10 @@ export const en = {
   },
 
   product: {
+    // the product card (shop, home, Single Origin, B2B)
+    cardCta: 'Discover this coffee',
+    speciesShare: '{n}% {name}',
+    notesLabel: 'Notes',
     chooseSize: 'Choose a size',
     notOffered: 'Not offered in this size',
     grindTip: 'Whole beans: grind just before brewing for the best aroma.',

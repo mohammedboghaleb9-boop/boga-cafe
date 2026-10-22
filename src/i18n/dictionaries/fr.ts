@@ -132,9 +132,6 @@ export const fr: Dict = {
     factDelivery: 'Livraison dans tout le Maroc',
     featuredTitle: 'Blends signature',
     shelfEyebrow: 'Nos cafés',
-    speciesShare: '{n} % {name}',
-    cardCta: 'Découvrir ce café',
-    notesLabel: 'Notes',
     seeAll: 'Voir tous les cafés',
     blendTitle: 'Votre recette, vos proportions',
     blendText:
@@ -169,6 +166,10 @@ export const fr: Dict = {
   },
 
   product: {
+    // the product card (shop, home, Single Origin, B2B)
+    cardCta: 'Découvrir ce café',
+    speciesShare: '{n} % {name}',
+    notesLabel: 'Notes',
     chooseSize: 'Choisissez un format',
     notOffered: 'Pas disponible dans ce format',
     grindTip: 'En grains : moulez juste avant l’extraction pour garder tous les arômes.',

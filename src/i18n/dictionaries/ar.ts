@@ -132,9 +132,6 @@ export const ar: Dict = {
     factDelivery: 'التوصيل لجميع مدن المغرب',
     featuredTitle: 'الخلطات المميزة',
     shelfEyebrow: 'قهوتنا',
-    speciesShare: '{n}% {name}',
-    cardCta: 'اكتشف هذه القهوة',
-    notesLabel: 'النكهات',
     seeAll: 'كل أنواع القهوة',
     blendTitle: 'وصفتك، بنسبك أنت',
     blendText:
@@ -169,6 +166,10 @@ export const ar: Dict = {
   },
 
   product: {
+    // the product card (shop, home, Single Origin, B2B)
+    cardCta: 'اكتشف هذه القهوة',
+    speciesShare: '{n}% {name}',
+    notesLabel: 'النكهات',
     chooseSize: 'اختر الحجم',
     notOffered: 'غير متوفر بهذا الحجم',
     grindTip: 'حبوب كاملة: اطحنها قبل التحضير مباشرة للحفاظ على النكهة.',

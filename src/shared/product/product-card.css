@@ -1,55 +1,241 @@
-/* Product card and the grid that holds the cards (shop, home, product, B2B, single origin). */
+/* The product card, the grid that holds the cards and the cream shelf they sit on (home, shop, Single Origin,
+   B2B, related products). */
+
+/* the cream band under a page's dark head, edge to edge */
+.shelf {
+  background: var(--cream);
+  color: var(--cream-ink);
+  padding-block: clamp(44px, 5vw, 72px) clamp(56px, 6vw, 88px);
+}
+.shelf .eyebrow {
+  color: var(--bronze);
+}
+/* a shelf's own heading (home, B2B, related products) */
+.shelf-title {
+  margin-block-end: 28px;
+  font-size: clamp(1.9rem, 1.3rem + 1.6vw, 2.8rem);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--cream-ink);
+}
+:root[lang='ar'] .shelf-title {
+  font-size: clamp(1.8rem, 1.3rem + 1.3vw, 2.5rem);
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+.shelf-title::after {
+  content: '';
+  display: block;
+  inline-size: 68px;
+  block-size: 2px;
+  margin-block-start: 14px;
+  background: var(--accent);
+}
+.shelf-empty {
+  color: var(--cream-text);
+}
+/* the shop's filters on the cream: the chosen one in the cards' brown */
+.shelf .seg {
+  margin-block-end: 24px;
+}
+.shelf .seg button {
+  border-color: #cdbfa9;
+  background: var(--cream-card);
+  color: var(--cream-ink);
+}
+.shelf .seg button:hover {
+  border-color: var(--bronze);
+}
+.shelf .seg button[aria-pressed='true'] {
+  border-color: var(--brown);
+  background: var(--brown);
+  color: var(--on-brown);
+}
+
 .pgrid {
+  container: pgrid / inline-size;
   display: grid;
-  gap: 18px;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
 }
 
 .pcard {
-  display: flex;
-  flex-direction: column;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  display: grid;
+  grid-template-columns: 44% minmax(0, 1fr);
   overflow: hidden;
-  transition: border-color 0.15s, transform 0.2s;
+  border-radius: 16px;
+  background: var(--cream-card);
+  border: 1px solid var(--cream-line);
+  color: var(--cream-ink);
+  text-decoration: none;
+  box-shadow:
+    0 2px 6px rgb(60 40 20 / 0.06),
+    0 18px 36px -28px rgb(60 40 20 / 0.45);
+  transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
 }
 .pcard:hover {
-  border-color: var(--line-strong);
+  transform: translateY(-3px);
+  border-color: #d2bc9c;
 }
+/* the pouch keeps its 4:5 frame (the sticker is placed in % of it), centred on the photo's own black */
 .pcard-media {
-  display: block;
-  border-block-end: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: #0b0908;
+}
+.pcard-media .pv {
+  inline-size: 100%;
 }
 .pcard-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px 16px;
-  flex: 1;
+  gap: 12px;
+  min-inline-size: 0;
+  padding: 24px 22px 22px;
 }
-/* same size whether the card title is an h2 (shop pages) or an h3 */
+.pcard-kind {
+  font-size: 0.69rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bronze);
+}
+:root[lang='ar'] .pcard-kind {
+  font-size: 0.81rem;
+  letter-spacing: 0;
+}
+/* same size whether the title is an h2 (shop pages) or an h3 */
 .pcard-title {
-  font-size: 1.15rem;
+  font-family: 'Cinzel', var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--cream-ink);
 }
-.pcard-title a {
-  text-decoration: none;
+.pcard-tag {
+  font-size: 0.94rem;
+  line-height: 1.45;
+  color: var(--cream-text);
 }
-.pcard-title a:hover {
-  color: var(--accent);
+.pcard-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.pcard-mark {
+  flex: none;
+  color: var(--bronze);
+}
+.pcard-recipe {
+  display: grid;
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--recipe-ink);
 }
 .pcard-notes {
-  color: var(--ink-2);
+  display: grid;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--cream-text);
 }
-.pcard-foot {
-  margin-block-start: auto;
-  padding-block-start: 8px;
+.pcard-notes b {
+  color: var(--bronze);
+}
+/* only while the sales are open */
+.pcard-buy {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
 }
 .pcard-price strong {
   font-size: 1.1rem;
+  color: var(--cream-ink);
+}
+.pcard-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  margin-block-start: auto;
+  min-block-size: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: var(--brown);
+  color: var(--on-brown);
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.15);
+  transition: background 0.2s;
+}
+:root[lang='ar'] .pcard-cta {
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+.pcard:hover .pcard-cta {
+  background: var(--brown-hi);
+}
+
+/* three cards too narrow to hold the pouch beside the text: the pouch above, on a band of its own height */
+@container pgrid (min-width: 640px) and (max-width: 1240px) {
+  .pcard {
+    grid-template-columns: 1fr;
+  }
+  .pcard-body {
+    padding: 18px 18px 16px;
+  }
+  .pcard-media {
+    justify-content: center;
+    block-size: 280px;
+  }
+  .pcard-media .pv {
+    inline-size: auto;
+    block-size: 100%;
+  }
+}
+@media (min-width: 700px) and (max-width: 1099px) {
+  .pgrid {
+    gap: 16px;
+  }
+}
+@media (max-width: 699px) {
+  .pgrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .pcard {
+    grid-template-columns: 40% minmax(0, 1fr);
+  }
+  .pcard-body {
+    padding: 16px;
+    padding-inline-start: 14px;
+    gap: 9px;
+  }
+  .pcard-cta {
+    align-self: stretch;
+    justify-content: center;
+    gap: 8px;
+    min-block-size: 40px;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+}
+/* the narrowest phones: the pouch above the text, on the same band */
+@media (max-width: 379px) {
+  .pcard {
+    grid-template-columns: 1fr;
+  }
+  .pcard-media {
+    justify-content: center;
+    block-size: 280px;
+  }
+  .pcard-media .pv {
+    inline-size: auto;
+    block-size: 100%;
+  }
 }

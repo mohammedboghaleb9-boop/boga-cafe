@@ -61,9 +61,6 @@
   flex-shrink: 0;
   margin-block-start: 3px;
 }
-.b2b-h2 {
-  margin-block-end: 18px;
-}
 .b2b-forms {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

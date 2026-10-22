@@ -52,91 +52,96 @@ function ProductDetails({ slug }: { slug?: string }) {
   const related = products.filter((p) => onDisplay(p) && p.kind === product.kind && p.id !== product.id).slice(0, 3);
 
   return (
-    <div className="container page">
-      <nav className="crumbs small muted" aria-label={t.a11y.breadcrumb}>
-        <Link to="/shop">{t.nav.shop}</Link> / <Link to={`/shop?kind=${product.kind}`}>{t.kind[product.kind]}</Link>
-      </nav>
+    <>
+      <div className="container page">
+        <nav className="crumbs small muted" aria-label={t.a11y.breadcrumb}>
+          <Link to="/shop">{t.nav.shop}</Link> / <Link to={`/shop?kind=${product.kind}`}>{t.kind[product.kind]}</Link>
+        </nav>
 
-      <div className="product">
-        <div className="product-media">
-          <ProductVisual
-            sticker={productSticker(product.name.fr, product.recipe, product.roastLevel, shownSize, originIndex)}
-            alt={fmt(t.media.pouch, { name: l(product.name), size: formatSize(shownSize) })}
-            image={product.image}
-            priority
-          />
-        </div>
-
-        <div className="product-info stack">
-          <span className="eyebrow">{t.kind[product.kind]}</span>
-          <h1>{l(product.name)}</h1>
-          <p className="lead">{l(product.tagline)}</p>
-          <p>{l(product.description)}</p>
-
-          <dl className="facts">
-            <div>
-              <dt>{t.common.roast}</dt>
-              <dd>
-                <RoastScale level={product.roastLevel} />
-              </dd>
-            </div>
-            <div>
-              <dt>{t.common.tastingNotes}</dt>
-              <dd>{l(product.tastingNotes)}</dd>
-            </div>
-            <div>
-              <dt>Arabica / Robusta</dt>
-              <dd>
-                <SpeciesBar {...view.split} />
-              </dd>
-            </div>
-          </dl>
-
-          <div className="recipe">
-            <span className="label">
-              {product.kind === 'single-origin' ? t.common.origin : t.common.recipe}
-            </span>
-            <ul>
-              {view.lines.map((line) => (
-                <li key={line.originId}>
-                  <Flag code={line.origin.countryCode} title={line.name} />
-                  <span>
-                    <strong>{line.name}</strong>
-                    <span className="muted small">
-                      {' '}
-                      · {line.origin.region} · {t.common[line.origin.species]}
-                    </span>
-                  </span>
-                  <span className="num recipe-pct">{line.percent}%</span>
-                </li>
-              ))}
-            </ul>
+        <div className="product">
+          <div className="product-media">
+            <ProductVisual
+              sticker={productSticker(product.name.fr, product.recipe, product.roastLevel, shownSize, originIndex)}
+              alt={fmt(t.media.pouch, { name: l(product.name), size: formatSize(shownSize) })}
+              image={product.image}
+              priority
+            />
           </div>
 
-          {!browseOnly && size && <BuyPanel product={product} size={size} sizes={sizes} onSize={setSize} />}
+          <div className="product-info stack">
+            <span className="eyebrow">{t.kind[product.kind]}</span>
+            <h1>{l(product.name)}</h1>
+            <p className="lead">{l(product.tagline)}</p>
+            <p>{l(product.description)}</p>
 
-          {/* how to order a B2B blend: only while it can be ordered */}
-          {!browseOnly && product.kind === 'b2b' && (
-            <div className="notice">
-              {fmt(t.product.b2bNote, { kg: settings.b2bThresholdKg })} <Link to="/b2b">
-                {t.product.b2bMore} <span className="dir-arrow" aria-hidden="true">→</span>
-              </Link>
+            <dl className="facts">
+              <div>
+                <dt>{t.common.roast}</dt>
+                <dd>
+                  <RoastScale level={product.roastLevel} />
+                </dd>
+              </div>
+              <div>
+                <dt>{t.common.tastingNotes}</dt>
+                <dd>{l(product.tastingNotes)}</dd>
+              </div>
+              <div>
+                <dt>Arabica / Robusta</dt>
+                <dd>
+                  <SpeciesBar {...view.split} />
+                </dd>
+              </div>
+            </dl>
+
+            <div className="recipe">
+              <span className="label">
+                {product.kind === 'single-origin' ? t.common.origin : t.common.recipe}
+              </span>
+              <ul>
+                {view.lines.map((line) => (
+                  <li key={line.originId}>
+                    <Flag code={line.origin.countryCode} title={line.name} />
+                    <span>
+                      <strong>{line.name}</strong>
+                      <span className="muted small">
+                        {' '}
+                        · {line.origin.region} · {t.common[line.origin.species]}
+                      </span>
+                    </span>
+                    <span className="num recipe-pct">{line.percent}%</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          )}
+
+            {!browseOnly && size && <BuyPanel product={product} size={size} sizes={sizes} onSize={setSize} />}
+
+            {/* how to order a B2B blend: only while it can be ordered */}
+            {!browseOnly && product.kind === 'b2b' && (
+              <div className="notice">
+                {fmt(t.product.b2bNote, { kg: settings.b2bThresholdKg })} <Link to="/b2b">
+                  {t.product.b2bMore} <span className="dir-arrow" aria-hidden="true">→</span>
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
       {related.length > 0 && (
-        <section className="section">
-          <h2 className="related-title">{t.product.related}</h2>
-          <div className="pgrid">
-            {related.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
+        <section className="shelf" aria-labelledby="related-title">
+          <div className="container">
+            <h2 id="related-title" className="shelf-title">
+              {t.product.related}
+            </h2>
+            <div className="pgrid">
+              {related.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
           </div>
         </section>
       )}
-    </div>
+    </>
   );
 }
 
