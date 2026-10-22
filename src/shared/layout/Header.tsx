@@ -5,6 +5,7 @@ import { DEMO_DATA } from '@/data/mode';
 import { useCart } from '@/shared/cart/CartProvider';
 import { useI18n } from '@/i18n';
 import { Icon } from '../ui/Icon';
+import { DemoBar } from './DemoBar';
 import { LanguageMenu, LanguageSwitcher } from './Language';
 import { Logo } from './Logo';
 
@@ -63,16 +64,7 @@ export function Header() {
           <div className="container">{l(content.announcement)}</div>
         </div>
       )}
-      {DEMO_DATA && (
-        <div className="demo-bar">
-          <div className="container spread">
-            <span>{t.demo.banner}</span>
-            <Link to="/admin">
-              {t.demo.openAdmin} <span className="dir-arrow" aria-hidden="true">→</span>
-            </Link>
-          </div>
-        </div>
-      )}
+      {DEMO_DATA && <DemoBar />}
       <header className="site-header">
         <div className="container wide site-header-row">
           <Logo />

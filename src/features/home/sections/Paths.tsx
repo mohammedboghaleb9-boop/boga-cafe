@@ -20,7 +20,7 @@ export function Paths() {
     <nav className="paths" aria-label={t.home.pathsLabel}>
       <div className="container wide paths-grid">
         {paths.map((p) => (
-          <Link key={p.to} to={p.to} className="path">
+          <Link key={p.to} to={p.to} className="path" data-button>
             <span className="path-media">
               <Photo name={p.photo} alt="" />
             </span>

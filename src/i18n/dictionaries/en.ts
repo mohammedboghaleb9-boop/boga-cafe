@@ -105,11 +105,6 @@ export const en = {
     b2b: 'B2B blend',
   },
 
-  demo: {
-    banner: 'Prototype: products, prices and stock are examples, and no payment is real. WhatsApp and Gmail messages you send really reach BOGA CAFÉ.',
-    openAdmin: 'Open the Admin Panel',
-  },
-
   media: {
     pouch: 'BOGA CAFÉ pouch: {name}, {size}',
     openBag: 'Open BOGA CAFÉ pouch with whole roasted beans spilling onto wood',

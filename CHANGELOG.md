@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-22
+- 2026-10-22 [feat/p5-home-premium] Pre-merge fixes (owner): the prototype notice's texts no longer ship in production (DemoBar.tsx, build check), the WhatsApp button steps aside on phones while a button is under it, the web logo line reads "SÉLECTION & VENTE · OUJDA" (bags unchanged).
 - 2026-10-22 [feat/p5-home-premium] Review fixes: the phone menu closes after "About" on the home page (e2e), the home video stays once loaded, focus returns to the language button, one language switcher, Admin hints for gold words and the unused subtitle, README picture, home styles split into hero.css / shelf.css / home.css.
 - 2026-10-22 [feat/p5-home-premium] Home page and header redesign approved from previews: lockup logo (CAFÉ in copper, from the official paths), flag language pill and phone menu, video hero (owner's file, lazy, paused off screen, none under reduced motion or Save-Data), three path cards, ribbon of confirmed facts, signature cards with icons (pouch pictures unchanged, no price), Arabic headings in Noto Kufi Arabic. Not merged, not deployed.
 

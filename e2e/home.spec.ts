@@ -56,6 +56,31 @@ test.describe('home page', () => {
       await expect(chip).toBeFocused();
     });
 
+    test('the WhatsApp button steps aside while a button is under it, and comes back', async ({ page }) => {
+      await open(page, '/');
+      const whatsapp = page.locator('.wa-fab');
+      const recheck = () => page.evaluate(() => window.dispatchEvent(new Event('scroll')));
+      // a still surface over the page: nothing to tap under the button
+      await page.evaluate(() => {
+        const veil = Object.assign(document.createElement('div'), { id: 'veil' });
+        veil.style.cssText = 'position:fixed;inset:0;z-index:45';
+        document.body.append(veil);
+      });
+      await recheck();
+      await expect(whatsapp).toBeVisible();
+      const box = (await whatsapp.boundingBox())!;
+      await page.evaluate(({ x, y }) => {
+        const probe = Object.assign(document.createElement('button'), { id: 'probe', textContent: 'probe' });
+        probe.style.cssText = `position:fixed;left:${x - 20}px;top:${y - 20}px;width:40px;height:40px;z-index:46`;
+        document.body.append(probe);
+      }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+      await recheck();
+      await expect(whatsapp).toBeHidden();
+      await page.evaluate(() => document.getElementById('probe')?.remove());
+      await recheck();
+      await expect(whatsapp).toBeVisible();
+    });
+
     test('the menu link to the brand story, on the home page itself, closes the menu and shows the story', async ({ page }) => {
       await open(page, '/');
       await page.locator('.menu-btn').click();

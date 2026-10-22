@@ -101,11 +101,6 @@ export const fr: Dict = {
     b2b: 'Blend B2B',
   },
 
-  demo: {
-    banner: 'Prototype : produits, prix et stock sont des exemples, aucun paiement n’est réel. Les messages WhatsApp et Gmail que vous envoyez arrivent vraiment chez BOGA CAFÉ.',
-    openAdmin: 'Ouvrir le Panel Admin',
-  },
-
   media: {
     pouch: 'Sachet BOGA CAFÉ : {name}, {size}',
     openBag: 'Sachet BOGA CAFÉ ouvert, grains torréfiés répandus sur le bois',

@@ -32,6 +32,8 @@ function forbiddenStrings() {
   group('example B2B requests', b2b, count(/(?:company|contactName): '[^']/g, activity));
   const payee = activity.slice(activity.indexOf('DEMO_PAYEE'));
   group('DÉMO payment details', caught(/(?:holder|bankName|rib|beneficiary): '([^']+)'/g, payee).map((m) => m[1]), count(/(?:holder|bankName|rib|beneficiary): '[^']/g, payee));
+  const notice = src('src/shared/layout/DemoBar.tsx');
+  group('prototype notice', caught(/banner: '([^']+)'/g, notice).map((m) => m[1]), count(/^\s+banner:/gm, notice));
 
   // the example catalog (the six origin names are real: they may appear)
   const inline = count(/^ {4}id: '/gm, products);

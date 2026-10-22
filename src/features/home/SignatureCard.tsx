@@ -52,7 +52,7 @@ export function SignatureCard({ product }: { product: Product }) {
             <span>{l(product.tastingNotes)}</span>
           </span>
         </span>
-        <span className="sig-cta">
+        <span className="sig-cta" data-button>
           {t.home.cardCta} <Icon name="arrow" size={16} className="flip-rtl" />
         </span>
       </span>

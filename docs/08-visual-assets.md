@@ -19,7 +19,7 @@
 | `src/assets/video/hero-1080.mp4` | فيديو الحبوب كتدور فصينية التبريد ديال المحمصة (12 ثانية، حلقة متصلة، بلا صوت): الملف ديال المالك كما هو، 1920×1080، 4 MB | خلفية القسم الأول فالصفحة الرئيسية (الحاسوب) |
 | `src/assets/video/hero-mobile.mp4` | نفس الفيديو مقصوص طولياً بالدقة الأصلية 608×1080 (`ffmpeg -i loop.mp4 -an -vf crop=608:1080:1100:0 -c:v libx264 -preset veryslow -tune film -crf 24 -movflags +faststart`)، 2.7 MB | الهاتف |
 | `src/assets/photos/hero-poster.webp` · `hero-poster-mobile.webp` | الصورة 90 من الفيديو (واضحة أكثر من الأولى)، عريضة وطولية | كتبان قبل الفيديو، وبوحدها مع «تقليل الحركة» أو «توفير البيانات» |
-| `src/assets/brand/lockup.svg` · `lockup-compact.svg` | شعار الرأس: الأيقونة + BOGA CAFÉ + «TORRÉFACTION & VENTE · OUJDA»، منقولين من الملفات الرسمية (`brand/source/build_lockup.py`) | رأس الموقع (الهاتف: الأيقونة المبسّطة بلا السطر) |
+| `src/assets/brand/lockup.svg` · `lockup-compact.svg` | شعار الرأس: الأيقونة + BOGA CAFÉ منقولين من الملفات الرسمية + سطر الموقع «SÉLECTION & VENTE · OUJDA» (قرار المالك 2026-10-22؛ الأكياس باقية بسطرها) (`brand/source/build_lockup.py`) | رأس الموقع (الهاتف: الأيقونة المبسّطة بلا السطر) |
 | `src/assets/photos/bag-open.webp` | الكيس المفتوح والحبوب | قسم «تابعونا» |
 | `src/assets/photos/green-beans.webp` | أكياس القهوة الخضراء | قسم المصادر، صفحة أحادي المصدر |
 | `src/assets/photos/barista.webp` | الباريستا بجانب الكيس | قسم المهنيين، صفحة B2B |

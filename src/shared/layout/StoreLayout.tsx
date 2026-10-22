@@ -8,6 +8,7 @@ import { Icon } from '../ui/Icon';
 import { Footer } from './Footer';
 import { Header } from './Header';
 import { SkipLink } from './SkipLink';
+import { WhatsAppButton } from './WhatsAppButton';
 import { sectionId } from './sectionId';
 import './layout.css';
 import { api } from '@/data/api';
@@ -63,15 +64,7 @@ export function StoreLayout() {
         <Outlet />
       </main>
       <Footer />
-      <a
-        className="wa-fab"
-        href={whatsappLink(settings.contact.whatsapp, t.contact.whatsappText)}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="WhatsApp"
-      >
-        <Icon name="whatsapp" size={26} />
-      </a>
+      <WhatsAppButton href={whatsappLink(settings.contact.whatsapp, t.contact.whatsappText)} />
       {toast && (
         <div className="toast" role="status">
           <span>
