@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import { Icon } from '../ui/Icon';
 
@@ -36,9 +36,10 @@ export function WhatsAppButton({ href }: { href: string }) {
   const fab = useRef<HTMLAnchorElement>(null);
   const check = useRef<() => void>(() => {});
   const { key } = useLocation();
-  const [aside, setAside] = useState(false);
+  // phones start with it aside: it shows once its spot is found clear, never appears then fades on load
+  const [aside, setAside] = useState(() => window.matchMedia(PHONE).matches);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const el = fab.current;
     if (!el) return;
     const phone = window.matchMedia(PHONE);
@@ -62,7 +63,6 @@ export function WhatsAppButton({ href }: { href: string }) {
       if (!frame) frame = requestAnimationFrame(decide);
     };
     check.current = soon;
-    if (phone.matches && coversControl(el)) setAside(true); // before the first paint: no flash on load
     soon();
     window.addEventListener('scroll', soon, { passive: true });
     window.addEventListener('resize', soon);
