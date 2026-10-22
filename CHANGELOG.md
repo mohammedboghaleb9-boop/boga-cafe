@@ -5,6 +5,8 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-22
+- 2026-10-22 [ci/p5-job-timeouts] CI jobs get time limits (web 15, database 15, e2e 25 min) after an `e2e` job hung over 4 h in `playwright install`; notes and status page record PR #28 as merged and live; owner confirmed delivery covers every Moroccan city (texts and `og:description` unchanged; cities and fees reviewed before the sales open).
+- 2026-10-22 [main 3f0b3f4] PR #28 merged (owner-approved) and live: meta description "Sélection & vente, Oujda" on bogacafe.ma (`/`, `/shop`); CI on the PR head 6/6 and on main 3/3.
 - 2026-10-22 [fix/p5-meta-description] Meta description (link previews) now "Sélection & vente, Oujda" (owner: the roasting is done by a partner outside Oujda); the coming-soon build still swaps it.
 - 2026-10-22 [main e9ed9cf] PR #26 merged (owner-approved) and deployed: one product card on the cream shelf on every store page, gold main buttons; checked on bogacafe.ma with live data.
 - 2026-10-22 [feat/p5-store-style] One product card everywhere (the home's cream card), on the cream shelf in the shop, Single Origin, B2B and related products; the store's main buttons in gold.
