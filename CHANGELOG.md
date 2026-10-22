@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-22
+- 2026-10-22 [main e9ed9cf] PR #26 merged (owner-approved) and deployed: one product card on the cream shelf on every store page, gold main buttons; checked on bogacafe.ma with live data.
 - 2026-10-22 [feat/p5-store-style] One product card everywhere (the home's cream card), on the cream shelf in the shop, Single Origin, B2B and related products; the store's main buttons in gold.
 - 2026-10-22 [main 359f5db] PR #25 merged (owner-approved) and deployed: the new home and header live on bogacafe.ma, checked with live data (no prototype text, sales notice, no price or buy button, 0 page errors); CI on main green.
 - 2026-10-22 [feat/p5-home-premium] WhatsApp button: phones start with it aside and show it once its spot is clear (no fade-out on load); CI 41fb803 web, database, e2e green on push.
