@@ -103,7 +103,7 @@ export function Header() {
           <div className="header-tools">
             <LanguageSwitcher />
             <LanguageMenu />
-            <Link to="/cart" className="cart-btn" aria-label={`${t.nav.cart} (${count})`}>
+            <Link to="/cart" className="cart-btn" aria-label={browseOnly ? t.nav.cart : `${t.nav.cart} (${count})`}>
               <Icon name="cart" />
               {count > 0 && !browseOnly && <span className="cart-count num">{count}</span>}
             </Link>

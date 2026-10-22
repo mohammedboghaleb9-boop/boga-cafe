@@ -9,7 +9,7 @@ import { ProductVisual } from '@/shared/ui/ProductVisual';
 import { Availability, SpeciesBar } from '@/shared/ui/bits';
 import './product-card.css';
 
-/** Product tile used by the shop, the home page, Single Origin and B2B. */
+/** Product tile used by the shop, Single Origin and B2B (the home page has its own: SignatureCard). */
 /** `headingLevel`: 2 on pages where the cards come right after the page title (no h2 between). */
 export function ProductCard({ product, headingLevel = 3 }: { product: Product; headingLevel?: 2 | 3 }) {
   const Title = headingLevel === 2 ? 'h2' : 'h3';
