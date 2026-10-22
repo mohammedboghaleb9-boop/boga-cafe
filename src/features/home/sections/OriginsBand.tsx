@@ -4,7 +4,8 @@ import { useCatalog } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { Photo } from '@/shared/ui/Photo';
-import { BeanGlyph, OriginCard } from './OriginCard';
+import { BeanGlyph } from './BeanGlyph';
+import { OriginCard } from './OriginCard';
 
 /** The origins on show, as cards beside the harvest photo (always on the right on large screens). */
 export function OriginsBand() {
@@ -32,7 +33,7 @@ export function OriginsBand() {
           <Photo name="harvest" alt={t.media.harvest} sizes="(min-width: 1200px) 40vw, 100vw" />
         </figure>
         {shown.length === 0 ? (
-          <p className="muted origin-cards">{t.common.noOrigins}</p>
+          <p className="muted origins-empty">{t.common.noOrigins}</p>
         ) : (
           <ul className="origin-cards">
             {shown.map((o) => (

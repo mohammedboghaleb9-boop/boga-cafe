@@ -91,6 +91,7 @@ test.describe('home page', () => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await open(page, '/');
       await page.locator('.header-tools .lang').getByRole('button', { name: x.lang }).click();
+      await expect(page.locator('html')).toHaveAttribute('dir', code === 'ar' ? 'rtl' : 'ltr');
       const band = page.locator('.origins-band');
       await expect(band.getByRole('heading', { level: 2, name: x.title })).toBeVisible();
       const cards = band.locator('.origin-card');
@@ -101,23 +102,42 @@ test.describe('home page', () => {
         await expect(card.locator('.origin-notes')).not.toBeEmpty();
         // the lit beans follow the roast level written on the card
         const levels: Record<string, number> = x.roast;
-        const roast = (await card.locator('.origin-roast-name').innerText()).split(':').pop()!.trim();
+        // the level's name is the text after the screen-reader prefix
+        const roast = await card.locator('.origin-roast-name').evaluate((e) => (e.lastChild?.textContent ?? '').trim());
         expect(levels[roast], roast).toBeGreaterThan(0);
         await expect(card.locator('.origin-beans .is-on')).toHaveCount(levels[roast]);
       }
       // nothing to buy: no price, no stock figure, no form
-      await expect(band).not.toContainText(/\d\s?(DH|MAD|درهم|kg|كلغ)/i);
+      await expect(band).not.toContainText(/\d\s?(DH|MAD|درهم|kg|كلغ|كغ)/i);
       await expect(band.locator('form, button')).toHaveCount(0);
       await expect(band.getByRole('link', { name: x.all })).toHaveAttribute('href', '/single-origin');
       const photo = band.locator('.origins-photo img');
       await expect(photo).toHaveAttribute('loading', 'lazy');
       await expect(photo).toHaveAttribute('width', '1046');
       await expect(photo).not.toHaveAttribute('alt', '');
-      const [p, list] = [await band.locator('.origins-photo').boundingBox(), await band.locator('.origin-cards').boundingBox()];
+      const [p, list, all, title] = await Promise.all(['.origins-photo', '.origin-cards', '.origins-all', 'h2'].map((q) => band.locator(q).boundingBox()));
       expect(p!.x, 'the photo is on the right in every language').toBeGreaterThan(list!.x + list!.width);
+      // the button sits beside the title, as in the reference, not under it
+      expect(all!.y).toBeLessThan(title!.y + title!.height);
       errors.check();
     });
   }
+
+  test('origins on a tablet: title, photo, then two columns of cards (ar)', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await open(page, '/');
+    await page.locator('.header-tools .lang').getByRole('button', { name: 'العربية' }).click();
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    const band = page.locator('.origins-band');
+    const [head, photo, list] = await Promise.all(['.origins-head', '.origins-photo', '.origin-cards'].map((q) => band.locator(q).boundingBox()));
+    expect(head!.y + head!.height).toBeLessThanOrEqual(photo!.y);
+    expect(photo!.y + photo!.height).toBeLessThanOrEqual(list!.y);
+    const [first, second] = [await band.locator('.origin-card').nth(0).boundingBox(), await band.locator('.origin-card').nth(1).boundingBox()];
+    expect(second!.y).toBe(first!.y);
+    // right to left: the first origin on the right
+    expect(first!.x).toBeGreaterThan(second!.x);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(768);
+  });
 
   test('the intro stays editable from the Admin About fields', async ({ page }) => {
     await signIn(page, 'owner');
