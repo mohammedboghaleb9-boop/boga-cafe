@@ -43,12 +43,6 @@
       animation-timeline: view();
       animation-range: entry 0% exit 100%;
     }
-    /* the Custom Blend seal is "placed" on the page as you reach it */
-    .seal-spin {
-      animation: seal-in linear both;
-      animation-timeline: view();
-      animation-range: entry 5% cover 45%;
-    }
     .site-header {
       animation: header-solid linear both;
       animation-timeline: scroll(root);
@@ -83,14 +77,6 @@
   }
   to {
     transform: scale(1.03) translateY(3%);
-  }
-}
-@keyframes seal-in {
-  from {
-    transform: rotate(-26deg) scale(0.86);
-  }
-  to {
-    transform: rotate(-6deg) scale(1);
   }
 }
 @keyframes header-solid {
