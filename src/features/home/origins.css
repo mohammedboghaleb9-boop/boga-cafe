@@ -94,18 +94,15 @@
 }
 
 /* ── the title under a copper bean between two lines; the button on the other side ── */
-.origins-head {
-  grid-area: head;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px 24px;
-}
+/* The link comes after the list in the page's order (it ends the section, for screen readers
+   and the keyboard) and shares the head's grid cell: beside the title from 600 px, under the
+   list on phones. Nothing else in the section takes focus, so the tab order never jumps. */
 .origins-head-text {
-  flex: 1 1 18rem;
+  grid-area: head;
   display: grid;
   gap: 6px;
+  /* room for the button */
+  padding-inline-end: 15rem;
 }
 .origins-title {
   display: grid;
@@ -134,7 +131,9 @@
   color: var(--ink-2);
 }
 .origins-all {
-  flex: none;
+  grid-area: head;
+  justify-self: end;
+  align-self: center;
   border-color: var(--origins-copper);
   color: var(--cream);
   padding-inline: 18px;
@@ -300,12 +299,8 @@
     row-gap: 0;
     grid-template-areas: 'head' 'photo' 'list' 'all';
   }
-  /* the head's two parts join the grid: the button goes under the list, full width */
-  .origins-head {
-    display: contents;
-  }
   .origins-head-text {
-    grid-area: head;
+    padding-inline-end: 0;
     justify-items: center;
     text-align: center;
     margin-block-end: 18px;
@@ -313,8 +308,10 @@
   .origins-title {
     justify-self: center;
   }
+  /* the button goes under the list, full width */
   .origins-all {
     grid-area: all;
+    justify-self: stretch;
     margin-block-start: 16px;
     min-block-size: 48px;
     font-size: 0.9rem;

@@ -144,6 +144,7 @@ export const ar: Dict = {
     // {n} only from 3 to 10 ("{n} مصادر"); other counts take the sentence without a number
     originsText: '{n} مصادر ديال القهوة، وكل واحد بنكهتو وشخصيتو.',
     originsTextPlain: 'مصادر مختارة ديال القهوة، وكل واحد بنكهتو وشخصيتو.',
+    originsTextOne: 'مصدر واحد ديال القهوة، بنكهتو وشخصيتو.',
     processTitle: 'كيف تُحضَّر قهوة BOGA',
     process: [
       { title: 'أنت تختار', text: 'خلطة، أو قهوة أحادية المصدر، أو وصفتك الخاصة، والوزن.' },

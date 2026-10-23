@@ -96,8 +96,8 @@ test.describe('home page', () => {
       await expect(band.getByRole('heading', { level: 2, name: x.title })).toBeVisible();
       const cards = band.locator('.origin-card');
       await expect(cards).toHaveCount(6);
-      // the Darija lead counts the origins on show (fr and en keep their sentence)
-      if (code === 'ar') await expect(band.locator('.origins-lead')).toHaveText(/^6 مصادر ديال القهوة/);
+      // the lead counts the origins on show, and says nothing about stock
+      await expect(band.locator('.origins-lead')).toHaveText(code === 'ar' ? /^6 مصادر ديال القهوة/ : /^6 origines de café, chacune avec ses arômes/);
       // the line drawings are decoration only: hidden from screen readers, no text
       await expect(band.locator('.origins-decor')).toHaveAttribute('aria-hidden', 'true');
       await expect(band.locator('.origins-decor')).toHaveText('');
@@ -134,7 +134,7 @@ test.describe('home page', () => {
     await page.locator('.header-tools .lang').getByRole('button', { name: 'العربية' }).click();
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     const band = page.locator('.origins-band');
-    const [head, photo, list] = await Promise.all(['.origins-head', '.origins-photo', '.origin-cards'].map((q) => band.locator(q).boundingBox()));
+    const [head, photo, list] = await Promise.all(['.origins-head-text', '.origins-photo', '.origin-cards'].map((q) => band.locator(q).boundingBox()));
     expect(head!.y + head!.height).toBeLessThanOrEqual(photo!.y);
     expect(photo!.y + photo!.height).toBeLessThanOrEqual(list!.y);
     const [first, second] = [await band.locator('.origin-card').nth(0).boundingBox(), await band.locator('.origin-card').nth(1).boundingBox()];
@@ -143,6 +143,37 @@ test.describe('home page', () => {
     expect(first!.x).toBeGreaterThan(second!.x);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(768);
   });
+
+  for (const [name, size] of [['desktop', { width: 1440, height: 900 }], ['phone', { width: 390, height: 844 }]] as const) {
+    test(`origins reading order on ${name}: title, photo, the six origins, then the "see all" link; no focus jump`, async ({ page }) => {
+      await page.setViewportSize(size);
+      await open(page, '/');
+      const order = await page.locator('.origins-band').evaluate((band) => {
+        const pos = (q: string) => band.querySelector(q)!;
+        const follows = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+        const link = pos('.origins-all');
+        return {
+          titleFirst: follows(pos('h2'), pos('.origins-photo')) && follows(pos('.origins-photo'), pos('.origin-cards')),
+          linkLast: follows(pos('.origin-cards'), link) && ![...band.querySelectorAll('*')].some((e) => follows(link, e) && e.nodeType === 1 && e.matches('a, button, input, [tabindex]')),
+          focusable: [...band.querySelectorAll('a, button, input, select, textarea, [tabindex]')].map((e) => e.className),
+        };
+      });
+      expect(order.titleFirst).toBe(true);
+      expect(order.linkLast).toBe(true);
+      // the link is the only thing in the section the keyboard can reach, so the order never jumps
+      expect(order.focusable).toEqual([expect.stringContaining('origins-all')]);
+      // and what is drawn matches that order on a phone: the link is below the list
+      if (name === 'phone') {
+        const band = page.locator('.origins-band');
+        const [list, all] = await Promise.all([band.locator('.origin-cards').boundingBox(), band.locator('.origins-all').boundingBox()]);
+        expect(all!.y).toBeGreaterThanOrEqual(list!.y + list!.height);
+      }
+      // the link takes the keyboard focus where it is drawn, and goes to the Single Origin page
+      await page.locator('.origins-all').focus();
+      await expect(page.locator('.origins-all')).toBeFocused();
+      await expect(page.locator('.origins-all')).toHaveAttribute('href', '/single-origin');
+    });
+  }
 
   test('the intro stays editable from the Admin About fields', async ({ page }) => {
     await signIn(page, 'owner');

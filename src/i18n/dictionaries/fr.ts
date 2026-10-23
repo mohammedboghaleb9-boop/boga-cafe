@@ -140,8 +140,9 @@ export const fr: Dict = {
     blendExample: 'Exemple pour 1 kg',
     originsTitle: 'Les origines du café',
     originsAll: 'Voir toutes les origines',
-    originsText: 'Chaque origine a son propre stock, compté en kilogrammes.',
-    originsTextPlain: 'Chaque origine a son propre stock, compté en kilogrammes.',
+    originsText: '{n} origines de café, chacune avec ses arômes et son caractère.',
+    originsTextPlain: '{n} origines de café, chacune avec ses arômes et son caractère.',
+    originsTextOne: 'Une origine de café, avec ses arômes et son caractère.',
     processTitle: 'Comment est préparé le café BOGA',
     process: [
       { title: 'Vous choisissez', text: 'Un blend, un single origin ou votre propre recette, et le poids.' },
