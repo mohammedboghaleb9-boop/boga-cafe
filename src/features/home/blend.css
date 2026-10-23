@@ -41,6 +41,29 @@
   background: linear-gradient(to bottom, transparent 84%, var(--blend-field));
   pointer-events: none;
 }
+/* phones: the badge in the middle. The picture is drawn larger than the band (the badge at 72 % of its width, which
+   keeps the picture's right edge past the band's) and shifted so the badge's centre (x 1268.5, y 463.5 of 1672 × 941)
+   lands on the band's centre. */
+@media (max-width: 599.98px) {
+  .blend-band {
+    container-type: inline-size;
+  }
+  .blend-art {
+    overflow: hidden;
+    block-size: 92cqi;
+  }
+  .blend-art img {
+    position: absolute;
+    max-inline-size: none;
+    inline-size: 221.71cqi;
+    block-size: auto;
+    left: -118.2cqi;
+    top: -15.46cqi;
+  }
+  .blend-art::after {
+    background: linear-gradient(to bottom, transparent 90%, var(--blend-field));
+  }
+}
 @media (min-width: 1280px) {
   .blend-art {
     position: absolute;
@@ -138,9 +161,9 @@
 .blend-card-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: var(--blend-ink-2);
-  font-size: 0.95rem;
+  font-size: 1.1rem;
 }
 .blend-card-title svg,
 .blend-line-species svg {
@@ -186,10 +209,11 @@
 }
 .blend-lines li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  /* the species in its own column from the middle of the line, as in the reference */
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 12px 18px;
   border-radius: 12px;
   border: 1px solid rgb(245 235 221 / 0.08);
   background: rgb(255 255 255 / 0.025);
@@ -199,23 +223,33 @@
 }
 .blend-line-name {
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1.25rem;
   color: var(--blend-ink);
 }
 .blend-line-species {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--blend-ink-2);
-  font-size: 0.92rem;
+  font-size: 1.1rem;
 }
 .blend-line-weight {
-  padding-inline-start: 14px;
+  padding-inline-start: 18px;
   border-inline-start: 1px solid rgb(245 235 221 / 0.14);
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.45rem;
   color: var(--blend-ink);
   white-space: nowrap;
+}
+
+/* the Arabic face draws smaller than the Latin one at the same size: the lines get a step more (wide screens) */
+@media (min-width: 421px) {
+  :root[dir='rtl'] .blend-line-name {
+    font-size: 1.4rem;
+  }
+  :root[dir='rtl'] .blend-line-species {
+    font-size: 1.25rem;
+  }
 }
 
 /* ── the button: copper, dark text, clear focus ── */
@@ -232,6 +266,11 @@
   box-shadow: 0 10px 24px -12px rgb(200 144 85 / 0.6);
   text-decoration: none;
 }
+/* the bean is dark on the copper: its crease takes the copper */
+.blend-cta svg {
+  --bean-crease: var(--blend-copper);
+  flex-shrink: 0;
+}
 .blend-cta:hover {
   filter: brightness(1.06);
 }
@@ -246,20 +285,42 @@
     padding: 14px;
   }
   .blend-lines li {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     gap: 8px;
-    padding: 9px 10px;
+    padding: 10px;
   }
   .blend-line-name {
-    font-size: 0.98rem;
+    font-size: 1.05rem;
   }
   .blend-line-species {
-    font-size: 0.82rem;
+    gap: 5px;
+    font-size: 0.9rem;
   }
   .blend-line-weight {
     padding-inline-start: 8px;
-    font-size: 1rem;
+    font-size: 1.15rem;
   }
   .blend-cta {
     inline-size: 100%;
+  }
+}
+/* the narrowest phones (under 360 px): the species under the name, the weight beside both */
+@media (max-width: 359.98px) {
+  .blend-lines li {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'flag name weight' 'flag species weight';
+    row-gap: 2px;
+  }
+  .blend-lines .flag {
+    grid-area: flag;
+  }
+  .blend-line-name {
+    grid-area: name;
+  }
+  .blend-line-species {
+    grid-area: species;
+  }
+  .blend-line-weight {
+    grid-area: weight;
   }
 }

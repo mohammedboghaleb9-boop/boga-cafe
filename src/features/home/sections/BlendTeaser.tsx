@@ -51,7 +51,7 @@ export function BlendTeaser() {
           {ready && (
             <div className="blend-card">
               <p className="blend-card-title">
-                <BeanGlyph size={18} />
+                <BeanGlyph size={24} />
                 {t.home.blendExample}
               </p>
               <div className="blend-bar" aria-hidden="true">
@@ -69,7 +69,7 @@ export function BlendTeaser() {
                       <Flag code={o.countryCode} title="" size={30} />
                       <span className="blend-line-name">{l(o.name)}</span>
                       <span className="blend-line-species">
-                        <BeanGlyph size={16} />
+                        <BeanGlyph size={22} />
                         {t.common[o.species]}
                       </span>
                       <span className="blend-line-weight num">
@@ -83,7 +83,7 @@ export function BlendTeaser() {
             </div>
           )}
           <Link to="/custom-blend" className="btn blend-cta">
-            <BeanGlyph size={20} />
+            <BeanGlyph size={28} />
             {t.home.ctaBlend}
             <Icon name="arrow" size={18} className="flip-rtl" />
           </Link>

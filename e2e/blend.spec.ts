@@ -12,9 +12,14 @@ async function layout(page: Page) {
     const oy = (ib.height - 941 * s) * fit[1];
     const badge = { left: ib.left + ox + 997 * s, right: ib.left + ox + 1540 * s, top: ib.top + oy + 174 * s, bottom: ib.top + oy + 753 * s };
     const copy = band.querySelector('.blend-copy')!.getBoundingClientRect();
-    const whole = badge.left >= ib.left - 1 && badge.right <= ib.right + 1 && badge.top >= ib.top - 1 && badge.bottom <= ib.bottom + 1;
+    // whole: inside the picture and inside the frame that clips it
+    const art = band.querySelector('.blend-art')!.getBoundingClientRect();
+    const inside = (r: DOMRect) => badge.left >= r.left - 1 && badge.right <= r.right + 1 && badge.top >= r.top - 1 && badge.bottom <= r.bottom + 1;
+    const whole = inside(ib) && inside(art);
     const apart = badge.right <= copy.left || badge.left >= copy.right || badge.bottom <= copy.top || badge.top >= copy.bottom;
-    return { badge, copy: { left: copy.left, right: copy.right, top: copy.top }, whole, apart, inWindow: badge.left >= 0 && badge.right <= innerWidth };
+    // the picture always reaches the frame's right edge (no bare strip beside it)
+    const covers = ib.right >= art.right - 1;
+    return { badge, copy: { left: copy.left, right: copy.right, top: copy.top }, whole, apart, covers, inWindow: badge.left >= 0 && badge.right <= innerWidth };
   });
 }
 
@@ -38,7 +43,7 @@ test.describe('the Custom Blend band', () => {
       await expect(img).toHaveAttribute('width', '1672');
       await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
       const l = await layout(page);
-      expect(l.whole && l.apart && l.inWindow, JSON.stringify(l)).toBe(true);
+      expect(l.whole && l.apart && l.covers && l.inWindow, JSON.stringify(l)).toBe(true);
       expect(l.copy.right, 'the text column is on the left in every language').toBeLessThan(l.badge.left);
       // the example: three lines, not a table, 50/30/20 as wide as their shares, 500/300/200 g
       await expect(band.locator('table')).toHaveCount(0);
@@ -67,7 +72,7 @@ test.describe('the Custom Blend band', () => {
         await band.scrollIntoViewIfNeeded();
         await expect.poll(() => band.locator('.blend-art img').evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
         const l = await layout(page);
-        expect(l.whole && l.apart && l.inWindow, `${lang} ${width}: ${JSON.stringify(l)}`).toBe(true);
+        expect(l.whole && l.apart && l.covers && l.inWindow, `${lang} ${width}: ${JSON.stringify(l)}`).toBe(true);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       }
     }
@@ -76,18 +81,44 @@ test.describe('the Custom Blend band', () => {
   test.describe('phone', () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test('the badge once, above the text and whole; nothing overflows; a comfortable button', async ({ page }) => {
+    test('the badge once, centred above the text and whole; nothing overflows; a comfortable button', async ({ page }) => {
       await open(page, '/');
       const band = page.locator('.blend-band');
       await band.scrollIntoViewIfNeeded();
       await expect.poll(() => band.locator('.blend-art img').evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
       const l = await layout(page);
-      expect(l.whole && l.apart && l.inWindow, JSON.stringify(l)).toBe(true);
+      expect(l.whole && l.apart && l.covers && l.inWindow, JSON.stringify(l)).toBe(true);
       expect(l.badge.bottom).toBeLessThanOrEqual(l.copy.top);
+      // in the middle of the screen
+      expect(Math.abs((l.badge.left + l.badge.right) / 2 - 195)).toBeLessThan(4);
       await expect(band.locator('img')).toHaveCount(1);
       const button = (await band.locator('.blend-cta').boundingBox())!;
       expect(button.height).toBeGreaterThanOrEqual(44);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    });
+
+    test('320 px in French (the longest names): each line readable, nothing on top of another', async ({ page }) => {
+      // the language buttons are in the header on a wide screen; the choice stays when the screen narrows
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await open(page, '/');
+      await page.locator('.header-tools .lang').getByRole('button', { name: 'Français' }).click();
+      await expect(page.locator('html')).toHaveAttribute('lang', /^fr/);
+      await page.setViewportSize({ width: 320, height: 640 });
+      const lines = page.locator('.blend-lines li');
+      await lines.first().scrollIntoViewIfNeeded();
+      const clashes = await lines.evaluateAll((items) =>
+        items.flatMap((li) => {
+          const parts = [...li.children].map((c) => c.getBoundingClientRect());
+          const name = li.querySelector('.blend-line-name')!;
+          const out = name.scrollWidth > name.clientWidth + 1 ? [`${name.textContent} overflows`] : [];
+          parts.forEach((a, i) => parts.slice(i + 1).forEach((b) => {
+            if (a.right > b.left + 1 && b.right > a.left + 1 && a.bottom > b.top + 1 && b.bottom > a.top + 1) out.push(`${li.textContent}: parts overlap`);
+          }));
+          return out;
+        }),
+      );
+      expect(clashes).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
     });
   });
 });
