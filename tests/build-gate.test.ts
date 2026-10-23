@@ -39,7 +39,7 @@ function build(cwd: string, args: string[], vars: Record<string, string>) {
   // a build killed by the timeout is never read as one that stopped on its own
   expect(r.signal, `${r.stdout}${r.stderr}`).toBeNull();
   const noindex = html.includes('<meta name="robots" content="noindex" />');
-  return { status: r.status, log: `${r.stdout}${r.stderr}`, comingSoon: html.includes('data-site="coming-soon"'), shop, live, demo, noindex, headers };
+  return { status: r.status, log: `${r.stdout}${r.stderr}`, comingSoon: html.includes('data-site="coming-soon"'), shop, live, demo, noindex, headers, files };
 }
 
 const LIVE = { VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test', VITE_TURNSTILE_SITE_KEY: '1x00000000000000000000AA' };
@@ -61,9 +61,12 @@ describe('the production build of main: the live shop from the committed values,
       expect(r.demo).toBe(false);
       expect(r.headers).toMatch(/^\/\*\n {2}X-Frame-Options: DENY\n/);
       expect(r.headers).toMatch(/X-Robots-Tag: noindex/);
-      // hashed files are kept a year; nothing else (the pages, `_headers`) is given a long life
-      expect(r.headers).toMatch(/^\/assets\/\*\n {2}Cache-Control: public, max-age=31536000, immutable\n/m);
-      expect(r.headers.match(/Cache-Control/g)).toHaveLength(1);
+      // hashed files are kept a year, one exact rule per file that exists; never a splat (the SPA fallback would be cached as HTML)
+      expect(r.headers).not.toMatch(/\/assets\/\*/);
+      const ruled = [...r.headers.matchAll(/^\/(assets\/\S+)\n {2}Cache-Control: public, max-age=31536000, immutable$/gm)].map((m) => m[1]);
+      expect(ruled.length).toBeGreaterThan(10);
+      expect(ruled.sort()).toEqual(r.files.filter((f) => f.startsWith('assets/')).sort());
+      expect(r.headers.match(/Cache-Control/g)).toHaveLength(ruled.length);
       expect(r.log).toMatch(/production build, live values ON/);
       expect(r.log).toMatch(/live shop: .* reads the live project/);
     });
