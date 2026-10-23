@@ -34,12 +34,15 @@ test.describe('the Custom Blend band', () => {
       await page.locator('.header-tools .lang').getByRole('button', { name: lang }).click();
       await expect(page.locator('html')).toHaveAttribute('dir', code === 'ar' ? 'rtl' : 'ltr');
       const band = page.locator('.blend-band');
+      // the backdrop: decorative, its size reserved, lazy while the band is still far below
+      // (nearLoad.ts turns a lazy image eager once it is within 1.2 screens)
+      const img = band.locator('.blend-art img');
+      const far = await img.evaluate((i: HTMLImageElement) => ({ screens: i.getBoundingClientRect().top / innerHeight, loading: i.loading }));
+      expect(far.screens, 'the band starts well below the first screen').toBeGreaterThan(2.2);
+      expect(far.loading).toBe('lazy');
       await band.scrollIntoViewIfNeeded();
       await expect(band.getByRole('heading', { level: 2, name: heading })).toBeVisible();
-      // the backdrop: decorative, lazy, its size reserved
-      const img = band.locator('.blend-art img');
       await expect(img).toHaveAttribute('alt', '');
-      await expect(img).toHaveAttribute('loading', 'lazy');
       await expect(img).toHaveAttribute('width', '1672');
       await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
       const l = await layout(page);

@@ -23,6 +23,54 @@
   block-size: 100%;
   object-fit: cover;
 }
+/* while the photo is on its way: the frame holds a warm glow, no sticker, no half-drawn pouch;
+   the photo then comes in with its sticker (motion is only this short fade, and never under reduced motion) */
+.pv {
+  --pv-glow: radial-gradient(ellipse 55% 45% at 50% 42%, rgb(201 154 102 / 0.14), transparent 70%);
+}
+.pv[data-state='loading'] {
+  background: var(--pv-glow), #0b0908;
+}
+.pv[data-state='loading'] .pv-photo {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pv[data-state='ready'] .pv-photo,
+  .pv[data-state='ready'] .pv-sticker {
+    animation: pv-in 0.3s ease-out both;
+  }
+}
+@keyframes pv-in {
+  from {
+    opacity: 0;
+  }
+}
+/* the photo did not come, even after two more tries: the name, in plain text */
+.pv-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2cqi;
+  padding: 8cqi;
+  text-align: center;
+  color: #eee4d4;
+  background: var(--pv-glow), #0b0908;
+}
+.pv-fallback-title {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 7cqi;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.pv-fallback-blend {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 4cqi;
+  color: #c99a66;
+}
 
 .pv-sticker {
   position: absolute;

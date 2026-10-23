@@ -144,6 +144,8 @@
   grid-area: photo;
   position: relative;
   margin: 0;
+  /* a warm tone for the frame until the photo arrives */
+  background: color-mix(in srgb, var(--accent) 9%, var(--paper));
   overflow: hidden;
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--cream) 28%, transparent);

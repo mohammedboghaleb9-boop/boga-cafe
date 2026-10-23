@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { MAX_FILE_RULES } from '../scripts/shop-headers.mjs';
 
 /**
  * The real `vite build` command, as Workers Builds runs it (WORKERS_CI, WORKERS_CI_BRANCH), into a fresh
@@ -26,7 +27,8 @@ function build(cwd: string, args: string[], vars: Record<string, string>) {
     timeout: 55_000,
     killSignal: 'SIGKILL',
   });
-  const files = readdirSync(outDir, { recursive: true }).map(String);
+  // forward slashes on every platform
+  const files = readdirSync(outDir, { recursive: true }).map((f) => String(f).replace(/\\/g, '/'));
   const html = existsSync(join(outDir, 'index.html')) ? readFileSync(join(outDir, 'index.html'), 'utf8') : '';
   const headers = existsSync(join(outDir, '_headers')) ? readFileSync(join(outDir, '_headers'), 'utf8') : '';
   const js = files.filter((f) => f.endsWith('.js')).map((f) => readFileSync(join(outDir, f), 'utf8'));
@@ -39,7 +41,7 @@ function build(cwd: string, args: string[], vars: Record<string, string>) {
   // a build killed by the timeout is never read as one that stopped on its own
   expect(r.signal, `${r.stdout}${r.stderr}`).toBeNull();
   const noindex = html.includes('<meta name="robots" content="noindex" />');
-  return { status: r.status, log: `${r.stdout}${r.stderr}`, comingSoon: html.includes('data-site="coming-soon"'), shop, live, demo, noindex, headers };
+  return { status: r.status, log: `${r.stdout}${r.stderr}`, comingSoon: html.includes('data-site="coming-soon"'), shop, live, demo, noindex, headers, files };
 }
 
 const LIVE = { VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test', VITE_TURNSTILE_SITE_KEY: '1x00000000000000000000AA' };
@@ -61,6 +63,15 @@ describe('the production build of main: the live shop from the committed values,
       expect(r.demo).toBe(false);
       expect(r.headers).toMatch(/^\/\*\n {2}X-Frame-Options: DENY\n/);
       expect(r.headers).toMatch(/X-Robots-Tag: noindex/);
+      // hashed files are kept a year, one exact rule per file that exists; never a splat (the SPA fallback would be cached as HTML)
+      expect(r.headers).not.toMatch(/\/assets\/\*/);
+      const ruled = [...r.headers.matchAll(/^\/(assets\/\S+)\n {2}Cache-Control: public, max-age=31536000, immutable$/gm)].map((m) => m[1]);
+      expect(ruled.length).toBeGreaterThan(10);
+      const written = r.files.filter((f) => f.startsWith('assets/'));
+      // every rule names a file that was written, and (within the 90-rule limit) every file Vite hashed has its rule
+      expect(written).toEqual(expect.arrayContaining(ruled));
+      expect(ruled).toHaveLength(Math.min(written.length, MAX_FILE_RULES));
+      expect(r.headers.match(/Cache-Control/g)).toHaveLength(ruled.length);
       expect(r.log).toMatch(/production build, live values ON/);
       expect(r.log).toMatch(/live shop: .* reads the live project/);
     });

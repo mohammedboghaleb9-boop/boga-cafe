@@ -1,4 +1,5 @@
 import { media, type MediaName } from '../media';
+import { loadWhenNear } from './nearLoad';
 
 /** An approved photo with its real size (no layout shift) and lazy loading below the fold. */
 export function Photo({
@@ -22,6 +23,7 @@ export function Photo({
       width={m.width}
       height={m.height}
       alt={alt}
+      ref={loadWhenNear}
       className={className}
       sizes={sizes}
       loading={priority ? 'eager' : 'lazy'}
