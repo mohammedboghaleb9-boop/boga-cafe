@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { MAX_FILE_RULES } from '../scripts/shop-headers.mjs';
 
 /**
  * The real `vite build` command, as Workers Builds runs it (WORKERS_CI, WORKERS_CI_BRANCH), into a fresh
@@ -26,7 +27,8 @@ function build(cwd: string, args: string[], vars: Record<string, string>) {
     timeout: 55_000,
     killSignal: 'SIGKILL',
   });
-  const files = readdirSync(outDir, { recursive: true }).map(String);
+  // forward slashes on every platform
+  const files = readdirSync(outDir, { recursive: true }).map((f) => String(f).replace(/\\/g, '/'));
   const html = existsSync(join(outDir, 'index.html')) ? readFileSync(join(outDir, 'index.html'), 'utf8') : '';
   const headers = existsSync(join(outDir, '_headers')) ? readFileSync(join(outDir, '_headers'), 'utf8') : '';
   const js = files.filter((f) => f.endsWith('.js')).map((f) => readFileSync(join(outDir, f), 'utf8'));
@@ -65,7 +67,10 @@ describe('the production build of main: the live shop from the committed values,
       expect(r.headers).not.toMatch(/\/assets\/\*/);
       const ruled = [...r.headers.matchAll(/^\/(assets\/\S+)\n {2}Cache-Control: public, max-age=31536000, immutable$/gm)].map((m) => m[1]);
       expect(ruled.length).toBeGreaterThan(10);
-      expect(ruled.sort()).toEqual(r.files.filter((f) => f.startsWith('assets/')).sort());
+      const written = r.files.filter((f) => f.startsWith('assets/'));
+      // every rule names a file that was written, and (within the 90-rule limit) every file Vite hashed has its rule
+      expect(written).toEqual(expect.arrayContaining(ruled));
+      expect(ruled).toHaveLength(Math.min(written.length, MAX_FILE_RULES));
       expect(r.headers.match(/Cache-Control/g)).toHaveLength(ruled.length);
       expect(r.log).toMatch(/production build, live values ON/);
       expect(r.log).toMatch(/live shop: .* reads the live project/);

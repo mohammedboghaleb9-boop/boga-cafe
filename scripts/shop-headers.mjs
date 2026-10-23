@@ -21,7 +21,9 @@ const MEDIA = /\.(webp|png|jpe?g|avif|svg|mp4|woff2?)$/;
 /** @param {string[]} files every file name of the bundle, as written (e.g. "assets/packshot-C7fJ_hY-.webp") */
 export function shopHeadersFile(files) {
   const hashed = files.filter((f) => HASHED.test(f)).sort();
-  const ordered = [...hashed.filter((f) => MEDIA.test(f)), ...hashed.filter((f) => !MEDIA.test(f))].slice(0, MAX_FILE_RULES);
+  const all = [...hashed.filter((f) => MEDIA.test(f)), ...hashed.filter((f) => !MEDIA.test(f))];
+  const ordered = all.slice(0, MAX_FILE_RULES);
+  if (all.length > ordered.length) console.warn(`shop headers: ${all.length - ordered.length} hashed file(s) past the ${MAX_FILE_RULES}-rule limit keep the default cache (scripts and styles go last)`);
   return `${[
     '/*',
     '  X-Frame-Options: DENY',

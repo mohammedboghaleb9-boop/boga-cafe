@@ -121,6 +121,8 @@ function prelaunchNoindex() {
 function shopHeaders() {
   return {
     name: 'boga-shop-headers',
+    // last, so the bundle it lists is the one that is written
+    enforce: 'post' as const,
     generateBundle(
       this: { emitFile: (file: { type: 'asset'; fileName: string; source: string }) => string },
       _options: unknown,

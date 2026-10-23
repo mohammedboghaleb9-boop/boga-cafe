@@ -25,6 +25,14 @@ describe('the shop headers: a year of cache for the hashed files that exist, not
     expect(rules(t).map((r) => r.path)).toEqual(['/*', '/assets/packshot-C7fJ_hY-.webp']);
   });
 
+  it('reads real Vite names: dashes and underscores in or at the end of the hash, dots, capitals; and skips what is not safe to name', () => {
+    const real = ['assets/packshot-C7fJ_hY-.webp', 'assets/barista-zl8lBP_-.webp', 'assets/cinzel-latin-500-normal-B-2dbOfA.woff2', 'assets/AdminApp-BX26Guu_.css', 'assets/foo.bar-aB3dEf9h.js'];
+    expect(rules(shopHeadersFile(real)).slice(1).map((r) => r.path).sort()).toEqual(real.map((f) => `/${f}`).sort());
+    // a character Cloudflare would read as a placeholder or splat never reaches a rule
+    const odd = ['assets/a$b-aB3dEf9h.js', 'assets/x:y-aB3dEf9h.js', 'assets/star*-aB3dEf9h.js', 'assets/photo-aB3dEf9h.JPG'];
+    expect(rules(shopHeadersFile(odd)).map((r) => r.path)).toEqual(['/*']);
+  });
+
   it('keeps the security rules on every page', () => {
     const page = rules(text).find((r) => r.path === '/*')!.lines;
     expect(page).toEqual(expect.arrayContaining(['X-Frame-Options: DENY', "Content-Security-Policy: frame-ancestors 'none'", 'X-Content-Type-Options: nosniff', 'X-Robots-Tag: noindex']));
