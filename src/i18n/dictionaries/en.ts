@@ -139,9 +139,10 @@ export const en = {
     shelfEyebrow: 'Our coffees',
     seeAll: 'See all coffees',
     blendTitle: 'Your recipe, your proportions',
-    blendText:
-      'Pick your coffees, set each percentage, choose 250 g, 500 g or 1 kg. The price updates as you go, and we reproduce your recipe exactly.',
-    blendExample: 'Example for 1 kg',
+    // the home's Custom Blend band (its own heading: blendTitle is also the Paths card's text)
+    blendHeading: 'Your blend, in your own proportions',
+    blendText: 'Pick the coffee origins you like and set the share of each to build a blend to your taste.',
+    blendExample: 'Example of a 1 kg blend',
     originsTitle: 'Coffee origins',
     originsAll: 'Browse all origins',
     originsText: '{n} coffee origins, each with its own flavour and character.',

@@ -135,9 +135,10 @@ export const ar: Dict = {
     shelfEyebrow: 'قهوتنا',
     seeAll: 'كل أنواع القهوة',
     blendTitle: 'وصفتك، بنسبك أنت',
-    blendText:
-      'اختر أنواع القهوة، حدّد نسبة كل نوع، ثم 250 غ أو 500 غ أو 1 كلغ. يُحسب السعر مباشرة، ونعيد إنتاج وصفتك كما هي.',
-    blendExample: 'مثال لكيس 1 كلغ',
+    // the home's Custom Blend band (its own heading: blendTitle is also the Paths card's text)
+    blendHeading: 'خلطتك، بالنسب اللي بغيتي',
+    blendText: 'اختار مصادر القهوة اللي كتعجبك، وحدّد نسبة كل واحد باش تركّب خلطة على ذوقك.',
+    blendExample: 'مثال لخلطة من 1 كلغ',
     originsTitle: 'مصادر القهوة',
     // Moroccan Darija (owner 2026-10-23): this section first; the rest of the site after the shared glossary is approved
     originsAll: 'شوف المصادر كاملين',
