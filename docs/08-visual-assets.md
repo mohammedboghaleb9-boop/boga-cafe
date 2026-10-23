@@ -14,7 +14,8 @@
 | `src/shared/ui/BrandIcon.tsx` | الشعارات **الأصلية** لـ Instagram و TikTok و WhatsApp و Gmail و Facebook (Simple Icons، رخصة CC0) بألوانها الرسمية | إطارات التواصل في صفحة الاتصال، التذييل، الصفحة الرئيسية |
 | `src/assets/photos/roast-light.webp` · `roast-medium.webp` · `roast-medium-dark.webp` · `roast-dark.webp` | صور مقرّبة للحبوب، واحدة لكل درجة تحميص (توضيحية، ليست مصدراً بعينه). رُتّبت حسب **قياس سطوع الحبوب** وليس حسب ترتيب الإرسال | دائرة صغيرة بجانب كل مصدر (الرئيسية، الخلطة الخاصة)، وسلّم التحميص في صفحة المنتج (`src/shared/ui/Roast.tsx`) |
 | `src/assets/photos/blend-flatlay.webp` | ثلاث كومات من الفاتح إلى الداكن + ميزان نحاسي + مغرفة. **الكتابة الوهمية الصغيرة** على المغرفة وتحت عقرب الميزان مُسحت | رأس صفحة الخلطة الخاصة |
-| `src/assets/brand/seal.webp` | ختم Custom Blend الدائري، بخلفية شفافة | الصفحة الرئيسية، ملخص الخلطة الخاصة |
+| `src/assets/brand/seal.webp` | ختم Custom Blend الدائري، بخلفية شفافة | ملخص الخلطة الخاصة (صفحة Custom Blend) |
+| `src/assets/photos/blend-backdrop.webp` | خلفية قسم «خلطتك الخاصة»: شارة Custom Blend على اليمين ومساحة داكنة فارغة (ملف المالك، 1672×941، جودة 80، 62 KB بلا تغيير الألوان). **الأصل كما هو:** `brand/photos/custom-blend-backdrop-original.webp` | قسم «خلطتك الخاصة» فالرئيسية |
 | `src/assets/photos/packshot.webp` | **صورة الكيس الأساسية** 1 كلغ: القالب الفارغ + الملصق المعتمد مركّب فوقه بنفس الإضاءة | كل بطاقات المنتجات وصفحة كل منتج والخلطة الخاصة |
 | `src/assets/video/hero-1080.mp4` | فيديو الحبوب كتدور فصينية التبريد ديال المحمصة (12 ثانية، حلقة متصلة، بلا صوت): الملف ديال المالك كما هو، 1920×1080، 4 MB | خلفية القسم الأول فالصفحة الرئيسية (الحاسوب) |
 | `src/assets/video/hero-mobile.mp4` | نفس الفيديو مقصوص طولياً بالدقة الأصلية 608×1080 (`ffmpeg -i loop.mp4 -an -vf crop=608:1080:1100:0 -c:v libx264 -preset veryslow -tune film -crf 24 -movflags +faststart`)، 2.7 MB | الهاتف |

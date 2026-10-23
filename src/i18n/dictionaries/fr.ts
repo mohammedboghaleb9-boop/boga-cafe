@@ -135,9 +135,10 @@ export const fr: Dict = {
     shelfEyebrow: 'Nos cafés',
     seeAll: 'Voir tous les cafés',
     blendTitle: 'Votre recette, vos proportions',
-    blendText:
-      'Choisissez vos cafés, fixez chaque pourcentage, puis 250 g, 500 g ou 1 kg. Le prix se calcule en direct et nous reproduisons votre recette à l’identique.',
-    blendExample: 'Exemple pour 1 kg',
+    // the home's Custom Blend band (its own heading: blendTitle is also the Paths card's text)
+    blendHeading: 'Votre blend, dans vos proportions',
+    blendText: 'Choisissez les origines qui vous plaisent et fixez la part de chacune pour composer un blend à votre goût.',
+    blendExample: 'Exemple de blend de 1 kg',
     originsTitle: 'Les origines du café',
     originsAll: 'Voir toutes les origines',
     originsText: '{n} origines de café, chacune avec ses arômes et son caractère.',

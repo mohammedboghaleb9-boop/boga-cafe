@@ -17,6 +17,7 @@ import ritualTray from '@/assets/photos/ritual-tray.webp';
 import roaster from '@/assets/photos/roaster.webp';
 import roastery from '@/assets/photos/roastery.webp';
 import blendFlatlay from '@/assets/photos/blend-flatlay.webp';
+import blendBackdrop from '@/assets/photos/blend-backdrop.webp';
 import roastLight from '@/assets/photos/roast-light.webp';
 import roastMedium from '@/assets/photos/roast-medium.webp';
 import roastMediumDark from '@/assets/photos/roast-medium-dark.webp';
@@ -48,6 +49,8 @@ export const media = {
   seal: { src: seal, width: 640, height: 640 },
   /** Three piles, light to dark, a brass scale and a copper scoop: the Custom Blend idea. */
   blendFlatlay: { src: blendFlatlay, width: 1600, height: 893 },
+  /** The home's Custom Blend band: the round Custom Blend badge on the right of a dark, empty field (owner's file; original in brand/photos). */
+  blendBackdrop: { src: blendBackdrop, width: 1672, height: 941 },
   /** Close-ups of roasted beans, one per roast level (illustrative, not a specific origin). */
   roastLight: { src: roastLight, width: 480, height: 480 },
   roastMedium: { src: roastMedium, width: 480, height: 480 },
