@@ -43,16 +43,35 @@ test.describe('the Custom Blend band', () => {
       // the example: three lines, not a table, 50/30/20 as wide as their shares, 500/300/200 g
       await expect(band.locator('table')).toHaveCount(0);
       await expect(band.locator('.blend-lines li')).toHaveCount(3);
-      await expect(band.locator('.blend-line-weight')).toHaveText([/500 g/, /300 g/, /200 g/]);
+      await expect(band.locator('.blend-line-weight')).toHaveText([/(^|· )500 g$/, /(^|· )300 g$/, /(^|· )200 g$/]);
       const widths = await band.locator('.blend-bar span').evaluateAll((s) => s.map((e) => e.getBoundingClientRect().width));
       const total = widths.reduce((a, b) => a + b, 0);
       widths.forEach((w, i) => expect(Math.abs(w / total - [0.5, 0.3, 0.2][i])).toBeLessThan(0.01));
       // nothing to buy, no price promised
-      await expect(band).not.toContainText(/prix|price|السعر|درهم|\bDH\b|MAD/i);
+      await expect(band).not.toContainText(/prix|price|السعر|درهم/i);
+      await expect(band).not.toContainText(/\b(DH|MAD)\b/);
       await expect(band.locator('input, button, select, form')).toHaveCount(0);
       await expect(band.getByRole('link')).toHaveAttribute('href', '/custom-blend');
     });
   }
+
+  // the tightest widths: the widest picture above the text (1279), the two zones at their narrowest (1280)
+  test('around 1280 px (ar and fr): the badge whole, never under the text', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await open(page, '/');
+    for (const lang of ['العربية', 'Français']) {
+      await page.locator('.header-tools .lang').getByRole('button', { name: lang }).click();
+      for (const width of [1279, 1280]) {
+        await page.setViewportSize({ width, height: 800 });
+        const band = page.locator('.blend-band');
+        await band.scrollIntoViewIfNeeded();
+        await expect.poll(() => band.locator('.blend-art img').evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
+        const l = await layout(page);
+        expect(l.whole && l.apart && l.inWindow, `${lang} ${width}: ${JSON.stringify(l)}`).toBe(true);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      }
+    }
+  });
 
   test.describe('phone', () => {
     test.use({ viewport: { width: 390, height: 844 } });

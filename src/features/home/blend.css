@@ -23,8 +23,8 @@
 .blend-art {
   position: relative;
   z-index: -1;
-  margin: 0;
-  block-size: clamp(300px, 80vw, 440px);
+  /* tall enough for the whole badge up to 1279 px, where the picture is widest */
+  block-size: clamp(300px, 80vw, 480px);
 }
 .blend-art img {
   inline-size: 100%;
@@ -38,7 +38,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, transparent 70%, var(--blend-field));
+  background: linear-gradient(to bottom, transparent 84%, var(--blend-field));
   pointer-events: none;
 }
 @media (min-width: 1280px) {
@@ -90,6 +90,8 @@
   text-align: center;
 }
 .blend-ornament {
+  /* drawn the same way in every language: each line fades away from the star */
+  direction: ltr;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -214,7 +216,6 @@
   font-size: 1.1rem;
   color: var(--blend-ink);
   white-space: nowrap;
-  direction: ltr;
 }
 
 /* ── the button: copper, dark text, clear focus ── */

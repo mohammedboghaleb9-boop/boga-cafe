@@ -33,12 +33,13 @@ function Ornament() {
 export function BlendTeaser() {
   const { t, l } = useI18n();
   const { originIndex } = useCatalog();
-  const lines = example.filter((e) => originIndex[e.originId]);
+  // all three or none: a partial example would no longer add up to 1 kg
+  const ready = example.every((e) => originIndex[e.originId]);
   return (
     <section className="blend-band" aria-labelledby="blend-title">
-      <figure className="blend-art">
+      <div className="blend-art">
         <Photo name="blendBackdrop" alt="" sizes="(min-width: 1280px) 70vw, 100vw" />
-      </figure>
+      </div>
       <div className="container blend-inner">
         <div className="blend-copy reveal">
           <div className="blend-head">
@@ -47,21 +48,21 @@ export function BlendTeaser() {
             <h2 id="blend-title">{t.home.blendHeading}</h2>
             <p className="blend-lead">{t.home.blendText}</p>
           </div>
-          {lines.length > 0 && (
+          {ready && (
             <div className="blend-card">
               <p className="blend-card-title">
                 <BeanGlyph size={18} />
                 {t.home.blendExample}
               </p>
               <div className="blend-bar" aria-hidden="true">
-                {lines.map((e, i) => (
+                {example.map((e, i) => (
                   <span key={e.originId} className={`blend-seg-${i + 1}`} style={{ flexGrow: e.percent }}>
                     {e.percent}%
                   </span>
                 ))}
               </div>
               <ul className="blend-lines">
-                {lines.map((e) => {
+                {example.map((e) => {
                   const o = originIndex[e.originId];
                   return (
                     <li key={e.originId}>
@@ -73,7 +74,7 @@ export function BlendTeaser() {
                       </span>
                       <span className="blend-line-weight num">
                         <span className="sr-only">{e.percent}% · </span>
-                        {e.percent * 10} g
+                        <span dir="ltr">{e.percent * 10} g</span>
                       </span>
                     </li>
                   );
