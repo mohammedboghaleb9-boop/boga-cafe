@@ -1,14 +1,20 @@
-/* ───── Origins: six origin cards beside the harvest photo ─────
-   Phones and tablets: title, photo, then the cards. From 1200 px: the cards on the left and the
-   photo on the right in every language (RTL swaps the columns back). */
+/* ───── Origins: the six origins beside the harvest photo ─────
+   Phones: the title, then one sheet (the photo on top of six compact rows), then the button.
+   Tablets: the title, the photo, then two columns of cards.
+   From 1200 px: the cards on the left and the photo on the right in every language
+   (RTL swaps the columns back). */
 .origins-band {
   --origins-copper: color-mix(in srgb, var(--accent) 55%, transparent);
   --origins-edge: color-mix(in srgb, var(--accent) 18%, transparent);
+  --origins-hairline: color-mix(in srgb, var(--cream) 9%, transparent);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   /* espresso: the page's black warmed by a touch of copper, a soft glow under the title */
   background:
     radial-gradient(ellipse 60% 50% at 50% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
     color-mix(in srgb, var(--accent) 4%, var(--paper));
-  padding-block: clamp(44px, 6vw, 76px);
+  padding-block: clamp(36px, 6vw, 76px);
 }
 .origins-grid {
   display: grid;
@@ -29,7 +35,65 @@
   }
 }
 
-/* the title under a copper bean between two lines; the button on the other side */
+/* ── the original line drawings (OriginsDecor.tsx): faint, behind everything ── */
+.origins-decor {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  color: var(--accent);
+}
+.origins-decor svg {
+  position: absolute;
+  fill: none;
+  stroke: currentColor;
+}
+.origins-contours {
+  inline-size: 640px;
+  left: -170px;
+  top: -70px;
+  stroke-width: 1;
+  opacity: 0.13;
+}
+.origins-branch,
+.origins-scatter {
+  display: none;
+}
+@media (min-width: 1200px) {
+  .origins-contours {
+    left: -120px;
+    top: -40px;
+    inline-size: 720px;
+  }
+  /* a coffee branch above the photo's corner, as the reference's leaves */
+  .origins-branch {
+    display: block;
+    right: -28px;
+    top: -26px;
+    inline-size: 250px;
+    stroke-width: 1.3;
+    opacity: 0.24;
+  }
+  /* a few roasted beans at the far edge, as in the reference */
+  .origins-scatter {
+    display: block;
+    left: -34px;
+    top: 34%;
+    inline-size: 92px;
+    stroke: none;
+    opacity: 0.55;
+  }
+  .origins-scatter ellipse {
+    fill: color-mix(in srgb, var(--accent) 34%, var(--paper));
+  }
+  .origins-scatter path {
+    fill: none;
+    stroke: rgb(0 0 0 / 0.5);
+    stroke-width: 1.2;
+  }
+}
+
+/* ── the title under a copper bean between two lines; the button on the other side ── */
 .origins-head {
   grid-area: head;
   display: flex;
@@ -64,7 +128,7 @@
 }
 .origins-title h2 {
   color: var(--cream);
-  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
 }
 .origins-lead {
   color: var(--ink-2);
@@ -75,13 +139,8 @@
   color: var(--cream);
   padding-inline: 18px;
 }
-@media (max-width: 599.98px) {
-  .origins-all {
-    min-block-size: 44px;
-  }
-}
 
-/* the photo fills its column on large screens; phones and tablets get a fixed frame */
+/* ── the photo: a fixed frame on phones and tablets, the full column height on desktop ── */
 .origins-photo {
   grid-area: photo;
   position: relative;
@@ -90,7 +149,7 @@
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--cream) 28%, transparent);
   box-shadow: 0 24px 50px -24px rgb(0 0 0 / 0.9);
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1;
 }
 .origins-photo img {
   position: absolute;
@@ -99,16 +158,12 @@
   block-size: 100%;
   object-fit: cover;
   /* the face, both hands and the bucket stay in the frame */
-  object-position: 50% 40%;
+  object-position: 50% 28%;
 }
 @media (min-width: 600px) and (max-width: 1199.98px) {
   .origins-photo {
-    aspect-ratio: 1;
     inline-size: min(100%, 620px);
     justify-self: center;
-  }
-  .origins-photo img {
-    object-position: 50% 28%;
   }
 }
 @media (min-width: 1200px) {
@@ -122,7 +177,7 @@
   }
 }
 
-/* six cards, two per row from 600 px */
+/* ── the origins: two columns of cards from 600 px ── */
 .origins-empty {
   grid-area: list;
 }
@@ -136,37 +191,39 @@
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
 }
-@media (min-width: 600px) {
-  .origin-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 .origin-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'name chip' 'meta chip' 'notes chip' 'roast beans';
   align-items: center;
-  gap: 16px;
+  /* a shorter card beside a taller one keeps its lines together */
+  align-content: center;
+  gap: 4px 16px;
   padding: 16px 18px;
   border-radius: 12px;
   border: 1px solid var(--origins-edge);
   background: linear-gradient(135deg, rgb(255 240 222 / 0.05), rgb(255 240 222 / 0.015));
   box-shadow: 0 12px 26px -16px rgb(0 0 0 / 0.85);
 }
-/* the reference's copper accent on the first card: a fixed accent, not a selection */
-.origin-card:first-child {
-  border-color: var(--origins-copper);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 12%, transparent),
-    color-mix(in srgb, var(--accent) 3%, transparent)
-  );
-}
-.origin-card-text {
-  display: grid;
-  gap: 4px;
-  min-inline-size: 0;
+@media (min-width: 600px) {
+  .origin-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* the reference's copper accent on the first card: a fixed accent, not a selection */
+  .origin-card:first-child {
+    border-color: var(--origins-copper);
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent) 12%, transparent),
+      color-mix(in srgb, var(--accent) 3%, transparent)
+    );
+  }
 }
 .origin-name {
+  grid-area: name;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -176,23 +233,27 @@
   min-inline-size: 0;
   overflow-wrap: anywhere;
 }
+.origin-meta {
+  grid-area: meta;
+}
 .origin-meta,
 .origin-notes {
   font-size: 0.92rem;
   color: var(--ink-2);
 }
 .origin-notes {
+  grid-area: notes;
   color: var(--ink);
 }
 .origin-roast-name {
+  grid-area: roast;
   margin-block-start: 2px;
   font-size: 0.92rem;
   color: var(--accent);
 }
-.origin-card-media {
-  display: grid;
-  justify-items: center;
-  gap: 10px;
+.origin-roast-photo {
+  grid-area: chip;
+  justify-self: center;
 }
 .origin-card .roast-chip {
   box-shadow:
@@ -200,6 +261,8 @@
     0 10px 18px -8px rgb(0 0 0 / 0.85);
 }
 .origin-beans {
+  grid-area: beans;
+  justify-self: center;
   display: inline-flex;
   gap: 5px;
   padding: 5px 10px;
@@ -211,4 +274,125 @@
 }
 .origin-beans .is-on {
   color: var(--accent);
+}
+/* light terrain lines in the card's corner, where the reference had its landscapes */
+.origin-terrain {
+  position: absolute;
+  z-index: -1;
+  inset-block-end: 0;
+  inset-inline-start: 0;
+  inline-size: 64%;
+  block-size: 62%;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  opacity: 0.16;
+}
+:root[dir='rtl'] .origin-terrain {
+  transform: scaleX(-1);
+}
+
+/* ── phones: one sheet, compact rows that line up for comparison ── */
+@media (max-width: 599.98px) {
+  .origins-grid {
+    row-gap: 0;
+    grid-template-areas: 'head' 'photo' 'list' 'all';
+  }
+  /* the head's two parts join the grid: the button goes under the list, full width */
+  .origins-head {
+    display: contents;
+  }
+  .origins-head-text {
+    grid-area: head;
+    justify-items: center;
+    text-align: center;
+    margin-block-end: 18px;
+  }
+  .origins-title {
+    justify-self: center;
+  }
+  .origins-all {
+    grid-area: all;
+    margin-block-start: 16px;
+    min-block-size: 48px;
+    font-size: 0.9rem;
+  }
+  .origins-photo {
+    border-radius: 16px 16px 0 0;
+    border-block-end: 0;
+    box-shadow: none;
+  }
+  .origin-cards {
+    gap: 0;
+    border: 1px solid color-mix(in srgb, var(--cream) 28%, transparent);
+    border-block-start: 0;
+    border-radius: 0 0 16px 16px;
+    background: linear-gradient(180deg, rgb(255 240 222 / 0.045), rgb(255 240 222 / 0.02));
+    box-shadow: 0 24px 50px -24px rgb(0 0 0 / 0.9);
+  }
+  /* the roast keeps one line; a long region wraps at the row's end */
+  .origin-card {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-areas: 'name name species' 'notes notes notes' 'beans roast region';
+    gap: 6px 10px;
+    padding: 14px 16px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .origin-card + .origin-card {
+    border-block-start: 1px solid var(--origins-hairline);
+  }
+  .origin-name {
+    font-size: 1.05rem;
+    gap: 8px;
+  }
+  .origin-name .flag {
+    inline-size: 24px;
+    block-size: auto;
+  }
+  /* species, separator and region join the row's grid */
+  .origin-meta {
+    display: contents;
+  }
+  .origin-species {
+    grid-area: species;
+    justify-self: end;
+    padding: 2px 10px;
+    border: 1px solid var(--origins-copper);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    color: var(--cream);
+    white-space: nowrap;
+  }
+  .origin-region {
+    grid-area: region;
+    justify-self: end;
+    min-inline-size: 0;
+    text-align: end;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--muted);
+  }
+  .origin-notes {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .origin-roast-name {
+    margin: 0;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .origin-beans {
+    justify-self: start;
+    gap: 4px;
+    padding: 3px 8px;
+  }
+  /* .origin-card first: roast.css (loaded later) shows every .roast-chip */
+  .origin-card .origin-sep,
+  .origin-card .origin-roast-photo,
+  .origin-card .origin-terrain {
+    display: none;
+  }
 }
