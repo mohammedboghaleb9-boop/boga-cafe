@@ -145,6 +145,7 @@ export const en = {
     originsTitle: 'Coffee origins',
     originsAll: 'Browse all origins',
     originsText: 'Each origin has its own stock, counted in kilograms.',
+    originsTextPlain: 'Each origin has its own stock, counted in kilograms.',
     processTitle: 'How BOGA coffee is made',
     process: [
       { title: 'You choose', text: 'A blend, a single origin or your own recipe, and the weight.' },

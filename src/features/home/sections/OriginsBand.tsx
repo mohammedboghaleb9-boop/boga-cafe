@@ -15,6 +15,8 @@ import { OriginsDecor } from './OriginsDecor';
 export function OriginsBand() {
   const { t } = useI18n();
   const shown = useCatalog().origins.filter(onDisplay);
+  const n = shown.length;
+  const lead = n >= 3 && n <= 10 ? fmt(t.home.originsText, { n }) : t.home.originsTextPlain;
   return (
     <section className="origins-band" aria-labelledby="origins-title">
       <OriginsDecor />
@@ -27,7 +29,7 @@ export function OriginsBand() {
               </span>
               <h2 id="origins-title">{t.home.originsTitle}</h2>
             </div>
-            {shown.length > 0 && <p className="origins-lead">{fmt(t.home.originsText, { n: shown.length })}</p>}
+            {n > 0 && <p className="origins-lead">{lead}</p>}
           </div>
           <Link to="/single-origin" className="btn btn-ghost btn-sm origins-all">
             {t.home.originsAll}

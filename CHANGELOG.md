@@ -5,7 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-23
-- 2026-10-23 [claude/focused-brown-gitp8i] Origins section, round 2: a phone design (one sheet: the photo on top of six compact rows that line up for comparison, the button last; 26 % shorter), original line drawings (terrain contours, a coffee branch, beans, card ridge lines), the section's Arabic texts in Moroccan Darija; `docs/11-darija.md` proposes the glossary and the texts for the rest of the site (not applied). Not merged, not deployed.
+- 2026-10-23 [claude/focused-brown-gitp8i] Origins section, round 2: a phone design (one sheet: the photo on top of six compact rows that line up for comparison, the button last; 26 % shorter), original line drawings (terrain contours, a coffee branch, beans, card ridge lines), the section's Arabic texts in Moroccan Darija; `docs/11-darija.md` proposes the glossary and the texts for the rest of the site (not applied); review fixes (direction-aware alignment test in fr/ar, long names, Darija count grammar, screen-reader spacing). Not merged, not deployed.
 
 ## 2026-10-22
 - 2026-10-22 [claude/focused-brown-gitp8i] Home origins section redesigned from the owner's reference: six catalog cards (flag, species, region, notes, roast level with lit beans) beside the owner's harvest photo, right side in every language; button to `/single-origin`; no price, stock or purchase; original photo kept in `brand/photos`; review fixes applied (decorative flags in headings, button beside the title, tokens). Not merged, not deployed.

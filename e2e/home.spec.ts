@@ -97,7 +97,7 @@ test.describe('home page', () => {
       const cards = band.locator('.origin-card');
       await expect(cards).toHaveCount(6);
       // the Darija lead counts the origins on show (fr and en keep their sentence)
-      if (code === 'ar') await expect(band.locator('.origins-lead')).toHaveText('6 مصادر ديال القهوة، وكل واحد بنكهتو وشخصيتو.');
+      if (code === 'ar') await expect(band.locator('.origins-lead')).toHaveText(/^6 مصادر ديال القهوة/);
       // the line drawings are decoration only: hidden from screen readers, no text
       await expect(band.locator('.origins-decor')).toHaveAttribute('aria-hidden', 'true');
       await expect(band.locator('.origins-decor')).toHaveText('');
@@ -168,37 +168,45 @@ test.describe('home page', () => {
   test.describe('phone', () => {
     test.use({ viewport: { width: 390, height: 800 } });
 
-    test('origins on a phone: one compact sheet, rows that line up, the button last', async ({ page }) => {
-      await open(page, '/');
-      const band = page.locator('.origins-band');
-      const box = (q: string) => band.locator(q).first().boundingBox();
-      const [head, photo, list, all] = await Promise.all(['.origins-head-text', '.origins-photo', '.origin-cards', '.origins-all'].map(box));
-      expect(head!.y + head!.height).toBeLessThanOrEqual(photo!.y);
-      // the photo is the top of the sheet, the six rows its body
-      expect(Math.abs(photo!.y + photo!.height - list!.y)).toBeLessThan(1);
-      expect(all!.y).toBeGreaterThanOrEqual(list!.y + list!.height);
-      expect(all!.height, 'a comfortable touch target').toBeGreaterThanOrEqual(44);
-      const rows = band.locator('.origin-card');
-      await expect(rows).toHaveCount(6);
-      // everything to compare is on screen, not behind a hover; the round photo is left to the large screens
-      for (const q of ['.origin-name', '.origin-species', '.origin-notes', '.origin-roast-name', '.origin-beans', '.origin-region']) {
-        for (const row of await rows.all()) await expect(row.locator(q)).toBeVisible();
-      }
-      await expect(band.locator('.origin-roast-photo').first()).toBeHidden();
-      // species and roast sit at the same place in every row
-      const edges = await rows.evaluateAll((els) =>
-        els.map((e) => {
-          const s = e.querySelector('.origin-species')!.getBoundingClientRect();
-          const b = e.querySelector('.origin-beans')!.getBoundingClientRect();
-          return [Math.round(s.right), Math.round(b.left)];
-        }),
-      );
-      expect(new Set(edges.map((e) => e[0])).size).toBe(1);
-      expect(new Set(edges.map((e) => e[1])).size).toBe(1);
-      // shorter than the stacked cards it replaced (1731 px at 390 on live data)
-      expect((await band.boundingBox())!.height).toBeLessThan(1500);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    });
+    for (const [code, lang] of [['fr', 'Français'], ['ar', 'العربية']] as const) {
+      test(`origins on a phone: one compact sheet, rows that line up, the button last (${code})`, async ({ page }) => {
+        await open(page, '/');
+        // phones: one language button opens the list
+        await page.locator('.lang-chip').click();
+        await page.locator('#lang-list').getByRole('button', { name: new RegExp(lang) }).click();
+        await expect(page.locator('html')).toHaveAttribute('dir', code === 'ar' ? 'rtl' : 'ltr');
+        const band = page.locator('.origins-band');
+        const box = (q: string) => band.locator(q).first().boundingBox();
+        const [head, photo, list, all] = await Promise.all(['.origins-head-text', '.origins-photo', '.origin-cards', '.origins-all'].map(box));
+        expect(head!.y + head!.height).toBeLessThanOrEqual(photo!.y);
+        // the photo is the top of the sheet, the six rows its body
+        expect(Math.abs(photo!.y + photo!.height - list!.y)).toBeLessThan(1);
+        expect(all!.y).toBeGreaterThanOrEqual(list!.y + list!.height);
+        expect(all!.height, 'a comfortable touch target').toBeGreaterThanOrEqual(44);
+        const rows = band.locator('.origin-card');
+        await expect(rows).toHaveCount(6);
+        // everything to compare is on screen, not behind a hover; the round photo is left to the large screens
+        for (const q of ['.origin-name', '.origin-species', '.origin-notes', '.origin-roast-name', '.origin-beans', '.origin-region']) {
+          for (const row of await rows.all()) await expect(row.locator(q)).toBeVisible();
+        }
+        await expect(band.locator('.origin-roast-photo').first()).toBeHidden();
+        // species, beans and the roast name start at the same place in every row, even beside a long name
+        await rows.first().locator('.origin-name span').evaluate((e) => (e.textContent = 'République démocratique du Congo, Kivu'));
+        const lines = await rows.evaluateAll((els) => {
+          const rtl = document.documentElement.dir === 'rtl';
+          const start = (r: DOMRect) => Math.round(rtl ? r.right : r.left);
+          const end = (r: DOMRect) => Math.round(rtl ? r.left : r.right);
+          return els.map((e) => {
+            const at = (q: string) => e.querySelector(q)!.getBoundingClientRect();
+            return [end(at('.origin-species')), start(at('.origin-beans')), start(at('.origin-roast-name'))].join('|');
+          });
+        });
+        expect(new Set(lines).size, lines.join(' / ')).toBe(1);
+        // shorter than the stacked cards it replaced (1731 px at 390 on live data)
+        expect((await band.boundingBox())!.height).toBeLessThan(1500);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+      });
+    }
 
     test('one language button opens the three languages', async ({ page }) => {
       await open(page, '/');

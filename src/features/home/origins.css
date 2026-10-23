@@ -80,11 +80,11 @@
     left: -34px;
     top: 34%;
     inline-size: 92px;
-    stroke: none;
     opacity: 0.55;
   }
   .origins-scatter ellipse {
     fill: color-mix(in srgb, var(--accent) 34%, var(--paper));
+    stroke: none;
   }
   .origins-scatter path {
     fill: none;
@@ -224,6 +224,8 @@
 }
 .origin-name {
   grid-area: name;
+  /* a long name wraps inside its area instead of widening the row's columns */
+  contain: inline-size;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -344,6 +346,17 @@
   .origin-card + .origin-card {
     border-block-start: 1px solid var(--origins-hairline);
   }
+  /* rows do not slide inside the sheet */
+  .origin-card.reveal {
+    animation: none;
+  }
+  /* no origin on show: the message closes the sheet under the photo */
+  .origins-empty {
+    padding: 18px 16px;
+    border: 1px solid color-mix(in srgb, var(--cream) 28%, transparent);
+    border-block-start: 0;
+    border-radius: 0 0 16px 16px;
+  }
   .origin-name {
     font-size: 1.05rem;
     gap: 8px;
@@ -362,7 +375,7 @@
     padding: 2px 10px;
     border: 1px solid var(--origins-copper);
     border-radius: 999px;
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     color: var(--cream);
     white-space: nowrap;
   }
@@ -370,10 +383,15 @@
     grid-area: region;
     justify-self: end;
     min-inline-size: 0;
+    overflow-wrap: anywhere;
     text-align: end;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     line-height: 1.35;
     color: var(--muted);
+  }
+  /* the region is Latin (its own direction): on an RTL page it sits at the left edge */
+  :root[dir='rtl'] .origin-region {
+    text-align: left;
   }
   .origin-notes {
     font-size: 0.9rem;
@@ -389,7 +407,7 @@
     gap: 4px;
     padding: 3px 8px;
   }
-  /* .origin-card first: roast.css (loaded later) shows every .roast-chip */
+  /* .origin-card first: outranks roast.css's .roast-chip whatever the load order */
   .origin-card .origin-sep,
   .origin-card .origin-roast-photo,
   .origin-card .origin-terrain {

@@ -109,7 +109,7 @@ export const ar: Dict = {
     roaster: 'حبوب قهوة محمّصة في حوض التبريد بآلة تحميص',
     roastery: 'آلة تحميص وأكياس جوت مليئة بالقهوة الخضراء',
     greenBeans: 'أكياس جوت مليئة بحبوب القهوة الخضراء مع مغرفة خشبية',
-    harvest: 'راجل كيجني حبات القهوة من الشجرة، وحداه سطل عامر بالحبات الحمرين والصفرين',
+    harvest: 'راجل كيجني القهوة من الشجيرة، وحداه سطل عامر بالحبات الحمر والصفر',
     barista: 'باريستا يحضّر إسبريسو مزدوجاً بجانب كيس BOGA CAFÉ',
     tray: 'فنجان قهوة على صينية نحاسية مغربية بجانب كيس BOGA CAFÉ',
     flatlay: 'ثلاث كومات من القهوة المحمّصة من الفاتح إلى الداكن، بجانب ميزان نحاسي ومغرفة',
@@ -141,7 +141,9 @@ export const ar: Dict = {
     originsTitle: 'مصادر القهوة',
     // Moroccan Darija (owner 2026-10-23): this section first; the rest of the site after the shared glossary is approved
     originsAll: 'شوف المصادر كاملين',
+    // {n} only from 3 to 10 ("{n} مصادر"); other counts take the sentence without a number
     originsText: '{n} مصادر ديال القهوة، وكل واحد بنكهتو وشخصيتو.',
+    originsTextPlain: 'مصادر مختارة ديال القهوة، وكل واحد بنكهتو وشخصيتو.',
     processTitle: 'كيف تُحضَّر قهوة BOGA',
     process: [
       { title: 'أنت تختار', text: 'خلطة، أو قهوة أحادية المصدر، أو وصفتك الخاصة، والوزن.' },

@@ -21,10 +21,10 @@ export function OriginCard({ origin, index }: { origin: Origin; index: number })
         <span>{l(origin.name)}</span>
       </h3>
       <p className="origin-meta">
-        <span className="origin-species">{t.common[origin.species]}</span>
+        <span className="origin-species">{t.common[origin.species]}</span>{' '}
         <span className="origin-sep" aria-hidden="true">
-          {' - '}
-        </span>
+          -
+        </span>{' '}
         <bdi className="origin-region">{origin.region}</bdi>
       </p>
       <p className="origin-notes">{l(origin.tastingNotes)}</p>
