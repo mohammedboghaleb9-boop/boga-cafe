@@ -117,7 +117,8 @@ test.describe('home page', () => {
       await expect(band.locator('form, button')).toHaveCount(0);
       await expect(band.getByRole('link', { name: x.all })).toHaveAttribute('href', '/single-origin');
       const photo = band.locator('.origins-photo img');
-      await expect(photo).toHaveAttribute('loading', 'lazy');
+      // lazy, or already started because the section is near the screen (src/shared/ui/nearLoad.ts)
+      await expect(photo).toHaveAttribute('loading', /^(lazy|eager)$/);
       await expect(photo).toHaveAttribute('width', '1046');
       await expect(photo).not.toHaveAttribute('alt', '');
       const [p, list, all, title] = await Promise.all(['.origins-photo', '.origin-cards', '.origins-all', 'h2'].map((q) => band.locator(q).boundingBox()));

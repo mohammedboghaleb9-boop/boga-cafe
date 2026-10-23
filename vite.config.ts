@@ -120,6 +120,8 @@ function prelaunchNoindex() {
  * The shop's response headers: Cloudflare reads `_headers` from the assets folder and never serves it
  * (https://developers.cloudflare.com/workers/static-assets/headers/). No page in another site's frame (the Admin Panel
  * signs in here), no type sniffing, only the origin sent to other sites, and until the launch no file indexed.
+ * Every file in /assets carries a hash of its content in its name, so it never changes under that name: kept for a
+ * year, with no round trip to ask again (Cloudflare's default is to revalidate each file on every use).
  */
 function shopHeaders() {
   const headers = [
@@ -129,6 +131,8 @@ function shopHeaders() {
     '  X-Content-Type-Options: nosniff',
     '  Referrer-Policy: strict-origin-when-cross-origin',
     '  X-Robots-Tag: noindex',
+    '/assets/*',
+    '  Cache-Control: public, max-age=31536000, immutable',
   ];
   return {
     name: 'boga-shop-headers',

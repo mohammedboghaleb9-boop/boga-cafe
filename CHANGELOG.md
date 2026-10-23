@@ -5,6 +5,8 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-23
+- 2026-10-23 [claude/focused-brown-gitp8i] Late pictures on iPhone: hashed `/assets` files kept a year (`immutable`; a second visit made 12/12 conditional requests, now none), the pouch's sticker appears only with its loaded and decoded photo (retries, then the name in text), lazy images start 1.2 screens before they arrive, packshot at high priority; evidence and limits (Chromium only, WebKit unavailable) in PROJECT_NOTES. Not merged, not deployed.
+- 2026-10-23 [main a23a01e] PR #31 merged (owner-approved) and live: the origins section from the owner's reference, with a phone design; CI green on the PR head and on main; checked on bogacafe.ma; sales still closed.
 - 2026-10-23 [claude/focused-brown-gitp8i] Origins lead in fr/en without stock, with the real count (singular, plural, none; `originsLead.ts` + unit test); the "see all" link follows the list in the page order so screen reader and keyboard order matches the phone layout (e2e). Not merged.
 - 2026-10-23 [claude/focused-brown-gitp8i] Origins section, round 2: a phone design (one sheet: the photo on top of six compact rows that line up for comparison, the button last; 26 % shorter), original line drawings (terrain contours, a coffee branch, beans, card ridge lines), the section's Arabic texts in Moroccan Darija; `docs/11-darija.md` proposes the glossary and the texts for the rest of the site (not applied); review fixes (direction-aware alignment test in fr/ar, long names, Darija count grammar, screen-reader spacing). Not merged, not deployed.
 

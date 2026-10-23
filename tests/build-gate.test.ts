@@ -61,6 +61,9 @@ describe('the production build of main: the live shop from the committed values,
       expect(r.demo).toBe(false);
       expect(r.headers).toMatch(/^\/\*\n {2}X-Frame-Options: DENY\n/);
       expect(r.headers).toMatch(/X-Robots-Tag: noindex/);
+      // hashed files are kept a year; nothing else (the pages, `_headers`) is given a long life
+      expect(r.headers).toMatch(/^\/assets\/\*\n {2}Cache-Control: public, max-age=31536000, immutable\n/m);
+      expect(r.headers.match(/Cache-Control/g)).toHaveLength(1);
       expect(r.log).toMatch(/production build, live values ON/);
       expect(r.log).toMatch(/live shop: .* reads the live project/);
     });
