@@ -14,6 +14,7 @@ import { Paths } from './sections/Paths';
 import { Ribbon } from './sections/Ribbon';
 import './hero.css';
 import './shelf.css';
+import './origins.css';
 import './home.css';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 

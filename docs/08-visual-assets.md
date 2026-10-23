@@ -21,7 +21,8 @@
 | `src/assets/photos/hero-poster.webp` · `hero-poster-mobile.webp` | الصورة 90 من الفيديو (واضحة أكثر من الأولى)، عريضة وطولية | كتبان قبل الفيديو، وبوحدها مع «تقليل الحركة» أو «توفير البيانات» |
 | `src/assets/brand/lockup.svg` · `lockup-compact.svg` | شعار الرأس: الأيقونة + BOGA CAFÉ منقولين من الملفات الرسمية + سطر الموقع «SÉLECTION & VENTE · OUJDA» (قرار المالك 2026-10-22؛ الأكياس باقية بسطرها) (`brand/source/build_lockup.py`) | رأس الموقع (الهاتف: الأيقونة المبسّطة بلا السطر) |
 | `src/assets/photos/bag-open.webp` | الكيس المفتوح والحبوب | قسم «تابعونا» |
-| `src/assets/photos/green-beans.webp` | أكياس القهوة الخضراء | قسم المصادر، صفحة أحادي المصدر |
+| `src/assets/photos/green-beans.webp` | أكياس القهوة الخضراء | صفحة أحادي المصدر، بطاقة «أحادي المصدر» فالرئيسية |
+| `src/assets/photos/harvest.webp` | صورة المالك: رجل كيجني ثمار القهوة وسطل عامر (صورة توضيحية للجني، ما كتنسبش الشخص ولا المزرعة لموردي BOGA ولا لبلد). مقصوصة من فوق ومن تحت فقط، 1046×1300، جودة 72، بلا تعديل الألوان. **الأصل كما هو:** `brand/photos/harvest-original.jpg` (1046×1500) | قسم «مصادر القهوة» فالرئيسية |
 | `src/assets/photos/barista.webp` | الباريستا بجانب الكيس | قسم المهنيين، صفحة B2B |
 | `src/assets/photos/roaster.webp` · `roastery.webp` | التحميص | قصة العلامة، قسم «تابعونا» |
 | `src/assets/photos/ritual-tray.webp` | الصينية النحاسية والمشربية | قسم «تابعونا» |

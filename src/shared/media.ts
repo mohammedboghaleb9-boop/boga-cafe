@@ -11,6 +11,7 @@ import heroPoster from '@/assets/photos/hero-poster.webp';
 import heroPosterPortrait from '@/assets/photos/hero-poster-mobile.webp';
 import barista from '@/assets/photos/barista.webp';
 import greenBeans from '@/assets/photos/green-beans.webp';
+import harvest from '@/assets/photos/harvest.webp';
 import packshot from '@/assets/photos/packshot.webp';
 import ritualTray from '@/assets/photos/ritual-tray.webp';
 import roaster from '@/assets/photos/roaster.webp';
@@ -39,6 +40,8 @@ export const media = {
   roaster: { src: roaster, width: 1400, height: 787 },
   roastery: { src: roastery, width: 1000, height: 563 },
   greenBeans: { src: greenBeans, width: 1400, height: 788 },
+  /** A picker harvesting coffee cherries (owner's photo, illustrative: not a BOGA supplier). Original: brand/photos. */
+  harvest: { src: harvest, width: 1046, height: 1300 },
   /** Approved hexagon label, transparent outside the hexagon. */
   label: { src: label, width: 720, height: 1218 },
   /** Custom Blend round seal, transparent outside the circle. */

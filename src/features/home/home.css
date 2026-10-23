@@ -86,64 +86,6 @@
   font-size: 0.92rem;
 }
 
-/* ───── Origins: green coffee photo + one row per origin ───── */
-.origins-band {
-  display: grid;
-  gap: 28px;
-  align-items: start;
-}
-.origins-photo {
-  margin: 0;
-  overflow: hidden;
-  border-radius: var(--radius);
-  aspect-ratio: 16 / 10;
-}
-.origins-photo img {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-  display: block;
-}
-@media (min-width: 900px) {
-  .origins-band {
-    grid-template-columns: 0.95fr 1.05fr;
-    gap: 48px;
-  }
-  .origins-photo {
-    aspect-ratio: 4 / 5;
-    position: sticky;
-    top: calc(90px + env(safe-area-inset-top, 0px));
-  }
-}
-.origin-rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-}
-.origin-rows li {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 14px;
-  align-items: start;
-  padding-block: 14px;
-  border-block-end: 1px solid var(--line);
-}
-.origin-rows li .flag {
-  margin-block-start: 3px;
-}
-.origin-notes {
-  color: var(--ink-2);
-  margin-block-start: 2px;
-}
-.origin-roast {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  white-space: nowrap;
-}
-
 /* ───── B2B band: full-width barista photo ───── */
 .b2b-band {
   position: relative;
