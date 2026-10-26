@@ -23,7 +23,7 @@ import roastMedium from '@/assets/photos/roast-medium.webp';
 import roastMediumDark from '@/assets/photos/roast-medium-dark.webp';
 import roastDark from '@/assets/photos/roast-dark.webp';
 
-export interface Media {
+interface Media {
   src: string;
   width: number;
   height: number;

@@ -187,7 +187,7 @@ export function ConfirmButton({
   className?: string;
   /** A call is saving: the button keeps its focus (aria-disabled, not disabled) and ignores clicks. */
   busy?: boolean;
-  /** Off: not possible here (see ComingSoon). */
+  /** Off: not possible here. */
   disabled?: boolean;
 }) {
   const [armed, setArmed] = useState(false);
@@ -243,16 +243,6 @@ export function Switch({
       <span className="small">{label}</span>
     </label>
   );
-}
-
-/**
- * Next to changes the live site cannot save yet (slices 9-10): their controls are
- * off (disabled), so nothing looks active and silently does nothing. `text` says
- * which part when the rest of the page works.
- */
-export function ComingSoon({ text }: { text?: string }) {
-  const { t } = useI18n();
-  return <p className="notice small coming-soon">{text ?? t.admin.comingSoon}</p>;
 }
 
 /** The last change was refused or got no answer (useAction's `failed`): said, never the "saved" flash. */

@@ -2,10 +2,10 @@ import { Link } from 'react-router';
 import { cleanPayee, methodOk, payeeProblem, PHONE, RIB, sameRib, type Payee } from '@/core/config';
 import type { PaymentMethodConfig, PaymentMethodId, Settings } from '@/core/types';
 import { api } from '@/data/api';
-import { canWrite, useAdminDb } from '@/data/hooks';
+import { useAdminDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
-import { ComingSoon, LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
+import { LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import type { Role } from '../permissions';
 import { payeeReady } from '@/core/orderFlow';
 import { methodAvailable } from '@/services/payments';
@@ -30,7 +30,6 @@ export function PaymentsPage() {
         <h1>{t.admin.nav.payments}</h1>
       </div>
       <p className="muted">{t.admin.payments.intro}</p>
-      {!canWrite('payments') && <ComingSoon />}
 
       <section className="stack">
         <h2 className="admin-card-title">{t.admin.payments.toVerify}</h2>
@@ -61,7 +60,6 @@ export function PaymentsPage() {
                       <button
                         type="button"
                         className="btn btn-primary btn-sm"
-                        disabled={!canWrite('orders')}
                         aria-disabled={busy || undefined}
                         onClick={() =>
                           run(async () => {
@@ -100,12 +98,11 @@ function MethodEditor({ method, settings }: { method: PaymentMethodConfig; setti
   const [m, setM] = useSavedDraft(method, method.updatedAt ?? JSON.stringify(method));
   const [saved, flash] = useSavedFlash();
   const [busy, run, failed] = useAction();
-  const writable = canWrite('payments');
   // the card is offered only once a card payment can be taken (the prototype's simulated gateway)
   const cardGateway = methodAvailable({ id: 'card', enabled: true }, settings);
   const valid = methodOk(m, cardGateway);
   return (
-    <fieldset className="plain-fieldset panel stack" disabled={!writable}>
+    <fieldset className="plain-fieldset panel stack">
       <div className="spread">
         <strong className="row">
           <Icon name={icons[m.id]} /> {l(m.label)}
@@ -168,7 +165,7 @@ function PayeeEditor({ settings, role }: { settings: Settings; role: Role }) {
   const [busy, run, failed] = useAction();
   const setC = (k: keyof Payee['cashplus'], v: string) => setCashplus((c) => ({ ...c, [k]: v }));
   return (
-    <fieldset className="plain-fieldset panel stack" disabled={!canWrite('payments')}>
+    <fieldset className="plain-fieldset panel stack">
       <WriteError show={failed} />
       <div className="spread">
         <h2 className="admin-card-title">{t.admin.payments.bankTitle}</h2>

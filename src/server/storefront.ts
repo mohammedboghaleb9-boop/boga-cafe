@@ -31,7 +31,7 @@ import { captchaToken, idempotencyKey, parseCheckoutInput, parseQuoteInput } fro
 import { prepareOrder, prepareQuote } from './prepare';
 
 export type GuardError = 'too_many' | 'captcha';
-export type OrderResult = { ok: true; order: Order } | { ok: false; errors: (CheckoutError | GuardError)[] };
+type OrderResult = { ok: true; order: Order } | { ok: false; errors: (CheckoutError | GuardError)[] };
 export type QuoteResult = { ok: true; quote: QuoteRequest } | { ok: false; errors: (RequestError | GuardError)[] };
 
 export interface Deps {

@@ -16,7 +16,7 @@ export const CUSTOM_BLEND_NAME: Localized = {
   en: 'My Custom Blend',
 };
 
-export type LineProblem =
+type LineProblem =
   | 'missing_product'
   | 'size_not_offered'
   | 'invalid_blend'
@@ -108,7 +108,7 @@ export function resolveItem(
   };
 }
 
-export interface CartSummary {
+interface CartSummary {
   lines: { item: CartItem; line?: OrderLine; problem?: LineProblem }[];
   subtotal: number;
   weightKg: number;

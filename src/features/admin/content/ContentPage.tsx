@@ -1,9 +1,9 @@
 import { CONTENT_MAX, contactOk, contentOk, digitsOnly } from '@/core/config';
 import type { Settings, SiteContent } from '@/core/types';
 import { api } from '@/data/api';
-import { canWrite, useAdminDb } from '@/data/hooks';
+import { useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
-import { ComingSoon, LocalizedInput, SavedFlash, WriteError, useSavedFlash } from '../ui';
+import { LocalizedInput, SavedFlash, WriteError, useSavedFlash } from '../ui';
 import { cleanProfileUrl } from '@/shared/contact';
 import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
@@ -12,7 +12,6 @@ import { useSavedDraft } from '../useSavedDraft';
 export function ContentPage() {
   const { t } = useI18n();
   const db = useAdminDb();
-  const writable = canWrite('content');
   const [content, setContent] = useSavedDraft<SiteContent>(db.content, db.configVersions?.content ?? JSON.stringify(db.content));
   const [contact, setContact] = useSavedDraft<Settings['contact']>(db.settings.contact, db.configVersions?.contact ?? JSON.stringify(db.settings.contact));
   const [saved, flash] = useSavedFlash();
@@ -38,17 +37,16 @@ export function ContentPage() {
         <h1>{t.admin.nav.content}</h1>
         <div className="row">
           <SavedFlash show={saved} />
-          <button type="button" className="btn btn-primary btn-sm" disabled={!writable || !valid} aria-disabled={busy || undefined} onClick={save}>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!valid} aria-disabled={busy || undefined} onClick={save}>
             {t.common.save}
           </button>
         </div>
       </div>
       <p className="muted">{t.admin.content.intro}</p>
       <WriteError show={failed} />
-      {!writable && <ComingSoon />}
       {!valid && <p className="field-error">{t.admin.content.invalid}</p>}
       <div className="detail-grid">
-        <fieldset className="plain-fieldset panel stack" disabled={!writable}>
+        <fieldset className="plain-fieldset panel stack">
           <LocalizedInput id="c-ann" label={t.admin.content.announcement} value={content.announcement} onChange={(v) => setC('announcement', v)} maxLength={CONTENT_MAX.announcement} />
           <LocalizedInput id="c-ht" label={t.admin.content.heroTitle} value={content.heroTitle} onChange={(v) => setC('heroTitle', v)} maxLength={CONTENT_MAX.heroTitle} hint={t.admin.content.heroTitleHint} />
           <LocalizedInput id="c-hs" label={t.admin.content.heroSubtitle} value={content.heroSubtitle} onChange={(v) => setC('heroSubtitle', v)} multiline maxLength={CONTENT_MAX.heroSubtitle} hint={t.admin.content.heroSubtitleHint} />
@@ -58,7 +56,7 @@ export function ContentPage() {
         <section className="panel stack">
           <h2 className="admin-card-title">{t.admin.content.contactTitle}</h2>
           {!ownsContact && <p className="small muted">{t.admin.ownerOnly}</p>}
-          <fieldset className="plain-fieldset stack" disabled={!ownsContact || !writable}>
+          <fieldset className="plain-fieldset stack" disabled={!ownsContact}>
             <div className="form-grid">
               <label className="field">
                 <span className="label">{t.admin.content.whatsapp}</span>

@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { digitsOnly, recipientsOk } from '@/core/config';
 import type { NotificationChannel } from '@/core/types';
 import { api } from '@/data/api';
-import { canWrite, useAdminDb } from '@/data/hooks';
+import { useAdminDb } from '@/data/hooks';
 import { SERVER_DATA } from '@/data/mode';
 import { useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
-import { ComingSoon, SavedFlash, Switch, Tabs, WriteError, useSavedFlash } from '../ui';
+import { SavedFlash, Switch, Tabs, WriteError, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
 import { useSavedDraft } from '../useSavedDraft';
@@ -23,7 +23,6 @@ export function NotificationsPage() {
   const [busy, run, failed] = useAction();
   const role = useAdminRole()!;
   const owner = role === 'owner';
-  const writable = owner && canWrite('notifications');
   const [channel, setChannel] = useState<'all' | NotificationChannel>('all');
   const list = notifications.filter((x) => channel === 'all' || x.channel === channel);
 
@@ -36,10 +35,9 @@ export function NotificationsPage() {
 
       <section className="panel stack">
         {!owner && <p className="small muted">{t.admin.ownerOnly}</p>}
-        {owner && !writable && <ComingSoon />}
         <WriteError show={failed} />
-        {writable && !valid && <p className="field-error">{t.admin.notif.invalid}</p>}
-        <fieldset className="plain-fieldset stack" disabled={!writable}>
+        {owner && !valid && <p className="field-error">{t.admin.notif.invalid}</p>}
+        <fieldset className="plain-fieldset stack" disabled={!owner}>
           <div className="form-grid">
             <label className="field">
               <span className="label">{t.admin.notif.adminWhatsapp}</span>
@@ -55,7 +53,7 @@ export function NotificationsPage() {
               <Switch checked={n.whatsappEnabled} onChange={(v) => setN({ ...n, whatsappEnabled: v })} label={t.admin.notif.whatsappOn} />
               <Switch checked={n.emailEnabled} onChange={(v) => setN({ ...n, emailEnabled: v })} label={t.admin.notif.emailOn} />
             </div>
-            {writable && (
+            {owner && (
               <div className="row">
                 <SavedFlash show={saved} />
                 <button

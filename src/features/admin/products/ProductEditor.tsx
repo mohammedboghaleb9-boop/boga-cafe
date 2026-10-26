@@ -5,12 +5,12 @@ import { isProductRecipe, MAX_RECIPE_LINES, recipeTotal, speciesSplit } from '@/
 import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type Product, type ProductKind, type RoastLevel } from '@/core/types';
 import { api } from '@/data/api';
-import { canWrite, useAdminCatalog, useAdminDb } from '@/data/hooks';
+import { useAdminCatalog, useAdminDb } from '@/data/hooks';
 import { SERVER_DATA } from '@/data/mode';
 import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { SpeciesBar } from '@/shared/ui/bits';
-import { ComingSoon, ConfirmButton, LocalizedInput, Switch, WriteError } from '../ui';
+import { ConfirmButton, LocalizedInput, Switch, WriteError } from '../ui';
 import { refuse, useAction } from '../useAction';
 import { useSavedDraft } from '../useSavedDraft';
 
@@ -30,7 +30,6 @@ function ProductForm({ id }: { id: string | undefined }) {
   const { t, l } = useI18n();
   const { products, origins, originIndex } = useAdminCatalog();
   const { settings } = useAdminDb();
-  const writable = canWrite('catalog');
   const isNew = id === 'new';
   const existing = products.find((p) => p.id === id);
 
@@ -93,7 +92,6 @@ function ProductForm({ id }: { id: string | undefined }) {
               label={t.common.delete}
               confirmLabel={t.common.confirmDelete}
               busy={busy}
-              disabled={!writable}
               onConfirm={() =>
                 run(async () => {
                   await api.deleteProduct(p.id);
@@ -102,15 +100,13 @@ function ProductForm({ id }: { id: string | undefined }) {
               }
             />
           )}
-          <button type="button" className="btn btn-primary btn-sm" disabled={!valid || !writable} aria-disabled={busy || undefined} onClick={save}>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!valid} aria-disabled={busy || undefined} onClick={save}>
             {t.common.save}
           </button>
         </div>
       </div>
-
-      {!writable && <ComingSoon />}
       <WriteError show={failed} />
-      <fieldset className="plain-fieldset detail-grid" disabled={!writable}>
+      <fieldset className="plain-fieldset detail-grid">
         <section className="panel stack">
           <div className="form-grid">
             <label className="field">

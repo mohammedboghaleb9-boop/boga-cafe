@@ -3,10 +3,12 @@
  *
  * Prototype: messages are written to the notification log (status "simulated")
  *            and the admin can open them in WhatsApp with one click.
- * Live site: `deliver()` posts the message to api/notify.ts (Vercel function),
- *            which sends it by Gmail (SMTP) and WhatsApp (CallMeBot).
- * Planned:   the server writes the messages itself from the order (Supabase
- *            outbox), and WhatsApp moves to the Cloud API. See docs/09 and docs/10.
+ * Demo build (VITE_NOTIFY_URL set): `deliver()` posts the message to api/notify.ts
+ *            (a Vercel function that is not deployed), which sends it by Gmail
+ *            (SMTP) and WhatsApp (CallMeBot).
+ * Live site: `deliver()` does nothing. The database queues every message in
+ *            `notification_outbox` with the order; the sender that reads it
+ *            (a Supabase Edge Function) is not built yet. See docs/09.
  */
 import type { NotificationEvent, NotificationLog, Settings } from '@/core/types';
 import type { MessageDraft } from './templates';

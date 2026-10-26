@@ -30,7 +30,7 @@ import {
 } from '@/core/types';
 import type { FunctionReturns, Json, Tables } from './database.types';
 
-export type ProductRow = Tables<'products'> & {
+type ProductRow = Tables<'products'> & {
   product_recipes: Pick<Tables<'product_recipes'>, 'origin_id' | 'percent'>[];
 };
 
@@ -189,7 +189,7 @@ export const publicOrderFromRow = (id: string, r: PublicOrderRow): Order => ({
   stockDeductions: [],
 });
 
-export type OrderEventRow = Pick<Tables<'order_events'>, 'at' | 'label'>;
+type OrderEventRow = Pick<Tables<'order_events'>, 'at' | 'label'>;
 
 /**
  * A whole order row, as the server reads it with its secret key (the storefront

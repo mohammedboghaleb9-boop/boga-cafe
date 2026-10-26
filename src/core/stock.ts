@@ -2,7 +2,7 @@ import { roundKg } from './money';
 import type { OriginIndex } from './recipe';
 import type { Origin, PackSize, RecipeLine, StockDeduction } from './types';
 
-export interface Need {
+interface Need {
   recipe: RecipeLine[];
   size: PackSize;
   qty: number;

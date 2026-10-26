@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { indexOrigins } from '@/core/recipe';
 import { backend } from './backend';
 import { SERVER_DATA } from './mode';
-import type { AdminWriteArea } from './types';
 import type { DbState } from './state';
 
 const { db, status, adminData } = backend;
@@ -40,9 +39,6 @@ export const useAdminCatalog = () => useCatalogOf(useAdminDb());
 export function useAdminDataStatus() {
   return { status: useSyncExternalStore(adminData.status.subscribe, adminData.status.get, adminData.status.get), reload: adminData.reload };
 }
-
-/** Whether the panel can save this part yet (live site: slices 8-10). */
-export const canWrite = (area: AdminWriteArea) => backend.adminWrites.includes(area);
 
 /** The admin's sign-in state (starts the live session check on first use). */
 export const useAdminSession = () => useSyncExternalStore(backend.admin.session.subscribe, backend.admin.session.get, backend.admin.session.get);

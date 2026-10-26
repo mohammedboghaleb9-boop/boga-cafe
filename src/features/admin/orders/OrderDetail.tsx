@@ -4,13 +4,13 @@ import { reservationDeadline } from '@/core/order';
 import { canSetPayment, NEXT_STATUS, refundCancelsOrder, statusChangeRefusal } from '@/core/orderFlow';
 import type { OrderStatus, PaymentStatus } from '@/core/types';
 import { api } from '@/data/api';
-import { canWrite, useAdminDb } from '@/data/hooks';
+import { useAdminDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { useAdminRole } from '../session';
-import { ComingSoon, ConfirmButton, OrderStatusPill, PaymentPill, TableWrap, WriteError } from '../ui';
+import { ConfirmButton, OrderStatusPill, PaymentPill, TableWrap, WriteError } from '../ui';
 import { refuse, useAction } from '../useAction';
 
 /** A fresh page for each order: one order's "not confirmed" never shows on the next one. */
@@ -23,7 +23,6 @@ function OrderView({ id }: { id: string | undefined }) {
   const { t, l, money, date } = useI18n();
   const { orders, origins, shippingRates, paymentMethods, settings } = useAdminDb();
   // live site: status and payment changes connect in slice 8
-  const writable = canWrite('orders');
   const role = useAdminRole()!;
   const [busy, run, failed] = useAction();
   const order = orders.find((o) => o.id === id);
@@ -66,7 +65,7 @@ function OrderView({ id }: { id: string | undefined }) {
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              disabled={nextRefusal !== null || !writable}
+              disabled={nextRefusal !== null}
               aria-disabled={busy || undefined}
               aria-describedby={nextRefusal === 'needs_payment' ? 'next-hint' : undefined}
               onClick={() => setStatus(next)}
@@ -84,7 +83,6 @@ function OrderView({ id }: { id: string | undefined }) {
               label={t.admin.orders.cancel}
               confirmLabel={t.admin.orders.cancelConfirm}
               busy={busy}
-              disabled={!writable}
               onConfirm={() => setStatus('cancelled')}
             />
           )}
@@ -93,7 +91,6 @@ function OrderView({ id }: { id: string | undefined }) {
           )}
         </div>
       </div>
-      {!writable && <ComingSoon />}
       <WriteError show={failed} />
 
       <div className="detail-grid">
@@ -242,12 +239,12 @@ function OrderView({ id }: { id: string | undefined }) {
             </dl>
             <div className="row">
               {pay('paid') && (
-                <button type="button" className="btn btn-primary btn-sm" disabled={!writable} aria-disabled={busy || undefined} onClick={() => setPayment('paid')}>
+                <button type="button" className="btn btn-primary btn-sm" aria-disabled={busy || undefined} onClick={() => setPayment('paid')}>
                   {t.admin.orders.markPaid}
                 </button>
               )}
               {pay('failed') && (
-                <button type="button" className="btn btn-ghost btn-sm" disabled={!writable} aria-disabled={busy || undefined} onClick={() => setPayment('failed')}>
+                <button type="button" className="btn btn-ghost btn-sm" aria-disabled={busy || undefined} onClick={() => setPayment('failed')}>
                   {t.admin.orders.markFailed}
                 </button>
               )}
@@ -257,7 +254,6 @@ function OrderView({ id }: { id: string | undefined }) {
                   label={t.admin.orders.markRefunded}
                   confirmLabel={refundCancelsOrder(order) ? t.admin.orders.refundCancelConfirm : t.admin.orders.refundConfirm}
                   busy={busy}
-                  disabled={!writable}
                   onConfirm={() => setPayment('refunded')}
                 />
               )}

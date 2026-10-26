@@ -6,7 +6,7 @@
 
 | القسم | الرابط | المجلد | ملفات مهمة |
 |---|---|---|---|
-| الرئيسية | `/` | `src/features/home` | `HomePage.tsx` (ترتيب الأقسام) + `sections/*.tsx` (كل قسم ملف) |
+| الرئيسية | `/` | `src/features/home` | `HomePage.tsx` (ترتيب الأقسام) + `sections/*.tsx` (كل قسم ملف). الترتيب: `Hero`، `Paths`، `Ribbon`، `BrandIntro` (`#about`)، `Featured`، `OriginsBand` (`origins.css`)، `BlendTeaser` (`blend.css`)، `HowItsMade`، `B2BTeaser`، `Follow` |
 | المتجر | `/shop` | `src/features/shop` | `ShopPage.tsx` |
 | بطاقة المنتج | المتجر، الرئيسية، المنتج، B2B، أحادي المصدر | `src/shared/product` | `ProductCard.tsx` + `product-card.css` (البطاقة وشبكتها والرف الكريمي `.shelf` وعنوانه) |
 | صفحة المنتج | `/product/:slug` | `src/features/product` | `ProductPage.tsx` |
@@ -20,12 +20,13 @@
 | الإدارة | `/admin/...` | `src/features/admin` | مجلد لكل قسم + `permissions.ts` |
 | الرأس والتذييل | كل الصفحات | `src/shared/layout` | `Header.tsx`، `Footer.tsx`، `SocialLinks.tsx` |
 | قنوات التواصل | صفحة الاتصال، الرئيسية، التذييل | `src/shared/layout`، `src/shared/contact.ts` | `ChannelCards.tsx` (الإطارات)، `channels.ts` (القائمة من الإعدادات)، `BrandIcon.tsx` (الشعارات الأصلية) |
-| إرسال الطلبات للإدارة | بعد كل طلب/تصريح بالدفع/طلب B2B | `src/shared/layout/SendToBoga.tsx`، `src/services/notifications/deliver.ts`، `api/notify.ts` | بطاقة واتساب/Gmail للزبون + الإرسال الآلي. التفاصيل: `docs/09-notifications.md` |
+| إرسال الطلبات للإدارة | بعد كل طلب/تصريح بالدفع/طلب B2B | `src/shared/layout/SendToBoga.tsx`، `src/services/notifications/deliver.ts`، `api/notify.ts` | بطاقة واتساب/Gmail للزبون (النموذج التجريبي). الإرسال الآلي: `api/notify.ts` بقايا Vercel ما منشورة؛ فالموقع الحي الرسائل كتتسجل فـ `notification_outbox` والمرسل (من الخادم) ما مبنيش. التفاصيل: `docs/09-notifications.md` |
 | قواعد حالة الطلب والدفع | الإدارة وقاعدة البيانات | `src/core/orderFlow.ts` | خطوة بخطوة، لا إنتاج قبل الدفع، المالك وحده يسجّل الدفع (نفس القواعد في SQL) |
 | الشعار | كل الصفحات | `brand/` | `brand/source/build_logo.py` ثم تُنسخ النسخ تلقائياً إلى `src/assets/brand` |
 | صورة المنتج | المتجر، المنتج، الخلطة الخاصة | `src/shared/ui/ProductVisual.tsx` + `src/shared/sticker.ts` | الكيس الحقيقي + ملصق المنتج المولَّد من البيانات |
 | الصور والشعار | كل الصفحات | `src/shared/media.ts` + `src/assets/` | القائمة المعتمدة في `docs/08-visual-assets.md` |
 | الحركة مع السكرول | كل المتجر | `src/styles/motion.css` | تُطفأ تلقائياً عند من يطلب تقليل الحركة |
+| تحميل الصور | كل المتجر | `src/shared/ui/Photo.tsx`، `nearLoad.ts`، `useImageReady.ts`، `product-visual.css` | `lazy` + بداية التحميل قبل الشاشة بـ 1.2 شاشة؛ الملصق ما كيبان بلا تصويرتو (`ProductVisual`) |
 
 ### قواعد التقسيم (مختبرة آلياً)
 
@@ -48,7 +49,7 @@
 ضع الملف الجديد في `src/assets/photos/` بنفس الاسم وحدّث مقاسه في `src/shared/media.ts`. القواعد في `docs/08-visual-assets.md`.
 
 ### تعديل الحركة مع السكرول
-`src/styles/motion.css`: كل حركة في كتلة واحدة (الصورة الافتتاحية، الظهور التدريجي، التأثير العمقي، ختم الخلطة الخاصة، الرأس).
+`src/styles/motion.css`: كل حركة في كتلة واحدة (الصورة الافتتاحية، الظهور التدريجي، التأثير العمقي، الرأس).
 
 ### تغيير نص ثابت في الواجهة (زر، عنوان…)
 `src/i18n/dictionaries/ar.ts` و `fr.ts` و `en.ts` — نفس المفتاح في الملفات الثلاثة. إن نسيت لغة، يرفض المشروع البناء ويخبرك بالمكان.
@@ -94,4 +95,4 @@
 2. **الصفحات لا تعرف أين تُخزّن البيانات**: فقط `api` و `hooks` من `src/data`.
 3. **كل نص ظاهر للزبون في القواميس** أو في الإدارة، وليس مكتوباً داخل الكود.
 4. **كل قاعدة جديدة = اختبار جديد** في `src/core/__tests__`.
-5. **CSS بخصائص منطقية** (`margin-inline-start` بدل `margin-left`) لتعمل العربية تلقائياً.
+5. **CSS بخصائص منطقية** (`margin-inline-start` بدل `margin-left`) لتعمل العربية تلقائياً. استثناء مقصود وموثّق: قسم الخلطة الخاصة فالرئيسية (`blend.css`) كيستعمل `margin-left/right` حيت النص دايماً على اليسار والشارة على اليمين فكل اللغات.

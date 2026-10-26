@@ -12,7 +12,7 @@ import { byOriginOrder, loc } from './rows';
 
 export const SHOWCASE_READ: boolean = import.meta.env.VITE_SHOWCASE === 'on';
 
-export interface Showcase {
+interface Showcase {
   products: Product[];
   origins: Origin[];
 }

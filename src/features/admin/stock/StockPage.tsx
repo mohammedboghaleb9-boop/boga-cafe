@@ -4,13 +4,13 @@ import { isPrice, MAX_PRICE, originPriceOk } from '@/core/pricing';
 import { isLowStock } from '@/core/stock';
 import type { Origin, RoastLevel, Species, StockReason } from '@/core/types';
 import { api } from '@/data/api';
-import { canWrite, useAdminCatalog, useAdminDb } from '@/data/hooks';
+import { useAdminCatalog, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
 import { canEditCatalog } from '../permissions';
 import { useAdminRole } from '../session';
-import { ComingSoon, LocalizedInput, Switch, TableWrap, WriteError } from '../ui';
+import { LocalizedInput, Switch, TableWrap, WriteError } from '../ui';
 import { refuse, useAction } from '../useAction';
 import { useSavedDraft } from '../useSavedDraft';
 
@@ -19,8 +19,7 @@ export function StockPage() {
   const { origins } = useAdminCatalog();
   const { stockMovements } = useAdminDb();
   const role = useAdminRole()!;
-  const editable = canEditCatalog(role) && canWrite('catalog');
-  const soon = !canWrite('stock') || (canEditCatalog(role) && !canWrite('catalog'));
+  const editable = canEditCatalog(role);
   const [adjusting, setAdjusting] = useState<string | null>(null);
   // the origin's id, so the editor follows what is saved (read again after each save)
   const [editing, setEditing] = useState<string | null>(null);
@@ -34,13 +33,12 @@ export function StockPage() {
     <>
       <div className="admin-head">
         <h1>{t.admin.nav.stock}</h1>
-        {canEditCatalog(role) && (
-          <button type="button" className="btn btn-primary btn-sm" disabled={!editable} onClick={() => setEditing('new')}>
+        {editable && (
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setEditing('new')}>
             <Icon name="plus" size={16} /> {t.admin.stock.addOrigin}
           </button>
         )}
       </div>
-      {soon && <ComingSoon />}
       <p className="muted">{t.admin.stock.intro}</p>
       <p className="notice small">{t.admin.stock.blendRule}</p>
 
@@ -69,7 +67,7 @@ export function StockPage() {
                 key={o.id}
                 o={o}
                 editable={editable}
-                showEdit={canEditCatalog(role)}
+                showEdit={editable}
                 adjusting={adjusting === o.id}
                 onAdjust={() => setAdjusting((cur) => (cur === o.id ? null : o.id))}
                 onAdjusted={() => setAdjusting((cur) => (cur === o.id ? null : cur))}
@@ -177,7 +175,7 @@ function OriginRow({
         <td className="small">{o.restockDate ? date(o.restockDate) : '—'}</td>
         <td>
           <div className="row" style={{ ['--gap' as string]: '6px', flexWrap: 'nowrap' }}>
-            <button type="button" className="btn btn-sm btn-ghost" disabled={!canWrite('stock')} onClick={onAdjust}>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={onAdjust}>
               {t.admin.stock.adjust}
             </button>
             {showEdit && (
@@ -213,7 +211,7 @@ type Direction = 'add' | 'remove';
  * a real amount above 0 are given. A positive amount and two buttons, not a signed number:
  * a phone's decimal keypad (inputMode decimal, iOS) has no minus key. A comma works as the point.
  */
-export function stockChange(direction: Direction | null, amount: string): number | null {
+function stockChange(direction: Direction | null, amount: string): number | null {
   const kg = Number(amount.trim().replace(',', '.'));
   if (!direction || !amount.trim() || !Number.isFinite(kg) || kg <= 0) return null;
   return direction === 'add' ? kg : -kg;

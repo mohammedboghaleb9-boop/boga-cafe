@@ -3,11 +3,11 @@ import { MAX_FREE_SHIPPING, shippingRateOk, trimmedRate } from '@/core/config';
 import { shippingFee } from '@/core/shipping';
 import type { ShippingRate } from '@/core/types';
 import { api } from '@/data/api';
-import { canWrite, useAdminDb } from '@/data/hooks';
+import { useAdminDb } from '@/data/hooks';
 import { SERVER_DATA } from '@/data/mode';
 import { fmt, useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
-import { ComingSoon, ConfirmButton, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
+import { ConfirmButton, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
 import { useSavedDraft } from '../useSavedDraft';
@@ -40,7 +40,6 @@ function useRowLabel() {
 export function ShippingPage() {
   const { t, l, money } = useI18n();
   const { shippingRates, settings } = useAdminDb();
-  const writable = canWrite('shipping');
   const [adding, setAdding] = useState(false);
   const [simCity, setSimCity] = useState(shippingRates[0]?.id ?? '');
   const [simKg, setSimKg] = useState(4);
@@ -51,12 +50,11 @@ export function ShippingPage() {
     <>
       <div className="admin-head">
         <h1>{t.admin.nav.shipping}</h1>
-        <button type="button" className="btn btn-primary btn-sm" disabled={!writable || adding} onClick={() => setAdding(true)}>
+        <button type="button" className="btn btn-primary btn-sm" disabled={adding} onClick={() => setAdding(true)}>
           <Icon name="plus" size={16} /> {t.admin.shipping.addCity}
         </button>
       </div>
       <p className="muted">{t.admin.shipping.intro}</p>
-      {!writable && <ComingSoon />}
 
       {adding && <NewCityForm onClose={() => setAdding(false)} />}
 
@@ -90,7 +88,7 @@ export function ShippingPage() {
             </strong>
           )}
         </section>
-        <FreeShippingForm writable={writable} />
+        <FreeShippingForm />
       </div>
 
       <TableWrap label={t.admin.nav.shipping}>
@@ -113,7 +111,7 @@ export function ShippingPage() {
           </thead>
           <tbody>
             {shippingRates.map((r) => (
-              <RateRow key={r.id} rate={r} writable={writable} />
+              <RateRow key={r.id} rate={r} />
             ))}
           </tbody>
         </table>
@@ -122,7 +120,7 @@ export function ShippingPage() {
   );
 }
 
-function FreeShippingForm({ writable }: { writable: boolean }) {
+function FreeShippingForm() {
   const { t } = useI18n();
   const role = useAdminRole()!;
   const { settings, configVersions } = useAdminDb();
@@ -131,7 +129,7 @@ function FreeShippingForm({ writable }: { writable: boolean }) {
   const [busy, run, failed] = useAction();
   const valid = amount <= MAX_FREE_SHIPPING;
   return (
-    <fieldset className="plain-fieldset panel stack" disabled={!writable}>
+    <fieldset className="plain-fieldset panel stack">
       <WriteError show={failed} />
       <label className="field">
         <span className="label">{t.admin.shipping.freeOver}</span>
@@ -165,38 +163,36 @@ function RateFields({
   r,
   set,
   label,
-  disabled,
 }: {
   r: ShippingRate;
   set: (patch: Partial<ShippingRate>) => void;
   label: (field: string) => string;
-  disabled?: boolean;
 }) {
   const { t } = useI18n();
   return (
     <>
       <td>
-        <input disabled={disabled} className="input input-wide" maxLength={60} value={r.city.fr} aria-label={`${t.admin.shipping.city} FR`} onChange={(e) => set({ city: { ...r.city, fr: e.target.value, en: e.target.value } })} />
+        <input className="input input-wide" maxLength={60} value={r.city.fr} aria-label={`${t.admin.shipping.city} FR`} onChange={(e) => set({ city: { ...r.city, fr: e.target.value, en: e.target.value } })} />
       </td>
       <td>
-        <input disabled={disabled} className="input input-wide" dir="rtl" maxLength={60} value={r.city.ar} aria-label={`${t.admin.shipping.city} AR`} onChange={(e) => set({ city: { ...r.city, ar: e.target.value } })} />
+        <input className="input input-wide" dir="rtl" maxLength={60} value={r.city.ar} aria-label={`${t.admin.shipping.city} AR`} onChange={(e) => set({ city: { ...r.city, ar: e.target.value } })} />
       </td>
       <td>
-        <input disabled={disabled} className="input num" type="number" min={0} max={3000} step={1} value={r.distanceKm} aria-label={label(t.admin.shipping.distance)} onChange={(e) => set({ distanceKm: num(e.target.value) })} />
+        <input className="input num" type="number" min={0} max={3000} step={1} value={r.distanceKm} aria-label={label(t.admin.shipping.distance)} onChange={(e) => set({ distanceKm: num(e.target.value) })} />
       </td>
       <td>
-        <input disabled={disabled} className="input num" type="number" min={0} max={1000} value={r.baseFee} aria-label={label(t.admin.shipping.base)} onChange={(e) => set({ baseFee: num(e.target.value) })} />
+        <input className="input num" type="number" min={0} max={1000} value={r.baseFee} aria-label={label(t.admin.shipping.base)} onChange={(e) => set({ baseFee: num(e.target.value) })} />
       </td>
       <td>
-        <input disabled={disabled} className="input num" type="number" min={0} max={100} value={r.includedKg} aria-label={label(t.admin.shipping.included)} onChange={(e) => set({ includedKg: num(e.target.value) })} />
+        <input className="input num" type="number" min={0} max={100} value={r.includedKg} aria-label={label(t.admin.shipping.included)} onChange={(e) => set({ includedKg: num(e.target.value) })} />
       </td>
       <td>
-        <input disabled={disabled} className="input num" type="number" min={0} max={1000} value={r.extraPerKg} aria-label={label(t.admin.shipping.extra)} onChange={(e) => set({ extraPerKg: num(e.target.value) })} />
+        <input className="input num" type="number" min={0} max={1000} value={r.extraPerKg} aria-label={label(t.admin.shipping.extra)} onChange={(e) => set({ extraPerKg: num(e.target.value) })} />
       </td>
       <td>
         {/* empty = no cap */}
         <input
-          disabled={disabled}
+         
           className="input num"
           type="number"
           min={0}
@@ -208,13 +204,13 @@ function RateFields({
         />
       </td>
       <td>
-        <input disabled={disabled} className="input" maxLength={20} value={r.deliveryDays} aria-label={label(t.admin.shipping.days)} onChange={(e) => set({ deliveryDays: e.target.value })} />
+        <input className="input" maxLength={20} value={r.deliveryDays} aria-label={label(t.admin.shipping.days)} onChange={(e) => set({ deliveryDays: e.target.value })} />
       </td>
     </>
   );
 }
 
-function RateRow({ rate, writable }: { rate: ShippingRate; writable: boolean }) {
+function RateRow({ rate }: { rate: ShippingRate }) {
   const { t } = useI18n();
   const role = useAdminRole()!;
   const rowLabel = useRowLabel();
@@ -228,16 +224,16 @@ function RateRow({ rate, writable }: { rate: ShippingRate; writable: boolean }) 
   return (
     <>
       <tr>
-        <RateFields r={r} set={(patch) => setR((cur) => ({ ...cur, ...patch }))} label={label} disabled={!writable} />
+        <RateFields r={r} set={(patch) => setR((cur) => ({ ...cur, ...patch }))} label={label} />
         <td>
-          <Switch disabled={!writable} checked={r.active} onChange={(v) => setR((cur) => ({ ...cur, active: v }))} label="" name={label(t.admin.payments.enabled)} />
+          <Switch checked={r.active} onChange={(v) => setR((cur) => ({ ...cur, active: v }))} label="" name={label(t.admin.payments.enabled)} />
         </td>
         <td>
           <div className="row" style={{ ['--gap' as string]: '6px', flexWrap: 'nowrap' }}>
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              disabled={!writable || !valid || !changed}
+              disabled={!valid || !changed}
               aria-disabled={busy || undefined}
               aria-label={label(t.common.save)}
               onClick={() =>
@@ -252,7 +248,7 @@ function RateRow({ rate, writable }: { rate: ShippingRate; writable: boolean }) 
             <SavedFlash show={saved} />
             {/* live site: orders keep their city, so a city is hidden, never deleted */}
             {!SERVER_DATA && (
-              <ConfirmButton disabled={!writable} label={t.common.delete} confirmLabel={t.common.confirmDelete} onConfirm={() => api.deleteShippingRate(rate.id)} />
+              <ConfirmButton label={t.common.delete} confirmLabel={t.common.confirmDelete} onConfirm={() => api.deleteShippingRate(rate.id)} />
             )}
           </div>
         </td>

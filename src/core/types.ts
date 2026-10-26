@@ -155,7 +155,7 @@ export interface StockDeduction {
   kg: number;
 }
 
-export interface OrderEvent {
+interface OrderEvent {
   at: string;
   label: string;
 }

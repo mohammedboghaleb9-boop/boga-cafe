@@ -5,11 +5,11 @@ import { productPrice } from '@/core/pricing';
 import { speciesSplit } from '@/core/recipe';
 import { maxBags } from '@/core/stock';
 import { PACK_SIZES, type ProductKind } from '@/core/types';
-import { canWrite, useAdminCatalog, useAdminDb } from '@/data/hooks';
+import { useAdminCatalog, useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
 import { Icon } from '@/shared/ui/Icon';
-import { ComingSoon, RowLink, TableWrap, Tabs, rowClick } from '../ui';
+import { RowLink, TableWrap, Tabs, rowClick } from '../ui';
 
 export function ProductsPage() {
   const { t, l, money } = useI18n();
@@ -23,18 +23,10 @@ export function ProductsPage() {
     <>
       <div className="admin-head">
         <h1>{t.admin.nav.products}</h1>
-        {canWrite('catalog') ? (
-          <Link to={`/admin/products/new?kind=${kind}`} className="btn btn-primary btn-sm">
-            <Icon name="plus" size={16} /> {t.admin.products.add}
-          </Link>
-        ) : (
-          <button type="button" className="btn btn-primary btn-sm" disabled>
-            <Icon name="plus" size={16} /> {t.admin.products.add}
-          </button>
-        )}
+        <Link to={`/admin/products/new?kind=${kind}`} className="btn btn-primary btn-sm">
+          <Icon name="plus" size={16} /> {t.admin.products.add}
+        </Link>
       </div>
-      {/* live site: products connect in slice 9; each one opens read only */}
-      {!canWrite('catalog') && <ComingSoon />}
       <Tabs<ProductKind>
         value={kind}
         onChange={setKind}

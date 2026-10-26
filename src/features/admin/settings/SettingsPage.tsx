@@ -2,12 +2,12 @@ import { formatSize } from '@/core/format';
 import { rulesOk, type BusinessRules } from '@/core/config';
 import { PACK_SIZES, type Settings } from '@/core/types';
 import { api } from '@/data/api';
-import { canWrite, useAdminDb } from '@/data/hooks';
+import { useAdminDb } from '@/data/hooks';
 import { DEMO_DATA } from '@/data/mode';
 import { useI18n } from '@/i18n';
 import { Icon } from '@/shared/ui/Icon';
 import { PERMISSIONS, ROLES, SECTIONS } from '../permissions';
-import { ComingSoon, ConfirmButton, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
+import { ConfirmButton, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
 import { useSavedDraft } from '../useSavedDraft';
@@ -70,7 +70,6 @@ export function SettingsPage() {
   const role = useAdminRole()!;
   const { t } = useI18n();
   const db = useAdminDb();
-  const writable = canWrite('settings');
   const current = rulesOf(db.settings);
   const [s, setS] = useSavedDraft<BusinessRules>(current, db.configVersions?.rules ?? JSON.stringify(current));
   const valid = rulesOk(s);
@@ -88,7 +87,7 @@ export function SettingsPage() {
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            disabled={!writable || !valid}
+            disabled={!valid}
             aria-disabled={busy || undefined}
             onClick={() =>
               run(async () => {
@@ -101,12 +100,10 @@ export function SettingsPage() {
           </button>
         </div>
       </div>
-
-      {!writable && <ComingSoon />}
-      <SalesGate open={db.settings.salesOpen} writable={writable && role === 'owner'} />
+      <SalesGate open={db.settings.salesOpen} writable={role === 'owner'} />
       <WriteError show={failed} />
       {!valid && <p className="field-error">{t.admin.settings.outOfRange}</p>}
-      <fieldset className="plain-fieldset detail-grid" disabled={!writable}>
+      <fieldset className="plain-fieldset detail-grid">
         <section className="panel stack">
           <h2 className="admin-card-title">{t.admin.settings.rules}</h2>
           <label className="field">
