@@ -67,7 +67,8 @@ Production shop build locally: `WORKERS_CI=1 WORKERS_CI_BRANCH=main npm run buil
 - Database leftovers: `commit_order_before_3b` (closed to all roles), `pg_net` in `public` (owner can toggle it off/on in Dashboard → Extensions), 3 unindexed foreign keys, 25 duplicate permissive policies (performance advisors).
 - Home intro shows a bare "BOGA CAFÉ" when both Admin About fields are emptied (owner 2026-10-22: later).
 - Measured on the live site 2026-10-24 (Lighthouse 12, lab): mobile performance 50 (LCP 5.5 s), desktop 89; accessibility 100; SEO 58 (`noindex`, invalid `robots.txt`, no sitemap/`og:image`/canonical). Plan: `docs/12` section 3.3-3.4 and P6.
-- `npm audit`: 4 high left, all through the pinned `wrangler`; `.github` has no audit step or Dependabot.
+- `npm audit`: 4 high left, all through the pinned `wrangler` (fix: 4.153.0, own branch); `.github` has no audit step or Dependabot.
+- Node security release of 2026-10-21 (nodejs.org; fixed in 22.23.4 / 24.22.1 / 26.12.1; incl. CVE-2026-111497 Brotli): CI ran Node 24.21.0 and this container runs 22.22.0, both affected. The live site runs no Node of ours (static Workers assets, Supabase Edge on Deno), so build/test tooling only; fix on its own branch (pin Node, confirm Workers Builds' Node). PHP CVE-2026-109618/109619 (fixed 8.3.36): the project uses no PHP. Details: `docs/12` §3.1.
 - Browser tests: Chromium only (no WebKit/Firefox); `base.css` is 849 lines.
 
 ## Blocked (owner or third parties)

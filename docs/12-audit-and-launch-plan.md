@@ -82,10 +82,22 @@
 
 **التبعيات (`npm audit`)**
 - **قبل**: 8 ثغرات (2 متوسطة، 6 عالية).
-- **بعد**: 4 عالية، كلها كتمرّ من `wrangler` (`miniflare` ← `sharp` / `undici`). الإصلاح خاصو `wrangler@4.152.0`.
+- **بعد**: 4 عالية، كلها كتمرّ من `wrangler` (`miniflare` ← `sharp` / `undici`). الإصلاح خاصو `wrangler@4.153.0` (حسب `npm audit` يوم 2026-10-26).
 - **ما درتش الرفع**: `wrangler` مثبّت على `4.148.0` بالضبط (تعليق `wrangler.jsonc` كيربط سلوك النطاقات المخصصة بهاد الإصدار). **المهمة**: رفعو فـ فرع، و`wrangler versions upload`، والتأكد أن النطاقات ما كتتمسحش، قبل ما يدخل `main`.
 - كلها أدوات بناء، ما كتتشحنش للزبناء.
 - ما كاين `Dependabot` ولا `npm audit` فـ CI. **توصية**: خطوة `npm audit --omit=dev --audit-level=high` فـ CI.
+
+**تحديثات التبعيات فهاد الفرع (31 حزمة، كلها تغيير نسخة؛ ما تزاد ولا تحيّد حتى شي حزمة)**: `nodemailer` 10.0.12 ← 10.2.1، `vite` 8.3.1 ← 8.3.5، `vitest` + `@vitest/mocker` + `@vitest/spy` 5.0.2 ← 5.0.5، `rolldown` + 15 `@rolldown/binding-*` 1.2.11 ← 1.2.15، `@oxc-project/types` 0.151.0 ← 0.155.0، `postcss` 8.5.28 ← 8.5.31، `nanoid`، `source-map-js`، `chai` 6.3.0، `magic-string`، `std-env`، `tinybench`، `obug` 2.2.1 ← 3.0.0، `why-is-node-running` 3.2.2 ← 3.2.1.
+- **`obug` (القفزة major) و`why-is-node-running` (النزول)** سببهم واحد: `vitest@5.0.5` كيطلب `obug ^3.0.0` و`why-is-node-running` بالضبط `3.2.1` (`vitest@5.0.2` كان كيطلب `^2.1.4` و`^3.2.1`). يعني ماشي نزول عشوائي: vitest هو اللي كيحدد. `obug` أداة تسجيل debug (fork ديال `debug`)، `engines node >=12.20`، دخلها فقط vitest (ما كاين استعمال ليها فـ `src`/`e2e`/`scripts`). `why-is-node-running` 3.2.3 كاينة (2026-10-09) ولكن vitest مثبّتها على 3.2.1.
+- **التحقق (2026-10-26)**: `npm audit` ما فيه حتى ثغرة على `obug` و`why-is-node-running` و`vitest` (النتيجة 4 High كلها `wrangler`)؛ 390 اختبار وحدة + 112 e2e + CI أخضر على هاد النسخ. ما قريتش changelog ديال `obug` 3 سطر بسطر (مصدر الحزمة ما فتحتوش)، فالتوافق مثبّت بالاختبارات ماشي بقراءة الكود.
+
+**تنبيهات Node.js و PHP (أكتوبر 2026)**: التفاصيل فـ [إعلان Node.js الرسمي](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases) (2026-10-21: الإصلاح فـ **22.23.4 / 24.22.1 / 26.12.1**) وإعلانات PHP.
+- **Node: التنبيهات**: CVE-2026-111497 (High): كتابة خارج الحدود فـ Brotli decoder (`node:zlib`) على مدخل مشوّه. معاها 3 High أخرى (`dns` وNUL، و`tls.checkServerIdentity` وعناوين IP مكتوبة بأرقام عريضة / بصفر فالبداية)، و3 Medium و3 Low. الإصدار كيحدّث كذلك OpenSSL وundici وc-ares.
+- **النسخ عندنا**: CI خدم على **Node 24.21.0** (من log تشغيل 40392722968)، أقدم من 24.22.1 ← **متأثر**. بيئة العمل (الحاوية) على **22.22.0** ← أقدم من 22.23.4 ← **متأثر**. `.node-version` = `24` (كيجبد آخر 24.x فـ cache ديال runner، ماشي دايماً آخر patch). Cloudflare Workers Builds: النسخة الفعلية **ما تأكدتش منها**.
+- **التعرّض الفعلي**: الموقع المنشور static على Cloudflare Workers (ما كيخدم فيه حتى Node ديالنا)، والـ Edge Function على Deno عند Supabase: **ما كاين تعرّض مباشر**. Node كيخدم غير فـ build/test/CI/dev (vite، vitest، Playwright، wrangler). كودنا ما كيستعمل `node:zlib` Brotli ولا `checkServerIdentity` ولا `node:dns` (فحص grep)، و`randomUUID` فالمتصفح ماشي Node snapshot. الخطر العملي ضعيف، يمكن يمر عبر أداة كتفك Brotli من مصدر خارجي (مثلاً تحميل وحدة من الشبكة).
+- **الإجراء (فرع أمني مستقل، ماشي فرع التنظيف)**: تثبيت Node فـ CI و`.node-version` على `24.22.1` أو أحدث، وتأكيد نسخة Workers Builds (متغير `NODE_VERSION` أو `.node-version`)، وتحديث الحاوية المحلية لـ 24.x أو 22.23.4+. تحيين `undici` كيجي مع `wrangler@4.153.0`.
+- **PHP**: CVE-2026-109618 وCVE-2026-109619 (RCE بلا مصادقة، CVSS 4.0 = 9.2) مؤكدين من مصادر متعددة (Rapid7، Cyber Centre Canada، Fastly)، الإصلاح 8.5.12 / 8.4.27 / **8.3.36** / 8.2.35 (2026-10-21). **ما كنستعملو PHP فـ حتى جزء ديال المشروع** (لا `composer.json`، لا CI، لا استضافة). الحاوية فيها PHP 8.3.6 (أداة النظام، ما كتخدمش الموقع)؛ إلا استعملناها فشي يوم خاصها 8.3.36 (وفـ Ubuntu `php -v` كيبقى 8.3.6 بعد patch، كتقارن نسخة الحزمة). ما فتحتش صفحة php.net الرسمية (الـ proxy منعها 403)، المعلومات من مصادر ثانوية.
+- **CVE-2026-115560 (PHP)**: ما لقيتو فحتى مصدر؛ ما تأكدش.
 - تحديثات patch أخرى متاحة (react 19.3.1، react-router 8.5، playwright 1.64…): مهمة صغيرة منفصلة.
 
 ### 3.2 قاعدة البيانات الحية والأمان
@@ -245,7 +257,7 @@
 | P6.8 | Schema.org (Organization/LocalBusiness/Product) | Rich Results Test | 0.5 يوم |
 | P6.9 | **رؤوس أمان**: HSTS تدريجي + CSP Report-Only ثم Enforce + Permissions-Policy | securityheaders.com ≥ A، بلا أخطاء CSP | 1 يوم |
 | P6.10 | `Label in Name` (بطاقات المنتجات وزر اللغة) | Lighthouse `label-content-name-mismatch` ✅ | 0.5 يوم |
-| P6.11 | رفع `wrangler` لـ 4.152.0 فـ فرع منفصل + التأكد من النطاقات | `npm audit` بلا High + النطاقات سليمة | 0.5 يوم |
+| P6.11 | رفع `wrangler` لـ 4.153.0 فـ فرع منفصل + التأكد من النطاقات | `npm audit` بلا High + النطاقات سليمة | 0.5 يوم |
 | P6.12 | `npm audit` + Dependabot فـ CI | CI كيطيح على High | 0.5 يوم |
 | P6.13 | تقسيم `base.css` | ملفات < 400 سطر، نفس الصفحات بالبكسل | 0.5 يوم |
 
