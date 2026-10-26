@@ -5,6 +5,7 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-26
+- 2026-10-26 [owner report] The owner tried bogacafe.ma on an iPhone after PR #32: everything fine so far (reported, no detailed log). Recorded in the notes and the status page; Safari on Mac, other devices and Firefox still untested.
 - 2026-10-26 [claude/focused-brown-gitp8i] Project audit and clean-up (`docs/12-audit-and-launch-plan.md`): the dead admin write gating (`canWrite`, `ComingSoon`, `Backend.adminWrites`), 4 unused dictionary keys, `.btn-accent` and 42 needless `export`s removed; `nodemailer` and in-range `vite`/`vitest` updates (npm audit 8 → 4 findings, all behind the pinned `wrangler`); every README, `docs/*`, `supabase/README.md` and `PROJECT_NOTES.md` (89 KB → 15 KB) brought up to date; `docs/05-roadmap.md` deleted (replaced by `docs/12`), `docs/10` kept as a dated review history, `docs/09` rewritten for the outbox. Lighthouse, Supabase advisors and `npm audit` measured on live. Not merged.
 
 ## 2026-10-23
