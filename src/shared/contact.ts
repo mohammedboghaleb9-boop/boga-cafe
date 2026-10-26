@@ -62,7 +62,7 @@ export function formatPhone(phone: string): string {
 }
 
 /** Invisible direction marks the site puts around numbers in Arabic pages: never in a message. */
-export const plainText = (text: string) => text.replace(/[\u2066-\u2069\u200e\u200f]/g, '');
+const plainText = (text: string) => text.replace(/[\u2066-\u2069\u200e\u200f]/g, '');
 
 /** Opens a new Gmail message (web and app); mailto: depends on a mail client being set up. */
 export function gmailComposeLink(email: string, subject = '', body = ''): string {

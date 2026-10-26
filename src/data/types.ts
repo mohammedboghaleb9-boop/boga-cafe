@@ -35,7 +35,7 @@ export type GuardError = 'server' | 'too_many' | 'captcha';
 export const GUARD_ERRORS: readonly GuardError[] = ['server', 'too_many', 'captcha'];
 
 /** Proof sent with a public form: the Turnstile token (src/shared/ui/Captcha.tsx); ignored where there is no server. */
-export interface FormGuard {
+interface FormGuard {
   captchaToken: string;
 }
 
@@ -112,7 +112,7 @@ export type AdminSession =
   | { state: 'signed_in'; role: AdminRole };
 
 /** Prototype: a role and the public demo password. Live site: the admin's own account. */
-export type SignInInput = { role: AdminRole; password: string } | { email: string; password: string };
+type SignInInput = { role: AdminRole; password: string } | { email: string; password: string };
 
 /**
  * 'credentials' covers every refusal of the email or the password alike, so the
@@ -133,7 +133,7 @@ export interface TotpSetup {
 export type CodeResult = 'ok' | 'denied' | 'wrong_code' | 'too_many' | 'server';
 
 /** The second sign-in step (live site): the panel opens only at aal2. */
-export interface SecondFactor {
+interface SecondFactor {
   /** At 'second_factor' with `enrolled` false: a new app setup (an unfinished one is dropped). */
   setUp(): Promise<TotpSetup | 'too_many' | 'server'>;
   /** The 6-digit code: finishes the setup, or the sign-in when the app was set up before. */
@@ -163,10 +163,6 @@ export interface ReadStore<T> {
 /** Where the first data load stands: the browser store is ready at once, a server answers later. */
 export type DataStatus = 'loading' | 'ready' | 'error';
 
-/** What the Admin Panel can change; on the live site each part connects in its own slice (8-10). */
-export type AdminWriteArea = 'orders' | 'b2b' | 'catalog' | 'stock' | 'shipping' | 'payments' | 'settings' | 'content' | 'notifications';
-export const ADMIN_WRITE_AREAS: readonly AdminWriteArea[] = ['orders', 'b2b', 'catalog', 'stock', 'shipping', 'payments', 'settings', 'content', 'notifications'];
-
 /**
  * What the Admin Panel reads, apart from the shop's copy: on the live site the
  * admin's own session reads every order, request, movement and inactive product
@@ -192,6 +188,4 @@ export interface Backend {
   admin: AdminAuth;
   /** The Admin Panel's data, once signed in. */
   adminData: AdminData;
-  /** What the Admin Panel can save; every other button is off, with a "coming soon" note. */
-  adminWrites: readonly AdminWriteArea[];
 }

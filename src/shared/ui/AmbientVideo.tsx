@@ -6,7 +6,7 @@ const PORTRAIT = '(max-width: 699px) and (orientation: portrait)';
 
 const saveData = () => (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
 
-export interface AmbientSources {
+interface AmbientSources {
   video: string;
   videoPortrait: string;
   poster: string;

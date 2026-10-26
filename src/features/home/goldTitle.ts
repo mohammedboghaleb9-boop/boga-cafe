@@ -2,7 +2,7 @@
  * The hero title is edited in the Admin Panel (Content); a word between asterisks shows in gold:
  * "L'âme du *café* dans chaque tasse". An asterisk without its pair stays as typed.
  */
-export interface TitlePart {
+interface TitlePart {
   text: string;
   gold: boolean;
 }

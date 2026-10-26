@@ -25,7 +25,7 @@ export const LIMITS: Record<Route, { phone: Limit[]; ip: Limit[] }> = {
   quote: { phone: [[3, 86_400]], ip: [[20, 86_400]] },
 };
 /** Any request past Turnstile, accepted or not: it costs a catalog read. */
-export const REQUEST_BUDGET: Limit = [120, 3600];
+const REQUEST_BUDGET: Limit = [120, 3600];
 
 /**
  * What one visitor controls: an IPv4 address, or the /64 network of an IPv6 address
@@ -123,7 +123,7 @@ export function hostnameAllowed(hostname: string, allowed: string[]): boolean {
 }
 
 /** What a token must prove besides being valid: it was solved for this form, on one of the site's own pages. */
-export interface TurnstileExpectation {
+interface TurnstileExpectation {
   action: Route;
   hostnames: string[];
 }

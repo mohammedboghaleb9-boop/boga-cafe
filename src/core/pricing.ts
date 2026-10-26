@@ -32,7 +32,7 @@ export const lowestPrice = (product: Product): number | undefined => {
   return values.length ? Math.min(...values) : undefined;
 };
 
-export interface BlendPriceBreakdown {
+interface BlendPriceBreakdown {
   lines: { originId: string; grams: number; cost: number }[];
   fee: number;
   total: number;

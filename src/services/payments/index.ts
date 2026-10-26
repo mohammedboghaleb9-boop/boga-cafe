@@ -12,7 +12,7 @@
 import { payeeReady } from '@/core/orderFlow';
 import type { Order, PaymentMethodConfig, PaymentMethodId, Settings } from '@/core/types';
 
-export type PaymentNextStep =
+type PaymentNextStep =
   /** Production: auto-submitted form to the CMI gateway (fields signed by the server). */
   | { type: 'form-post'; action: string; fields: Record<string, string> }
   /** Prototype: simulated card page inside the site. */
@@ -27,7 +27,7 @@ export type PaymentNextStep =
  * prototype (VITE_CARD_GATEWAY=demo): the real site offers no card payment
  * until CMI is connected (phase D), so no customer ever sees a fake bank page.
  */
-export type CardGateway = 'demo' | 'off';
+type CardGateway = 'demo' | 'off';
 export const cardGateway: CardGateway = import.meta.env.VITE_CARD_GATEWAY === 'demo' ? 'demo' : 'off';
 
 /**
@@ -41,7 +41,7 @@ export const methodAvailable = (
   gateway: CardGateway = cardGateway,
 ): boolean => m.enabled && (m.id === 'card' ? gateway !== 'off' : payeeReady(m.id, settings));
 
-export interface PaymentAdapter {
+interface PaymentAdapter {
   id: PaymentMethodId;
   /** true = paid immediately online, false = verified manually by the admin. */
   online: boolean;

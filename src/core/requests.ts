@@ -23,7 +23,7 @@ export type QuoteInput = ContactRequestInput & { items: CartItem[] };
 export const REQUEST_ERRORS = ['sales_closed', 'name', 'phone', 'email', 'city'] as const;
 export type RequestError = (typeof REQUEST_ERRORS)[number];
 
-export function validateContact(input: ContactRequestInput, rates: ShippingRate[]): RequestError[] {
+function validateContact(input: ContactRequestInput, rates: ShippingRate[]): RequestError[] {
   const errors: RequestError[] = [];
   if (input.contactName.trim().length < 3) errors.push('name');
   if (!normalizePhone(input.phone)) errors.push('phone');

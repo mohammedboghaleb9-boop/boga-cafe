@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-export const SITE_NAME = 'BOGA CAFÉ';
+const SITE_NAME = 'BOGA CAFÉ';
 
 /**
  * "Page — BOGA CAFÉ" while a page is shown (WCAG 2.4.2 Page Titled): the tab, the

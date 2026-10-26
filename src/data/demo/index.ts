@@ -1,4 +1,4 @@
-import { ADMIN_WRITE_AREAS, type AdminAuth, type Backend, type DataStatus } from '../types';
+import { type AdminAuth, type Backend, type DataStatus } from '../types';
 import { demoApi } from './api';
 import { demoAdmin } from './session';
 import { db } from './store';
@@ -24,5 +24,4 @@ export const demoBackend: Backend = {
   admin: import.meta.env.VITE_DATA_MODE === 'demo' ? demoAdmin : noAdmin,
   // the prototype's panel reads and changes the same browser store
   adminData: { db, status: readyStatus, reload: () => {}, refresh: async () => {} },
-  adminWrites: ADMIN_WRITE_AREAS,
 };

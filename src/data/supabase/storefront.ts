@@ -7,8 +7,8 @@
  */
 import type { GuardError } from '../types';
 
-export type StorefrontRoute = 'order' | 'quote';
-export type StorefrontReply<T> = ({ ok: true } & T) | { ok: false; errors: string[] };
+type StorefrontRoute = 'order' | 'quote';
+type StorefrontReply<T> = ({ ok: true } & T) | { ok: false; errors: string[] };
 
 /**
  * Long enough for the server's own checks (Turnstile up to 5 s, the database);

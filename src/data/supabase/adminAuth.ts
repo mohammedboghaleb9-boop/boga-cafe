@@ -20,7 +20,7 @@ const ROLES: readonly AdminRole[] = ['owner', 'manager', 'staff'];
 const TOTP_ISSUER = 'BOGA CAFE';
 
 /** The role of this account's own admin_users row, or null when it has none. Throws when it cannot tell. */
-export async function ownRole(client: Client, userId: string): Promise<AdminRole | null> {
+async function ownRole(client: Client, userId: string): Promise<AdminRole | null> {
   // an owner may read every admin row: ask for this account's own
   const { data, error } = await client.from('admin_users').select('role').eq('user_id', userId).maybeSingle();
   if (error) throw error;
@@ -57,12 +57,12 @@ function authProblem(error: AuthError): 'too_many' | 'server' | null {
  * Every refusal of the email or the password reads the same ('credentials'): Auth's
  * own messages (no such user, email not confirmed, banned) would tell who has an account.
  */
-export function signInError(error: AuthError): Exclude<SignInResult, 'ok' | 'denied'> {
+function signInError(error: AuthError): Exclude<SignInResult, 'ok' | 'denied'> {
   return authProblem(error) ?? 'credentials';
 }
 
 /** A wrong, expired or unknown code all read 'wrong_code'. */
-export function codeError(error: AuthError): Exclude<CodeResult, 'ok' | 'denied'> {
+function codeError(error: AuthError): Exclude<CodeResult, 'ok' | 'denied'> {
   return authProblem(error) ?? 'wrong_code';
 }
 

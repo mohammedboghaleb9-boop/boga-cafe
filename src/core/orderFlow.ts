@@ -98,7 +98,7 @@ export const awaitsPayment = (order: Pick<Order, 'status' | 'paymentStatus'>): b
   order.status !== 'cancelled' && (order.paymentStatus === 'pending' || order.paymentStatus === 'failed');
 
 /** What the order page tells the customer about the order as a whole. */
-export type OrderPhase = 'refunded' | 'cancelled' | 'delivered' | 'paid' | 'awaiting_payment';
+type OrderPhase = 'refunded' | 'cancelled' | 'delivered' | 'paid' | 'awaiting_payment';
 
 export function orderPhase(order: Pick<Order, 'status' | 'paymentStatus'>): OrderPhase {
   if (order.paymentStatus === 'refunded') return 'refunded';

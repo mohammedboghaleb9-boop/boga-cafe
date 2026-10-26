@@ -16,7 +16,7 @@ export class WriteFailed extends Error {
   }
 }
 
-export type Call = <F extends keyof Fns>(fn: F, args: Fns[F]['Args']) => Promise<void>;
+type Call = <F extends keyof Fns>(fn: F, args: Fns[F]['Args']) => Promise<void>;
 
 /** `client`: the admin's own (src/data/supabase/index.ts); `data`: what the panel shows, read again after each write. */
 export function createCall(client: () => Client, data: AdminData): Call {

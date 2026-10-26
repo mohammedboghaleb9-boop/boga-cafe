@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadWhenNear } from './nearLoad';
 
-export type ImageState = 'loading' | 'ready' | 'failed';
+type ImageState = 'loading' | 'ready' | 'failed';
 
 /** A failed fetch is tried again twice (after 1.5 s, then 4 s) before the picture counts as failed. */
 const RETRY_MS = [1500, 4000];

@@ -1,11 +1,11 @@
 import { formatKg, formatSize } from '@/core/format';
 import type { QuoteRequest, QuoteStatus } from '@/core/types';
 import { api } from '@/data/api';
-import { canWrite, useAdminDb } from '@/data/hooks';
+import { useAdminDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
-import { ComingSoon, SavedFlash, TableWrap, WriteError, useSavedFlash } from '../ui';
+import { SavedFlash, TableWrap, WriteError, useSavedFlash } from '../ui';
 import { useAction } from '../useAction';
 import { useSavedDraft } from '../useSavedDraft';
 
@@ -60,7 +60,6 @@ function QuoteCard({ q }: { q: QuoteRequest }) {
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
   const [busy, run, failed] = useAction();
   const [saved, flash] = useSavedFlash();
-  const writable = canWrite('b2b');
   const priceOk = form.finalPrice === null || (Number.isFinite(form.finalPrice) && form.finalPrice >= 0);
   const save = () =>
     run(async () => {
@@ -103,8 +102,7 @@ function QuoteCard({ q }: { q: QuoteRequest }) {
           </div>
         )}
       </dl>
-      {!writable && <ComingSoon />}
-      <fieldset className="plain-fieldset form-grid" disabled={!writable}>
+      <fieldset className="plain-fieldset form-grid">
         <label className="field">
           <span className="label">{t.common.status}</span>
           <select className="select" value={form.status} onChange={(e) => set({ status: e.target.value as QuoteStatus })}>

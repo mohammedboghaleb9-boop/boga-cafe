@@ -51,7 +51,7 @@ const cityName = (ctx: TemplateContext, id: string) =>
 const originName = (ctx: TemplateContext, id: string) =>
   ctx.origins.find((o) => o.id === id)?.name.fr ?? id;
 
-export function describeLine(line: OrderLine, ctx: TemplateContext): string {
+function describeLine(line: OrderLine, ctx: TemplateContext): string {
   const head = `${line.name.fr} ${formatSize(line.size)} x${line.qty}`;
   if (line.kind === 'product') return `${head} = ${dh(line.lineTotal)}`;
   const recipe = line.composition.map((c) => `${originName(ctx, c.originId)} ${c.percent}%`).join(' / ');

@@ -5,7 +5,7 @@ import { fmt } from '@/i18n';
 import type { Dict } from '@/i18n/dictionaries/en';
 
 /** Even split that always totals 100 (e.g. 33 / 33 / 34). */
-export function evenSplit(ids: string[]): RecipeLine[] {
+function evenSplit(ids: string[]): RecipeLine[] {
   const base = Math.floor(100 / ids.length);
   return ids.map((originId, i) => ({
     originId,

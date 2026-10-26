@@ -12,7 +12,7 @@ import './captcha.css';
 
 const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? '';
 /** vite.config.ts refuses a supabase build without the site key. */
-export const CAPTCHA_ON = SERVER_DATA;
+const CAPTCHA_ON = SERVER_DATA;
 
 /** The documented widget widths: 'flexible' needs 300 px, 'compact' is 150 px wide and 140 px tall. */
 const FLEXIBLE_MIN_PX = 300;
@@ -59,7 +59,7 @@ export interface Captcha {
 }
 
 /** The form the widget is for: the server accepts a token only for the route it was solved for (src/server/guard.ts). */
-export type CaptchaAction = 'order' | 'quote';
+type CaptchaAction = 'order' | 'quote';
 
 export function useCaptcha(action: CaptchaAction): Captcha {
   const { t, locale } = useI18n();

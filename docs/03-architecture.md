@@ -10,7 +10,7 @@
 | اللغات | قواميس TypeScript (`ar.ts`, `fr.ts`, `en.ts`) | إذا نسيت ترجمة جملة، يرفض المشروع البناء. لا مكتبة إضافية |
 | منطق الأعمال | `src/core` (TypeScript بدون React) | نفس الكود يعمل في المتصفح (السعر المباشر) وفي الخادم (التحقق النهائي). مُختبر آلياً (الكميات، الأحجام، الخلطة، الأسعار، المخزون، قواعد الحالة والدفع) |
 | قاعدة البيانات والخادم | **Supabase**: PostgreSQL + Auth + Storage + Edge Functions | قاعدة بيانات حقيقية، أمان على مستوى الصفوف (RLS)، تسجيل دخول الإدارة، تخزين الصور وإيصالات الدفع، بدون خادم نديره بأنفسنا |
-| الاستضافة | **Cloudflare Workers** (ملفات ثابتة فقط، `wrangler.jsonc`: المجلد `./dist` وكل رابط مجهول يعطي `index.html`؛ wrangler 4.148.0 مثبّت). Workers Builds ينشر `main` تلقائياً. إعدادات اللوحة (صاحب المشروع): Build command `npm run build`، Deploy command `npx wrangler deploy`. المعاينات (فروع غير `main`) تنجح منذ 2026-10-07؛ روابطها (رابط النسخة ورابط باسم الفرع) **مطفأة منذ 2026-10-17** (اللوحة + `"preview_urls": false` في `wrangler.jsonc`)، وتُبنى على Supabase الحي بقيم عمومية من المستودع (يحتاج تحققاً) | الموقع ملفات ثابتة. المعاينة كانت تفشل بخلل في Workers Builds ([workers-sdk#15682](https://github.com/cloudflare/workers-sdk/issues/15682)): "name must match" رغم أن الاسم `boga-cafe`؛ الحل هو **Preview command** في Previews Base: `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload` (**يبقى هذا السطر القصير بالضبط**). هذا الحقل **يُطبَّق** (البناء 29320152 على `abf544f` شغّل سطراً قديماً طويلاً بقيم `VITE_…` محفوظاً فيه، ومسافة بعد `VITE_SUPABASE_PUBLISHABLE_KEY=` جعلت /bin/sh يشغّل المفتاح كأمر، ففشلت خطوة النشر)؛ أما Build command وVariables فلم يُرَ أنهما يُطبَّقان ("Build variables: None"). **"Retry build" يعيد إعداد البناء الأصلي** (الإعادة 52f56246 شغّلت السطر القديم بعد أن أعاده المالك). و**Cloudflare يأخذ نسخة من إعداد Previews Base عند أول بناء للفرع**: نفس الـ commit `bc5dfa0` بقي يفشل على `feat/p5-s6-admin-totp` ونجح على الفرع الجديد `feat/p5-s6-totp` (البناء 4d8cc78e). إذن بعد أي تغيير في اللوحة يلزم **فرع باسم جديد**، لا push جديد. لذلك قيم المعاينة من المستودع: في Workers Builds (`WORKERS_CI=1`) وفرع غير `main` (`WORKERS_CI_BRANCH`؛ اسم `main` مكتوب في `vite.config.ts`) يبني `vite.config.ts` بالوضع `workers-preview` أي `.env.workers-preview` (رابط Supabase الحي، المفتاح العمومي، مفتاح موقع Turnstile الحقيقي منذ الشريحة 11؛ قيم عمومية فقط، وأي `VITE_*` موجود في البيئة يغلب) ويكتب في السجل "preview values ON/OFF" (لا سطر = لم يُكتشف Workers Builds). بناء الإنتاج وGitHub CI والبناء المحلي لا تتغير (نفس الملفات بالبايت). مفحوص: المعاينة قالت ON، وبناء الإنتاج da4f77e8 قال OFF. المعاينة تشغّل كوداً غير مدموج على قاعدة البيانات الحية: بعد كتابات الإدارة (الشرائح 8-10) الدخول فيها يكتب بيانات حقيقية. تعليق بوت Cloudflare "No Preview URL" غير موثوق: المرجع سجل البناء. `vercel.json` و`api/notify.ts` بقايا من خطة Vercel: الدالة لا تعمل على Cloudflare (الرسائل من Supabase، المرحلة 4) |
+| الاستضافة | **Cloudflare Workers** (ملفات ثابتة فقط، `wrangler.jsonc`: المجلد `./dist` وكل رابط مجهول يعطي `index.html`). Workers Builds ينشر `main` تلقائياً: Build command `npm run build`، Deploy command `npx wrangler deploy` (إعدادات اللوحة). بناء `main` كيجيب القيم العمومية من `.env.workers-preview` (المتجر الحقيقي، البيع مسدود)؛ الفروع الأخرى كتتحمّل كنسخة (version) بنفس القيم وروابطها مطفأة (`"preview_urls": false`)، لأن المعاينة تقرأ Supabase الحي. wrangler مثبّت على 4.148.0 | الموقع ملفات ثابتة. **تشغيل (آخر تحقق 2026-10-17):** حقل Preview command فـ Workers Builds خاصو يبقى `env -u WRANGLER_CI_MATCH_TAG npx wrangler versions upload` (عطل [workers-sdk#15682](https://github.com/cloudflare/workers-sdk/issues/15682)). «Retry build» كيرجع إعداد البناء الأصلي، وCloudflare كياخد نسخة من Previews Base عند أول بناء للفرع: بعد أي تغيير فاللوحة خاص **فرع باسم جديد**. تعليق بوت Cloudflare «No Preview URL» غير موثوق: المرجع سجل البناء. `vercel.json` و`api/notify.ts` بقايا من خطة Vercel (الدالة لا تعمل على Cloudflare؛ الرسائل من Supabase، المرحلة 4) |
 | الاختبارات | Vitest (منطق الأعمال) + اختبار SQL على PostgreSQL + Playwright (تصفح آلي) | |
 
 ### لماذا ليس Shopify أو WooCommerce؟
@@ -19,7 +19,7 @@
 
 ### ملاحظة عن SEO
 
-الموقع حالياً تطبيق صفحة واحدة (SPA). للظهور الجيد في Google، المرحلة 5 تضيف **توليد صفحات HTML مسبقاً** (Prerendering) لصفحات المتجر والمنتجات بثلاث لغات، مع `sitemap.xml` ووسوم `hreflang`. لأن منطق الأعمال منفصل تماماً عن الواجهة، يمكن أيضاً نقل صفحات المتجر إلى Next.js لاحقاً دون إعادة كتابة المنطق.
+الموقع تطبيق صفحة واحدة (SPA) ولا يزال: محركات البحث ترى صفحة شبه فارغة قبل تشغيل JavaScript، وصورة الواجهة (LCP) تُكتشف متأخرة (قياس Lighthouse 2026-10-24، `docs/12`). خطة P6: **توليد صفحات HTML مسبقاً** (Prerendering) لصفحات المتجر والمنتجات بثلاث لغات، مع `sitemap.xml` و`robots.txt` ووسوم `hreflang`. لأن منطق الأعمال منفصل تماماً عن الواجهة، يمكن أيضاً نقل صفحات المتجر إلى Next.js لاحقاً دون إعادة كتابة المنطق.
 
 ## 2. المخطط العام
 
@@ -51,13 +51,13 @@ flowchart LR
   OUT --> EF
 ```
 
-## 3. مسار الطلب في الإنتاج (المرحلة 2–4)
+## 3. مسار الطلب في الإنتاج (مبني ما عدا بطاقة CMI وإرسال الرسائل: المرحلتان 3 و4)
 
 ```mermaid
 sequenceDiagram
   participant C as الزبون
   participant W as الموقع
-  participant F as Edge Function create-order
+  participant F as Edge Function storefront
   participant D as PostgreSQL
   participant P as CMI
   participant A as الإدارة
@@ -71,7 +71,7 @@ sequenceDiagram
   alt بطاقة
     F-->>W: نموذج موقّع لـ CMI
     W->>P: الدفع 3-D Secure
-    P->>F: callback (cmi-callback) → «مدفوع»
+    P->>F: callback موقّع (مخطط، غير مبني)
   else كاش بلوس / تحويل
     F-->>W: التعليمات + المرجع
     C->>W: «لقد دفعت» + رقم الوصل
@@ -113,6 +113,8 @@ src/
     shipping.ts        تكلفة التوصيل
     order.ts           بناء الطلب والتحقق منه
     __tests__/         اختبارات تلقائية
+  server/            منطق دالة storefront (قراءة، حدود، Turnstile، بناء الطلب)؛ كيتجمع فـ supabase/functions/storefront بـ scripts/build-functions.mjs
+  coming-soon/       صفحة «قريباً» (النسخة الاحتياطية)
   data/              مكان البيانات (الوحيد الذي يعرف أين تُخزّن)
     seed/              الكتالوج والمدن والإعدادات (معلومات الدفع فارغة حتى الحساب الحقيقي)؛
                        activity.ts: طلبات أمثلة ومعلومات دفع DÉMO للنسخة التجريبية فقط
@@ -140,7 +142,7 @@ docs/                هذه الوثائق
 
 **الهدف:** الصفحات لا تعرف أين تُخزّن البيانات، وتستعمل فقط `api` و `hooks`.
 
-**الواقع اليوم:** عقد `Api` غير متزامن موجود (P5، الشريحة 1)، وأزرار الحفظ في الإدارة تنتظر عمليتها (واحدة في كل مرة، `useAction`). الحقول التي تحفظ مع كل حرف أو مفتاح (التوصيل، ملاحظات B2B، مفتاح الخلطة في المخزون) لم تُعدَّل بعد: تُصلَح قبل كتابات Supabase (الشرائح 8–10). الصفحات ما زالت تقرأ كل البيانات دفعة واحدة (`useDb()`): مزوّد Supabase سيملأ نفس `DbState` في الذاكرة (قرار المالك 2026-10-05). صفحة الطلب تقرأ هاتف وعنوان الزبون اللذين لا يعيدهما `get_order_public` عمداً: تُحفظ نسخة الطلب الذي أعاده `storefront` في المتصفح (sessionStorage، الشريحة 3)؛ وإن فُتح الرابط من جهاز آخر تُقرأ الحالة من `get_order_public` بدون رسالة للإرسال.
+**الواقع اليوم (2026-10-24):** عقد `Api` غير متزامن، وأزرار الحفظ في الإدارة تنتظر عمليتها (واحدة في كل مرة، `useAction`). كل الكتابات (الطلبات، المخزون، B2B، المنتجات، الإعدادات، الدفع، النصوص، التوصيل) كتمر عبر دوال قاعدة البيانات (`src/data/supabase/adminWrites.ts` و`configWrites.ts`). الصفحات كتقرا كل البيانات دفعة واحدة (`useDb()`): مزوّد Supabase كيملأ نفس `DbState` فالذاكرة (قرار المالك 2026-10-05). صفحة الطلب كتقرا هاتف وعنوان الزبون اللذين لا يعيدهما `get_order_public` عمداً: كتتحفظ نسخة الطلب الذي أعاده `storefront` فالمتصفح (sessionStorage)؛ وإن فُتح الرابط من جهاز آخر كتتقرا الحالة من `get_order_public` بدون رسالة للإرسال.
 
 ## 5. الأمان
 
@@ -164,7 +166,7 @@ docs/                هذه الوثائق
 ## 6. الأداء
 
 - لوحة الإدارة تُحمّل فقط عند فتح `/admin` (Lazy loading): زائر المتجر لا يحمّل كودها.
-- الصور: تحويلها إلى WebP/AVIF بأحجام متعددة عند رفعها (المرحلة 5).
+- الصور: كلها WebP بمقاس واحد (`src/assets/photos`) وأبعادها محجوزة (`Photo`)؛ AVIF وأحجام متعددة (`srcset`) ما تدارش بعد (P6). الصور البعيدة كتبدا تتحمّل قبل ما توصل للشاشة بـ 1.2 شاشة (`nearLoad.ts`)، والملفات المسمّاة بالـ hash كتتحفظ عام كامل (`scripts/shop-headers.mjs`).
 - الخطوط: ✅ مستضافة ذاتياً (`src/styles/fonts.css`، WOFF2 فقط، عربي + لاتيني حسب الحاجة) بدلاً من Google Fonts: أسرع وأفضل للخصوصية.
 
 ## 7. البناء والتشغيل
@@ -179,4 +181,4 @@ npm run build:demo   # النموذج في ملف HTML واحد → dist-demo/in
 ./supabase/tests/run-local.sh   # اختبار مخطط قاعدة البيانات (يتطلب PostgreSQL)
 ```
 
-متغيرات البيئة: انظر `.env.example`. `VITE_DATA_MODE=demo` للنموذج، و`supabase` في المرحلة 2. بلا `VITE_DATA_MODE` (الإنتاج، `main`): صفحة «قريباً» وحدها (`src/coming-soon`، `scripts/build-target.mjs`) حتى يفتح المالك المتجر؛ أي قيمة أخرى توقف البناء. معاينات Workers Builds تأخذ قيمها من `.env.workers-preview` (انظر الاستضافة أعلاه).
+متغيرات البيئة: انظر `.env.example`. `VITE_DATA_MODE=demo` للنموذج التجريبي، و`supabase` للمتجر الحقيقي. بلا `VITE_DATA_MODE` (البناء المحلي `npm run build`): صفحة «قريباً» وحدها (`src/coming-soon`، `scripts/build-target.mjs`)، وهي النسخة الاحتياطية للرجوع؛ بناء `main` فـ Workers Builds هو المتجر الحقيقي. أي قيمة أخرى توقف البناء.

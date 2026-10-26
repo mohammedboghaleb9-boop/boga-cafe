@@ -118,8 +118,8 @@ export function buildOrder(
 }
 
 /** Used when a setting is missing or not a real limit: a reservation never lasts forever. */
-export const DEFAULT_UNPAID_TIMEOUT_HOURS = 48;
-export const DEFAULT_PAYMENT_CHECK_TIMEOUT_HOURS = 120;
+const DEFAULT_UNPAID_TIMEOUT_HOURS = 48;
+const DEFAULT_PAYMENT_CHECK_TIMEOUT_HOURS = 120;
 
 const limitHours = (value: unknown, fallback: number) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 1 ? value : fallback;

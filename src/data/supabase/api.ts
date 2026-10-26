@@ -41,7 +41,7 @@ export function knownErrors<T extends string>(errors: string[], codes: readonly 
 /** The customer's copy (phone, address) with the status the server has now. */
 const withStatus = (known: Order, fresh: Order): Order => ({ ...known, paymentStatus: fresh.paymentStatus, status: fresh.status });
 
-export interface SupabaseApiDeps {
+interface SupabaseApiDeps {
   client: Client;
   store: CatalogStore;
   storefront: StorefrontTarget;
