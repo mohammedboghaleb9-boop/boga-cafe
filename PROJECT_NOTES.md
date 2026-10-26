@@ -9,10 +9,10 @@ B2B blends: 250 g and 500 g are paid samples bought like any bag; the 1 kg bag o
 Stock in kg per origin. Arabic (RTL), French, English. Admin roles owner / manager / staff. No cash on delivery: every order is paid before prep. Delivery covers every Moroccan city (owner 2026-10-22).
 
 ## State on 2026-10-26
-- **Live** at https://bogacafe.ma (Cloudflare Workers, deployed from `main` by Workers Builds): the real shop with **sales closed**. Catalog shown without prices (10 products, 6 origins), no buy button, no form, `noindex` (meta + `X-Robots-Tag`). `main` = `104890d` (PR #32), CI green.
+- **Live** at https://bogacafe.ma (Cloudflare Workers, deployed from `main` by Workers Builds): the real shop with **sales closed**. Catalog shown without prices (10 products, 6 origins), no buy button, no form, `noindex` (meta + `X-Robots-Tag`). `main` = `7613802` (PR #34, the audit; code identical to PR #32's `104890d` apart from the clean-up), CI and the Workers Builds deploy green; sales still closed on the live site (checked 2026-10-26).
 - **Live database** (Supabase `boga-cafe`, eu-west-3, PG 17.11, read 2026-10-24): 10 products and 6 origins `listed` but not `active`, stock 0 kg, 0 orders, 0 quote requests, 0 outbox rows, 20 cities all inactive at fee 0, 2 admins, 19 migrations all applied, `salesOpen` unset (= closed).
 - **Merged and live, in order**: PR #25 home + header; #26 store style; #28 meta description "Sélection & vente"; #29 CI time limits; #30 home sections order; #31 origins section; #33 Custom Blend band; #32 pictures (cache, sticker, near-load). Details: `CHANGELOG.md`.
-- **Open branch**: `claude/focused-brown-gitp8i` = the audit (code cleanup, docs, this file); not merged. 20 other remote branches are merged into `main` and can be deleted from GitHub (this session's git proxy refuses deletes); the owner decides.
+- **Open branch**: `claude/security-node-wrangler` = Node 24.22.1 + wrangler 4.153.0 (PR #35, not merged, no deploy until the owner approves). The audit branch `claude/focused-brown-gitp8i` is merged (PR #34). 20 other remote branches are merged into `main` and can be deleted from GitHub (this session's git proxy refuses deletes); the owner decides.
 - **Checks, run locally 2026-10-26 on the audit branch**: oxlint, tsc, 390 unit tests (42 files), 112/112 browser tests (Chromium only), coming-soon build + `check:real-build`, production shop build. The SQL tests run in the CI `database` job (green on `main`); not rerun locally in this audit.
 
 ## What is next
