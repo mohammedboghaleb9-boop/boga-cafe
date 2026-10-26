@@ -2,8 +2,8 @@
 // Static site only: the files of `npm run build` in ./dist, any unknown path answered with
 // index.html (the React router's page: production is the live shop, sales closed, since 2026-10-21;
 // scripts/build-target.mjs PRODUCTION_SITE). Custom domains are added in the dashboard: with no
-// `routes` here, `wrangler deploy` leaves them as they are (wrangler 4.148.0 publishes domains only
-// when routes are listed).
+// `routes` here, `wrangler deploy` leaves them as they are (wrangler 4.153.0, read in its source on
+// 2026-10-26, publishes domains only when routes are listed).
 // Same values as the configuration Cloudflare's auto-setup generated for build 344952f.
 {
   "name": "boga-cafe",
