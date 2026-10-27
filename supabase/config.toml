@@ -7,3 +7,8 @@ project_id = "boga-cafe"
 verify_jwt = false
 # The function imports src/, so it is bundled first: npm run build:functions
 entrypoint = "./functions/storefront/dist/index.js"
+
+[functions.notify-outbox]
+# Called by the database's own schedule with a shared key in `x-outbox-key` (checked in the function), not by a user.
+verify_jwt = false
+entrypoint = "./functions/notify-outbox/dist/index.js"

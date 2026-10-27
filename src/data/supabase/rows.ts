@@ -246,4 +246,6 @@ export const notificationFromRow = (r: Tables<'notification_outbox'>): Notificat
   subject: r.subject,
   body: r.body,
   status: r.status as NotificationLog['status'],
+  attempts: r.attempts,
+  ...(r.last_error && { error: r.last_error }),
 });

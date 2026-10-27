@@ -4,7 +4,7 @@ import type { NotificationChannel } from '@/core/types';
 import { api } from '@/data/api';
 import { useAdminDb } from '@/data/hooks';
 import { SERVER_DATA } from '@/data/mode';
-import { useI18n } from '@/i18n';
+import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
 import { SavedFlash, Switch, Tabs, WriteError, useSavedFlash } from '../ui';
@@ -106,6 +106,11 @@ export function NotificationsPage() {
                   <span className={`pill ${log.status === 'failed' ? 'pill-bad' : log.status === 'sent' ? 'pill-ok' : ''}`}>{t.admin.notif.status[log.status]}</span>
                 </span>
               </summary>
+              {log.error && (
+                <p className="notice notice-bad small">
+                  {fmt(t.admin.notif.lastError, { n: log.attempts ?? 0, error: log.error })}
+                </p>
+              )}
               <pre>{log.body}</pre>
               {log.channel === 'whatsapp' && (
                 <div className="log-body-actions">

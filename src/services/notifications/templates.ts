@@ -29,8 +29,14 @@ const BUSINESS: Record<BusinessType, string> = {
   individual: 'Particulier',
   other: 'Autre',
 };
+/**
+ * What a customer typed goes on one line: a name or a note holding a line break could add a fake line that looks like
+ * part of the message ("Paiement : payé").
+ */
+const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim();
+
 const establishment = (company: string, type: BusinessType) =>
-  company.trim() ? `${company.trim()} (${BUSINESS[type]})` : BUSINESS[type];
+  oneLine(company) ? `${oneLine(company)} (${BUSINESS[type]})` : BUSINESS[type];
 
 /**
  * Messages are plain text read in WhatsApp and Gmail: remove the invisible
@@ -71,11 +77,11 @@ const PAYMENT_STATE: Record<PaymentStatus, string> = {
 function customerLines(order: Order, ctx: TemplateContext): string[] {
   const c = order.customer;
   return [
-    `Client : ${c.fullName} (${c.phone})`,
+    `Client : ${oneLine(c.fullName)} (${oneLine(c.phone)})`,
     `Ville : ${cityName(ctx, c.cityId)}`,
-    `Adresse : ${c.address}`,
-    c.email ? `Email : ${c.email}` : '',
-    c.notes ? `Note : ${c.notes}` : '',
+    `Adresse : ${oneLine(c.address)}`,
+    c.email ? `Email : ${oneLine(c.email)}` : '',
+    c.notes ? `Note : ${oneLine(c.notes)}` : '',
   ].filter(Boolean);
 }
 
@@ -155,13 +161,13 @@ export function quoteMessage(q: QuoteRequest, ctx: TemplateContext): MessageDraf
     // no kg figure in this fixed line: the threshold is a setting (the weight follows below)
     `Commande B2B (au-delà du seuil) ${q.number}`,
     `Établissement : ${establishment(q.company, q.businessType)}`,
-    `Contact : ${q.contactName} (${q.phone})`,
-    q.email ? `Email : ${q.email}` : '',
+    `Contact : ${oneLine(q.contactName)} (${oneLine(q.phone)})`,
+    q.email ? `Email : ${oneLine(q.email)}` : '',
     `Ville : ${cityName(ctx, q.cityId)}`,
     ...q.lines.map((l) => `- ${describeLine(l, ctx)}`),
     `Poids total : ${formatKg(q.weightKg)}`,
     `Prix site (indicatif) : ${dh(q.indicativeTotal)}`,
-    q.notes ? `Note : ${q.notes}` : '',
+    q.notes ? `Note : ${oneLine(q.notes)}` : '',
   ].filter(Boolean);
   return plain({
     subject: `[BOGA CAFÉ] Demande B2B ${q.number} - ${formatKg(q.weightKg)}`,
