@@ -65,6 +65,9 @@ const ADMIN_TABLES: Record<string, unknown[]> = {
   notification_outbox: [
     { id: 1, created_at: '2026-10-08T09:00:00Z', channel: 'email', event: 'order.created', recipient: 'team@example.test', subject: 'Nouvelle commande BC-2026-0007',
       body: `${CUSTOMER.name} ${CUSTOMER.phone}`, status: 'pending', attempts: 0, last_error: null, sent_at: null },
+    // a message the sender gave up on (5 attempts): the panel says why, with the error class only
+    { id: 2, created_at: '2026-10-07T09:00:00Z', channel: 'whatsapp', event: 'order.created', recipient: '212600000000', subject: 'Nouvelle commande BC-2026-0006',
+      body: 'Commande BC-2026-0006', status: 'failed', attempts: 5, last_error: 'callmebot_unconfirmed', sent_at: null },
   ],
   admin_config: [{ id: 1, admin_whatsapp: '212600000000', admin_email: 'team@example.test', whatsapp_on: true, email_on: true, updated_at: '2026-10-12T08:00:00.000001+00:00' }],
   // who changed the payee details last (owner only): never yet
@@ -469,7 +472,13 @@ test.describe('admin sign-in on the live site', () => {
       await expect(page.getByRole('button', { name: 'Supprimer' }), path).toHaveCount(0);
       await scanA11y(page, `admin${path}`);
       if (path === '/b2b') await expect(page.getByText('QR-2026-0003')).toBeVisible();
-      if (path === '/notifications') await expect(page.locator('.log-item .pill')).toHaveText('pas encore envoyé'); // the queue, not "sent"
+      if (path === '/notifications') {
+        // the queue, not "sent"; a message that failed says why (the class of the error, after 5 attempts)
+        await expect(page.locator('.log-item', { hasText: 'BC-2026-0007' }).locator('.pill')).toHaveText('pas encore envoyé');
+        const failed = page.locator('.log-item', { hasText: 'BC-2026-0006' });
+        await expect(failed.locator('.pill')).toHaveText('échec');
+        await expect(failed).toContainText('Dernière tentative échouée (n° 5) : callmebot_unconfirmed');
+      }
     }
 
     // customer details stay in the page: nothing kept in the browser's storage

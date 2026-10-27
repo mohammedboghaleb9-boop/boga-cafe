@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 /** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). */
-const PENDING: string[] = [];
+const PENDING: string[] = ['20261028090000_outbox_sender'];
 
 describe('SQL Editor blocks', () => {
   it('catalog_trim: the block holds the migration unchanged, between begin and commit', () => {
@@ -417,5 +417,35 @@ describe('policies_fk_indexes (P5.4: foreign-key indexes, one permissive policy 
       expect(sql).toContain(`create index ${idx} on public.`);
       expect(rollback).toContain(`drop index public.${idx};`);
     }
+  });
+});
+
+describe('outbox_sender (P5.1: the sender\'s two functions and its schedule)', () => {
+  const migration = read('supabase/migrations/20261028090000_outbox_sender.sql');
+  const sql = migration.replace(/^--.*$/gm, '');
+  const rollback = read('supabase/manual/20261028090000_outbox_sender.rollback.sql');
+  const cron = read('supabase/manual/20261028090000_outbox_cron.sql');
+
+  it('the migration drops nothing (so the migration tool can run it) and shuts the two functions to everyone but the server role', () => {
+    expect(sql).not.toMatch(/\bdrop\b/i);
+    expect(sql).toContain('revoke all on function public.claim_outbox(integer, text[]) from public, anon, authenticated;');
+    expect(sql).toContain('revoke all on function public.finish_outbox(bigint, boolean, text) from public, anon, authenticated;');
+    expect(sql).toContain('grant execute on function public.claim_outbox(integer, text[]) to service_role;');
+    expect(sql).toContain('grant execute on function public.finish_outbox(bigint, boolean, text) to service_role;');
+  });
+
+  it('the rollback takes back what the migration made', () => {
+    expect(rollback).toContain('drop function public.claim_outbox(integer, text[]);');
+    expect(rollback).toContain('drop function public.finish_outbox(bigint, boolean, text);');
+    expect(rollback).toContain('drop column last_attempt_at');
+  });
+
+  it('the schedule holds no key (it is read from Vault at each run), has its off switch, and calls this project\'s function only', () => {
+    const code = cron.replace(/^--.*$/gm, '');
+    expect(code).toContain("select decrypted_secret from vault.decrypted_secrets where name = 'outbox_key'");
+    expect(cron).toContain("select cron.unschedule('send-outbox');");
+    expect(code).toContain("url := 'https://ldzagzskfmnjbkizbayr.supabase.co/functions/v1/notify-outbox'");
+    // no value that looks like a key or a token
+    expect(code).not.toMatch(/eyJ|[A-Za-z0-9_-]{32,}/);
   });
 });

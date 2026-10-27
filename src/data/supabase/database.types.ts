@@ -42,6 +42,7 @@ export type Database = {
           created_at: string;
           event: string;
           id: number;
+          last_attempt_at: string | null;
           last_error: string | null;
           recipient: string;
           sent_at: string | null;
@@ -55,6 +56,7 @@ export type Database = {
           created_at?: string;
           event: string;
           id?: never;
+          last_attempt_at?: string | null;
           last_error?: string | null;
           recipient: string;
           sent_at?: string | null;
@@ -68,6 +70,7 @@ export type Database = {
           created_at?: string;
           event?: string;
           id?: never;
+          last_attempt_at?: string | null;
           last_error?: string | null;
           recipient?: string;
           sent_at?: string | null;
@@ -500,6 +503,11 @@ export type Database = {
         Args: { p_email: string; p_quote: Json; p_subject: string; p_whatsapp: string };
         Returns: { id: string; number: string }[];
       };
+      claim_outbox: {
+        Args: { p_channels?: string[]; p_limit?: number };
+        Returns: Database['public']['Tables']['notification_outbox']['Row'][];
+      };
+      finish_outbox: { Args: { p_error?: string; p_id: number; p_ok: boolean }; Returns: undefined };
       expire_unpaid_orders: { Args: never; Returns: number };
       get_order_public: {
         Args: { p_order_id: string };

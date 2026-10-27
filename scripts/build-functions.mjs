@@ -14,10 +14,11 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { build } from 'rolldown';
 
-const FUNCTIONS = ['storefront'];
+const FUNCTIONS = ['storefront', 'notify-outbox'];
 const root = fileURLToPath(new URL('..', import.meta.url));
 const pkg = (name) => JSON.parse(readFileSync(`${root}node_modules/${name}/package.json`, 'utf8')).version;
 const supabaseJs = `npm:@supabase/supabase-js@${pkg('@supabase/supabase-js')}`;
+const nodemailer = `npm:nodemailer@${pkg('nodemailer')}`;
 
 /** Every character outside printable ASCII as a \uXXXX escape (they only appear in strings and regexes). */
 const ascii = (code) => code.replace(/[^\n\t\x20-\x7e]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
@@ -29,7 +30,7 @@ for (const name of FUNCTIONS) {
     input: `supabase/functions/${name}/index.ts`,
     platform: 'neutral',
     resolve: { alias: { '@': `${root}src` } },
-    external: ['@supabase/supabase-js', '@supabase/supabase-js/cors'],
+    external: ['@supabase/supabase-js', '@supabase/supabase-js/cors', 'nodemailer'],
     // seed/config.ts builds its delivery fees with city(): unused by the functions
     treeshake: { manualPureFunctions: ['city'] },
     output: {
@@ -40,10 +41,11 @@ for (const name of FUNCTIONS) {
       paths: {
         '@supabase/supabase-js': supabaseJs,
         '@supabase/supabase-js/cors': `${supabaseJs}/cors`,
+        nodemailer,
       },
     },
     logLevel: 'warn',
   });
   writeFileSync(`${root}${file}`, ascii(readFileSync(`${root}${file}`, 'utf8')));
-  console.log(`✓ ${name} → ${file} (${supabaseJs})`);
+  console.log(`✓ ${name} → ${file} (${supabaseJs}${name === 'notify-outbox' ? `, ${nodemailer}` : ''})`);
 }

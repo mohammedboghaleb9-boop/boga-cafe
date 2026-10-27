@@ -681,6 +681,7 @@ export const fr: Dict = {
       log: 'Messages envoyés',
       introLive: 'Messages mis en file par la base de données pour l’équipe (nouvelles commandes, paiements signalés, demandes B2B, stock bas). Ils ne sont pas encore envoyés : l’envoi arrive dans une prochaine étape.',
       status: { pending: 'pas encore envoyé', sent: 'envoyé', failed: 'échec', simulated: 'simulé' },
+      lastError: 'Dernière tentative échouée (n° {n}) : {error}',
       events: {
         'order.created': 'Nouvelle commande',
         'payment.reported': 'Paiement signalé',

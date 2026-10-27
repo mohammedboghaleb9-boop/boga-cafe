@@ -686,6 +686,7 @@ export const en = {
       log: 'Sent messages',
       introLive: 'Messages the database queued for the team (new orders, reported payments, B2B requests, low stock). They are not sent yet: the sender comes in a later step.',
       status: { pending: 'not sent yet', sent: 'sent', failed: 'failed', simulated: 'simulated' },
+      lastError: 'Last attempt failed (attempt {n}): {error}',
       events: {
         'order.created': 'New order',
         'payment.reported': 'Payment reported',

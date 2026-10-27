@@ -232,6 +232,9 @@ export interface NotificationLog {
   body: string;
   /** 'simulated': the prototype; the live site's queue: 'pending' until the sender (phase 4) sends it. */
   status: 'pending' | 'sent' | 'simulated' | 'failed';
+  /** The live queue only: the attempts taken and the class of the last failure (never a text), so a failed message says why. */
+  attempts?: number;
+  error?: string;
 }
 
 export interface Settings {
