@@ -61,6 +61,7 @@ Production shop build locally: `WORKERS_CI=1 WORKERS_CI_BRANCH=main npm run buil
 - **Lost TOTP phone**: (1) if the phone or password may be compromised, change that admin's password first (ends their sessions); (2) remove the MFA factor (Dashboard → Authentication → Users; the button name is unverified, the documented way is `auth.admin.mfa.deleteFactor` with the secret key from a trusted machine); (3) the admin signs in and sets up the app again (scan on two devices). Rollback of the aal2 migration = the old `is_admin()` body in `20260927000000_init.sql`.
 
 ## Known issues
+- **P5.4** (branch `claude/p5-4-fk-indexes-policies`, not merged, not applied on live): migration `20261027100000_policies_fk_indexes` adds the 3 foreign-key indexes and replaces the FOR ALL policies by one policy per write command (the advisors' 25 `multiple_permissive_policies`); it holds DROP POLICY, so it goes through `supabase/manual/20261027100000_policies_fk_indexes.editor.sql` (rollback next to it). New pgTAP file `supabase/tests/policies.sql`.
 - **R20**: with the sales open, `commit_quote_request` accepts lines of a product not for sale (pgTAP `showcase.sql`). Only service_role calls it and `storefront` drops such lines; fix in the database before opening the sales.
 - No message is sent: the outbox queues them, the sender is not built (phase 4). `api/notify.ts` is not deployed (Cloudflare, not Vercel).
 - Admin: counts past 1000 orders are silently short; Refresh re-mounts the page; disabled controls are skipped by Tab.

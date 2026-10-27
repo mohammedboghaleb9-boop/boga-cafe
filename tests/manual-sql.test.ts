@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-/** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). None now. */
-const PENDING: string[] = [];
+/** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). */
+const PENDING: string[] = ['20261027100000_policies_fk_indexes'];
 
 describe('SQL Editor blocks', () => {
   it('catalog_trim: the block holds the migration unchanged, between begin and commit', () => {
@@ -379,5 +379,41 @@ describe('catalog_showcase (the catalog shown without prices, owner 2026-10-21)'
       'alter table public.products drop column listed;',
       'alter table public.origins drop column listed;',
     ]);
+  });
+});
+
+describe('policies_fk_indexes (P5.4: foreign-key indexes, one permissive policy per command)', () => {
+  const migration = read('supabase/migrations/20261027100000_policies_fk_indexes.sql').trimEnd();
+  const block = read('supabase/manual/20261027100000_policies_fk_indexes.editor.sql');
+  const rollback = read('supabase/manual/20261027100000_policies_fk_indexes.rollback.sql');
+
+  it('the editor block holds the migration unchanged, after its guards, with its version, in one commit', () => {
+    expect(block).toContain(`-- >>> 20261027100000_policies_fk_indexes.sql\n${migration}\n-- <<< 20261027100000_policies_fk_indexes.sql`);
+    expect(block.indexOf('\nbegin;')).toBeLessThan(block.indexOf("raise exception 'stop:"));
+    expect(block.indexOf("raise exception 'stop:")).toBeLessThan(block.indexOf('-- >>>'));
+    expect(block.match(/insert into supabase_migrations\.schema_migrations \(version, name\) values \('20261027100000', 'policies_fk_indexes'\);/g)).toHaveLength(1);
+    expect(block.indexOf('-- <<<')).toBeLessThan(block.indexOf('insert into supabase_migrations'));
+    expect(block.match(/^commit;$/gm)).toHaveLength(1);
+  });
+
+  it('changes no row: indexes and policies only; every FOR ALL policy it drops is given back by the rollback', () => {
+    const sql = migration.replace(/^--.*$/gm, '');
+    expect(sql).not.toMatch(/\b(insert|update|delete|truncate)\s+(into|from)?\s*public\./i);
+    const dropped = [...sql.matchAll(/drop policy "([^"]+)" on public\.(\w+);/g)].map((m) => `${m[2]}:${m[1]}`);
+    expect(dropped).toEqual([
+      'origins:catalog write',
+      'products:catalog write',
+      'product_recipes:catalog write',
+      'shipping_rates:catalog write',
+      'admin_users:owner manages admins',
+    ]);
+    for (const d of dropped) {
+      const [table, policy] = d.split(':');
+      expect(rollback).toContain(`create policy "${policy}" on public.${table} for all`);
+    }
+    for (const idx of ['orders_city_id_idx', 'orders_payment_method_idx', 'quote_requests_city_id_idx']) {
+      expect(sql).toContain(`create index ${idx} on public.`);
+      expect(rollback).toContain(`drop index public.${idx};`);
+    }
   });
 });
