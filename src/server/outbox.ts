@@ -12,6 +12,7 @@
  * at its next attempt (and a failed report leaves it pending). Five attempts, one then four, nine and sixteen minutes
  * apart (claim_outbox); then it stays 'failed', visible in the Admin Panel's Notifications page with its error class.
  * Nothing it logs or stores holds a message text, a recipient or a key: error classes only.
+ * Messages per run: 3 (an email can take 35 s to give up, and the schedule's call waits 30 s).
  */
 import type { Client } from '@/data/supabase/client';
 import { defangLinks } from './links';
@@ -64,7 +65,7 @@ export interface RunSummary {
 const FOOTER = 'Envoyé automatiquement par le site. Un message ne prouve jamais un paiement : vérifiez-le à la banque ou au CMI.';
 /** WhatsApp (CallMeBot) takes a URL: a very long text is cut. */
 const WHATSAPP_MAX = 1_500;
-const PER_RUN = 5;
+const PER_RUN = 3;
 
 /** The channels this environment can send on. */
 export function configuredChannels(env: SenderEnv): string[] {
@@ -77,10 +78,13 @@ async function sendWhatsapp(row: OutboxRow, env: SenderEnv, fetcher: typeof fetc
   if (!env.CALLMEBOT_APIKEY) return fail('not_configured');
   const phone = row.recipient.replace(/[\s+]/g, '');
   if (!/^\d{8,15}$/.test(phone)) return fail('bad_recipient');
-  const text = `🔔 BOGA CAFÉ\n${defangLinks(row.body)}\n\n${FOOTER}`;
+  // the body is cut, never the footer: the line saying a message proves no payment stays on a long one
+  const room = WHATSAPP_MAX - FOOTER.length - 20;
+  const body = defangLinks(row.body);
+  const text = `🔔 BOGA CAFÉ\n${body.length > room ? `${body.slice(0, room - 1)}…` : body}\n\n${FOOTER}`;
   const url = new URL('https://api.callmebot.com/whatsapp.php');
   url.searchParams.set('phone', phone);
-  url.searchParams.set('text', text.length > WHATSAPP_MAX ? `${text.slice(0, WHATSAPP_MAX - 1)}…` : text);
+  url.searchParams.set('text', text);
   url.searchParams.set('apikey', env.CALLMEBOT_APIKEY);
   try {
     const res = await fetcher(url, { signal: AbortSignal.timeout(6_000) });
@@ -96,7 +100,8 @@ async function sendWhatsapp(row: OutboxRow, env: SenderEnv, fetcher: typeof fetc
 
 async function sendEmail(row: OutboxRow, env: SenderEnv, sendMail: OutboxDeps['sendMail']): Promise<SendResult> {
   if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) return fail('not_configured');
-  if (!/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(row.recipient)) return fail('bad_recipient');
+  // one address: no space, comma or semicolon (a list would reach Gmail as several recipients)
+  if (!/^[^\s@<>",;]+@[^\s@<>",;]+\.[^\s@<>",;]+$/.test(row.recipient)) return fail('bad_recipient');
   try {
     await sendMail({
       from: `"BOGA CAFÉ" <${env.GMAIL_USER}>`,

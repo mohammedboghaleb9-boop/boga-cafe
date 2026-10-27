@@ -18,7 +18,7 @@
 **كيفاش كيخدم**
 - **دالة Edge جديدة `notify-outbox`** (`supabase/functions/notify-outbox`، المنطق فـ `src/server/outbox.ts` و`outboxHttp.ts`).
 - **كل دقيقة** الـ database كتعيّط عليها (pg_cron + pg_net) بمفتاح مشترك فـ `x-outbox-key`.
-- **كل مرة** كتاخد 5 رسائل مستحقة بـ `claim_outbox()` (`FOR UPDATE SKIP LOCKED`: جوج مرسلين فنفس اللحظة ما كياخدوش نفس الرسالة)، وكتبعث كل وحدة، وكتبلّغ النتيجة بـ `finish_outbox()`.
+- **كل مرة** كتاخد 3 رسائل مستحقة بـ `claim_outbox()` (`FOR UPDATE SKIP LOCKED`: جوج مرسلين فنفس اللحظة ما كياخدوش نفس الرسالة)، وكتبعث كل وحدة، وكتبلّغ النتيجة بـ `finish_outbox()`.
 - **القنوات**: Gmail (SMTP على 465 بكلمة مرور تطبيق) وواتساب (CallMeBot). **قناة بلا أسرارها** كتتخلّى: رسائلها كتتسنى، ما كتخسرش محاولاتها.
 - **5 محاولات**: بين المحاولات 1 ثم 4 ثم 9 ثم 16 دقيقة. بعد الخامسة كتبقى `failed` وكتبان فلوحة الإدارة (قسم «الإشعارات») مع **صنف الخطأ** (`gmail_refused`، `callmebot_unconfirmed`، `callmebot_timeout`…)، ماشي نص الرسالة ولا الرقم ولا مفتاح.
 - **واتساب** كتحسب «أُرسل» غير إلا ردّت CallMeBot بتأكيدها (`Message queued/sent`)، ماشي بـ 200 وحدها.
@@ -40,7 +40,7 @@
 
 1. **Gmail**: حساب **bogacafe1@gmail.com** ← «إدارة حسابك» ← **الأمان** ← فعّل **التحقق بخطوتين** ← **App passwords** ← أنشئ وحدة باسم «BOGA site» ← **16 حرفاً**. تتلصق مباشرة فـ Supabase ← Edge Functions ← Secrets باسم `GMAIL_APP_PASSWORD` (ماشي فمحادثة ولا فالمستودع). وكذلك `GMAIL_USER` = `bogacafe1@gmail.com`.
 2. **CallMeBot**: صفحة CallMeBot لواتساب (callmebot.com، قسم WhatsApp API): أضف رقمهم فجهات الاتصال وصيفط الجملة المطلوبة **من رقم ‎+212 609-036378**. كيوصلك **apikey**: `CALLMEBOT_APIKEY` فنفس الأسرار.
-3. **مفتاح الدالة**: نص عشوائي طويل (32 حرفاً فما فوق) كـ `OUTBOX_KEY` فنفس الأسرار. **نفس القيمة** تتخزن فـ Vault مرة وحدة: فـ SQL Editor `select vault.create_secret('<القيمة>', 'outbox_key');`.
+3. **مفتاح الدالة**: نص عشوائي طويل (32 حرفاً فما فوق) كـ `OUTBOX_KEY` فنفس الأسرار. **نفس القيمة** تتخزن فـ Vault مرة وحدة **من واجهة Vault فـ Dashboard** (Integrations ← Vault ← New secret، الاسم `outbox_key`): ماشي بـ SQL Editor، باش المفتاح ما يبقاش فتاريخ الاستعلامات. المفتاح 32 حرفاً على الأقل (الدالة كترفض الأقصر).
 
 **ديالي (بموافقتك)**
 

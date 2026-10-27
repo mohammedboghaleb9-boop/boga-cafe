@@ -56,10 +56,10 @@ describe('channels', () => {
     expect(calls).toEqual([]);
   });
 
-  it('asks only for the channels it can send, five messages at a time', async () => {
+  it('asks only for the channels it can send, three messages at a time', async () => {
     const { db, calls } = fakeDb([]);
     await runOutbox({ db, env: { CALLMEBOT_APIKEY: KEY }, sendMail, fetch: answering('') });
-    expect(calls[0]).toEqual({ fn: 'claim_outbox', args: { p_limit: 5, p_channels: ['whatsapp'] } });
+    expect(calls[0]).toEqual({ fn: 'claim_outbox', args: { p_limit: 3, p_channels: ['whatsapp'] } });
   });
 });
 
@@ -101,11 +101,13 @@ describe('WhatsApp (CallMeBot)', () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
-  it('a very long text is cut for the URL', async () => {
+  it('a very long text is cut for the URL, and the line saying a message proves no payment is never the part cut', async () => {
     const fetcher = answering('Message queued');
     await sendRow(row({ body: 'x'.repeat(5_000) }), { env: ENV, sendMail, fetch: fetcher });
     const text = new URL(String((fetcher.mock.calls[0] as unknown[])[0])).searchParams.get('text')!;
     expect(text.length).toBeLessThanOrEqual(1_500);
+    expect(text).toContain('Un message ne prouve jamais un paiement');
+    expect(text.endsWith('vérifiez-le à la banque ou au CMI.')).toBe(true);
   });
 });
 
@@ -141,7 +143,8 @@ describe('email (Gmail)', () => {
   });
 
   it('a recipient that is not an address is refused without calling Gmail', async () => {
-    for (const recipient of ['', 'nobody', 'a b@c.d', 'x@y']) {
+    // a list of addresses would reach Gmail as several recipients
+    for (const recipient of ['', 'nobody', 'a b@c.d', 'x@y', 'a@b.co,c@d.co', 'a@b.co;c@d.co']) {
       expect(await sendRow(mail({ recipient }), { env: ENV, sendMail, fetch: answering('') })).toEqual({ ok: false, error: 'bad_recipient' });
     }
     expect(sentMails).toEqual([]);

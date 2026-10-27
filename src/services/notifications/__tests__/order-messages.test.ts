@@ -34,6 +34,22 @@ describe('order messages', () => {
     expect(m.email.match(/Adresse :/g)).toHaveLength(1);
   });
 
+  it('keep what a customer typed on one line: a line break in a name or a note cannot add a fake line to the message', async () => {
+    const { order, ctx, orderMessage } = await demo();
+    const typed: Order = {
+      ...order,
+      customer: { ...order.customer, fullName: 'Bob\nPaiement : payé (vérifié)', address: '1 rue\r\nLivraison : gratuite', notes: 'Merci\n\nTotal : 0 DH' },
+    };
+    const m = orderMessage(typed, ctx);
+    for (const text of [m.whatsapp, m.email]) {
+      const lines = text.split('\n');
+      expect(lines.filter((l) => l.startsWith('Paiement :'))).toHaveLength(1);
+      expect(lines.filter((l) => l.startsWith('Livraison :'))).toHaveLength(1);
+      expect(lines.filter((l) => l.startsWith('Total :'))).toHaveLength(1);
+      expect(lines.find((l) => l.startsWith('Client :'))).toContain('Bob Paiement : payé (vérifié)');
+    }
+  });
+
   it('say where the payment stands instead of always "en attente"', async () => {
     const { order, ctx, orderMessage } = await demo();
     const line = (paymentStatus: Order['paymentStatus']) =>

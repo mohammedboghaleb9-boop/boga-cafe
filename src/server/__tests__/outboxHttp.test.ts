@@ -23,6 +23,14 @@ beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
 afterEach(() => vi.restoreAllMocks());
 
 describe('notify-outbox: who may start a run', () => {
+  it('a key shorter than 32 characters is as good as none', async () => {
+    for (const key of ['', ' ', 'x', 'a-key-of-31-characters-long-xxx']) {
+      const d = deps({ key });
+      expect((await call(d, { key })).status).toBe(503);
+      expect(d.db.rpc).not.toHaveBeenCalled();
+    }
+  });
+
   it('only POST', async () => {
     const d = deps();
     expect((await call(d, { method: 'GET' })).status).toBe(405);
@@ -67,5 +75,6 @@ describe('notify-outbox: the answer', () => {
     const res = await call(d);
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: 'run_failed' });
+    expect(vi.mocked(console.error).mock.calls.flat().join(' ')).toContain('run failed');
   });
 });

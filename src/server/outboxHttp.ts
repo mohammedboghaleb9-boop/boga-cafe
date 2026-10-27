@@ -9,6 +9,9 @@
  */
 import { runOutbox, type OutboxDeps } from './outbox';
 
+/** Shortest OUTBOX_KEY accepted. */
+export const MIN_KEY = 32;
+
 export interface OutboxHttpDeps extends OutboxDeps {
   /** The OUTBOX_KEY secret: without it every call is refused (503), none runs unchecked. */
   key: string;
@@ -28,12 +31,14 @@ export function sameKey(a: string, b: string): boolean {
 
 export async function handleOutbox(req: Request, deps: OutboxHttpDeps): Promise<Response> {
   if (req.method !== 'POST') return json(405, { error: 'method' });
-  if (!deps.key) return json(503, { error: 'not_configured' });
+  // a short key is as good as none: the docs ask for 32 characters or more
+  if (deps.key.length < MIN_KEY) return json(503, { error: 'not_configured' });
   if (!sameKey(req.headers.get('x-outbox-key') ?? '', deps.key)) return json(401, { error: 'key' });
   try {
     return json(200, await runOutbox(deps));
   } catch {
-    // the details are in the function's log (classes only); the caller learns nothing more
+    // the classes are in the function's log (outbox.ts); the caller learns nothing more
+    console.error('outbox: run failed');
     return json(500, { error: 'run_failed' });
   }
 }

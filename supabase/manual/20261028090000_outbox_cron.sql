@@ -3,8 +3,8 @@
 --   1. migration 20261028090000_outbox_sender is applied (claim_outbox / finish_outbox exist);
 --   2. the function notify-outbox is deployed and its secrets are set (Dashboard → Edge Functions → Secrets):
 --      OUTBOX_KEY, GMAIL_USER, GMAIL_APP_PASSWORD, CALLMEBOT_APIKEY (a channel without its secrets is simply left alone);
---   3. the SAME key as OUTBOX_KEY is stored in Vault, once, by the owner (the value is typed here and nowhere else):
---        select vault.create_secret('<the OUTBOX_KEY value>', 'outbox_key');
+--   3. the SAME key as OUTBOX_KEY (32 characters or more) is stored in Vault, once, by the owner, in the Dashboard
+--      (Integrations → Vault → New secret, name `outbox_key`), not with a query: a query would stay in the SQL Editor's history.
 -- The key is never written in this file, in the repository, or in the job's text: the job reads it from Vault at each run.
 -- OFF SWITCH (stops the sending at once; the queue keeps filling and nothing is lost):  select cron.unschedule('send-outbox');
 -- RESULT: one row, active = true. Check the first runs with:
