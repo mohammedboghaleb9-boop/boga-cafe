@@ -4,7 +4,7 @@
 -- open it accepted a line of a hidden, listed-only or unknown product. Only service_role can call it and the storefront
 -- function drops such lines before (src/core/requests.ts), so no visitor had a way in; this makes the database refuse
 -- it too, as commit_order does ('invalid_order:product'). A line that is not an object is refused ('invalid_quote:lines'),
--- a product line that is not for sale 'invalid_quote:product'. Custom Blend lines and the rest of the body are unchanged.
+-- 'invalid_quote:product' for any line that is not a Custom Blend and names a product not for sale (a line with no kind counts as a product line). Custom Blend lines and the rest of the body are unchanged.
 --
 -- No table, grant or row changes: the function is replaced in place (its execute grant stays service_role only).
 -- Rollback: supabase/manual/20261027090000_quote_lines_for_sale.rollback.sql (puts the previous body back; SQL Editor).
@@ -27,13 +27,14 @@ begin
   if jsonb_typeof(p_quote -> 'lines') is distinct from 'array' or jsonb_array_length(p_quote -> 'lines') = 0 then
     raise exception 'invalid_quote:lines';
   end if;
-  -- R20: a line is an object, and a product line names a product that is for sale (shown: active), the rule commit_order
-  -- applies; a hidden, listed-only or unknown product is never requested, whoever calls this function
+  -- R20: a line is an object, and every line that is not a Custom Blend names a product that is for sale (shown: active), the
+  -- rule commit_order applies; a hidden, listed-only or unknown product is never requested, whoever calls this function,
+  -- and a line with no kind (or an odd one) is checked as a product line
   if exists (select 1 from jsonb_array_elements(p_quote -> 'lines') l where jsonb_typeof(l) is distinct from 'object') then
     raise exception 'invalid_quote:lines';
   end if;
   if exists (select 1 from jsonb_array_elements(p_quote -> 'lines') l
-              where l ->> 'kind' = 'product'
+              where l ->> 'kind' is distinct from 'custom'
                 and not exists (select 1 from public.products p where p.id = l ->> 'productId' and p.active)) then
     raise exception 'invalid_quote:product';
   end if;

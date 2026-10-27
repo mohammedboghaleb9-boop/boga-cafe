@@ -7,7 +7,7 @@ set client_min_messages = warning;
 create extension if not exists pgtap;
 
 begin;
-select plan(40);
+select plan(41);
 
 insert into auth.users values ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000003');
 insert into public.admin_users values
@@ -153,6 +153,8 @@ select throws_ok($$select * from public.commit_quote_request(pg_temp.quote_of('[
   'P0001', 'invalid_quote:product', 'an unknown product is refused');
 select throws_ok($$select * from public.commit_quote_request(pg_temp.quote_of('[{"kind": "product", "productId": "onsale", "size": 1000, "qty": 12}, {"kind": "product", "productId": "hidden", "size": 1000, "qty": 1}]'), '', '', '')$$,
   'P0001', 'invalid_quote:product', 'one line not for sale refuses the whole request');
+select throws_ok($$select * from public.commit_quote_request(pg_temp.quote_of('[{"productId": "hidden", "size": 1000, "qty": 5}]'), '', '', '')$$,
+  'P0001', 'invalid_quote:product', 'a line with no kind is checked as a product line');
 select throws_ok($$select * from public.commit_quote_request(pg_temp.quote_of('["onsale"]'), '', '', '')$$, 'P0001', 'invalid_quote:lines', 'a line that is not an object is refused');
 select lives_ok($$select * from public.commit_quote_request(pg_temp.quote_of('[{"kind": "product", "productId": "onsale", "size": 1000, "qty": 12}]'), '', '', '')$$,
   'a product for sale is accepted');
