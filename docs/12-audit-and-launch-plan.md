@@ -83,7 +83,7 @@
 **التبعيات (`npm audit`)**
 - **قبل**: 8 ثغرات (2 متوسطة، 6 عالية).
 - **بعد**: 4 عالية، كلها كتمرّ من `wrangler` (`miniflare` ← `sharp` / `undici`). الإصلاح خاصو `wrangler@4.153.0` (حسب `npm audit` يوم 2026-10-26).
-- **الرفع تدار فـ فرع أمني مستقل (2026-10-26، `claude/security-node-wrangler`)**: `wrangler` 4.148.0 ← **4.153.0** (miniflare 5.20261006.0-alpha ← 5.20261023.0-beta، undici 7.29.1 ← 7.30.1، sharp 0.35.4 ← 0.35.5، workerd وesbuild)، `npm audit` = **0**. النطاقات: قريت كود wrangler 4.153.0، كيبعث النطاقات المخصصة غير إلا كانت `routes` فـ الإعداد (مافيه)، و`wrangler deploy --dry-run` ما بان فيه حتى route، واختبار `tests/wrangler-config.test.ts` أخضر. **ما جربتش `versions upload` ولا `deploy` حقيقي** (ممنوع قبل الدمج بإذنك)، فأول build بعد الدمج هو الاختبار الحقيقي.
+- **الرفع تدار فـ فرع أمني مستقل (2026-10-26، `claude/security-node-wrangler`)**: `wrangler` 4.148.0 ← **4.153.0** (miniflare 5.20261006.0-alpha ← 5.20261023.0-beta، undici 7.29.1 ← 7.30.1، sharp 0.35.4 ← 0.35.5، workerd وesbuild)، `npm audit` = **0**. النطاقات: قريت كود wrangler 4.153.0، كيبعث النطاقات المخصصة غير إلا كانت `routes` فـ الإعداد (مافيه)، و`wrangler deploy --dry-run` ما بان فيه حتى route، واختبار `tests/wrangler-config.test.ts` أخضر. الدمج تدار فـ PR #35 (2026-10-27): الـ build ديال Workers Builds نجح (build f5ab3a58)، والموقع (200، بلا أثمنة، `noindex`) وقاعدة البيانات (0 طلب، `salesOpen` غير موجود) ما تبدّلو. **ما تحققتش**: `www.bogacafe.ma` (الحاوية ما كتحلّش `www`) وسطر Node فـ log ديال Cloudflare.
 - كلها أدوات بناء، ما كتتشحنش للزبناء.
 - ما كاين `Dependabot` ولا `npm audit` فـ CI. **توصية**: خطوة `npm audit --omit=dev --audit-level=high` فـ CI.
 
