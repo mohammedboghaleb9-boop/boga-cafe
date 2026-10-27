@@ -478,6 +478,27 @@ test.describe('admin sign-in on the live site', () => {
     expect(stored).not.toContain(CUSTOMER.name);
   });
 
+  test('Refresh reads again with the page staying on screen: the typed search stays, no "Loading" in between', async ({ page }) => {
+    await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
+    const asked = await fakeSupabase(page, { admins: { [ADMIN.id]: 'owner' } });
+    await open(page, '/admin/orders');
+    const search = page.getByRole('searchbox');
+    await search.fill('Amina');
+    const before = asked.filter((a) => a === 'read orders').length;
+    // from here on the page is watched: the page's own "loading" line, or a search box that left the page, means it was re-mounted
+    await page.evaluate(() => {
+      const w = window as unknown as { leftThePage: boolean };
+      w.leftThePage = false;
+      new MutationObserver(() => {
+        if (!document.querySelector('input[type=search]') || document.querySelector('main p[role=status]')) w.leftThePage = true;
+      }).observe(document.querySelector('main')!, { childList: true, subtree: true, characterData: true });
+    });
+    await page.getByRole('button', { name: /Actualiser|Refresh|تحديث/ }).click();
+    await expect.poll(() => asked.filter((a) => a === 'read orders').length).toBeGreaterThan(before);
+    await expect(search).toHaveValue('Amina');
+    expect(await page.evaluate(() => (window as unknown as { leftThePage: boolean }).leftThePage)).toBe(false);
+  });
+
   test('a failed read, or a session the database no longer counts as an admin, shows an error: never an empty list', async ({ page }) => {
     await page.addInitScript(([k, v]) => localStorage.getItem(k) ?? localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(session(ADMIN, 'aal2'))]);
     const server: Server = { admins: { [ADMIN.id]: 'owner' }, failing: 'orders' };

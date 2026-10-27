@@ -5,7 +5,7 @@ import { useAdminDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Icon } from '@/shared/ui/Icon';
-import { SavedFlash, TableWrap, WriteError, useSavedFlash } from '../ui';
+import { CutNotice, SavedFlash, TableWrap, WriteError, useSavedFlash } from '../ui';
 import { useAction } from '../useAction';
 import { useSavedDraft } from '../useSavedDraft';
 
@@ -14,12 +14,13 @@ const QUOTE_STATUSES: QuoteStatus[] = ['new', 'negotiating', 'confirmed', 'close
 /** Carts above the B2B threshold. Samples are ordinary paid 250 g / 500 g bags now (owner, 2026-09-30): they arrive as orders. */
 export function B2BRequestsPage() {
   const { t } = useI18n();
-  const { quotes, settings } = useAdminDb();
+  const { quotes, quotesCut, settings } = useAdminDb();
   return (
     <>
       <div className="admin-head">
         <h1>{t.admin.nav.b2b}</h1>
       </div>
+      <CutNotice show={quotesCut} count={quotes.length} />
       <h2 className="admin-card-title">
         {fmt(t.admin.b2b.quotesTab, { kg: settings.b2bThresholdKg })} <span className="muted num">({quotes.length})</span>
       </h2>

@@ -63,7 +63,7 @@ Production shop build locally: `WORKERS_CI=1 WORKERS_CI_BRANCH=main npm run buil
 ## Known issues
 - **R20**: with the sales open, `commit_quote_request` accepts lines of a product not for sale (pgTAP `showcase.sql`). Only service_role calls it and `storefront` drops such lines; fix in the database before opening the sales.
 - No message is sent: the outbox queues them, the sender is not built (phase 4). `api/notify.ts` is not deployed (Cloudflare, not Vercel).
-- Admin: counts past 1000 orders are silently short; Refresh re-mounts the page; disabled controls are skipped by Tab.
+- Admin (P5.6, branch `claude/p5-6-admin-pagination`, not merged): orders and B2B requests are read page by page (1000 rows each, up to 10 000; past that the pages show a notice, `ordersCut`/`quotesCut`), and Refresh reads again with the page staying on screen ("try again" after an error still re-mounts, it must). Still open: disabled controls are skipped by Tab (native behaviour; busy buttons already use `aria-disabled`); a fix would touch ~25 controls and is the owner's call.
 - Database leftovers: `commit_order_before_3b` (closed to all roles), `pg_net` in `public` (owner can toggle it off/on in Dashboard → Extensions), 3 unindexed foreign keys, 25 duplicate permissive policies (performance advisors).
 - Home intro shows a bare "BOGA CAFÉ" when both Admin About fields are emptied (owner 2026-10-22: later).
 - Measured on the live site 2026-10-24 (Lighthouse 12, lab): mobile performance 50 (LCP 5.5 s), desktop 89; accessibility 100; SEO 58 (`noindex`, invalid `robots.txt`, no sitemap/`og:image`/canonical). Plan: `docs/12` section 3.3-3.4 and P6.

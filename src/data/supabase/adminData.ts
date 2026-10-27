@@ -16,10 +16,28 @@ import { loadCatalog } from './catalog';
 import { must, rows, type Client } from './client';
 import { contentFromRow, notificationFromRow, orderFromRow, quoteFromRow, settingsFromRows, stockMovementFromRow } from './rows';
 
-/** Newest first. Supabase answers at most 1000 rows per read (its default "max rows"). */
-const MAX_ROWS = 1000;
+/** Supabase answers at most 1000 rows per read (its default "max rows"): a longer list is read page by page, newest first. */
+const PAGE_ROWS = 1000;
+/** Pages read per list (10 000 rows); a longer list is cut and the pages say so (DbState.ordersCut, quotesCut). */
+const MAX_PAGES = 10;
 /** The pages list the newest 40 movements and 60 messages. */
 const RECENT_ROWS = 200;
+
+type Page<T> = PromiseLike<{ data: T[] | null; error: unknown }>;
+
+/**
+ * A list read page by page. `cut` is true when more rows exist than the pages read, probed with one more row, so
+ * that exactly MAX_PAGES full pages is not called a cut.
+ */
+async function readPages<T>(page: (from: number, to: number) => Page<T>): Promise<{ list: T[]; cut: boolean }> {
+  const list: T[] = [];
+  for (let n = 0; n < MAX_PAGES; n++) {
+    const got = rows(await page(n * PAGE_ROWS, (n + 1) * PAGE_ROWS - 1));
+    list.push(...got);
+    if (got.length < PAGE_ROWS) return { list, cut: false };
+  }
+  return { list, cut: rows(await page(MAX_PAGES * PAGE_ROWS, MAX_PAGES * PAGE_ROWS)).length > 0 };
+}
 
 const empty = (): DbState => ({
   version: STATE_VERSION,
@@ -63,8 +81,11 @@ async function readAll(db: Client, role: AdminRole): Promise<DbState> {
   const [catalog, orders, quotes, movements, outbox, adminConfig, site, payeeChange] = await Promise.all([
     // an admin's session sees the inactive products and origins too
     loadCatalog(db),
-    db.from('orders').select('*, order_events(at, label)').order('created_at', { ascending: false }).limit(MAX_ROWS),
-    db.from('quote_requests').select('*').order('created_at', { ascending: false }).limit(MAX_ROWS),
+    // the id breaks ties, so two pages never share or skip a row of the same second
+    readPages((from, to) =>
+      db.from('orders').select('*, order_events(at, label)').order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, to),
+    ),
+    readPages((from, to) => db.from('quote_requests').select('*').order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, to)),
     db.from('stock_movements').select('*').order('at', { ascending: false }).order('id', { ascending: false }).limit(RECENT_ROWS),
     // owner and manager only (row level security); staff has no Notifications page
     role === 'staff' ? null : db.from('notification_outbox').select('*').order('created_at', { ascending: false }).limit(RECENT_ROWS),
@@ -85,8 +106,10 @@ async function readAll(db: Client, role: AdminRole): Promise<DbState> {
     paymentMethods: catalog.paymentMethods,
     settings: settingsFromRows(siteRow?.settings, recipients, LIVE_DEFAULT_SETTINGS),
     content: contentFromRow(siteRow?.content, EMPTY_CONTENT),
-    orders: rows(orders).map(({ order_events, ...order }) => orderFromRow(order, order_events)),
-    quotes: rows(quotes).map(quoteFromRow),
+    orders: orders.list.map(({ order_events, ...order }) => orderFromRow(order, order_events)),
+    quotes: quotes.list.map(quoteFromRow),
+    ordersCut: orders.cut,
+    quotesCut: quotes.cut,
     stockMovements: rows(movements).map(stockMovementFromRow),
     notifications: outbox ? rows(outbox).map(notificationFromRow) : [],
     configVersions: { ...versionsFrom(siteRow?.versions), ...(recipients?.updated_at && { recipients: recipients.updated_at }) },

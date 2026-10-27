@@ -4,7 +4,7 @@ import { formatKg } from '@/core/format';
 import type { Order } from '@/core/types';
 import { useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
-import { OrderStatusPill, PaymentPill, RowLink, TableWrap, Tabs, rowClick } from '../ui';
+import { CutNotice, OrderStatusPill, PaymentPill, RowLink, TableWrap, Tabs, rowClick } from '../ui';
 
 type View = 'all' | 'new' | 'verify' | 'progress' | 'delivered' | 'cancelled';
 
@@ -20,7 +20,7 @@ const inView: Record<View, (o: Order) => boolean> = {
 
 export function OrdersPage() {
   const { t, l, money, date } = useI18n();
-  const { orders, shippingRates, paymentMethods } = useAdminDb();
+  const { orders, ordersCut, shippingRates, paymentMethods } = useAdminDb();
   const navigate = useNavigate();
   // the tab is part of the address (?view=verify, linked from the dashboard); unknown values show All
   const [params, setParams] = useSearchParams();
@@ -44,6 +44,7 @@ export function OrdersPage() {
 
   return (
     <>
+      <CutNotice show={ordersCut} count={orders.length} />
       <div className="admin-head">
         <h1>{t.admin.nav.orders}</h1>
         <div className="toolbar">

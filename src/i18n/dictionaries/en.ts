@@ -481,6 +481,7 @@ export const en = {
     writeFailed: 'The change was not confirmed: refused, or no answer from the server. The page now shows what is saved: check it before trying again.',
     dataFailed: 'The panel’s data could not be loaded (connection problem, or the session is no longer valid). Nothing is shown rather than an empty list.',
     refresh: 'Refresh',
+    listCut: 'The figures cover the newest {n} records only: older ones are not loaded.',
     nothingYet: 'Nothing yet.',
     signIn: 'Sign in',
     signOut: 'Sign out',

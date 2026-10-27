@@ -6,7 +6,7 @@ import { useI18n } from '@/i18n';
 import { Flag } from '@/shared/ui/Flag';
 import { can } from '../permissions';
 import { useAdminRole } from '../session';
-import { Kpi, OrderStatusPill, PaymentPill, RowLink, TableWrap, rowClick } from '../ui';
+import { CutNotice, Kpi, OrderStatusPill, PaymentPill, RowLink, TableWrap, rowClick } from '../ui';
 
 export function DashboardPage() {
   const { t, l, money, date } = useI18n();
@@ -28,6 +28,7 @@ export function DashboardPage() {
       <div className="admin-head">
         <h1>{t.admin.nav.dashboard}</h1>
       </div>
+      <CutNotice show={db.ordersCut || db.quotesCut} count={Math.max(orders.length, db.quotes.length)} />
 
       <div className="kpis">
         <Kpi label={t.admin.dash.newOrders} value={count((o) => o.status === 'new')} to="/admin/orders" tone="warn" />
