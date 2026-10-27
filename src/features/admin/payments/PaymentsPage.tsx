@@ -5,7 +5,7 @@ import { api } from '@/data/api';
 import { useAdminDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
-import { LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
+import { CutNotice, LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import type { Role } from '../permissions';
 import { payeeReady } from '@/core/orderFlow';
 import { methodAvailable } from '@/services/payments';
@@ -18,7 +18,7 @@ const icons: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash
 export function PaymentsPage() {
   const role = useAdminRole()!;
   const { t, money, l } = useI18n();
-  const { paymentMethods, orders, settings } = useAdminDb();
+  const { paymentMethods, orders, ordersCut, settings } = useAdminDb();
   const [busy, run, failed] = useAction();
   const toVerify = orders.filter(
     (o) => o.status !== 'cancelled' && (o.paymentStatus === 'awaiting_verification' || (o.paymentStatus === 'pending' && o.paymentMethod !== 'card')),
@@ -26,6 +26,7 @@ export function PaymentsPage() {
 
   return (
     <>
+      <CutNotice show={ordersCut} count={orders.length} />
       <div className="admin-head">
         <h1>{t.admin.nav.payments}</h1>
       </div>

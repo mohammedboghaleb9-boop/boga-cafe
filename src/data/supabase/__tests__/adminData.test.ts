@@ -56,6 +56,12 @@ interface Fake {
   role?: string;
   /** answers wait for this before resolving */
   gate?: Promise<void>;
+  /** how many ranged reads (pages) were asked */
+  pages?: number;
+  /** the table's page with this index (0 = the first) is refused */
+  failingPage?: number;
+  /** a row was added between two page reads: each page starts one row early, as offset paging does then */
+  overlap?: boolean;
 }
 
 /** Enough of supabase-js for the reads: `asked` lists every table read and function called. */
@@ -72,6 +78,14 @@ function fakeClient(f: Fake) {
       select: () => q,
       order: () => q,
       limit: () => q,
+      // like PostgREST: both ends included; a page past the end is empty
+      range: async (first: number, last: number) => {
+        f.pages = (f.pages ?? 0) + 1;
+        await f.gate;
+        if (f.failing?.has(table) || (f.failingPage !== undefined && table === 'orders' && first === f.failingPage * 1000))
+          return { data: null, error: { code: '42501', message: `permission denied for table ${table}` } };
+        return { data: tables[table].slice(first > 0 && f.overlap ? first - 1 : first, last + 1), error: null };
+      },
       eq: () => q,
       maybeSingle: () => answer(table, true),
     });
@@ -135,6 +149,66 @@ describe('admin data (live site)', () => {
     expect(s.configVersions).toEqual({ rules: '2026-10-12 10:00:00.000001+00', recipients: '2026-10-12T10:00:00.000001+00:00' });
     expect(s.payeeChange).toEqual({ at: '2026-10-12T09:00:00Z', by: 'TEST Owner' });
     expect(asked.at(-1)).toBe('is_admin owner'); // asked after the reads, for the role shown
+  });
+
+  describe('lists longer than the 1000 rows a read answers', () => {
+    const many = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({ ...(tables.orders[0] as object), id: `o-${i}`, number: `BC-2026-${String(i).padStart(4, '0')}` }));
+    afterEach(() => {
+      tables.orders = tables.orders.slice(0, 1);
+    });
+
+    it('reads page after page until a short page: 2500 orders arrive whole, none cut', async () => {
+      tables.orders = many(2500);
+      const f: Fake = {};
+      const { data } = opened(f);
+      await vi.waitFor(() => expect(data.status.get()).toBe('ready'));
+      expect(data.db.get().orders).toHaveLength(2500);
+      expect(data.db.get().ordersCut).toBe(false);
+      expect(data.db.get().quotesCut).toBe(false);
+      expect(f.pages).toBe(3 + 1); // 3 order pages (the last one short) + 1 request page
+    });
+
+    it('a row seen on two pages (an order arrived meanwhile) is kept once', async () => {
+      tables.orders = many(2500);
+      const { data } = opened({ overlap: true });
+      await vi.waitFor(() => expect(data.status.get()).toBe('ready'));
+      const ids = data.db.get().orders.map((o) => o.id);
+      expect(ids).toHaveLength(2500);
+      expect(new Set(ids).size).toBe(2500);
+    });
+
+    it('a failed later page is an error, never a list cut short without a word', async () => {
+      tables.orders = many(2500);
+      const { data } = opened({ failingPage: 1 });
+      await vi.waitFor(() => expect(data.status.get()).toBe('error'));
+      expect(data.db.get().orders).toHaveLength(0);
+    });
+
+    it('exactly 1000 orders: one full page, then an empty one proves there is no more', async () => {
+      tables.orders = many(1000);
+      const { data } = opened();
+      await vi.waitFor(() => expect(data.status.get()).toBe('ready'));
+      expect(data.db.get().orders).toHaveLength(1000);
+      expect(data.db.get().ordersCut).toBe(false);
+    });
+
+    it('past 10 000 orders the first 10 000 are kept and the cut is said, never silent', async () => {
+      tables.orders = many(10_001);
+      const { data } = opened();
+      await vi.waitFor(() => expect(data.status.get()).toBe('ready'));
+      expect(data.db.get().orders).toHaveLength(10_000);
+      expect(data.db.get().ordersCut).toBe(true);
+      expect(data.db.get().quotesCut).toBe(false);
+    });
+
+    it('exactly 10 000 orders are not called a cut', async () => {
+      tables.orders = many(10_000);
+      const { data } = opened();
+      await vi.waitFor(() => expect(data.status.get()).toBe('ready'));
+      expect(data.db.get().orders).toHaveLength(10_000);
+      expect(data.db.get().ordersCut).toBe(false);
+    });
   });
 
   it('a failed read of who changed the payee says "unknown", never the error screen (a line under the form, not the page)', async () => {

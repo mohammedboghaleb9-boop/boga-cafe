@@ -25,6 +25,9 @@ export interface DbState {
   content: SiteContent;
   orders: Order[];
   quotes: QuoteRequest[];
+  /** Live Admin Panel: the lists hold the newest rows only (10 000 read), so the counts cover those and the pages say so. */
+  ordersCut?: boolean;
+  quotesCut?: boolean;
   stockMovements: StockMovement[];
   notifications: NotificationLog[];
   /** Live site: each settings part's version as read (a save from an older copy is refused); none in the prototype. */

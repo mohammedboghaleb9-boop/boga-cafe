@@ -476,6 +476,7 @@ export const fr: Dict = {
     writeFailed: 'La modification n’a pas été confirmée : refusée, ou pas de réponse du serveur. La page montre maintenant ce qui est enregistré : vérifiez avant de réessayer.',
     dataFailed: 'Les données du panneau n’ont pas pu être chargées (problème de connexion, ou la session n’est plus valide). Rien n’est affiché plutôt qu’une liste vide.',
     refresh: 'Actualiser',
+    listCut: 'Les chiffres ne couvrent que les {n} enregistrements les plus récents : des plus anciens ne sont pas chargés.',
     nothingYet: 'Rien pour l’instant.',
     signIn: 'Se connecter',
     signOut: 'Déconnexion',

@@ -1,8 +1,9 @@
 /** Small admin building blocks: status pills, KPI tiles, tabs, 3-language inputs. */
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { formatNumber } from '@/core/format';
 import type { Localized, OrderStatus, PaymentStatus } from '@/core/types';
-import { useI18n } from '@/i18n';
+import { fmt, useI18n } from '@/i18n';
 
 const orderTone: Record<OrderStatus, string> = {
   new: 'pill-info',
@@ -243,6 +244,16 @@ export function Switch({
       <span className="small">{label}</span>
     </label>
   );
+}
+
+/** The list was cut at the newest rows (adminData.ts MAX_PAGES): its counts and totals cover those only, and it says so. */
+export function CutNotice({ show, count }: { show: boolean | undefined; count: number }) {
+  const { t } = useI18n();
+  return show ? (
+    <p className="notice notice-warn small" role="status">
+      {fmt(t.admin.listCut, { n: formatNumber(count) })}
+    </p>
+  ) : null;
 }
 
 /** The last change was refused or got no answer (useAction's `failed`): said, never the "saved" flash. */

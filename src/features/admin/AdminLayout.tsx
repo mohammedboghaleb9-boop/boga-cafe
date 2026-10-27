@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { adminAuth, api } from '@/data/api';
 import { DEMO_DATA, SERVER_DATA } from '@/data/mode';
@@ -31,7 +31,14 @@ export function AdminLayout() {
   const { t } = useI18n();
   const role = useAdminRole()!;
   const db = useAdminDb();
-  const { status, reload } = useAdminDataStatus();
+  const { status, reload, refresh } = useAdminDataStatus();
+  // the Refresh button reads again with the page staying on screen (its filters and typed text stay), unlike "try again"
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = () => {
+    if (refreshing || status === 'loading') return;
+    setRefreshing(true);
+    void refresh().finally(() => setRefreshing(false));
+  };
   const { pathname } = useLocation();
   const current = pathname.split('/')[2] as Section | undefined;
   usePageTitle(`${(current && t.admin.nav[current]) || t.admin.nav.dashboard} · ${t.nav.admin}`);
@@ -93,8 +100,8 @@ export function AdminLayout() {
         {SERVER_DATA && (
           <div className="admin-live-bar">
             <p className="notice notice-warn small">{t.admin.liveData}</p>
-            <button type="button" className="btn btn-ghost btn-sm" aria-disabled={status === 'loading' || undefined} onClick={() => status !== 'loading' && reload()}>
-              {t.admin.refresh}
+            <button type="button" className="btn btn-ghost btn-sm" aria-disabled={status === 'loading' || refreshing || undefined} onClick={onRefresh}>
+              {refreshing ? t.common.loading : t.admin.refresh}
             </button>
           </div>
         )}

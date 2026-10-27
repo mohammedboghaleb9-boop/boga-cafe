@@ -37,7 +37,11 @@ export const useAdminCatalog = () => useCatalogOf(useAdminDb());
 
 /** Whether the admin data has arrived, and a way to read it again. */
 export function useAdminDataStatus() {
-  return { status: useSyncExternalStore(adminData.status.subscribe, adminData.status.get, adminData.status.get), reload: adminData.reload };
+  return {
+    status: useSyncExternalStore(adminData.status.subscribe, adminData.status.get, adminData.status.get),
+    reload: adminData.reload,
+    refresh: adminData.refresh,
+  };
 }
 
 /** The admin's sign-in state (starts the live session check on first use). */
