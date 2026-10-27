@@ -113,11 +113,11 @@
 | 19 دالة إدارة قابلة للتنفيذ من `authenticated` | WARN | **بالتصميم**: كل واحدة كتتحقق من الدور و`aal2` (مصفوفة 51 حالة فـ `supabase/tests`) |
 | `auth_leaked_password_protection` مطفّية | WARN | خاصة بخطة Pro؛ مخفّفة بكلمة سر ≥ 12 + TOTP إجباري |
 | `rate_limits` RLS بلا policy | INFO | مقصود (service_role فقط) |
-| 25 `multiple_permissive_policies` (`catalog read` + `catalog write` على SELECT، و`admin_users`) | WARN (أداء) | **P5.4 مكتوب ومختبر** (migration `20261027100000_policies_fk_indexes`: كل policy FOR ALL تتبدل بـ 3 policies ديال الكتابة بنفس الشرط، بلا تغيير فصلاحيات أحد). **ما طبقتوش على القاعدة الحية**: كيمشي عبر بلوك SQL Editor لأنه فيه DROP |
-| 3 مفاتيح أجنبية بلا فهرس (`orders.city_id`، `orders.payment_method`، `quote_requests.city_id`) | INFO | **P5.4**: 3 فهارس فنفس الـ migration (الجداول فارغة، يعني بلا كلفة) |
+| 25 `multiple_permissive_policies` (`catalog read` + `catalog write` على SELECT، و`admin_users`) | WARN (أداء) | **P5.4 تطبّق على الحية 2026-10-27** (migration `20261027100000_policies_fk_indexes` عبر بلوك SQL Editor ديال المالك: كل policy FOR ALL تبدلات بـ 3 policies ديال الكتابة بنفس الشرط). تحققت بعدها: 0 FOR ALL، policy وحدة لكل أمر، والتنبيه ما بقاش فـ advisors |
+| 3 مفاتيح أجنبية بلا فهرس (`orders.city_id`، `orders.payment_method`، `quote_requests.city_id`) | INFO | **P5.4 تطبّق**: 3 فهارس (الجداول فارغة)؛ دابا الـ advisors كيعرضوهم `unused_index` INFO، عادي حتى تجي طلبات |
 
 **مشاكل معروفة ما زالت مفتوحة**
-- **R20**: `commit_quote_request` ما كيتأكدش أن المنتج معروض للبيع (فقط `service_role` كيقدر يعيّط، و`storefront` كيحذف السطور اللي ما للبيعش، يعني ما كاين طريق للزائر). **الإصلاح مكتوب ومختبر** (P5.2، migration `20261027090000_quote_lines_for_sale` + 6 اختبارات pgTAP تطيح بلاه): المنتج غير المعروض أو المجهول كيرفضو `invalid_quote:product`. **ما طبقتوش على القاعدة الحية** حتى يتدمج الفرع وتوافق على الـ SQL Editor.
+- **R20**: `commit_quote_request` ما كيتأكدش أن المنتج معروض للبيع (فقط `service_role` كيقدر يعيّط، و`storefront` كيحذف السطور اللي ما للبيعش، يعني ما كاين طريق للزائر). **الإصلاح مكتوب ومختبر** (P5.2، migration `20261027090000_quote_lines_for_sale` + 6 اختبارات pgTAP تطيح بلاه): المنتج غير المعروض أو المجهول كيرفضو `invalid_quote:product`. **تطبّق على الحية 2026-10-27** (transaction وحدة محروسة: الجسم الحي كان هو المتوقع، والصلاحيات بقات `service_role` فقط). الفحص الجديد ما تجرّبش حيّاً (البيع مسدود)، تجرّب بـ pgTAP.
 - الإدارة (**P5.6 مكتوب ومختبر**): الطلبات وطلبات B2B كتتقرا صفحة بصفحة (1000 فكل مرة، حتى 10 000؛ بعدها كيبان تنبيه صريح بدل رقم ناقص)، و«Refresh» كيعاود يقرا والصفحة باقية (الفلتر والنص المكتوب ما كيضيعوش). **باقي**: الحقول المعطّلة كيتخطاها Tab (سلوك المتصفح العادي؛ الأزرار المشغولة أصلاً `aria-disabled`)؛ إصلاحو كيمس ~25 عنصر وقرارو ليك.
 - لا نسخ احتياطي مجرّب: الخطة المجانية مافيهاش PITR، وما اتحققناش واش كتحتفظ بنسخ. **خاصو تمرين استرجاع واحد على نسخة** قبل الإطلاق.
 - لا مراقبة ولا تنبيه (أخطاء Edge Function، cron ديال الانتهاء).

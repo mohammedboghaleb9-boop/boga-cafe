@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 /** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). */
-const PENDING: string[] = ['20261027090000_quote_lines_for_sale', '20261027100000_policies_fk_indexes'];
+const PENDING: string[] = [];
 
 describe('SQL Editor blocks', () => {
   it('catalog_trim: the block holds the migration unchanged, between begin and commit', () => {
@@ -255,7 +255,7 @@ describe('migration versions', () => {
     '20261007080308_order_idempotency_commit', '20261008205033_admin_aal2', '20261009165916_quote_follow_up',
     '20261009200000_catalog_writes', '20261012183912_settings_writes', '20261013090048_config_trim', '20261013100000_catalog_trim',
     '20261016120000_catalog_ready', '20261019200936_expiry_lock_order', '20261020090000_city_shown_needs_fee',
-    '20261021120000_catalog_showcase',
+    '20261021120000_catalog_showcase', '20261027090000_quote_lines_for_sale', '20261027100000_policies_fk_indexes',
   ];
 
   it('the applied ones are named as live recorded them (the expiry fix: 20261019200936, the apply tool\'s version)', () => {
@@ -284,6 +284,8 @@ describe('migration versions', () => {
     '20261019200936_expiry_lock_order': '443b936370fc0352',
     '20261020090000_city_shown_needs_fee': 'afd8c508c4bd8886',
     '20261021120000_catalog_showcase': '089ac8c1a3a84bc5',
+    '20261027090000_quote_lines_for_sale': 'bd955b2ebb19b77a',
+    '20261027100000_policies_fk_indexes': '34c0638c8dd044f9',
     };
     expect(Object.keys(APPLIED)).toEqual(LIVE);
     for (const [name, sha] of Object.entries(APPLIED)) {
