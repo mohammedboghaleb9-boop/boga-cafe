@@ -7,7 +7,7 @@ set client_min_messages = warning;
 create extension if not exists pgtap;
 
 begin;
-select plan(33);
+select plan(41);
 
 insert into auth.users values ('00000000-0000-0000-0000-000000000001'), ('00000000-0000-0000-0000-000000000003');
 insert into public.admin_users values
@@ -133,13 +133,33 @@ select is((select string_agg(id, ',' order by id) from public.products) || ' ' |
 reset role;
 -- a B2B request reaches the database only through the storefront function (service_role), which drops a line that is
 -- not for sale (src/core/requests.ts; src/server/__tests__/storefront.test.ts): visitors cannot call it themselves. The
--- database function does not check the lines' sale switch itself once the sales are open (PROJECT_NOTES, known issues).
+-- database function refuses a product that is not for sale itself once the sales are open (migration
+-- 20261027090000_quote_lines_for_sale, R20): checked below.
 select ok(not has_function_privilege('anon', 'public.commit_quote_request(jsonb, text, text, text)', 'execute')
       and not has_function_privilege('authenticated', 'public.commit_quote_request(jsonb, text, text, text)', 'execute')
       and not has_function_privilege('anon', 'public.commit_order(jsonb, text, text, text, uuid)', 'execute'),
   'visitors and signed-in users cannot write an order or a B2B request themselves');
 select is((select count(*)::int from public.orders) + (select count(*)::int from public.notification_outbox), 0,
   'nothing was written: no order, no message');
+-- ── R20: a B2B request names only products for sale (the sales are open here) ──
+create function pg_temp.quote_of(p_lines jsonb) returns jsonb language sql as $$
+  select pg_temp.quote() || jsonb_build_object('lines', p_lines)
+$$;
+set local role service_role;
+select throws_ok($$select * from public.commit_quote_request(pg_temp.quote(), '', '', '')$$, 'P0001', 'invalid_quote:product', 'a listed-only product is refused');
+select throws_ok($$select * from public.commit_quote_request(pg_temp.quote_of('[{"kind": "product", "productId": "hidden", "size": 1000, "qty": 12}]'), '', '', '')$$,
+  'P0001', 'invalid_quote:product', 'a hidden product is refused');
+select throws_ok($$select * from public.commit_quote_request(pg_temp.quote_of('[{"kind": "product", "productId": "ghost", "size": 1000, "qty": 12}]'), '', '', '')$$,
+  'P0001', 'invalid_quote:product', 'an unknown product is refused');
+select throws_ok($$select * from public.commit_quote_request(pg_temp.quote_of('[{"kind": "product", "productId": "onsale", "size": 1000, "qty": 12}, {"kind": "product", "productId": "hidden", "size": 1000, "qty": 1}]'), '', '', '')$$,
+  'P0001', 'invalid_quote:product', 'one line not for sale refuses the whole request');
+select throws_ok($$select * from public.commit_quote_request(pg_temp.quote_of('[{"productId": "hidden", "size": 1000, "qty": 5}]'), '', '', '')$$,
+  'P0001', 'invalid_quote:product', 'a line with no kind is checked as a product line');
+select throws_ok($$select * from public.commit_quote_request(pg_temp.quote_of('["onsale"]'), '', '', '')$$, 'P0001', 'invalid_quote:lines', 'a line that is not an object is refused');
+select lives_ok($$select * from public.commit_quote_request(pg_temp.quote_of('[{"kind": "product", "productId": "onsale", "size": 1000, "qty": 12}]'), '', '', '')$$,
+  'a product for sale is accepted');
+reset role;
+select is((select count(*)::int from public.quote_requests), 1, 'only the request for a product for sale was written');
 update public.site_config set settings = settings - 'salesOpen';
 
 -- ── nothing listed: an empty answer, not an error ──
