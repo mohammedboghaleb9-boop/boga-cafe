@@ -58,6 +58,10 @@ interface Fake {
   gate?: Promise<void>;
   /** how many ranged reads (pages) were asked */
   pages?: number;
+  /** the table's page with this index (0 = the first) is refused */
+  failingPage?: number;
+  /** a row was added between two page reads: each page starts one row early, as offset paging does then */
+  overlap?: boolean;
 }
 
 /** Enough of supabase-js for the reads: `asked` lists every table read and function called. */
@@ -78,8 +82,9 @@ function fakeClient(f: Fake) {
       range: async (first: number, last: number) => {
         f.pages = (f.pages ?? 0) + 1;
         await f.gate;
-        if (f.failing?.has(table)) return { data: null, error: { code: '42501', message: `permission denied for table ${table}` } };
-        return { data: tables[table].slice(first, last + 1), error: null };
+        if (f.failing?.has(table) || (f.failingPage !== undefined && table === 'orders' && first === f.failingPage * 1000))
+          return { data: null, error: { code: '42501', message: `permission denied for table ${table}` } };
+        return { data: tables[table].slice(first > 0 && f.overlap ? first - 1 : first, last + 1), error: null };
       },
       eq: () => q,
       maybeSingle: () => answer(table, true),
@@ -162,6 +167,22 @@ describe('admin data (live site)', () => {
       expect(data.db.get().ordersCut).toBe(false);
       expect(data.db.get().quotesCut).toBe(false);
       expect(f.pages).toBe(3 + 1); // 3 order pages (the last one short) + 1 request page
+    });
+
+    it('a row seen on two pages (an order arrived meanwhile) is kept once', async () => {
+      tables.orders = many(2500);
+      const { data } = opened({ overlap: true });
+      await vi.waitFor(() => expect(data.status.get()).toBe('ready'));
+      const ids = data.db.get().orders.map((o) => o.id);
+      expect(ids).toHaveLength(2500);
+      expect(new Set(ids).size).toBe(2500);
+    });
+
+    it('a failed later page is an error, never a list cut short without a word', async () => {
+      tables.orders = many(2500);
+      const { data } = opened({ failingPage: 1 });
+      await vi.waitFor(() => expect(data.status.get()).toBe('error'));
+      expect(data.db.get().orders).toHaveLength(0);
     });
 
     it('exactly 1000 orders: one full page, then an empty one proves there is no more', async () => {

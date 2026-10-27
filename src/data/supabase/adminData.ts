@@ -27,13 +27,23 @@ type Page<T> = PromiseLike<{ data: T[] | null; error: unknown }>;
 
 /**
  * A list read page by page. `cut` is true when more rows exist than the pages read, probed with one more row, so
- * that exactly MAX_PAGES full pages is not called a cut.
+ * that exactly MAX_PAGES full pages is not called a cut. A page shorter than PAGE_ROWS ends the list (the server's
+ * max rows is 1000, as before). The pages are read one after another with offsets: a row added meanwhile pushes the
+ * last row of a page onto the next one, so a row seen twice is kept once (by id).
  */
-async function readPages<T>(page: (from: number, to: number) => Page<T>): Promise<{ list: T[]; cut: boolean }> {
+async function readPages<T extends { id: string }>(page: (from: number, to: number) => Page<T>): Promise<{ list: T[]; cut: boolean }> {
+  const seen = new Set<string>();
   const list: T[] = [];
+  const add = (got: T[]) => {
+    for (const r of got) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      list.push(r);
+    }
+  };
   for (let n = 0; n < MAX_PAGES; n++) {
     const got = rows(await page(n * PAGE_ROWS, (n + 1) * PAGE_ROWS - 1));
-    list.push(...got);
+    add(got);
     if (got.length < PAGE_ROWS) return { list, cut: false };
   }
   return { list, cut: rows(await page(MAX_PAGES * PAGE_ROWS, MAX_PAGES * PAGE_ROWS)).length > 0 };
