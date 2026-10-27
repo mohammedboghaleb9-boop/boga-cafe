@@ -55,11 +55,8 @@
 
 ## 2. الفروع والمستودع
 
-- **21 فرع بعيد، كلهم متدمجين** فـ `main` (كل واحد فـ PR أو merge commit). ما كان حتى فرع فيه خدمة ما تدمجاتش.
-- **الفروع المتدمجة اللي خاصها تتمسح (20)**: `ci/p5-job-timeouts`، `docs/p5-s11-history-repaired`، `docs/p5-s13-live`، `docs/p5-shop-preview-live`، `docs/p5-showcase-live`، `docs/p5-status-2026-10-14`، `docs/p5-store-style-live`، `feat/p5-catalog-showcase`، `feat/p5-coming-soon`، `feat/p5-custom-blend-band`، `feat/p5-home-premium`، `feat/p5-s11-cleanup-turnstile`، `feat/p5-s12-catalog-ready`، `feat/p5-s13-demo-removal`، `feat/p5-shop-preview`، `feat/p5-showcase-on`، `feat/p5-store-style`، `fix/p5-lock-stress-floor`، `fix/p5-meta-description`، `fix/p5-s11-migration-order`.
-- **كيفاش**: GitHub → Branches → فلتر «Merged» → مسح، أو Settings → General → فعّل **«Automatically delete head branches»** (باش الفروع المستقبلية تتمسح وحدها بعد الدمج). التاريخ كامل فـ `main` (merge commits)، والمسح ما كيضيّع والو.
-- **الفرع المفتوح الوحيد**: `claude/focused-brown-gitp8i` (هاد الخدمة، كيتدمج غير بموافقتك). محلياً: هو و`main` فقط (مسحت النسخة المحلية ديال `feat/p5-custom-blend-band`).
-- **ما تأكدتش منو**: حماية `main` (branch protection) على GitHub. توصية: الدمج خاصو CI أخضر (web + database + e2e).
+- **2026-10-27: الـ remote فيه غير `main`.** المالك مسح كل الفروع المدموجة من GitHub (كلها كانت 0 commit غير مدموج، تأكدت قبل). خدمة هاد الجلسة كاملة مدموجة: #34 (تدقيق) و#35 (أمان) و#36 و#40 (وثائق) و#37 (R20) و#38 (فهارس وpolicies) و#39 (الإدارة) و#41 (كود المرسل).
+- **ما تأكدتش منو**: حماية `main` (branch protection) على GitHub. توصية: الدمج خاصو CI أخضر (web + database + e2e)، وتفعيل **«Automatically delete head branches»** (Settings → General) باش الفروع المستقبلية تتمسح وحدها.
 
 ## 3. النتائج بالتفصيل
 
