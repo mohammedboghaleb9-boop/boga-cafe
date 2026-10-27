@@ -2,7 +2,7 @@
 
 Live project: `boga-cafe` (eu-west-3, PostgreSQL 17). State on 2026-10-24: 19 migrations, all applied; the sales are closed in the database (`salesOpen` unset).
 
-- `migrations/`: the schema, one file per change, oldest first (`20260927000000_init.sql` … `20261021120000_catalog_showcase.sql`). Never edit a file the live database has already applied: add a new one.
+- `migrations/`: the schema, one file per change, oldest first (`20260927000000_init.sql` … `20261021120000_catalog_showcase.sql`, then `20261027090000_quote_lines_for_sale.sql` and `20261027100000_policies_fk_indexes.sql`, neither applied on live yet: the second holds DROP POLICY, so it goes through the SQL Editor block in `manual/`). Never edit a file the live database has already applied: add a new one.
 - `manual/`: SQL Editor blocks (`*.editor.sql`), their rollbacks (`*.rollback.sql`) and history repairs, for changes the apply tool cannot run (it hangs on `DELETE` and `DROP`). Each runs only with the owner's approval.
 - `tests/`: SQL tests on a plain PostgreSQL 16 with pgTAP 1.3.2 (smoke, per-role permissions, catalog and showcase rules, parity with the site's `src/core`, stock races, lock stress):
 
