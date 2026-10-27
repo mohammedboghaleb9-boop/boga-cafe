@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-/** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). None now. */
-const PENDING: string[] = [];
+/** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). */
+const PENDING: string[] = ['20261027090000_quote_lines_for_sale'];
 
 describe('SQL Editor blocks', () => {
   it('catalog_trim: the block holds the migration unchanged, between begin and commit', () => {

@@ -18,7 +18,7 @@ Stock in kg per origin. Arabic (RTL), French, English. Admin roles owner / manag
 ## What is next
 1. Owner reviews `docs/12-audit-and-launch-plan.md`; decides D-1 ("Torréfaction" vs partner roaster) and the Darija glossary (D-2); merges the audit branch.
 2. P6 (performance, technical SEO, security headers) before more section work; then the sections (`docs/12` section 6).
-3. Before the sales open (P5): outbox sender (on hold, Abderrahim's Gmail access), fix R20, real tariff + "3 kg included" text, prices, stock, payment details. Then P7 legal, P9 QA, P10 launch (open the sales quietly first, indexing later).
+3. Before the sales open (P5): outbox sender (on hold, Abderrahim's Gmail access), R20 (done on its branch, not applied), real tariff + "3 kg included" text, prices, stock, payment details. Then P7 legal, P9 QA, P10 launch (open the sales quietly first, indexing later).
 
 ## Folder structure
 - `src/core/` pure business rules (pricing, blend, cart, order, orderFlow, stock, shipping, money, validation, config, requests). No React.
@@ -61,7 +61,7 @@ Production shop build locally: `WORKERS_CI=1 WORKERS_CI_BRANCH=main npm run buil
 - **Lost TOTP phone**: (1) if the phone or password may be compromised, change that admin's password first (ends their sessions); (2) remove the MFA factor (Dashboard → Authentication → Users; the button name is unverified, the documented way is `auth.admin.mfa.deleteFactor` with the secret key from a trusted machine); (3) the admin signs in and sets up the app again (scan on two devices). Rollback of the aal2 migration = the old `is_admin()` body in `20260927000000_init.sql`.
 
 ## Known issues
-- **R20**: with the sales open, `commit_quote_request` accepts lines of a product not for sale (pgTAP `showcase.sql`). Only service_role calls it and `storefront` drops such lines; fix in the database before opening the sales.
+- **R20** (P5.2): `commit_quote_request` accepted lines of a product not for sale once the sales were open. Fixed in migration `20261027090000_quote_lines_for_sale` (refuses `invalid_quote:product`, 6 pgTAP tests, rollback in `supabase/manual/`); on the branch `claude/p5-2-r20-quote-sellable` only: not merged, not applied on live.
 - No message is sent: the outbox queues them, the sender is not built (phase 4). `api/notify.ts` is not deployed (Cloudflare, not Vercel).
 - Admin: counts past 1000 orders are silently short; Refresh re-mounts the page; disabled controls are skipped by Tab.
 - Database leftovers: `commit_order_before_3b` (closed to all roles), `pg_net` in `public` (owner can toggle it off/on in Dashboard → Extensions), 3 unindexed foreign keys, 25 duplicate permissive policies (performance advisors).
