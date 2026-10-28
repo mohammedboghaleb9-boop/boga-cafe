@@ -94,7 +94,7 @@ function comingSoonEntry() {
       handler(html: string) {
         for (const [from, to] of swaps) {
           if (!html.includes(from)) throw new Error(`coming soon: index.html no longer holds ${from}`);
-          html = html.replace(from, to);
+          html = html.replaceAll(from, to);
         }
         return html;
       },

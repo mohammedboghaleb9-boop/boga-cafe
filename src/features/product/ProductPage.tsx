@@ -19,6 +19,7 @@ import { Icon } from '@/shared/ui/Icon';
 import { Availability, QtyStepper, SpeciesBar } from '@/shared/ui/bits';
 import './product.css';
 import { RoastScale } from '@/shared/ui/Roast';
+import { productCanonical, useCanonical } from '@/shared/layout/canonical';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 /** Keyed by slug: moving to another product starts from its own size and quantity. */
@@ -43,6 +44,7 @@ function ProductDetails({ slug }: { slug?: string }) {
   // for sale: a size with a price; on display (sales closed): the product alone
   const showable = product !== undefined && (browseOnly || size !== undefined);
   usePageTitle(showable ? l(product.name) : t.common.notFound);
+  useCanonical(showable ? productCanonical(product.slug) : null);
 
   if (!showable) return <NotFound />;
 

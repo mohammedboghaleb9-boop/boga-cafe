@@ -8,6 +8,7 @@ import { Icon } from '../ui/Icon';
 import { Footer } from './Footer';
 import { Header } from './Header';
 import { SkipLink } from './SkipLink';
+import { canonicalFor, useCanonical } from './canonical';
 import { WhatsAppButton } from './WhatsAppButton';
 import { sectionId } from './sectionId';
 import './layout.css';
@@ -21,6 +22,8 @@ export function StoreLayout() {
   const { settings } = useDb();
   const { status, retry } = useDataStatus();
   const { t } = useI18n();
+  // a product page sets its own (only it knows the product exists)
+  useCanonical(pathname.startsWith('/product/') ? undefined : canonicalFor(pathname));
 
   // new page: back to the top, or to the section named in the link (/page#section)
   useEffect(() => {
