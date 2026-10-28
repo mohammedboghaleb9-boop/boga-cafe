@@ -1,4 +1,3 @@
-import { useId } from 'react';
 import { Link } from 'react-router';
 import { lowestPrice, offeredSizes } from '@/core/pricing';
 import { speciesSplit } from '@/core/recipe';
@@ -36,10 +35,9 @@ export function ProductCard({ product, headingLevel = 3 }: { product: Product; h
   const { arabica, robusta } = speciesSplit(product.recipe, originIndex);
   const sizes = offeredSizes(product);
   const from = lowestPrice(product);
-  const titleId = useId();
 
   return (
-    <Link to={`/product/${product.slug}`} className="pcard" aria-labelledby={titleId}>
+    <Link to={`/product/${product.slug}`} className="pcard">
       <div className="pcard-media">
         <ProductVisual
           sticker={productSticker(product.name.fr, product.recipe, product.roastLevel, cardSize(sizes), originIndex)}
@@ -49,7 +47,7 @@ export function ProductCard({ product, headingLevel = 3 }: { product: Product; h
       </div>
       <div className="pcard-body">
         <span className="pcard-kind">{t.kind[product.kind]}</span>
-        <Title id={titleId} className="pcard-title">
+        <Title className="pcard-title">
           {l(product.name)}
         </Title>
         <span className="pcard-tag">{l(product.tagline)}</span>

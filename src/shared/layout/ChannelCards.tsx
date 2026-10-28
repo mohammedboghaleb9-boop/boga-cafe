@@ -41,7 +41,7 @@ export function ChannelCards({ variant = 'full', only }: { variant?: 'full' | 'c
           >
             <BrandIcon brand={c.brand} size={40} />
             <span className="channel-pill-text">
-              <strong>{brandName[c.brand]}</strong>
+              <strong>{brandName[c.brand]}</strong>{' '}
               <span className="handle" dir="ltr">
                 {c.handle}
               </span>

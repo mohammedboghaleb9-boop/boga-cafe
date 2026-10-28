@@ -2,10 +2,12 @@ import { expect, test } from '@playwright/test';
 import { addSignatureBag, fillCheckout, open, signIn, watchErrors } from './helpers';
 
 test.describe('customer', () => {
-  test('each product card is one link named after its product, with its price while the sales are open', async ({ page }) => {
+  test('each product card is one link whose name contains its product, with its price while the sales are open', async ({ page }) => {
     await open(page, '/shop');
-    const card = page.getByRole('link', { name: 'BOGA Signature', exact: true });
+    // the name is the card's whole text (WCAG 2.5.3), so it is matched by the product name, not equal to it
+    const card = page.getByRole('link', { name: /BOGA Signature/ });
     await expect(card).toHaveCount(1);
+    await expect(card).toHaveAttribute('href', '/product/boga-signature');
     await expect(card).toContainText(/\d\s?DH/);
     await card.click();
     await expect(page).toHaveURL(/\/product\/boga-signature$/);

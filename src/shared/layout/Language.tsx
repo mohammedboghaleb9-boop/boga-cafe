@@ -11,7 +11,7 @@ import { Icon } from '../ui/Icon';
 const names: Record<Locale, string> = { ar: ar.meta.label, fr: fr.meta.label, en: en.meta.label };
 const flags: Record<Locale, string> = { ar: 'MA', fr: 'FR', en: 'GB' };
 
-/** The three languages side by side: flag and code; screen readers hear the language's own name, then the code. */
+/** The three languages side by side: flag and code; the accessible name starts with the visible code (WCAG 2.5.3), then the language's own name. */
 export function LanguageSwitcher() {
   const { locale, setLocale, t } = useI18n();
   return (
@@ -21,7 +21,7 @@ export function LanguageSwitcher() {
           key={l}
           type="button"
           aria-pressed={l === locale}
-          aria-label={`${names[l]} (${l.toUpperCase()})`}
+          aria-label={`${l.toUpperCase()} ${names[l]}`}
           onClick={() => setLocale(l)}
           lang={l}
         >
@@ -73,7 +73,7 @@ export function LanguageMenu() {
         className="lang-chip"
         aria-expanded={open}
         aria-controls="lang-list"
-        aria-label={`${t.nav.language}: ${names[locale]} (${locale.toUpperCase()})`}
+        aria-label={`${locale.toUpperCase()} ${t.nav.language}: ${names[locale]}`}
         onClick={() => setOpen((v) => !v)}
       >
         <Flag code={flags[locale]} size={21} title="" />
