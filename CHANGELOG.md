@@ -4,6 +4,9 @@ One dated line per meaningful change, newest first. Built from `git log`. Hashes
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
+## 2026-10-28
+- 2026-10-28 [claude/ecstatic-hopper-uhoizf] P6.1 link previews and canonical (not merged, not deployed): `index.html` gets `og:image` (absolute `https://bogacafe.ma/og-image.png`, 1200x630) with size and alt, `og:locale`, `twitter:card` + title, description, image; the "coming soon" build swaps the same texts (`replaceAll`, the strings now appear twice). No canonical in the HTML (every route is the same file): `src/shared/layout/canonical.ts` sets one per page (home, shop, single-origin, custom-blend, b2b, contact from `StoreLayout`; a product page from `ProductPage` only once the product is shown; none for cart, checkout, order, admin, unknown product). Tests: 5 unit, build-gate (both builds), 1 e2e. `noindex` untouched.
+
 ## 2026-10-27
 - 2026-10-27 [main cf9e090] Hand-over to P6: PROJECT_NOTES state and next steps rewritten (P6 order, what must be done before the sales open), the owner deleted every merged remote branch (the remote holds only `main`), local branches and the P5.6 worktree removed.
 - 2026-10-27 [owner decision] The automatic outbox sender is not needed now: the customer's WhatsApp and Gmail buttons are enough today (tried by the owner), every order is in the Admin Panel; the sender is switched on before the real sales open. Recorded in PROJECT_NOTES, docs/09, docs/12 (D-11), PROJECT_STATUS (rows 30 and 49 stay PARTIAL / PLANNED, said so). PR #41 (code only, inactive) merged.

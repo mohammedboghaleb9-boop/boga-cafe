@@ -2,6 +2,20 @@ import { expect, test } from '@playwright/test';
 import { open, signIn, watchErrors } from './helpers';
 
 test.describe('home page', () => {
+  test('each public page names its own canonical address; the cart and an unknown product have none', async ({ page }) => {
+    const canonical = page.locator('link[rel="canonical"]');
+    await open(page, '/');
+    await expect(canonical).toHaveAttribute('href', 'https://bogacafe.ma/');
+    await open(page, '/shop');
+    await expect(canonical).toHaveAttribute('href', 'https://bogacafe.ma/shop');
+    await open(page, '/product/boga-signature');
+    await expect(canonical).toHaveAttribute('href', 'https://bogacafe.ma/product/boga-signature');
+    await open(page, '/cart');
+    await expect(canonical).toHaveCount(0);
+    await open(page, '/product/does-not-exist');
+    await expect(canonical).toHaveCount(0);
+  });
+
   test('the video is silent, inline and looping over its still; the ribbon says its facts once', async ({ page }) => {
     const errors = watchErrors(page);
     await open(page, '/');
