@@ -14,6 +14,13 @@ const viewports = [
   { name: 'phone', width: 390, height: 844 },
 ];
 
+/** The page really is in the language under test: the browser locale only counts if the site follows it. */
+async function expectSiteLanguage(page: Page, locale: string) {
+  const lang = locale.slice(0, 2);
+  await expect(page.locator('html')).toHaveAttribute('lang', lang);
+  await expect(page.locator('html')).toHaveAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+}
+
 async function scan(page: Page, where: string) {
   const r = await new AxeBuilder({ page }).withRules([RULE]).analyze();
   const found = r.violations.flatMap((v) => v.nodes.map((n) => `${where}: ${v.id} — ${n.target.join(' ')}`));
@@ -29,6 +36,7 @@ for (const locale of ['fr-FR', 'ar-MA', 'en-US']) {
         await page.setViewportSize({ width: vp.width, height: vp.height });
         for (const path of pages) {
           await open(page, path);
+          await expectSiteLanguage(page, locale);
           await scan(page, `${path} ${vp.name}`);
         }
       });
@@ -36,6 +44,7 @@ for (const locale of ['fr-FR', 'ar-MA', 'en-US']) {
 
     test('a product card is named by its text: title, tagline, notes and button', async ({ page }) => {
       await open(page, '/shop');
+      await expectSiteLanguage(page, locale);
       const card = page.locator('a.pcard').first();
       const parts = [
         await card.getByRole('heading').textContent(),
@@ -50,6 +59,7 @@ for (const locale of ['fr-FR', 'ar-MA', 'en-US']) {
 
     test('the social buttons keep a space between the platform and the account', async ({ page }) => {
       await open(page, '/');
+      await expectSiteLanguage(page, locale);
       const pills = page.locator('.channel-pill');
       expect(await pills.count()).toBeGreaterThan(0);
       for (const pill of await pills.all()) {
@@ -65,6 +75,7 @@ for (const locale of ['fr-FR', 'ar-MA', 'en-US']) {
   test('the language buttons are named from the code shown on them', async ({ page }) => {
     await page.setViewportSize({ width: 1350, height: 900 });
     await open(page, '/');
+    await expectSiteLanguage(page, 'fr-FR');
     const buttons = page.locator('.header-tools .lang button');
     await expect(buttons).toHaveCount(3);
     for (const [i, code] of ['AR', 'FR', 'EN'].entries()) {
