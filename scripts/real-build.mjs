@@ -60,7 +60,7 @@ const PRICES = /\b250:\d+,500:\d+,(?:1e3|1000):\d+/;
 // every file of the build is one of these (the page, brand images, fonts): a product photo, a data file or a
 // source map is refused, and every text file is read
 const ALLOWED = [
-  /^(index\.html|favicon\.svg|apple-touch-icon\.png|og-image\.png)$/,
+  /^(index\.html|favicon\.svg|apple-touch-icon\.png|og-image\.png|robots\.txt|sitemap\.xml)$/,
   /^assets\/index-[\w-]+\.(js|css)$/,
   /^assets\/label-[\w-]+\.webp$/,
   /^assets\/(cinzel|montserrat|noto-kufi-arabic|tajawal)-[\w-]+\.woff2$/,
