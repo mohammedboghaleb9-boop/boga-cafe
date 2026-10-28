@@ -5,6 +5,8 @@ merge into `main` when one exists). Trivial commits (initial commits, link fixes
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
 ## 2026-10-28
+- 2026-10-28 [claude/ecstatic-hopper-uhoizf] P6.2 `robots.txt` and `sitemap.xml` (not merged, not deployed): real files in `public/` (Cloudflare serves a real file before the SPA fallback; to be checked live after the deploy). `robots.txt` = `Allow: /` only (no `Disallow`: the site is `noindex`, crawlers must read it; no `Sitemap:` line until indexing opens). `sitemap.xml` lists home, shop, single-origin, custom-blend, b2b, contact; product pages left out (their slugs live in the database, not in the code). Both added to the allow-list of `scripts/real-build.mjs` (without it the coming-soon build stops: checked). New `tests/seo-files.test.ts` (sitemap addresses must equal `canonicalFor`), build-gate checks both files ship in both builds.
+- 2026-10-28 [main 9fbab48] P6.1 merged (PR #43, owner approval).
 - 2026-10-28 [claude/ecstatic-hopper-uhoizf] P6.1 link previews and canonical (not merged, not deployed): `index.html` gets `og:image` (absolute `https://bogacafe.ma/og-image.png`, 1200x630) with size and alt, `og:locale`, `twitter:card` + title, description, image; the "coming soon" build swaps the same texts (`replaceAll`, the strings now appear twice). No canonical in the HTML (every route is the same file): `src/shared/layout/canonical.ts` sets one per page (home, shop, single-origin, custom-blend, b2b, contact from `StoreLayout`; a product page from `ProductPage` only once the product is shown; none for cart, checkout, order, admin, unknown product). Tests: 5 unit, build-gate (both builds), 1 e2e. `noindex` untouched.
 
 ## 2026-10-27

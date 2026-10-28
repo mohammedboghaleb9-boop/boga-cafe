@@ -1,0 +1,4 @@
+# The site is not indexed yet (noindex on every page). Crawlers must be allowed to read that,
+# so nothing is disallowed here. The launch adds the Sitemap line (docs/12, P10.3).
+User-agent: *
+Allow: /

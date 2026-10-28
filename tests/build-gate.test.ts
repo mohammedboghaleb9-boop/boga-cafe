@@ -52,6 +52,11 @@ function expectLinkPreview(html: string) {
   expect(html).not.toContain('rel="canonical"');
 }
 
+/** robots.txt and sitemap.xml are real files in the build: the SPA fallback never answers for them. */
+function expectSeoFiles(files: string[]) {
+  expect(files).toEqual(expect.arrayContaining(['robots.txt', 'sitemap.xml']));
+}
+
 const LIVE = { VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test', VITE_TURNSTILE_SITE_KEY: '1x00000000000000000000AA' };
 // every mode whose committed .env.<mode> file builds the shop
 const SHOP_MODES = ['demo', 'e2e', 'e2e-supabase', 'workers-preview'];
@@ -68,6 +73,7 @@ describe('the production build of main: the live shop from the committed values,
       expect(r.live).toBe(true);
       expect(r.noindex).toBe(true);
       expectLinkPreview(r.html);
+      expectSeoFiles(r.files);
       expect(r.shop).toBe(false);
       expect(r.demo).toBe(false);
       expect(r.headers).toMatch(/^\/\*\n {2}X-Frame-Options: DENY\n/);
@@ -137,6 +143,7 @@ describe('the "coming soon" build and the production shop check the folder they 
     expect(r.status, r.log).toBe(0);
     expect(r.comingSoon).toBe(true);
     expectLinkPreview(r.html);
+    expectSeoFiles(r.files);
     // the fallback page never repeats the shop's wording in its previews
     expect(r.html).not.toMatch(/torréfié|Sélection & vente/);
   });
