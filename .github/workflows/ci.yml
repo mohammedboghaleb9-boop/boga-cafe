@@ -39,6 +39,20 @@ jobs:
       # its Admin Panel signs in with Supabase Auth: the prototype's public password never ships
       - run: "ls dist-supabase/assets/*.js > /dev/null && ! grep -l boga2026 dist-supabase/assets/*.js"
 
+  # known vulnerabilities in package-lock.json (production and development packages): a High or Critical advisory fails
+  # the run, and so does a failed audit (registry unreachable, no lockfile): npm exits non-zero, nothing is swallowed.
+  # It reads the lockfile only, so there is no install. A new advisory can fail a run on a commit that did not change
+  # the dependencies: that is the point of the check; it is fixed in package.json / the lockfile, never by skipping it.
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - run: npm audit --audit-level=high
+
   # the site in a browser (real settings, demo data): shop, checkout, admin roles, phone widths, axe;
   # and the live-site build's Turnstile forms against a Supabase and a widget the tests answer
   e2e:
