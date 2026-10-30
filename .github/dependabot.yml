@@ -1,0 +1,24 @@
+# Weekly npm updates (package.json and package-lock.json at the repository root).
+# Minor and patch updates arrive together in one pull request a week, so the list stays reviewable; a major update
+# is its own pull request. Security updates for known vulnerabilities are a GitHub setting (Dependabot alerts and
+# security updates), not this file. Nothing here merges anything: every update is a pull request that runs the CI.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # engines.node is 24.x: the Node type definitions stay on 24 until the runtime moves
+      - dependency-name: '@types/node'
+        update-types:
+          - version-update:semver-major
