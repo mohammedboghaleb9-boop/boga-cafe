@@ -6,7 +6,7 @@
  * the tables (src/server) and sells active rows only.
  */
 import type { Origin, Product } from '@/core/types';
-import type { Client } from './client';
+import type { ReadClient } from './client';
 import type { Json } from './database.types';
 import { byOriginOrder, loc } from './rows';
 
@@ -69,7 +69,7 @@ export function showcaseFromJson(j: Json): Showcase {
   return { products, origins };
 }
 
-export async function loadShowcase(db: Client): Promise<Showcase> {
+export async function loadShowcase(db: ReadClient): Promise<Showcase> {
   const { data, error } = await db.rpc('showcase_catalog');
   if (error) throw error;
   return showcaseFromJson(data);

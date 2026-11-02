@@ -5,6 +5,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, HashRouter, MemoryRouter, Route, Routes } from 'react-router';
 import { CartProvider } from '@/shared/cart/CartProvider';
+import { loadAdminClient } from '@/data/adminClient';
 import { I18nProvider } from '@/i18n';
 import { StoreLayout } from '@/shared/layout/StoreLayout';
 import { B2BPage } from '@/features/b2b/B2BPage';
@@ -43,7 +44,13 @@ const Router = pickRouter();
 // (`npm run dev` with no mode; the "coming soon" page, src/coming-soon) drops the admin code and the demo password entirely (scripts/check-real-build.mjs
 // checks it; CI checks the supabase build has no demo password).
 const withAdmin = import.meta.env.VITE_DATA_MODE === 'demo' || import.meta.env.VITE_DATA_MODE === 'supabase';
-const AdminApp = withAdmin ? lazy(() => import('@/features/admin/AdminApp').then((m) => ({ default: m.AdminApp }))) : null;
+const AdminApp = withAdmin
+  ? lazy(async () => {
+      // the sign-in code (supabase-js) comes with the panel, never with the shop
+      const [{ AdminApp: panel }] = await Promise.all([import('@/features/admin/AdminApp'), loadAdminClient()]);
+      return { default: panel };
+    })
+  : null;
 
 export function App() {
   return (

@@ -16,7 +16,7 @@ import { templateContext } from '../context';
 import { GUARD_ERRORS, type Api, type GuardError, type PlaceOrderResult, type QuoteResult } from '../types';
 import { createAdminWrites } from './adminWrites';
 import { createConfigWrites } from './configWrites';
-import type { Client } from './client';
+import type { ReadClient } from './client';
 import { cachedOrder, rememberOrder } from './orderCache';
 import { orderKey, orderSent } from './orderKey';
 import { publicOrderFromRow } from './rows';
@@ -42,7 +42,7 @@ export function knownErrors<T extends string>(errors: string[], codes: readonly 
 const withStatus = (known: Order, fresh: Order): Order => ({ ...known, paymentStatus: fresh.paymentStatus, status: fresh.status });
 
 interface SupabaseApiDeps {
-  client: Client;
+  client: ReadClient;
   store: CatalogStore;
   storefront: StorefrontTarget;
   /** The Admin Panel's writes (./adminWrites.ts): the admin's own client and data. */

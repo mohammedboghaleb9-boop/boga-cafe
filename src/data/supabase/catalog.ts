@@ -4,7 +4,7 @@
  * Function (secret key, sees everything).
  */
 import type { Origin, PaymentMethodConfig, Product, ShippingRate } from '@/core/types';
-import { must, rows, type Client } from './client';
+import { must, rows, type ReadClient } from './client';
 import type { Json } from './database.types';
 import { byOriginOrder, byPaymentOrder, originFromRow, paymentMethodFromRow, productFromRow, shippingRateFromRow } from './rows';
 
@@ -18,7 +18,7 @@ export interface CatalogData {
   content: Json | undefined;
 }
 
-export async function loadCatalog(db: Client): Promise<CatalogData> {
+export async function loadCatalog(db: ReadClient): Promise<CatalogData> {
   const [origins, products, rates, methods, config] = await Promise.all([
     db.from('origins').select('*'),
     db.from('products').select('*, product_recipes(origin_id, percent)').order('sort_order'),
