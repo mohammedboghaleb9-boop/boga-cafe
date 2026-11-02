@@ -3,7 +3,7 @@
  * (src/data/backend.ts). The URL and the publishable key are public by design;
  * vite.config.ts refuses the build without them, or with any other key.
  */
-import { createClient } from '@supabase/supabase-js';
+import type { createClient } from '@supabase/supabase-js';
 import type { Backend } from '../types';
 import { createAdminAuth } from './adminAuth';
 import { createAdminData } from './adminData';
@@ -11,6 +11,7 @@ import type { Client } from './client';
 import { createSupabaseApi } from './api';
 import type { Database } from './database.types';
 import { createCatalogStore } from './store';
+import { createVisitorClient } from './visitorClient';
 
 /** A stalled connection ends in the error screen (with "try again") instead of waiting forever. */
 const READ_TIMEOUT_MS = 15_000;
@@ -26,22 +27,32 @@ function forgetAdminSession() {
   }
 }
 
+/**
+ * supabase-js (sign-in, sessions) is loaded only for the Admin Panel (../adminClient.ts hands it over before the
+ * panel opens): a visitor's page does not carry it.
+ */
+let createAdminClient: typeof createClient | undefined;
+export function provideAdminClient(create: typeof createClient) {
+  createAdminClient = create;
+}
+function adminFactory(): typeof createClient {
+  if (!createAdminClient) throw new Error('The Admin Panel opened before its sign-in code was loaded (src/data/adminClient.ts).');
+  return createAdminClient;
+}
+
 export function createSupabaseBackend(): Backend {
   const url = import.meta.env.VITE_SUPABASE_URL ?? '';
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
   if (!url || !key) throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are required with VITE_DATA_MODE=supabase.');
   // visitors need no session (admin sign-in comes with slice 5)
-  const client = createClient<Database>(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch: fetchWithTimeout },
-  });
+  const client = createVisitorClient(url, key, fetchWithTimeout);
   const store = createCatalogStore(client);
   void store.load();
   // the admin's session lives in its own client: the shop keeps reading as a visitor
   // (an admin's session would show it the inactive products too)
   let adminClient: Client | undefined;
   const adminDb = () =>
-    (adminClient ??= createClient<Database>(url, key, {
+    (adminClient ??= adminFactory()<Database>(url, key, {
       auth: { storageKey: ADMIN_SESSION_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
       global: { fetch: fetchWithTimeout },
     }));

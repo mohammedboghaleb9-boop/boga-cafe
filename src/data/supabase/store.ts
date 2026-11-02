@@ -11,7 +11,7 @@ import { EMPTY_CONTENT, LIVE_DEFAULT_SETTINGS } from '../defaults';
 import { STATE_VERSION, type DbState } from '../state';
 import type { DataStatus, ReadStore } from '../types';
 import { loadCatalog } from './catalog';
-import type { Client } from './client';
+import type { ReadClient } from './client';
 import { contentFromRow, settingsFromRows } from './rows';
 import { loadShowcase, SHOWCASE_READ, withShowcase } from './showcase';
 
@@ -46,7 +46,7 @@ export interface CatalogStore {
 }
 
 /** `showcase`: read the catalog listed for display while the sales are closed (VITE_SHOWCASE, ./showcase.ts). */
-export function createCatalogStore(client: Client, { showcase = SHOWCASE_READ }: { showcase?: boolean } = {}): CatalogStore {
+export function createCatalogStore(client: ReadClient, { showcase = SHOWCASE_READ }: { showcase?: boolean } = {}): CatalogStore {
   let state = empty();
   let status: DataStatus = 'loading';
   let running: Promise<void> | null = null;
