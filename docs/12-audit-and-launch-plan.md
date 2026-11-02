@@ -129,7 +129,7 @@
 - **المهمة**: HSTS بـ `max-age` صغير أولاً ثم كبير، وCSP فوضع `Report-Only` أولاً (خاصها Supabase، Cloudflare Turnstile، والبيكون ديال Cloudflare Insights).
 - **تحيين 2026-11-02 (P6.9، قراءة فقط، بلا حتى تبديل):** نفس النتيجة على 9 مسارات ديال `https://bogacafe.ma` (`/`، `/shop`، صفحة منتج، `/admin`، مسار مجهول، `robots.txt`، `sitemap.xml`، ملف من `/assets`، `og-image.png`): الرؤوس الخمسة فوق كاينين، وHSTS وPermissions-Policy غايبين، والـ CSP فيها غير `frame-ancestors 'none'`. **حدود هاد الملاحظة:** الفحص دار من بيئة العمل عبر proxy، وعلى `bogacafe.ma` (الـ apex) بـ HTTPS فقط؛ `www` والدومينات الفرعية الأخرى والوصول المباشر بلا proxy ما تفحصوش؛ و`http://bogacafe.ma/` رجع 200 بلا تحويل عبر الـ proxy، وهادشي ما كيثبتش واش «Always Use HTTPS» مشعل ولا لا فـ Cloudflare (خاص المالك يشوفو). هادي ملاحظة، ماشي نتيجة مؤكدة على كل الأسماء والطرق.
 - **تحيين 2026-11-02 (P6.9 المرحلة 1: Always Use HTTPS):**
-  - **تصحيح الملاحظة فوق:** طلب `http://` ما دازش عبر الـ proxy. البيئة ما فيهاش `http_proxy`، إذن curl تصل مباشرة بـ `104.21.40.150:80`. النتيجة (Claude، 02:48Z): 200 بلا تحويل، حتى `/admin` و`/checkout` وملفات JS.
+  - **تصحيح الملاحظة فوق:** طلب `http://` ما دازش عبر الـ proxy. البيئة ما فيهاش `http_proxy`، إذن curl تصل مباشرة بـ `104.21.40.150:80`. النتيجة (Claude): `/` على 02:48:46Z، و`/admin` و`/checkout` و`/robots.txt` وملف JS واحد على 02:49:38Z، كلهم 200 بلا تحويل.
   - **المالك شعل «Always Use HTTPS»** فـ Cloudflare نهار 2026-11-02. حسب لقطات المالك: Universal SSL وAdvanced certificates: Active؛ TLS 1.3: ON؛ Automatic HTTPS Rewrites: ON؛ Always Use HTTPS: ON؛ HSTS: OFF؛ Minimum TLS: 1.0؛ Redirect Rules: 0؛ Page Rules: 0؛ Bulk Redirect Lists: 0. الـ DNS: 6 سجلات، `@` و`www` سجلات Worker وproxied، وMX وTXT ديال البريد DNS only. ما تبدل حتى سجل DNS.
   - **تجارب المالك (Windows PowerShell، `curl.exe`، ماشي Claude):**
     ```powershell
@@ -146,19 +146,37 @@
     301 -> https://bogacafe.ma/checkout
     1 hop(s), final 200 https://bogacafe.ma/admin
     1 hop(s), final 200 https://www.bogacafe.ma/shop
-    HTTP/1.1 200 OK · content-type: text/html · content-security-policy: frame-ancestors 'none' · x-content-type-options: nosniff · x-frame-options: DENY · x-robots-tag: noindex (بلا strict-transport-security)
     ```
-  - **تحقق Claude المستقل (2026-11-02 12:28Z):** بـ HTTP مباشر بلا proxy، المسارات `/` و`/admin?check=1` و`/checkout` و`/robots.txt` وملف JS كلهم رجعو 301 لنفس المسار على `https://bogacafe.ma`، والـ query محفوظ. بـ `-L` على `/admin`: hop واحد، 200. بـ HTTPS عبر proxy: 200 ونفس الرؤوس الخمسة (حتى `Referrer-Policy`)، بلا HSTS. أما `www` فما تفحصش من هنا: الـ proxy كيرد 403، والـ DNS ديال البيئة مفلتر.
-  - **مفتوح: `www` → apex.** `http://www.bogacafe.ma/shop` كيوصل لـ `https://www.bogacafe.ma/shop` (200) وكيبقى فـ www.
-    - **الآلية [LIKELY]:** `www` سجل Worker (custom domain على نفس الـ Worker) كيخدم نفس الملفات. الـ Worker ما فيه كود (`wrangler.jsonc` بلا `main`)، وما كاينش `_redirects` فـ `public/`، والمالك كيشوف 0 Redirect Rules و0 Page Rules و0 Bulk Redirects. إذن ما كاين حتى تحويل www → apex.
-    - **HTTP → HTTPS ديال www:** جا من Always Use HTTPS على مستوى الـ zone [LIKELY].
-    - **ملاحظة قديمة:** «www → 301» ديال 2026-10-21 (فـ `PROJECT_NOTES` و`docs/04`) ما بقاتش صحيحة اليوم، وكيفاش كانت قبل ما معروفش.
-    - **الأثر:**
-      - نسخة ثانية كاملة ديال الموقع على www، بنفس الرؤوس وnoindex من نفس `_headers` [LIKELY، ما تفحصش من هنا]؛
-      - canonical كيشير لـ `https://bogacafe.ma` (`src/shared/layout/canonical.ts:4`)؛
-      - Turnstile كيقارن الـ hostname بالضبط مع `TURNSTILE_HOSTNAMES` (`src/server/guard.ts`)، إذن إلا ما كانش فيه `www.bogacafe.ma` غادي تترفض الفورمات على www نهار تفتح المبيعات [CONFIRMED فالكود؛ الإعداد UNKNOWN]؛
-      - جلسة الأدمن منفصلة بين apex وwww.
+    المخرجات ديال `curl.exe -sI https://bogacafe.ma/` (كما بعثها المالك):
+    ```text
+    HTTP/1.1 200 OK
+    content-type: text/html
+    content-security-policy: frame-ancestors 'none'
+    x-content-type-options: nosniff
+    x-frame-options: DENY
+    x-robots-tag: noindex
+    ```
+    ما فيهاش `strict-transport-security`.
+  - **تحقق Claude المستقل (2026-11-02 12:28:54Z):** بـ HTTP مباشر بلا proxy، المسارات `/` و`/admin?check=1` و`/checkout` و`/robots.txt` وملف JS واحد كلهم رجعو 301 لنفس المسار على `https://bogacafe.ma`، والـ query محفوظ. بـ `-L` على `/admin`: hop واحد، 200. الـ redirect بان بين 02:49:38Z و12:28:54Z؛ الوقت بالضبط ديال التفعيل ما تسجلش. بـ HTTPS (GET عبر proxy): 200 وخمسة رؤوس: CSP `frame-ancestors 'none'` و`Referrer-Policy` و`X-Content-Type-Options` و`X-Frame-Options` و`X-Robots-Tag`، بلا HSTS. أما `www` فما تفحصش من هنا: الـ proxy كيرد 403، والـ DNS ديال البيئة مفلتر.
+  - **فرق ما محسومش (Referrer-Policy):** المخرجات ديال المالك (`curl.exe -sI`، HEAD) فيها أربعة رؤوس أمان بلا `referrer-policy`، والفحص ديال Claude (GET عبر proxy) فيه `Referrer-Policy`. السبب ما معروفش (HEAD مقابل GET، الـ proxy، ولا شي حاجة أخرى).
+  - **مفتوح: `www` → apex.** فتجربة المالك (2026-11-02)، `http://www.bogacafe.ma/shop` وصل بـ hop واحد لـ `https://www.bogacafe.ma/shop` (200) وبقا فـ www. الكود ديال الـ hop ما تسجلش، ومسار واحد اللي تجرب.
+    - **ملاحظات تاريخية (محفوظة كما هي):** 2026-10-21 فـ `PROJECT_NOTES`: «www → 301»؛ 2026-10-27 فحص المالك (`PROJECT_NOTES`، سطر الفروع): `www.bogacafe.ma` كيحوّل للـ apex؛ و`docs/04` كان كيقول نفس الشي. هاد الملاحظات كتختالف مع تجربة 2026-11-02.
+    - **السبب ما محسومش:** ما كنقولوش أن شي إعداد تبدل حتى يتقرا Cloudflare Audit Log. هاد السجل ما كيتوصلش من هاد البيئة، وخاص المالك يقراه.
+    - **آلية ممكنة [LIKELY، ما تحققاتش]:** `www` سجل Worker (custom domain على نفس الـ Worker). `wrangler.jsonc` ديال المستودع ما فيه `main`، وما كاينش `_redirects` فـ `public/`، والمالك كيشوف 0 Redirect Rules و0 Page Rules و0 Bulk Redirects. الـ Worker المنشور والمحتوى اللي كيتخدم على www ما تفحصوش من هنا.
+    - **HTTP → HTTPS ديال www:** غالباً من Always Use HTTPS على مستوى الـ zone [LIKELY].
+    - **الأثر إلا بقا www بلا تحويل:**
+      - نسخة ثانية ديال الموقع على www، بنفس الرؤوس وnoindex من نفس `_headers` [LIKELY، ما تفحصش]؛
+      - canonical كيشير لـ `https://bogacafe.ma` (`src/shared/layout/canonical.ts:4`) [CONFIRMED فالكود]؛
+      - Turnstile كيقبل غير hostname مطابق، ولا wildcard من نوع `*-…` (`src/server/guard.ts`)، إذن إلا ما كانش `www.bogacafe.ma` فـ `TURNSTILE_HOSTNAMES` غادي تترفض الفورمات على www نهار تفتح المبيعات [CONFIRMED فالكود؛ الإعداد UNKNOWN]؛
+      - جلسة الأدمن غالباً منفصلة بين apex وwww، حيت التخزين ديال المتصفح كيتفرق حسب الـ origin [LIKELY، ما تجربش].
     - **الحل:** قرار المالك (Redirect Rule من www لـ apex، ولا نخليوها). ما تبدل والو.
+  - **اختبار CSP للقراءة فقط (Claude، 2026-11-02 02:52Z):** سياسة مسودة تزادت كـ `Content-Security-Policy-Report-Only` غير داخل المتصفح ديال Claude (Chromium headless، interception ديال الطلبات)، بلا حتى تبديل فالسيرفر. النتيجة: 55 تحميل صفحة (11 مسار عمومي × fr/ar/en على desktop + fr/ar على mobile)، 0 مخالفات.
+    - **الحدود:** Turnstile ما تحملش، حيت المبيعات مسدودة والسلة والـ checkout كيعرضو `OrdersClosed`. سكريبت الـ beacon ديال Cloudflare محجوب من الـ proxy، وتفحص غير الـ tag ديالو. صفحات الأدمن من بعد الدخول ما تجربوش. Chromium فقط.
+    - **ملاحظة مثبتة:** الصيغة `https://static.cloudflareinsights.com/beacon.min.js` (path بالضبط) عطات مخالفة على الـ tag الحقيقي (`/beacon.min.js/vce…`) فـ `/` و`/shop`، إذن خاص الـ host بلا path.
+    - **السياسة المسودة (ماشي مطبقة):**
+      ```
+      default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://ldzagzskfmnjbkizbayr.supabase.co; img-src 'self' data:; style-src 'self'; font-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'
+      ```
   - **ما تبدلش:** HSTS باقي OFF، وCSP وPermissions-Policy بلا تغيير، وMinimum TLS باقي 1.0 (رفعو لـ 1.2 قرار منفصل). P6.9 ماشي مكتمل.
 
 ### 3.3 الأداء (Lighthouse، 2026-10-24)
@@ -413,5 +431,6 @@ Estimated: 3–4 أيام خدمة.
 - ONSSA، وسم المنتج، CNDP، قانون 31-08 (يحتاجو جهات مختصة).
 - الأداء من شبكة مغربية حقيقية (Lighthouse هنا من بيئة عمل خلف proxy).
 - الصفحات الداخلية بصرياً (القسم 6).
+- `www` → apex (تحيين 2026-11-02): الكود ديال الـ hop فتجربة المالك، والمحتوى اللي كيتخدم على www، وسبب الاختلاف مع ملاحظات 2026-10-21 و2026-10-27 (Cloudflare Audit Log ما تقراش).
 - قارئ الشاشة (تحيين 2026-11-02: المالك جرب NVDA على Windows فـ 2026-10-30 على عدة صفحات؛ VoiceOver وTalkBack ما تجربوش).
 - كل ما كاين فـ Supabase Auth Dashboard (sign-ups off، redirect URLs، TOTP) وCloudflare (Build variables، Domains): ما كيتشافش من هنا؛ فحصهم المالك (القائمة فـ `PROJECT_NOTES`).
