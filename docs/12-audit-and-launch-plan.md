@@ -123,10 +123,11 @@
 - لا مراقبة ولا تنبيه (أخطاء Edge Function، cron ديال الانتهاء).
 - Turnstile: الـ widget الحقيقي ما تجرّب من بيئة العمل (Cloudflare محجوب)، والمفتاح فـ `.env.workers-preview` + `TURNSTILE_HOSTNAMES` فيه wildcard للمعاينات: كيتحيّد عند الإطلاق.
 
-**رؤوس الأمان فالموقع الحي** (`curl -I`):
+**رؤوس الأمان فالموقع الحي** (`curl -I` من بيئة العمل عبر proxy):
 - ✅ `X-Frame-Options: DENY`، `Content-Security-Policy: frame-ancestors 'none'`، `X-Content-Type-Options: nosniff`، `Referrer-Policy: strict-origin-when-cross-origin`، `X-Robots-Tag: noindex`.
 - ❌ **ما كاين**: `Strict-Transport-Security` (HSTS)، CSP كاملة (`script-src`، `connect-src`…)، `Permissions-Policy`.
 - **المهمة**: HSTS بـ `max-age` صغير أولاً ثم كبير، وCSP فوضع `Report-Only` أولاً (خاصها Supabase، Cloudflare Turnstile، والبيكون ديال Cloudflare Insights).
+- **تحيين 2026-11-02 (P6.9، قراءة فقط، بلا حتى تبديل):** نفس النتيجة على 9 مسارات ديال `https://bogacafe.ma` (`/`، `/shop`، صفحة منتج، `/admin`، مسار مجهول، `robots.txt`، `sitemap.xml`، ملف من `/assets`، `og-image.png`): الرؤوس الخمسة فوق كاينين، وHSTS وPermissions-Policy غايبين، والـ CSP فيها غير `frame-ancestors 'none'`. **حدود هاد الملاحظة:** الفحص دار من بيئة العمل عبر proxy، وعلى `bogacafe.ma` (الـ apex) بـ HTTPS فقط؛ `www` والدومينات الفرعية الأخرى والوصول المباشر بلا proxy ما تفحصوش؛ و`http://bogacafe.ma/` رجع 200 بلا تحويل عبر الـ proxy، وهادشي ما كيثبتش واش «Always Use HTTPS» مشعل ولا لا فـ Cloudflare (خاص المالك يشوفو). هادي ملاحظة، ماشي نتيجة مؤكدة على كل الأسماء والطرق.
 
 ### 3.3 الأداء (Lighthouse، 2026-10-24)
 
@@ -380,5 +381,5 @@ Estimated: 3–4 أيام خدمة.
 - ONSSA، وسم المنتج، CNDP، قانون 31-08 (يحتاجو جهات مختصة).
 - الأداء من شبكة مغربية حقيقية (Lighthouse هنا من بيئة عمل خلف proxy).
 - الصفحات الداخلية بصرياً (القسم 6).
-- قارئ الشاشة.
+- قارئ الشاشة (تحيين 2026-11-02: المالك جرب NVDA على Windows فـ 2026-10-30 على عدة صفحات؛ VoiceOver وTalkBack ما تجربوش).
 - كل ما كاين فـ Supabase Auth Dashboard (sign-ups off، redirect URLs، TOTP) وCloudflare (Build variables، Domains): ما كيتشافش من هنا؛ فحصهم المالك (القائمة فـ `PROJECT_NOTES`).
