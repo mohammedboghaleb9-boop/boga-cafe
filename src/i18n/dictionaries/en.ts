@@ -449,6 +449,8 @@ export const en = {
     title: 'Admin Panel',
     unavailableTitle: 'Admin panel unavailable',
     unavailableText: 'The admin panel is not part of this build: it lives in the build connected to the database, with secure sign-in.',
+    loadFailedTitle: 'The admin panel could not be opened',
+    loadFailedText: 'The admin panel did not load. Check your connection, then try again.',
     loginTitle: 'Sign in to the Admin Panel',
     loginText: 'Prototype: choose a role to see its permissions. Password: {pwd}',
     role: 'Role',

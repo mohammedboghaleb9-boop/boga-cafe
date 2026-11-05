@@ -18,6 +18,7 @@ import { HomePage } from '@/features/home/HomePage';
 import { ProductPage } from '@/features/product/ProductPage';
 import { ShopPage } from '@/features/shop/ShopPage';
 import { SingleOriginPage } from '@/features/single-origin/SingleOriginPage';
+import { AdminErrorBoundary } from './AdminErrorBoundary';
 import { AdminUnavailable } from './AdminUnavailable';
 import { NotFound } from './NotFound';
 
@@ -75,9 +76,11 @@ export function App() {
               path="admin/*"
               element={
                 AdminApp ? (
-                  <Suspense fallback={null}>
-                    <AdminApp />
-                  </Suspense>
+                  <AdminErrorBoundary>
+                    <Suspense fallback={null}>
+                      <AdminApp />
+                    </Suspense>
+                  </AdminErrorBoundary>
                 ) : (
                   <AdminUnavailable />
                 )
