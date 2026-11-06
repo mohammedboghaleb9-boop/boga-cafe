@@ -444,6 +444,8 @@ export const fr: Dict = {
     title: 'Panel Admin',
     unavailableTitle: 'Panneau d’administration indisponible',
     unavailableText: 'Le panneau d’administration ne fait pas partie de cette version : il se trouve dans la version reliée à la base de données, avec connexion sécurisée.',
+    loadFailedTitle: 'Le panneau d’administration n’a pas pu s’ouvrir',
+    loadFailedText: 'Le panneau d’administration ne s’est pas chargé. Vérifiez votre connexion, puis réessayez.',
     loginTitle: 'Connexion au Panel Admin',
     loginText: 'Prototype : choisissez un rôle pour voir ses permissions. Mot de passe : {pwd}',
     role: 'Rôle',
