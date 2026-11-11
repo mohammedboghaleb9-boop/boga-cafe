@@ -60,7 +60,7 @@ begin
          jsonb_agg(jsonb_build_object('originId', origin_id, 'kg', 0.25 * percent / 100) order by origin_id)
     into comp, ded from public.product_recipes where product_id = p;
   perform public.commit_order(jsonb_build_object('locale', 'fr',
-    'customer', jsonb_build_object('fullName', 'Client', 'phone', '+212612345678', 'cityId', 'oujda', 'address', '12 rue Test'),
+    'customer', jsonb_build_object('fullName', 'Client', 'phone', '+212612345678', 'phoneAlt', '+212712345678', 'cityId', 'oujda', 'address', '12 rue Test'),
     'lines', jsonb_build_array(jsonb_build_object('kind', 'product', 'productId', p, 'name', jsonb_build_object('fr', p), 'size', 250, 'qty', 1,
       'unitPrice', 60, 'lineTotal', 60, 'composition', comp)),
     'weightKg', 0.25, 'subtotal', 60, 'shippingFee', 20, 'total', 80, 'paymentMethod', 'bank_transfer', 'stockDeductions', ded), '', '', '');

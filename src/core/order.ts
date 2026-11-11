@@ -37,6 +37,7 @@ export const CHECKOUT_ERRORS = [
   'out_of_stock',
   'name',
   'phone',
+  'phone_alt',
   'email',
   'city',
   'address',
@@ -51,6 +52,8 @@ export function validateCustomer(c: CustomerInfo, rates: ShippingRate[]): Checko
   const address = charCount(c.address);
   if (name < 3 || name > TEXT_MAX.name) errors.push('name');
   if (!normalizePhone(c.phone)) errors.push('phone');
+  // the carrier's second number: required, same rule (the database checks it again in commit_order)
+  if (!normalizePhone(c.phoneAlt)) errors.push('phone_alt');
   if ((c.email.trim() && !isEmail(c.email)) || charCount(c.email) > TEXT_MAX.email) errors.push('email');
   if (!rates.some((r) => r.id === c.cityId && r.active)) errors.push('city');
   if (address < 6 || address > TEXT_MAX.address) errors.push('address');
@@ -99,6 +102,7 @@ export function buildOrder(
       customer: {
         ...input.customer,
         phone: normalizePhone(input.customer.phone)!,
+        phoneAlt: normalizePhone(input.customer.phoneAlt)!,
         fullName: input.customer.fullName.trim(),
         email: input.customer.email.trim(),
         address: input.customer.address.trim(),
@@ -137,10 +141,12 @@ const limitHours = (value: unknown, fallback: number) =>
  *   again never extends it). Null: nothing reserved can expire.
  */
 export function reservationDeadline(
-  order: Pick<Order, 'status' | 'paymentStatus' | 'createdAt'>,
+  order: Pick<Order, 'status' | 'paymentStatus' | 'createdAt' | 'paymentMethod'>,
   settings: Pick<Settings, 'unpaidOrderTimeoutHours' | 'paymentCheckTimeoutHours'>,
 ): number | null {
   if (order.status !== 'new' && order.status !== 'confirmed') return null;
+  // cash on delivery is unpaid by design until it is delivered: it never expires
+  if (order.paymentMethod === 'cod') return null;
   if (order.paymentStatus !== 'pending' && order.paymentStatus !== 'failed' && order.paymentStatus !== 'awaiting_verification') return null;
   const unpaid = limitHours(settings.unpaidOrderTimeoutHours, DEFAULT_UNPAID_TIMEOUT_HOURS);
   const hours =

@@ -13,6 +13,7 @@ import { originIndex, product, rate, settings } from './fixtures';
 const customer: CustomerInfo = {
   fullName: 'Yassine Test',
   phone: '06 12 34 56 78',
+  phoneAlt: '07 12 34 56 78',
   email: '',
   cityId: 'oujda',
   address: 'Bd Mohammed V, Oujda',

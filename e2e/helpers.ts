@@ -41,10 +41,11 @@ export async function addSignatureBag(page: Page) {
   await page.getByRole('button', { name: /Ajouter au panier|أضف إلى السلة|Add to cart/ }).click();
 }
 
-export async function fillCheckout(page: Page, method: 'cashplus' | 'bank_transfer') {
+export async function fillCheckout(page: Page, method: 'cashplus' | 'bank_transfer' | 'cod') {
   await page.goto('/checkout');
   await page.fill('#co-name', 'Client Test');
   await page.fill('#co-phone', '0612345678');
+  await page.fill('#co-phone-alt', '0712345678');
   await page.selectOption('#co-city', 'oujda');
   await page.fill('#co-address', '12 rue Test, quartier Al Qods');
   await page.locator(`input[value=${method}]`).check();

@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router';
 import { formatKg, formatNumber } from '@/core/format';
+import { salesReport } from '@/core/reports';
 import { isLowStock } from '@/core/stock';
 import { useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
@@ -16,7 +17,7 @@ export function DashboardPage() {
   const orders = db.orders;
   const count = (f: (o: (typeof orders)[number]) => boolean) => orders.filter(f).length;
   const low = db.origins.filter(isLowStock);
-  const revenue = orders.filter((o) => o.paymentStatus === 'paid').reduce((s, o) => s + o.total, 0);
+  const report = salesReport(orders);
   const totalStock = db.origins.filter((o) => o.active).reduce((s, o) => s + o.stockKg, 0);
   const b2b = db.quotes
     .map((q) => ({ id: q.id, at: q.createdAt, ref: q.number, who: q.company || q.contactName, what: formatKg(q.weightKg), status: t.admin.b2b.quoteStatus[q.status], isNew: q.status === 'new' }))
@@ -34,15 +35,68 @@ export function DashboardPage() {
         <Kpi label={t.admin.dash.newOrders} value={count((o) => o.status === 'new')} to="/admin/orders" tone="warn" />
         <Kpi
           label={t.admin.dash.inProgress}
-          value={count((o) => ['confirmed', 'in_production', 'shipped'].includes(o.status))}
+          value={count((o) => ['confirmed', 'in_production', 'shipped', 'delivery_failed'].includes(o.status))}
           to="/admin/orders"
         />
         <Kpi label={t.admin.dash.completed} value={count((o) => o.status === 'delivered')} tone="ok" to="/admin/orders" />
         <Kpi label={t.admin.dash.b2bOpen} value={db.quotes.filter((q) => ['new', 'negotiating'].includes(q.status)).length} to="/admin/b2b" />
         <Kpi label={t.admin.dash.toVerify} value={count((o) => o.paymentStatus === 'awaiting_verification')} to={can(role, 'payments') ? '/admin/payments' : '/admin/orders?view=verify'} />
         <Kpi label={t.admin.dash.stock} value={formatKg(totalStock)} to="/admin/stock" tone={low.length ? 'bad' : 'ok'} />
-        <Kpi label={t.admin.dash.revenue} value={money(revenue)} />
+        <Kpi label={t.admin.dash.revenue} value={money(report.received.amount)} />
       </div>
+
+      <section className="stack" aria-labelledby="dash-sales">
+        <h2 id="dash-sales" className="admin-card-title">
+          {t.admin.dash.codTitle}
+        </h2>
+        <div className="kpis">
+          <Kpi label={`${t.admin.dash.sales} (${report.sales.count})`} value={money(report.sales.amount)} tone="ok" />
+          <Kpi label={`${t.admin.dash.toCollect} (${report.toCollect.count})`} value={money(report.toCollect.amount)} tone={report.toCollect.count ? 'warn' : undefined} />
+          <Kpi label={`${t.admin.dash.atCarrier} (${report.atCarrier.count})`} value={money(report.atCarrier.amount)} tone={report.atCarrier.count ? 'warn' : undefined} />
+          <Kpi label={`${t.admin.dash.received} (${report.received.count})`} value={money(report.received.amount)} tone="ok" />
+        </div>
+        <p className="row small" aria-label={t.admin.dash.byStatus}>
+          <span className="muted">{t.admin.dash.byStatus}</span>
+          {(Object.keys(report.byStatus) as (keyof typeof report.byStatus)[]).map((s) => (
+            <span key={s} className="pill pill-plain num">
+              {t.orderStatus[s]} · {report.byStatus[s]}
+            </span>
+          ))}
+        </p>
+        <h3 className="admin-card-title">{t.admin.dash.failedTitle}</h3>
+        {report.failed.length === 0 ? (
+          <p className="small muted">{t.admin.dash.failedNone}</p>
+        ) : (
+          <TableWrap label={t.admin.dash.failedTitle}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t.admin.nav.orders}</th>
+                  <th>{t.admin.orders.customer}</th>
+                  <th>{t.common.status}</th>
+                  <th>{t.admin.dash.reason}</th>
+                  <th className="end">{t.common.total}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.failed.map((o) => (
+                  <tr key={o.id}>
+                    <td className="num">
+                      <Link to={`/admin/orders/${o.id}`}>{o.number}</Link>
+                    </td>
+                    <td>{o.customer.fullName}</td>
+                    <td>
+                      <OrderStatusPill status={o.status} />
+                    </td>
+                    <td>{o.failureReason ?? ''}</td>
+                    <td className="num end">{money(o.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        )}
+      </section>
 
       <div className="admin-cols">
         <section className="stack">

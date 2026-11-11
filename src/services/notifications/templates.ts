@@ -69,6 +69,7 @@ const PAYMENT_STATE: Record<PaymentStatus, string> = {
   pending: 'en attente',
   failed: 'échoué, en attente',
   awaiting_verification: 'signalé par le client, à vérifier',
+  collected: 'encaissé par le transporteur',
   paid: 'payé',
   refunded: 'remboursé',
 };
@@ -78,6 +79,7 @@ function customerLines(order: Order, ctx: TemplateContext): string[] {
   const c = order.customer;
   return [
     `Client : ${oneLine(c.fullName)} (${oneLine(c.phone)})`,
+    c.phoneAlt ? `Téléphone 2 : ${oneLine(c.phoneAlt)}` : '',
     `Ville : ${cityName(ctx, c.cityId)}`,
     `Adresse : ${oneLine(c.address)}`,
     c.email ? `Email : ${oneLine(c.email)}` : '',
@@ -92,7 +94,10 @@ export function orderMessage(order: Order, ctx: TemplateContext): MessageDraft {
     `Poids : ${formatKg(order.weightKg)}`,
     `Livraison : ${dh(order.shippingFee)}`,
     `Total : ${dh(order.total)}`,
-    `Paiement : ${ctx.paymentLabel(order.paymentMethod)} (${PAYMENT_STATE[order.paymentStatus]})`,
+    // cash on delivery: "pending" is the normal state until the carrier is paid at the door
+    order.paymentMethod === 'cod' && order.paymentStatus === 'pending'
+      ? `Paiement : ${ctx.paymentLabel(order.paymentMethod)} (${dh(order.total)} à encaisser à la livraison)`
+      : `Paiement : ${ctx.paymentLabel(order.paymentMethod)} (${PAYMENT_STATE[order.paymentStatus]})`,
   ];
   return plain({
     subject: `[BOGA CAFÉ] Commande ${order.number} - ${dh(order.total)}`,
@@ -150,7 +155,7 @@ export function orderHandoff(
   order: Order,
   ctx: TemplateContext,
 ): { event: 'order.created' | 'payment.reported'; draft: MessageDraft } | null {
-  if (order.status === 'cancelled' || order.status === 'delivered') return null;
+  if (order.status === 'cancelled' || order.status === 'delivered' || order.status === 'returned') return null;
   return order.paymentStatus === 'awaiting_verification'
     ? { event: 'payment.reported', draft: paymentReportMessage(order, ctx) }
     : { event: 'order.created', draft: orderMessage(order, ctx) };

@@ -19,7 +19,7 @@ const cart: CartItem[] = [
   { id: 'a', type: 'product', productId: 'signature', size: 250, qty: 1 },
   { id: 'b', type: 'product', productId: 'so-ethiopia', size: 250, qty: 1 },
 ];
-const customer = { fullName: 'Yassine Test', phone: '0612345678', email: '', cityId: 'oujda', address: 'Bd Mohammed V, Oujda', company: '', notes: '' };
+const customer = { fullName: 'Yassine Test', phone: '0612345678', phoneAlt: '0712345678', email: '', cityId: 'oujda', address: 'Bd Mohammed V, Oujda', company: '', notes: '' };
 const methods = [{ id: 'bank_transfer' as const, enabled: true, label: product.name, instructions: product.name }];
 
 describe('unavailable products', () => {

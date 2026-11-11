@@ -106,7 +106,8 @@ export interface ShippingRate {
   updatedAt?: string;
 }
 
-export type PaymentMethodId = 'card' | 'cashplus' | 'bank_transfer';
+/** 'cod': cash on delivery, paid to the carrier at the door (the three others are paid before the order is prepared). */
+export type PaymentMethodId = 'card' | 'cashplus' | 'bank_transfer' | 'cod';
 
 export interface PaymentMethodConfig {
   id: PaymentMethodId;
@@ -123,13 +124,20 @@ export type OrderStatus =
   | 'in_production'
   | 'shipped'
   | 'delivered'
-  | 'cancelled';
+  | 'cancelled'
+  /** The carrier could not hand it over (refused, absent...): tried again, or it comes back. */
+  | 'delivery_failed'
+  /** Back at BOGA after a failed delivery: closed. */
+  | 'returned';
 
-export type PaymentStatus = 'pending' | 'awaiting_verification' | 'paid' | 'failed' | 'refunded';
+/** 'collected' (cash on delivery only): the carrier holds the money; 'paid': BOGA received it. */
+export type PaymentStatus = 'pending' | 'awaiting_verification' | 'collected' | 'paid' | 'failed' | 'refunded';
 
 export interface CustomerInfo {
   fullName: string;
   phone: string;
+  /** A second number for the carrier, required at checkout. */
+  phoneAlt: string;
   email: string;
   cityId: string;
   address: string;
@@ -175,6 +183,8 @@ export interface Order {
   paymentStatus: PaymentStatus;
   paymentRef?: string;
   status: OrderStatus;
+  /** Why the last delivery failed (kept after a new try or a return). */
+  failureReason?: string;
   stockDeductions: StockDeduction[];
   history: OrderEvent[];
 }

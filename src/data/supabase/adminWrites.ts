@@ -7,7 +7,7 @@
  * saved, and record who did it; this file only sends (./writeCall.ts). The settings,
  * payments, texts and delivery prices of slice 10: ./configWrites.ts.
  */
-import type { StatusRefusal } from '@/core/orderFlow';
+import { tidyReason, type DeliveryFailureRefusal, type StatusRefusal } from '@/core/orderFlow';
 import { trimmedOrigin, trimmedProduct } from '@/core/config';
 import { isPrice, originPriceOk } from '@/core/pricing';
 import { PACK_SIZES, type Origin, type Product, type QuoteRequest } from '@/core/types';
@@ -17,11 +17,12 @@ import type { Client } from './client';
 import type { Json } from './database.types';
 import { createCall, creating, unlessRefused, WriteFailed } from './writeCall';
 
-const REFUSALS: readonly StatusRefusal[] = ['not_next', 'needs_payment', 'too_late_to_cancel', 'closed', 'refund_instead', 'owner_only'];
+const REFUSALS: readonly StatusRefusal[] = ['not_next', 'needs_payment', 'too_late_to_cancel', 'closed', 'refund_instead', 'owner_only', 'reason_required'];
+const FAILURE_REFUSALS: readonly DeliveryFailureRefusal[] = ['not_next', 'invalid_reason'];
 
 type Writes = Pick<
   Api,
-  'setOrderStatus' | 'setPaymentStatus' | 'adjustStock' | 'updateQuote' | 'createProduct' | 'saveProduct' | 'createOrigin' | 'saveOrigin'
+  'setOrderStatus' | 'recordDeliveryFailure' | 'setPaymentStatus' | 'adjustStock' | 'updateQuote' | 'createProduct' | 'saveProduct' | 'createOrigin' | 'saveOrigin'
 >;
 
 /**
@@ -57,6 +58,16 @@ export function createAdminWrites(client: () => Client, data: AdminData): Writes
       } catch (e) {
         // the rules of src/core/orderFlow.ts, as the database applied them; anything else is "not saved"
         if (e instanceof WriteFailed && (REFUSALS as readonly string[]).includes(e.code)) return e.code as StatusRefusal;
+        throw e;
+      }
+    },
+
+    async recordDeliveryFailure(orderId, reason) {
+      try {
+        await call('record_delivery_failure', { p_order_id: orderId, p_reason: tidyReason(reason) });
+        return null;
+      } catch (e) {
+        if (e instanceof WriteFailed && (FAILURE_REFUSALS as readonly string[]).includes(e.code)) return e.code as DeliveryFailureRefusal;
         throw e;
       }
     },

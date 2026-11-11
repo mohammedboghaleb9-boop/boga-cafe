@@ -4,6 +4,9 @@ One dated line per meaningful change, newest first. Built from `git log`. Hashes
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
+## 2026-11-11
+- 2026-11-11 [feat/cod-payment] Cash on delivery: method `cod`, second phone required, email optional; delivery, carrier collection (`collected`) and BOGA receipt (`paid`) kept apart, money the owner's alone; failed delivery with its reason, then retried or returned (stock untouched); cod exempt from the prepaid rules (payment before production, 48 h expiry, "I paid" report), which prepaid orders keep; dashboard sales and cash report. Migration `20261110120000_cod` with md5 guards, SQL Editor block and rollback, NOT applied. Local checks: typecheck, oxlint, 503/503 unit, SQL suite exit 0 (cod.sql 49/49), all builds, `npm audit` 0, Playwright 131/131. Reviews (Sonnet `code-reviewer` and `security-auditor`): no blocker; accepted findings applied.
+
 ## 2026-11-10
 - 2026-11-10 [main] PR #59 merged: merge commit `e776dd14cf9f87c7b43aa63ad78c0bd8ce142f46` (12:41:09Z, merge method "merge", parents `60e41f0` and `845baaa`, merged by Claude under the owner's written conditional authorization of 2026-11-10), documentation only (`CHANGELOG.md`, `PROJECT_NOTES.md`); `main` is that commit. Post-merge CI, run 42817866726: success. The Workers Builds check and any Cloudflare deployment after the merge were not read (UNVERIFIED).
 

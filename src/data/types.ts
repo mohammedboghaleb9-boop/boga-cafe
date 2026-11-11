@@ -6,7 +6,7 @@
  */
 import type { CheckoutError, CheckoutInput } from '@/core/order';
 import type { BusinessRules, Payee } from '@/core/config';
-import type { AdminRole, StatusRefusal } from '@/core/orderFlow';
+import type { AdminRole, DeliveryFailureRefusal, StatusRefusal } from '@/core/orderFlow';
 import type { QuoteInput, RequestError } from '@/core/requests';
 import type {
   Order,
@@ -57,6 +57,8 @@ export interface Api {
   /* Admin */
   /** Why the change is refused for this role (core/orderFlow), or null once done. */
   setOrderStatus(orderId: string, status: OrderStatus, role: AdminRole): Promise<StatusRefusal | null>;
+  /** A shipped order whose delivery failed, with the reason; why it is refused (core/orderFlow deliveryFailureRefusal), or null once done. */
+  recordDeliveryFailure(orderId: string, reason: string, role: AdminRole): Promise<DeliveryFailureRefusal | null>;
   /** Cancels the orders not paid by their deadline; how many were cancelled. */
   expireUnpaidOrders(): Promise<number>;
   /** False when refused (only the owner records payments, in a sensible order). */

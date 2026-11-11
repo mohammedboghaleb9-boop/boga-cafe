@@ -80,6 +80,16 @@ export const seedPaymentMethods: PaymentMethodConfig[] = [
       en: 'Transfer to the account below with the order number as reference. Preparation starts as soon as it arrives.',
     },
   },
+  {
+    id: 'cod',
+    enabled: true,
+    label: { ar: 'الدفع عند الاستلام', fr: 'Paiement à la livraison', en: 'Cash on delivery' },
+    instructions: {
+      ar: 'تدفعون نقداً للموزّع عند استلام الطلب. نتصل بكم لتأكيد الطلب قبل الإرسال.',
+      fr: "Vous payez en espèces au livreur à la réception. Nous vous appelons pour confirmer la commande avant l'envoi.",
+      en: 'You pay the courier in cash on delivery. We call you to confirm the order before it is sent.',
+    },
+  },
 ];
 
 export const seedSettings: Settings = {

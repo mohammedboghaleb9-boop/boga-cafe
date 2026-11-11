@@ -111,7 +111,7 @@ function orders() {
     const r = buildOrder(
       {
         items,
-        customer: { fullName: `Client ${i}`, phone: pick(phones), email: i % 3 ? '' : `client${i}@example.ma`, cityId: cityId ?? pick(cities).id, address: ` ${i} rue de Test, Oujda\n`, company: '', notes: '' },
+        customer: { fullName: `Client ${i}`, phone: pick(phones), phoneAlt: pick(phones), email: i % 3 ? '' : `client${i}@example.ma`, cityId: cityId ?? pick(cities).id, address: ` ${i} rue de Test, Oujda\n`, company: '', notes: '' },
         paymentMethod: pick(methods),
         locale: pick(['ar', 'fr', 'en'] as const),
       },
@@ -147,7 +147,9 @@ function parityFile() {
     'insert into public.shipping_rates (id, city, distance_km, base_fee, included_kg, extra_per_kg, max_fee, delivery_days, active) values',
     shippingRates.map((r) => `  ('${r.id}', ${lit(r.city)}, ${r.distanceKm}, ${r.baseFee}, ${r.includedKg}, ${r.extraPerKg}, ${r.maxFee ?? 'null'}, ${lit(r.deliveryDays).replace(/"/g, '')}, ${r.active})`).join(',\n') + ';',
     'insert into public.payment_methods (id, enabled, label) values',
-    seedPaymentMethods.map((m) => `  ('${m.id}', ${m.enabled}, ${lit(m.label)})`).join(',\n') + ';',
+    // 'cod' is already there (20261110120000_cod inserts it)
+    seedPaymentMethods.map((m) => `  ('${m.id}', ${m.enabled}, ${lit(m.label)})`).join(',\n'),
+    '  on conflict (id) do update set enabled = excluded.enabled, label = excluded.label;',
     'do $$',
     'declare o jsonb; r record; n integer := 0;',
     'begin',

@@ -19,15 +19,15 @@ const order = (where: (o: ReturnType<typeof t.db.get>['orders'][number]) => bool
 const stockOf = (id: string) => t.db.get().origins.find((o) => o.id === id)!.stockKg;
 
 describe('real site data (audit H4)', () => {
-  it('starts with the catalog only: no example customers, and nowhere to pay until the real account exists', async () => {
+  it('starts with the catalog only: no example customers, and nowhere to prepay until the real account exists (cash on delivery needs none)', async () => {
     const [{ initialState }, { storefrontCheckoutContext }] = await Promise.all([import('../store'), import('../../context')]);
     const s = initialState(false);
     expect([s.orders, s.quotes, s.notifications, s.stockMovements].map((x) => x.length)).toEqual([0, 0, 0, 0]);
     expect(s.settings.bank).toEqual({ holder: '', bankName: '', rib: '' });
     expect(s.settings.cashplus).toEqual({ beneficiary: '', city: '', phone: '' });
-    expect(storefrontCheckoutContext(s).paymentMethods.filter((m) => m.enabled)).toEqual([]);
+    expect(storefrontCheckoutContext(s).paymentMethods.filter((m) => m.enabled).map((m) => m.id)).toEqual(['cod']);
     // the demo store, by contrast, can take the tests' orders
-    expect(storefrontCheckoutContext(initialState(true)).paymentMethods.filter((m) => m.enabled).map((m) => m.id).sort()).toEqual(['bank_transfer', 'cashplus']);
+    expect(storefrontCheckoutContext(initialState(true)).paymentMethods.filter((m) => m.enabled).map((m) => m.id).sort()).toEqual(['bank_transfer', 'cashplus', 'cod']);
   });
 });
 
@@ -159,7 +159,7 @@ describe('after the merge review', () => {
     vi.unstubAllGlobals();
   });
 
-  const customer = { fullName: 'Test Client', phone: '0612345678', email: '', cityId: 'oujda', address: 'Bd Mohammed V, Oujda', company: '', notes: '' };
+  const customer = { fullName: 'Test Client', phone: '0612345678', phoneAlt: '0712345678', email: '', cityId: 'oujda', address: 'Bd Mohammed V, Oujda', company: '', notes: '' };
   const firstProduct = () => t.db.get().products.find((p) => p.active && p.kind !== 'b2b')!;
 
   it('refuses a card order while no card gateway is connected, and takes it in the prototype', async () => {
@@ -295,7 +295,7 @@ describe('admin protection (phase 2)', () => {
     const product = db.get().products.find((p) => p.active && p.kind !== 'b2b')!;
     const placed = await api.placeOrder({
       items: [{ id: 'i1', type: 'product', productId: product.id, size: 250, qty: 1 }],
-      customer: { fullName: 'Test Client', phone: '0612345678', email: '', cityId: 'oujda', address: 'Bd Mohammed V, Oujda', company: '', notes: '' },
+      customer: { fullName: 'Test Client', phone: '0612345678', phoneAlt: '0712345678', email: '', cityId: 'oujda', address: 'Bd Mohammed V, Oujda', company: '', notes: '' },
       paymentMethod: 'card',
       locale: 'fr',
     });

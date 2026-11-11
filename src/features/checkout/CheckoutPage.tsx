@@ -19,11 +19,12 @@ import { TEXT_MAX } from '@/core/limits';
 import { OrdersClosed } from '@/shared/layout/OrdersClosed';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 
-const methodIcon: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
+const methodIcon: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank', cod: 'cash' };
 
 const emptyCustomer: CustomerInfo = {
   fullName: '',
   phone: '',
+  phoneAlt: '',
   email: '',
   cityId: '',
   address: '',
@@ -36,6 +37,7 @@ const emptyCustomer: CustomerInfo = {
 const FIELD_OF: Partial<Record<CheckoutError | GuardError, string>> = {
   name: 'co-name',
   phone: 'co-phone',
+  phone_alt: 'co-phone-alt',
   email: 'co-email',
   city: 'co-city',
   address: 'co-address',
@@ -174,6 +176,20 @@ function CheckoutForm() {
                   onChange={(e) => set('phone', e.target.value)}
                 />
               </Field>
+              <Field label={t.checkout.phoneAlt} htmlFor="co-phone-alt" error={err('phone_alt')}>
+                <input
+                  id="co-phone-alt"
+                  className="input"
+                  maxLength={TEXT_MAX.phone}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="off"
+                  placeholder="07 12 34 56 78"
+                  value={customer.phoneAlt}
+                  aria-invalid={errors.includes('phone_alt')}
+                  onChange={(e) => set('phoneAlt', e.target.value)}
+                />
+              </Field>
               <Field label={t.checkout.email} htmlFor="co-email" optional error={err('email')}>
                 <input
                   id="co-email"
@@ -252,9 +268,12 @@ function CheckoutForm() {
             </div>
             {!methods.some((m) => methodAvailable(m, settings)) && <p className="notice small">{t.checkout.noMethodYet}</p>}
             {err('payment_method') && <span className="field-error">{err('payment_method')}</span>}
-            <p className="small muted icon-line">
-              <Icon name="lock" size={16} /> {t.checkout.noCod}
-            </p>
+            {/* said only while cash on delivery is not offered */}
+            {!methods.some((m) => m.id === 'cod') && (
+              <p className="small muted icon-line">
+                <Icon name="lock" size={16} /> {t.checkout.noCod}
+              </p>
+            )}
           </section>
         </div>
 

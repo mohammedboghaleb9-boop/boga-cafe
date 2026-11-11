@@ -103,7 +103,7 @@ export const shippingRateFromRow = (r: Tables<'shipping_rates'>): ShippingRate =
   updatedAt: r.updated_at,
 });
 
-const PAYMENT_ORDER: PaymentMethodId[] = ['card', 'cashplus', 'bank_transfer'];
+const PAYMENT_ORDER: PaymentMethodId[] = ['cod', 'card', 'cashplus', 'bank_transfer'];
 export const byPaymentOrder = (a: PaymentMethodConfig, b: PaymentMethodConfig) =>
   PAYMENT_ORDER.indexOf(a.id) - PAYMENT_ORDER.indexOf(b.id);
 
@@ -185,7 +185,7 @@ export const publicOrderFromRow = (id: string, r: PublicOrderRow): Order => ({
   id,
   // not returned; the order page does not use it
   locale: 'fr',
-  customer: { fullName: r.customer_name, phone: '', email: '', cityId: r.city_id, address: '', company: '', notes: '' },
+  customer: { fullName: r.customer_name, phone: '', phoneAlt: '', email: '', cityId: r.city_id, address: '', company: '', notes: '' },
   stockDeductions: [],
 });
 
@@ -200,8 +200,19 @@ export const orderFromRow = (r: Tables<'orders'>, events: OrderEventRow[] = []):
   ...orderFigures(r),
   id: r.id,
   locale: r.locale as Locale,
-  customer: { fullName: r.customer_name, phone: r.phone, email: r.email, cityId: r.city_id, address: r.address, company: r.company, notes: r.notes },
+  customer: {
+    fullName: r.customer_name,
+    phone: r.phone,
+    // missing on a database the cod migration has not reached yet
+    phoneAlt: r.phone_alt ?? '',
+    email: r.email,
+    cityId: r.city_id,
+    address: r.address,
+    company: r.company,
+    notes: r.notes,
+  },
   paymentRef: r.payment_ref ?? undefined,
+  failureReason: r.failure_reason || undefined,
   stockDeductions: (r.stock_deductions as unknown as StockDeduction[]).map((d) => ({ originId: d.originId, kg: Number(d.kg) })),
   history: events.map((e) => ({ at: e.at, label: e.label })).sort((a, b) => a.at.localeCompare(b.at)),
 });

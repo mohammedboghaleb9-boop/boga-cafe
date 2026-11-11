@@ -6,15 +6,17 @@ import { useAdminDb } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { CutNotice, OrderStatusPill, PaymentPill, RowLink, TableWrap, Tabs, rowClick } from '../ui';
 
-type View = 'all' | 'new' | 'verify' | 'progress' | 'delivered' | 'cancelled';
+type View = 'all' | 'new' | 'verify' | 'progress' | 'delivered' | 'failed' | 'cancelled';
 
 const inView: Record<View, (o: Order) => boolean> = {
   all: () => true,
   new: (o) => o.status === 'new',
   // the customer said "I have paid": the owner checks the payment
   verify: (o) => o.paymentStatus === 'awaiting_verification',
-  progress: (o) => ['confirmed', 'in_production', 'shipped'].includes(o.status),
+  progress: (o) => ['confirmed', 'in_production', 'shipped', 'delivery_failed'].includes(o.status),
   delivered: (o) => o.status === 'delivered',
+  // the carrier could not hand it over, or it came back: the reason is on the order
+  failed: (o) => o.status === 'delivery_failed' || o.status === 'returned',
   cancelled: (o) => o.status === 'cancelled',
 };
 
@@ -35,7 +37,8 @@ export function OrdersPage() {
       (!needle ||
         o.number.toLowerCase().includes(needle) ||
         o.customer.fullName.toLowerCase().includes(needle) ||
-        o.customer.phone.includes(needle.replace(/\s/g, ''))),
+        o.customer.phone.includes(needle.replace(/\s/g, '')) ||
+        o.customer.phoneAlt.includes(needle.replace(/\s/g, ''))),
   );
   const city = (id: string) => {
     const r = shippingRates.find((x) => x.id === id);
@@ -67,6 +70,7 @@ export function OrdersPage() {
           { id: 'verify', label: t.admin.dash.toVerify, count: orders.filter(inView.verify).length },
           { id: 'progress', label: t.admin.dash.inProgress, count: orders.filter(inView.progress).length },
           { id: 'delivered', label: t.orderStatus.delivered, count: orders.filter(inView.delivered).length },
+          { id: 'failed', label: t.orderStatus.delivery_failed, count: orders.filter(inView.failed).length },
           { id: 'cancelled', label: t.orderStatus.cancelled, count: orders.filter(inView.cancelled).length },
         ]}
       />

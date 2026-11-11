@@ -69,6 +69,6 @@ describe('an order read back by its link', () => {
     const o = publicOrderFromRow('11111111-2222-3333-4444-555555555555', row);
     expect(o).toMatchObject({ id: '11111111-2222-3333-4444-555555555555', number: 'BC-2026-0001', weightKg: 0.5, total: 150, status: 'cancelled' });
     expect(o.lines[0]).toMatchObject({ productId: 'boga-signature', lineTotal: 130, size: 250 });
-    expect(o.customer).toEqual({ fullName: 'Client Test', phone: '', email: '', cityId: 'oujda', address: '', company: '', notes: '' });
+    expect(o.customer).toEqual({ fullName: 'Client Test', phone: '', phoneAlt: '', email: '', cityId: 'oujda', address: '', company: '', notes: '' });
   });
 });
