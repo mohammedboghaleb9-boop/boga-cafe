@@ -20,6 +20,21 @@ export function PaymentPanel({ order }: { order: Order }) {
   const method = paymentMethods.find((m) => m.id === order.paymentMethod);
 
   if (order.status === 'cancelled') return null;
+  // cash on delivery: nothing to pay or to report here; once the carrier has been, the order's own text says it
+  if (order.paymentMethod === 'cod') {
+    if (order.status === 'delivered' || order.status === 'returned' || order.status === 'delivery_failed' || order.paymentStatus === 'refunded') return null;
+    return (
+      <div className="panel stack pay-box">
+        <h2 className="checkout-h2">
+          <Icon name="cash" /> {method && l(method.label)}
+        </h2>
+        <p>{method && l(method.instructions)}</p>
+        <p>
+          <strong className="num">{fmt(t.payment.onDelivery, { amount: money(order.total) })}</strong>
+        </p>
+      </div>
+    );
+  }
   if (order.paymentStatus === 'paid') {
     return (
       <p className="notice notice-ok row">
@@ -57,6 +72,9 @@ export function PaymentPanel({ order }: { order: Order }) {
       </form>
     );
   }
+
+  // cash on delivery is answered above: only the two prepaid offline methods are left
+  if (step.type === 'on-delivery') return null;
 
   return (
     <div className="panel stack pay-box">

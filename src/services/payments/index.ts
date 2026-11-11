@@ -18,7 +18,9 @@ type PaymentNextStep =
   /** Prototype: simulated card page inside the site. */
   | { type: 'demo-gateway'; orderId: string }
   /** Offline methods: show instructions + reference. */
-  | { type: 'instructions'; method: Exclude<PaymentMethodId, 'card'>; reference: string }
+  | { type: 'instructions'; method: 'cashplus' | 'bank_transfer'; reference: string }
+  /** Cash on delivery: nothing to pay before the carrier comes. */
+  | { type: 'on-delivery' }
   /** No card gateway on this site yet (CMI not connected). */
   | { type: 'unavailable' };
 
@@ -72,10 +74,17 @@ const bankTransfer: PaymentAdapter = {
   start: (order) => ({ type: 'instructions', method: 'bank_transfer', reference: order.number }),
 };
 
+const cashOnDelivery: PaymentAdapter = {
+  id: 'cod',
+  online: false,
+  start: () => ({ type: 'on-delivery' }),
+};
+
 const adapters: Record<PaymentMethodId, PaymentAdapter> = {
   card: cardGateway === 'demo' ? demoCard : noCard,
   cashplus,
   bank_transfer: bankTransfer,
+  cod: cashOnDelivery,
 };
 
 export const paymentAdapter = (id: PaymentMethodId) => adapters[id];

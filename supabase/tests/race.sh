@@ -25,7 +25,7 @@ insert into public.payment_methods (id, label) values ('bank_transfer', '{"fr": 
 -- n bags of 250 g, a valid order in every figure
 create function public.race_order(n int) returns jsonb language sql as $f$
   select jsonb_build_object('locale', 'fr',
-    'customer', jsonb_build_object('fullName', 'Client', 'phone', '+212612345678', 'cityId', 'oujda', 'address', '12 rue Test'),
+    'customer', jsonb_build_object('fullName', 'Client', 'phone', '+212612345678', 'phoneAlt', '+212712345678', 'cityId', 'oujda', 'address', '12 rue Test'),
     'lines', jsonb_build_array(jsonb_build_object('kind', 'product', 'productId', 'p', 'name', '{"fr": "P"}', 'size', 250, 'qty', n,
       'unitPrice', 60, 'lineTotal', 60 * n, 'composition', '[{"originId": "last", "percent": 100, "grams": 250}]'::jsonb)),
     'weightKg', 0.25 * n, 'subtotal', 60 * n, 'shippingFee', 20, 'total', 60 * n + 20, 'paymentMethod', 'bank_transfer',

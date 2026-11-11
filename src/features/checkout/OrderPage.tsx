@@ -79,8 +79,8 @@ function OrderView({ order }: { order: Order }) {
 
           <section className="panel stack">
             <h2 className="checkout-h2">{t.order.statusTitle}</h2>
-            {order.status === 'cancelled' ? (
-              <span className="pill pill-bad">{t.orderStatus.cancelled}</span>
+            {order.status === 'cancelled' || order.status === 'delivery_failed' || order.status === 'returned' ? (
+              <span className="pill pill-bad">{t.orderStatus[order.status]}</span>
             ) : (
               <ol className="timeline">
                 {FLOW.map((s, i) => (
@@ -96,8 +96,11 @@ function OrderView({ order }: { order: Order }) {
                 {
                   refunded: t.order.refundedText,
                   cancelled: t.order.cancelledText,
+                  returned: t.order.returnedText,
+                  delivery_failed: t.order.deliveryFailedText,
                   delivered: t.order.deliveredText,
                   paid: t.order.nextPaid,
+                  on_delivery: t.order.nextOnDelivery,
                   awaiting_payment: t.order.nextPending,
                 }[orderPhase(order)]
               }

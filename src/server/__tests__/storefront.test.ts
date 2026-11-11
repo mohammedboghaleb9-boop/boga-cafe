@@ -147,7 +147,7 @@ const deps = (db: Client, over: Partial<Deps> = {}, siteverify = fakeSiteverify(
 });
 
 const contact = { businessType: 'cafe', company: 'Café Test', contactName: 'Amine Test', phone: '0612345678', email: '', cityId: 'oujda', notes: '', captchaToken: DUMMY_TOKEN };
-const customer = { fullName: 'Salma Bennani', phone: '0612345678', email: '', cityId: 'oujda', address: 'Rue 1, Oujda', company: '', notes: '' };
+const customer = { fullName: 'Salma Bennani', phone: '0612345678', phoneAlt: '0712345678', email: '', cityId: 'oujda', address: 'Rue 1, Oujda', company: '', notes: '' };
 const orderBody = (over: Record<string, unknown> = {}) => ({
   items: [{ id: 'a', type: 'product', productId: 'signature', size: 1000, qty: 2, unitPrice: 1 }],
   customer,
@@ -195,7 +195,7 @@ describe('storefront: request bodies', () => {
     ['a NUL character (PostgreSQL cannot store it)', orderBody({ customer: { ...customer, notes: 'a\u0000b' } })],
     ['a lone high surrogate (not valid in jsonb)', orderBody({ customer: { ...customer, fullName: 'Salma \uD800' } })],
     ['a lone low surrogate (not valid in jsonb)', orderBody({ customer: { ...customer, fullName: 'Salma \uDC00x' } })],
-    ['an unknown payment method', orderBody({ paymentMethod: 'cod' })],
+    ['an unknown payment method', orderBody({ paymentMethod: 'paypal' })],
   ])('refuses an order with %s', (_, raw) => {
     expect(parseCheckoutInput(raw)).toBeNull();
   });

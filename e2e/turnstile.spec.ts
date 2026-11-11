@@ -63,6 +63,7 @@ async function fillCheckout(page: Page) {
   await open(page, '/checkout');
   await page.fill('#co-name', 'Client Test');
   await page.fill('#co-phone', '0612345678');
+  await page.fill('#co-phone-alt', '0712345678');
   await page.selectOption('#co-city', 'oujda');
   await page.fill('#co-address', '12 rue Test');
   await page.locator('input[value=cashplus]').check();

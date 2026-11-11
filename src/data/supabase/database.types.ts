@@ -101,6 +101,7 @@ export type Database = {
           created_at: string;
           customer_name: string;
           email: string;
+          failure_reason: string;
           id: string;
           idempotency_key: string | null;
           lines: Json;
@@ -111,6 +112,7 @@ export type Database = {
           payment_ref: string | null;
           payment_status: string;
           phone: string;
+          phone_alt: string;
           shipping_fee: number;
           status: string;
           stock_deductions: Json;
@@ -126,6 +128,7 @@ export type Database = {
           created_at?: string;
           customer_name: string;
           email?: string;
+          failure_reason?: string;
           id?: string;
           idempotency_key?: string | null;
           lines: Json;
@@ -136,6 +139,7 @@ export type Database = {
           payment_ref?: string | null;
           payment_status?: string;
           phone: string;
+          phone_alt?: string;
           shipping_fee: number;
           status?: string;
           stock_deductions: Json;
@@ -151,6 +155,7 @@ export type Database = {
           created_at?: string;
           customer_name?: string;
           email?: string;
+          failure_reason?: string;
           id?: string;
           idempotency_key?: string | null;
           lines?: Json;
@@ -161,6 +166,7 @@ export type Database = {
           payment_ref?: string | null;
           payment_status?: string;
           phone?: string;
+          phone_alt?: string;
           shipping_fee?: number;
           status?: string;
           stock_deductions?: Json;
@@ -535,6 +541,7 @@ export type Database = {
         Args: { p_bucket: string; p_limit: number; p_window_seconds: number };
         Returns: boolean;
       };
+      record_delivery_failure: { Args: { p_order_id: string; p_reason: string }; Returns: undefined };
       report_offline_payment: { Args: { p_order_id: string; p_ref: string }; Returns: undefined };
       save_content: {
         Args: { p_contact: Json | null; p_content: Json; p_seen_contact: string | null; p_seen_content: string | null };

@@ -41,7 +41,7 @@ create function pg_temp.test_order(p_product text, p_size integer, p_qty integer
 returns jsonb language sql as $$
   select jsonb_build_object(
     'locale', 'fr',
-    'customer', jsonb_build_object('fullName', p_name, 'phone', '+212612345678', 'cityId', 'oujda', 'address', '12 rue Test'),
+    'customer', jsonb_build_object('fullName', p_name, 'phone', '+212612345678', 'phoneAlt', '+212712345678', 'cityId', 'oujda', 'address', '12 rue Test'),
     'lines', jsonb_build_array(jsonb_build_object(
       'kind', 'product', 'productId', p_product, 'name', jsonb_build_object('fr', p_product), 'size', p_size, 'qty', p_qty,
       'unitPrice', price, 'lineTotal', price * p_qty,
@@ -577,7 +577,7 @@ begin
   foreach col in array array['NaN', 'Infinity'] loop
     begin
       perform public.commit_order(
-        format('{"locale": "fr", "customer": {"fullName": "Test", "phone": "+212612345678", "cityId": "oujda", "address": "Rue 1"},
+        format('{"locale": "fr", "customer": {"fullName": "Test", "phone": "+212612345678", "phoneAlt": "+212712345678", "cityId": "oujda", "address": "Rue 1"},
           "lines": [], "weightKg": 1, "subtotal": 225, "shippingFee": 20, "total": 245, "paymentMethod": "cashplus",
           "stockDeductions": [{"originId": "brazil", "kg": "%s"}]}', col)::jsonb,
         'Nouvelle commande {number}', 'Nouvelle commande {number}', '[BOGA CAFÉ] Commande {number}');
@@ -644,6 +644,8 @@ begin
     ('b2b',              pg_temp.test_order('so-brazil', 250, 100, 'bank_transfer')),  -- 100 bags is a valid quantity, 25 kg is not a cart
     ('bulk_only',        pg_temp.test_order('horeca', 1000, 1, 'bank_transfer')),     -- a B2B blend's 1 kg bag is quote-only
     ('phone',            jsonb_set(o, '{customer,phone}', '"DROP TABLE"')),
+    ('phone_alt',        o #- '{customer,phoneAlt}'),                          -- the backup phone is required
+    ('phone_alt',        jsonb_set(o, '{customer,phoneAlt}', '"0812345678"')),
     ('name',             jsonb_set(o, '{customer,fullName}', '"X"')),
     ('name',             jsonb_set(o, '{customer,fullName}', '"Al"')),
     ('name',             jsonb_set(o, '{customer,fullName}', '"\u00a0Al\u3000"')),       -- JavaScript trim() removes both
@@ -688,14 +690,15 @@ begin
          '{customer,fullName}', '"\u00a0Ali\u3000"'), '{customer,address}', '"\u200312 rue"'),
          '{customer,phone}', '"06\u00a012 34.56-78"'), '{lines,0,name}', '{"fr": "Offert"}'),
          '{lines,0,composition,0,grams}', '1'), '{lines,0,promo}', '"-100 %"');
+  o := jsonb_set(o, '{customer,phoneAlt}', '"07\u00a012 34.56-78"');
   -- and at the upper limits: 80, 200 and 120 characters
   perform public.commit_order(jsonb_set(jsonb_set(jsonb_set(o, '{customer,fullName}', to_jsonb(repeat('x', 80))),
     '{customer,address}', to_jsonb(repeat('x', 200))), '{customer,email}', to_jsonb(repeat('x', 112) || '@boga.ma')), '', '', '');
   stock := stock - 0.5;
   perform public.commit_order(o, '', '', '');
   if (select stock_kg from public.origins where id = 'brazil') <> stock - 0.5 then raise exception 'TEST FAILED: real order'; end if;
-  if (select (customer_name, address, phone, lines, stock_deductions) from public.orders order by created_at desc, number desc limit 1)
-     is distinct from ('Ali'::text, '12 rue'::text, '+212612345678'::text,
+  if (select (customer_name, address, phone, phone_alt, lines, stock_deductions) from public.orders order by created_at desc, number desc limit 1)
+     is distinct from ('Ali'::text, '12 rue'::text, '+212612345678'::text, '+212712345678'::text,
        '[{"kind": "product", "productId": "so-brazil", "name": {"fr": "Brésil"}, "size": 250, "qty": 2, "unitPrice": 60, "lineTotal": 120,
           "composition": [{"originId": "brazil", "percent": 100, "grams": 250}]}]'::jsonb,
        '[{"kg": 0.500, "originId": "brazil"}]'::jsonb) then

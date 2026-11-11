@@ -61,7 +61,7 @@ describe('an origin without a price', () => {
 });
 
 describe('sales gate', () => {
-  const customer = { fullName: 'Salma Bennani', phone: '0612345678', email: '', cityId: rate.id, address: '12 rue Test', company: '', notes: '' };
+  const customer = { fullName: 'Salma Bennani', phone: '0612345678', phoneAlt: '0712345678', email: '', cityId: rate.id, address: '12 rue Test', company: '', notes: '' };
   const ctx: CheckoutContext = {
     catalog: { products: [product], origins: originIndex },
     settings,

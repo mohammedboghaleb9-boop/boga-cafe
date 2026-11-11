@@ -38,6 +38,8 @@ const dated = (prefix: RefPrefix, n: number, iso: string) => {
 const customer = (fullName: string, phone: string, cityId: string, address: string): CustomerInfo => ({
   fullName,
   phone,
+  // demo data: every example customer gives the same second number
+  phoneAlt: '0700000000',
   email: '',
   cityId,
   address,

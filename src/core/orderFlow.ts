@@ -15,15 +15,22 @@ export const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
   shipped: 'delivered',
   delivered: null,
   cancelled: null,
+  // a failed delivery is tried again; coming back is the other way out (statusChangeRefusal)
+  delivery_failed: 'shipped',
+  returned: null,
 };
 
-/** No payment on delivery: nothing is produced or shipped before the order is paid. */
+/** A prepaid order: nothing is produced or shipped before it is paid. Cash on delivery ('cod') is paid after. */
 const NEEDS_PAYMENT: OrderStatus[] = ['in_production', 'shipped', 'delivered'];
 
-export type StatusRefusal = 'not_next' | 'needs_payment' | 'too_late_to_cancel' | 'closed' | 'refund_instead' | 'owner_only';
+export type StatusRefusal = 'not_next' | 'needs_payment' | 'too_late_to_cancel' | 'closed' | 'refund_instead' | 'owner_only' | 'reason_required';
 
-export function statusChangeRefusal(order: Pick<Order, 'status' | 'paymentStatus'>, next: OrderStatus, role: AdminRole): StatusRefusal | null {
-  if (order.status === 'cancelled' || order.status === 'delivered') return 'closed';
+export function statusChangeRefusal(
+  order: Pick<Order, 'status' | 'paymentStatus' | 'paymentMethod'>,
+  next: OrderStatus,
+  role: AdminRole,
+): StatusRefusal | null {
+  if (order.status === 'cancelled' || order.status === 'delivered' || order.status === 'returned') return 'closed';
   if (next === 'cancelled') {
     // once roasting/packing started, the coffee cannot simply go back to stock
     if (order.status !== 'new' && order.status !== 'confirmed') return 'too_late_to_cancel';
@@ -34,9 +41,27 @@ export function statusChangeRefusal(order: Pick<Order, 'status' | 'paymentStatus
     if (order.paymentStatus === 'awaiting_verification' && role !== 'owner') return 'owner_only';
     return null;
   }
-  if (NEXT_STATUS[order.status] !== next) return 'not_next';
-  if (NEEDS_PAYMENT.includes(next) && order.paymentStatus !== 'paid') return 'needs_payment';
+  // a failed delivery is recorded with its reason (deliveryFailureRefusal), never as a plain step
+  if (next === 'delivery_failed') return 'reason_required';
+  const allowed = order.status === 'delivery_failed' ? next === 'shipped' || next === 'returned' : NEXT_STATUS[order.status] === next;
+  if (!allowed) return 'not_next';
+  if (NEEDS_PAYMENT.includes(next) && order.paymentStatus !== 'paid' && order.paymentMethod !== 'cod') return 'needs_payment';
   return null;
+}
+
+/** The reason of a failed delivery as it is kept: one line, single spaces. */
+export const tidyReason = (reason: string) => reason.replace(/\s+/g, ' ').trim();
+
+/**
+ * Only a shipped cash on delivery order can fail its delivery, and the reason is wanted (3 to 200 characters).
+ * A prepaid order is BOGA's money already: its refund rules know nothing of a failed delivery.
+ */
+export type DeliveryFailureRefusal = 'not_next' | 'invalid_reason';
+
+export function deliveryFailureRefusal(order: Pick<Order, 'status' | 'paymentMethod'>, reason: string): DeliveryFailureRefusal | null {
+  if (order.status !== 'shipped' || order.paymentMethod !== 'cod') return 'not_next';
+  const length = [...tidyReason(reason)].length;
+  return length < 3 || length > 200 ? 'invalid_reason' : null;
 }
 
 const PAYMENT_FROM: Record<PaymentStatus, PaymentStatus[]> = {
@@ -45,6 +70,20 @@ const PAYMENT_FROM: Record<PaymentStatus, PaymentStatus[]> = {
   refunded: ['paid'],
   pending: ['awaiting_verification', 'failed'],
   awaiting_verification: ['pending', 'failed'],
+  // cash on delivery only (COD_PAYMENT_FROM)
+  collected: [],
+};
+
+/**
+ * Cash on delivery: the money comes after the delivery, in two separate facts the owner records:
+ * 'collected' (the carrier holds it) then 'paid' (BOGA received it, checked). 'collected' can be
+ * taken back (a wrong click); only money BOGA received is refunded.
+ */
+const COD_PAYMENT_FROM: Partial<Record<PaymentStatus, PaymentStatus[]>> = {
+  collected: ['pending'],
+  paid: ['collected'],
+  pending: ['collected'],
+  refunded: ['paid'],
 };
 
 /** A refund closes the money side: only where the order cannot get stuck afterwards. */
@@ -59,8 +98,13 @@ const REFUNDABLE: OrderStatus[] = ['new', 'confirmed', 'cancelled', 'delivered']
  *   automatic 48 h cancellation) is recorded as refunded: the stock went back,
  *   so the customer gets the money back or places a new order.
  */
-export function canSetPayment(order: Pick<Order, 'paymentStatus' | 'status'>, next: PaymentStatus, role: AdminRole): boolean {
+export function canSetPayment(order: Pick<Order, 'paymentStatus' | 'status' | 'paymentMethod'>, next: PaymentStatus, role: AdminRole): boolean {
   if (role !== 'owner') return false;
+  if (order.paymentMethod === 'cod') {
+    // nothing is collected before the order is delivered
+    if (next === 'collected' && order.status !== 'delivered') return false;
+    return (COD_PAYMENT_FROM[next] ?? []).includes(order.paymentStatus);
+  }
   if (next === 'refunded') {
     if (!REFUNDABLE.includes(order.status)) return false;
     return order.paymentStatus === 'paid' || (order.status === 'cancelled' && order.paymentStatus !== 'refunded');
@@ -90,21 +134,37 @@ export function payeeReady(id: PaymentMethodId, settings: Pick<Settings, 'bank' 
  */
 export const canReportPayment = (order: Pick<Order, 'status' | 'paymentStatus' | 'paymentMethod'>): boolean =>
   order.paymentMethod !== 'card' &&
+  // cash on delivery: the customer pays the carrier, there is nothing to report
+  order.paymentMethod !== 'cod' &&
   (order.status === 'new' || order.status === 'confirmed') &&
   (order.paymentStatus === 'pending' || order.paymentStatus === 'failed');
+
+/**
+ * Money that waits for the owner (Admin → Payments): a prepaid order reported or still unpaid, or a
+ * cash on delivery order delivered and not yet received by BOGA.
+ */
+export const moneyToCheck = (order: Pick<Order, 'status' | 'paymentStatus' | 'paymentMethod'>): boolean => {
+  if (order.status === 'cancelled') return false;
+  if (order.paymentMethod === 'cod') return (order.status === 'delivered' && order.paymentStatus === 'pending') || order.paymentStatus === 'collected';
+  return order.paymentStatus === 'awaiting_verification' || (order.paymentStatus === 'pending' && order.paymentMethod !== 'card');
+};
 
 /** The customer still has a payment to make: only then does the order page show the payment steps. */
 export const awaitsPayment = (order: Pick<Order, 'status' | 'paymentStatus'>): boolean =>
   order.status !== 'cancelled' && (order.paymentStatus === 'pending' || order.paymentStatus === 'failed');
 
 /** What the order page tells the customer about the order as a whole. */
-type OrderPhase = 'refunded' | 'cancelled' | 'delivered' | 'paid' | 'awaiting_payment';
+type OrderPhase = 'refunded' | 'cancelled' | 'returned' | 'delivery_failed' | 'delivered' | 'paid' | 'on_delivery' | 'awaiting_payment';
 
-export function orderPhase(order: Pick<Order, 'status' | 'paymentStatus'>): OrderPhase {
+export function orderPhase(order: Pick<Order, 'status' | 'paymentStatus' | 'paymentMethod'>): OrderPhase {
   if (order.paymentStatus === 'refunded') return 'refunded';
   if (order.status === 'cancelled') return 'cancelled';
+  if (order.status === 'returned') return 'returned';
+  if (order.status === 'delivery_failed') return 'delivery_failed';
   if (order.status === 'delivered') return 'delivered';
-  return order.paymentStatus === 'paid' ? 'paid' : 'awaiting_payment';
+  if (order.paymentStatus === 'paid') return 'paid';
+  // cash on delivery: nothing to pay before the carrier comes
+  return order.paymentMethod === 'cod' ? 'on_delivery' : 'awaiting_payment';
 }
 
 /**

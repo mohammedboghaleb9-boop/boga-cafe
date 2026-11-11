@@ -7,22 +7,20 @@ import { fmt, useI18n } from '@/i18n';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { CutNotice, LocalizedInput, PaymentPill, SavedFlash, Switch, TableWrap, WriteError, useSavedFlash } from '../ui';
 import type { Role } from '../permissions';
-import { payeeReady } from '@/core/orderFlow';
+import { moneyToCheck, payeeReady } from '@/core/orderFlow';
 import { methodAvailable } from '@/services/payments';
 import { useAdminRole } from '../session';
 import { refuse, useAction } from '../useAction';
 import { useSavedDraft } from '../useSavedDraft';
 
-const icons: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank' };
+const icons: Record<PaymentMethodId, IconName> = { card: 'card', cashplus: 'cash', bank_transfer: 'bank', cod: 'cash' };
 
 export function PaymentsPage() {
   const role = useAdminRole()!;
   const { t, money, l } = useI18n();
   const { paymentMethods, orders, ordersCut, settings } = useAdminDb();
   const [busy, run, failed] = useAction();
-  const toVerify = orders.filter(
-    (o) => o.status !== 'cancelled' && (o.paymentStatus === 'awaiting_verification' || (o.paymentStatus === 'pending' && o.paymentMethod !== 'card')),
-  );
+  const toVerify = orders.filter(moneyToCheck);
 
   return (
     <>

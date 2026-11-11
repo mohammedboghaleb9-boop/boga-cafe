@@ -14,7 +14,7 @@ import { createCatalogStore } from '../store';
 const ID = '11111111-2222-3333-4444-555555555555';
 const placed = {
   id: ID, number: 'BC-2026-0002', createdAt: '2026-10-06T10:00:00Z', locale: 'fr',
-  customer: { fullName: 'Salma Test', phone: '0612345678', email: '', cityId: 'oujda', address: 'Rue 1, Oujda', company: '', notes: '' },
+  customer: { fullName: 'Salma Test', phone: '0612345678', phoneAlt: '0712345678', email: '', cityId: 'oujda', address: 'Rue 1, Oujda', company: '', notes: '' },
   lines: [], weightKg: 0.25, subtotal: 65, shippingFee: 20, total: 85, paymentMethod: 'bank_transfer', paymentStatus: 'pending',
   status: 'new', stockDeductions: [], history: [],
 } as unknown as Order;

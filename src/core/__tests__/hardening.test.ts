@@ -9,6 +9,7 @@ const catalog = { products: [product], origins: originIndex };
 const customer: CustomerInfo = {
   fullName: 'Yassine Test',
   phone: '06 12 34 56 78',
+  phoneAlt: '07 12 34 56 78',
   email: '',
   cityId: 'oujda',
   address: 'Bd Mohammed V, Oujda',
@@ -297,6 +298,6 @@ describe('business limits, at the exact limit (audit M2)', () => {
     // a stored blend with a fractional percent is dropped before pricing
     expect(cart.isWellFormedItem({ id: 'x', type: 'custom', qty: 1, blend: { size: 250, lines: [{ originId: 'brazil', percent: 33.5 }] } })).toBe(false);
     // nothing ships before payment, not only nothing produced
-    expect(statusChangeRefusal({ status: 'in_production', paymentStatus: 'pending' }, 'shipped', 'owner')).toBe('needs_payment');
+    expect(statusChangeRefusal({ status: 'in_production', paymentStatus: 'pending', paymentMethod: 'cashplus' }, 'shipped', 'owner')).toBe('needs_payment');
   });
 });

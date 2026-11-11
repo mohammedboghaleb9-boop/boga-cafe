@@ -49,7 +49,17 @@ import { newOriginId, newProductId, newReference, newShippingId, uid } from '../
 import type { DbState } from '../state';
 import type { Api } from '../types';
 import { db } from './store';
-import { awaitsPayment, canReportPayment, canSetPayment, refundCancelsOrder, settingsChangeRefused, statusChangeRefusal, type AdminRole } from '@/core/orderFlow';
+import {
+  awaitsPayment,
+  canReportPayment,
+  canSetPayment,
+  deliveryFailureRefusal,
+  refundCancelsOrder,
+  settingsChangeRefused,
+  statusChangeRefusal,
+  tidyReason,
+  type AdminRole,
+} from '@/core/orderFlow';
 
 const latency = () => new Promise((r) => setTimeout(r, 350));
 const now = () => new Date().toISOString();
@@ -200,6 +210,21 @@ export const demoApi: Api = {
       // Cancelling gives the reserved coffee back to stock (only once).
       (s, o) => (status === 'cancelled' && o.status !== 'cancelled' ? giveStockBack(s, o, at) : {}),
     );
+    return null;
+  },
+
+  /** A shipped order whose delivery failed: the reason is kept, the stock does not move (core/orderFlow). */
+  async recordDeliveryFailure(orderId: string, reason: string, _role: AdminRole) {
+    const current = db.get().orders.find((o) => o.id === orderId);
+    if (!current) return 'not_next';
+    const refusal = deliveryFailureRefusal(current, reason);
+    if (refusal) return refusal;
+    const at = now();
+    patchOrder(orderId, (o) => ({
+      status: 'delivery_failed',
+      failureReason: tidyReason(reason),
+      history: [...o.history, { at, label: 'status.delivery_failed' }],
+    }));
     return null;
   },
 

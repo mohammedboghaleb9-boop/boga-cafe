@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 /** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). */
-const PENDING: string[] = ['20261028090000_outbox_sender'];
+const PENDING: string[] = ['20261028090000_outbox_sender', '20261110120000_cod'];
 
 describe('SQL Editor blocks', () => {
   it('catalog_trim: the block holds the migration unchanged, between begin and commit', () => {
@@ -447,5 +447,80 @@ describe('outbox_sender (P5.1: the sender\'s two functions and its schedule)', (
     expect(code).toContain("url := 'https://ldzagzskfmnjbkizbayr.supabase.co/functions/v1/notify-outbox'");
     // no value that looks like a key or a token
     expect(code).not.toMatch(/eyJ|[A-Za-z0-9_-]{32,}/);
+  });
+});
+
+describe('cod (cash on delivery, owner 2026-11-10)', () => {
+  const migration = read('supabase/migrations/20261110120000_cod.sql').trimEnd();
+  const block = read('supabase/manual/20261110120000_cod.editor.sql');
+  const rollback = read('supabase/manual/20261110120000_cod.rollback.sql');
+  const init = read('supabase/migrations/20260927000000_init.sql');
+  const ready = read('supabase/migrations/20261016120000_catalog_ready.sql');
+  const expiry = read('supabase/migrations/20261019200936_expiry_lock_order.sql');
+  /** Each replaced function, and the migration that last defined it. */
+  const BEFORE: Record<string, string> = {
+    commit_order: ready,
+    set_order_status: init,
+    set_payment_status: init,
+    expire_unpaid_orders: expiry,
+    report_offline_payment: init,
+  };
+  const md5 = async (text: string) => (await import('node:crypto')).createHash('md5').update(text.replace(/\r/g, '')).digest('hex');
+  const body = (sql: string, name: string) => new RegExp(`create or replace function public\\.${name}\\(.*?\\$\\$(.*?)\\$\\$`, 's').exec(sql)![1];
+  const fn = (sql: string, name: string) => new RegExp(`create or replace function public\\.${name}\\(.*?\\nend \\$\\$;\\n`, 's').exec(sql)![0];
+
+  it('replaces each function only if it is the applied one or its own (md5 guard), before anything else', async () => {
+    for (const [name, before] of Object.entries(BEFORE)) {
+      expect(migration, name).toContain(`["${await md5(body(before, name))}", "${await md5(body(migration, name))}"]`);
+    }
+    expect(migration.indexOf("raise exception 'stop:")).toBeLessThan(migration.indexOf('alter table'));
+    expect(migration.indexOf("raise exception 'stop:")).toBeLessThan(migration.indexOf('create or replace function'));
+  });
+
+  it('only a cod order escapes the prepaid rules: payment before production, expiry, the customer\'s payment report', () => {
+    expect(body(migration, 'set_order_status')).toContain("and v_order.payment_status <> 'paid'\n       and v_order.payment_method <> 'cod' then\n      raise exception 'needs_payment';");
+    expect(body(migration, 'expire_unpaid_orders')).toContain("where o.status in ('new', 'confirmed')\n       and o.payment_method <> 'cod'\n");
+    expect(body(migration, 'report_offline_payment')).toContain("and payment_method not in ('card', 'cod')\n");
+    // the prepaid rules of set_payment_status are init's, word for word, behind the cod branch
+    const prepaid = /when 'paid' then v_order\.payment_status in \('pending', 'awaiting_verification', 'failed'\).*?end, false\) then\n/s;
+    expect(body(migration, 'set_payment_status').match(prepaid)?.[0]).toBe(body(init, 'set_payment_status').match(prepaid)![0]);
+  });
+
+  it('moves no stock that init did not move: the cancellation and the expiry give it back as before, a failed or returned delivery nothing', () => {
+    const cancelled = /  if p_status = 'cancelled' and not v_order\.stock_returned then.*?\n  end if;\n/s;
+    expect(body(migration, 'set_order_status').match(cancelled)?.[0]).toBe(body(init, 'set_order_status').match(cancelled)![0]);
+    const expired = /    if not v_order\.stock_returned then.*?values \(v_order\.id, 'status\.expired'\);\n/s;
+    expect(body(migration, 'expire_unpaid_orders').match(expired)?.[0]).toBe(body(expiry, 'expire_unpaid_orders').match(expired)![0]);
+    expect(body(migration, 'record_delivery_failure')).not.toMatch(/stock|origins/);
+  });
+
+  it('the new function is the admins\' alone, and the method is added without touching an order', () => {
+    expect(migration).toMatch(
+      /revoke all on function public\.record_delivery_failure\(uuid, text\) from public, anon;\ngrant execute on function public\.record_delivery_failure\(uuid, text\) to authenticated;$/,
+    );
+    expect(body(migration, 'record_delivery_failure')).toMatch(/^\s*declare.*?begin\s+if not public\.is_admin\(\) then\s+raise exception 'forbidden';/s);
+    const outside = migration.replace(/\$\$.*?\$\$/gs, '');
+    expect(outside).not.toMatch(/\b(update|delete from|insert into) public\.orders\b/i);
+    expect(outside).toContain("on conflict (id) do nothing;");
+  });
+
+  it('the editor block holds the migration unchanged, after its guards, with its version, in one commit', () => {
+    expect(block).toContain(`-- >>> 20261110120000_cod.sql\n${migration}\n-- <<< 20261110120000_cod.sql`);
+    expect(block.indexOf('\nbegin;')).toBeLessThan(block.indexOf("raise exception 'stop:"));
+    expect(block.indexOf("raise exception 'stop:")).toBeLessThan(block.indexOf('-- >>>'));
+    expect(block.match(/insert into supabase_migrations\.schema_migrations \(version, name\) values \('20261110120000', 'cod'\);/g)).toHaveLength(1);
+    expect(block.indexOf('-- <<<')).toBeLessThan(block.indexOf('insert into supabase_migrations'));
+    expect(block.match(/^commit;$/gm)).toHaveLength(1);
+  });
+
+  it('the rollback puts back each function of its migration, guarded by the md5 of this one, and stops on any order it would damage', async () => {
+    for (const [name, before] of Object.entries(BEFORE)) {
+      expect(rollback, name).toContain(fn(before, name));
+      expect(rollback, name).toContain(await md5(body(migration, name)));
+    }
+    expect(rollback).toContain("where payment_method = 'cod' or status in ('delivery_failed', 'returned') or payment_status = 'collected'");
+    expect(rollback.indexOf("raise exception 'stop: an order uses")).toBeLessThan(rollback.indexOf('create or replace function'));
+    expect(rollback).toContain('drop function public.record_delivery_failure(uuid, text);');
+    expect(rollback.match(/^commit;$/gm)).toHaveLength(1);
   });
 });

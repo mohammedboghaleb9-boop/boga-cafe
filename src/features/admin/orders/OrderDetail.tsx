@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { formatKg, formatNumber, formatSize } from '@/core/format';
 import { reservationDeadline } from '@/core/order';
-import { canSetPayment, NEXT_STATUS, refundCancelsOrder, statusChangeRefusal } from '@/core/orderFlow';
+import { canSetPayment, deliveryFailureRefusal, NEXT_STATUS, refundCancelsOrder, statusChangeRefusal } from '@/core/orderFlow';
 import type { OrderStatus, PaymentStatus } from '@/core/types';
 import { api } from '@/data/api';
 import { useAdminDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink } from '@/services/notifications';
 import { Flag } from '@/shared/ui/Flag';
+import { Field } from '@/shared/ui/bits';
 import { Icon } from '@/shared/ui/Icon';
 import { useAdminRole } from '../session';
 import { ConfirmButton, OrderStatusPill, PaymentPill, TableWrap, WriteError } from '../ui';
@@ -25,6 +27,9 @@ function OrderView({ id }: { id: string | undefined }) {
   // live site: status and payment changes connect in slice 8
   const role = useAdminRole()!;
   const [busy, run, failed] = useAction();
+  // why a delivery failed, as the admin types it
+  const [reason, setReason] = useState('');
+  const [reasonBad, setReasonBad] = useState(false);
   const order = orders.find((o) => o.id === id);
   if (!order) return <p className="muted">{t.order.notFound}</p>;
 
@@ -46,6 +51,18 @@ function OrderView({ id }: { id: string | undefined }) {
     run(async () => {
       if (!(await api.setPaymentStatus(order.id, status, role))) refuse('payment');
     });
+  const canReturn = statusChangeRefusal(order, 'returned', role) === null;
+  const cod = order.paymentMethod === 'cod';
+  const recordFailure = () => {
+    const bad = deliveryFailureRefusal(order, reason) !== null;
+    setReasonBad(bad);
+    if (bad) return;
+    void run(async () => {
+      const refusal = await api.recordDeliveryFailure(order.id, reason, role);
+      if (refusal) refuse(refusal);
+      setReason('');
+    });
+  };
   const c = order.customer;
 
   return (
@@ -77,6 +94,15 @@ function OrderView({ id }: { id: string | undefined }) {
             <span id="next-hint" className="small muted">
               {t.admin.orders.needsPayment}
             </span>
+          )}
+          {canReturn && (
+            <ConfirmButton
+              className="btn btn-ghost btn-sm"
+              label={t.admin.orders.markReturned}
+              confirmLabel={t.admin.orders.returnConfirm}
+              busy={busy}
+              onConfirm={() => setStatus('returned')}
+            />
           )}
           {canCancel && (
             <ConfirmButton
@@ -185,6 +211,14 @@ function OrderView({ id }: { id: string | undefined }) {
                   {c.phone}
                 </dd>
               </div>
+              {c.phoneAlt && (
+                <div>
+                  <dt>{t.checkout.phoneAlt}</dt>
+                  <dd className="num" dir="ltr">
+                    {c.phoneAlt}
+                  </dd>
+                </div>
+              )}
               {c.email && (
                 <div>
                   <dt>{t.checkout.email}</dt>
@@ -217,6 +251,44 @@ function OrderView({ id }: { id: string | undefined }) {
             </a>
           </section>
 
+          {((order.status === 'shipped' && cod) || order.failureReason) && (
+            <section className="panel stack">
+              <h2 className="admin-card-title">{t.admin.orders.failureTitle}</h2>
+              {order.failureReason && (
+                <dl className="kv">
+                  <div>
+                    <dt>{t.admin.orders.failureReason}</dt>
+                    <dd>{order.failureReason}</dd>
+                  </div>
+                </dl>
+              )}
+              {order.status === 'returned' && <p className="small muted">{t.admin.orders.returnedStock}</p>}
+              {order.status === 'shipped' && (
+                <>
+                  <Field label={t.admin.orders.failureReason} htmlFor="od-failure" error={reasonBad ? t.admin.orders.reasonInvalid : undefined}>
+                    <input
+                      id="od-failure"
+                      className="input"
+                      maxLength={200}
+                      value={reason}
+                      aria-invalid={reasonBad}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </Field>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ alignSelf: 'flex-start' }}
+                    aria-disabled={busy || undefined}
+                    onClick={recordFailure}
+                  >
+                    {t.admin.orders.recordFailure}
+                  </button>
+                </>
+              )}
+            </section>
+          )}
+
           <section className="panel stack">
             <h2 className="admin-card-title">{t.checkout.paymentTitle}</h2>
             <dl className="kv">
@@ -238,9 +310,19 @@ function OrderView({ id }: { id: string | undefined }) {
               )}
             </dl>
             <div className="row">
+              {pay('collected') && (
+                <button type="button" className="btn btn-primary btn-sm" aria-disabled={busy || undefined} onClick={() => setPayment('collected')}>
+                  {t.admin.orders.markCollected}
+                </button>
+              )}
               {pay('paid') && (
                 <button type="button" className="btn btn-primary btn-sm" aria-disabled={busy || undefined} onClick={() => setPayment('paid')}>
-                  {t.admin.orders.markPaid}
+                  {cod ? t.admin.orders.markReceived : t.admin.orders.markPaid}
+                </button>
+              )}
+              {cod && pay('pending') && (
+                <button type="button" className="btn btn-ghost btn-sm" aria-disabled={busy || undefined} onClick={() => setPayment('pending')}>
+                  {t.admin.orders.undoCollected}
                 </button>
               )}
               {pay('failed') && (
@@ -259,7 +341,7 @@ function OrderView({ id }: { id: string | undefined }) {
               )}
               {role !== 'owner' && <span className="small muted">{t.admin.orders.ownerPayments}</span>}
             </div>
-            {pay('paid') && <p className="small muted">{t.admin.orders.paidMeans}</p>}
+            {cod ? <p className="small muted">{t.admin.orders.codMeans}</p> : pay('paid') && <p className="small muted">{t.admin.orders.paidMeans}</p>}
             {deadline !== null && <p className="small muted">{fmt(t.admin.orders.reservedUntil, { date: date(new Date(deadline).toISOString(), true) })}</p>}
           </section>
 

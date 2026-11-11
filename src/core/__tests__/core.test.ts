@@ -204,6 +204,7 @@ describe('order', () => {
   const customer: CustomerInfo = {
     fullName: 'Yassine Test',
     phone: '06 12 34 56 78',
+    phoneAlt: '07 12 34 56 78',
     email: '',
     cityId: 'oujda',
     address: 'Bd Mohammed V, Oujda',
@@ -267,7 +268,7 @@ describe('order', () => {
 });
 
 describe('customer', () => {
-  const customer: CustomerInfo = { fullName: 'Ali', phone: '0612345678', email: '', cityId: rate.id, address: '12 rue', company: '', notes: '' };
+  const customer: CustomerInfo = { fullName: 'Ali', phone: '0612345678', phoneAlt: '0712345678', email: '', cityId: rate.id, address: '12 rue', company: '', notes: '' };
   it('counts characters as the database does, after trimming any white space', () => {
     expect(validateCustomer(customer, [rate])).toEqual([]);
     expect(validateCustomer({ ...customer, fullName: '\u00a0Ali\u3000', address: '\u200312 rue' }, [rate])).toEqual([]);

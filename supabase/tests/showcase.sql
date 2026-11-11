@@ -37,7 +37,7 @@ create function pg_temp.token(p_sub text, p_aal text) returns text language sql 
 $$;
 create function pg_temp.order_of() returns jsonb language sql as $$
   select jsonb_build_object('locale', 'fr',
-    'customer', jsonb_build_object('fullName', 'Client Test', 'phone', '+212612345678', 'cityId', 'oujda', 'address', '12 rue Test'),
+    'customer', jsonb_build_object('fullName', 'Client Test', 'phone', '+212612345678', 'phoneAlt', '+212712345678', 'cityId', 'oujda', 'address', '12 rue Test'),
     'lines', jsonb_build_array(jsonb_build_object('kind', 'product', 'productId', 'shown', 'name', '{"fr": "Montré"}', 'size', 1000, 'qty', 1,
       'unitPrice', 200, 'lineTotal', 200, 'composition', '[{"originId": "brazil", "percent": 70, "grams": 700}, {"originId": "vietnam", "percent": 30, "grams": 300}]'::jsonb)),
     'weightKg', 1, 'subtotal', 200, 'shippingFee', 20, 'total', 220, 'paymentMethod', 'card',

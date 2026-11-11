@@ -127,6 +127,7 @@ export function createSupabaseApi({ client, store, storefront, admin }: Supabase
     // pg_cron runs expire_unpaid_orders() every 15 minutes on the server
     expireUnpaidOrders: async () => 0,
     setOrderStatus: notYet('order status (no admin client)'),
+    recordDeliveryFailure: notYet('order status (no admin client)'),
     setPaymentStatus: notYet('payment status (no admin client)'),
     createProduct: notYet('products (no admin client)'),
     saveProduct: notYet('products (no admin client)'),

@@ -34,7 +34,7 @@ $$;
 -- p_kg bags of 1 kg of Signature to a city (Oujda unless said), every figure right, with this delivery fee
 create function pg_temp.order_of(p_kg int, p_fee numeric, p_city text default 'oujda') returns jsonb language sql as $$
   select jsonb_build_object('locale', 'fr',
-    'customer', jsonb_build_object('fullName', 'Client Test', 'phone', '+212612345678', 'cityId', p_city, 'address', '12 rue Test'),
+    'customer', jsonb_build_object('fullName', 'Client Test', 'phone', '+212612345678', 'phoneAlt', '+212712345678', 'cityId', p_city, 'address', '12 rue Test'),
     'lines', jsonb_build_array(jsonb_build_object('kind', 'product', 'productId', 'signature', 'name', '{"fr": "Signature"}', 'size', 1000, 'qty', p_kg,
       'unitPrice', 200, 'lineTotal', 200 * p_kg, 'composition', '[{"originId": "brazil", "percent": 100, "grams": 1000}]'::jsonb)),
     'weightKg', p_kg, 'subtotal', 200 * p_kg, 'shippingFee', p_fee, 'total', 200 * p_kg + p_fee, 'paymentMethod', 'card',

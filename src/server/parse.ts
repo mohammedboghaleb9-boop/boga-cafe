@@ -29,7 +29,7 @@ function storable(v: string): boolean {
 const isText = (v: unknown, max: number): v is string => typeof v === 'string' && [...v].length <= max && storable(v);
 const isSize = (v: unknown): v is PackSize => PACK_SIZES.includes(v as PackSize);
 
-const PAYMENT_METHODS: PaymentMethodId[] = ['card', 'cashplus', 'bank_transfer'];
+const PAYMENT_METHODS: PaymentMethodId[] = ['card', 'cashplus', 'bank_transfer', 'cod'];
 const BUSINESS_TYPES: BusinessType[] = ['cafe', 'hotel', 'restaurant', 'company', 'individual', 'other'];
 /** An id (product, origin, city, cart line) is never longer. */
 const ID_MAX = 100;
@@ -37,6 +37,7 @@ const ID_MAX = 100;
 const CUSTOMER_FIELDS = {
   fullName: TEXT_MAX.name,
   phone: TEXT_MAX.phone,
+  phoneAlt: TEXT_MAX.phone,
   email: TEXT_MAX.email,
   cityId: ID_MAX,
   address: TEXT_MAX.address,

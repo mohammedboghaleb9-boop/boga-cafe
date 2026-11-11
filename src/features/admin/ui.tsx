@@ -12,10 +12,13 @@ const orderTone: Record<OrderStatus, string> = {
   shipped: 'pill-warn',
   delivered: 'pill-ok',
   cancelled: 'pill-bad',
+  delivery_failed: 'pill-bad',
+  returned: 'pill-bad',
 };
 const payTone: Record<PaymentStatus, string> = {
   pending: 'pill-warn',
   awaiting_verification: 'pill-info',
+  collected: 'pill-info',
   paid: 'pill-ok',
   failed: 'pill-bad',
   refunded: '',
