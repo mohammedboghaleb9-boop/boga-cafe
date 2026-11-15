@@ -9,7 +9,7 @@ import { SERVER_DATA } from '@/data/mode';
 import { LineDetails } from '@/shared/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
 import { orderHandoff, whatsappLink } from '@/services/notifications';
-import { SendToBoga } from '@/shared/layout/SendToBoga';
+import { GREETING, SendToBoga } from '@/shared/layout/SendToBoga';
 import { CopyButton } from '@/shared/ui/bits';
 import { PaymentPanel } from './PaymentPanel';
 import './checkout.css';
@@ -18,7 +18,7 @@ import { usePageTitle } from '@/shared/layout/usePageTitle';
 const FLOW: OrderStatus[] = ['new', 'confirmed', 'in_production', 'shipped', 'delivered'];
 
 /** The team reads French; the order number is the only thing this message carries (no name, phone or address). */
-const fallbackMessage = (number: string) => `Bonjour BOGA CAFÉ,\n\nCommande ${number}`;
+const fallbackMessage = (number: string) => `${GREETING}\n\nCommande ${number}`;
 
 export function OrderPage() {
   const { id } = useParams();
@@ -87,7 +87,7 @@ function OrderView({ order }: { order: Order }) {
               refNumber={order.number}
               showSaved={false}
               reveal={justReported}
-              cod={order.paymentMethod === 'cod'}
+              cod={order.paymentMethod !== 'cod' ? undefined : order.status === 'new' ? 'unconfirmed' : 'confirmed'}
             />
           )}
           {fallback && (

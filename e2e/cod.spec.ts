@@ -46,6 +46,8 @@ test('a cash on delivery order: no payment step, the second phone in the message
   // the order is saved: the message only speeds up its confirmation call (no "last step" wording)
   await expect(page.getByText('Commande enregistrée : envoyez-la-nous aussi sur WhatsApp')).toBeVisible();
   await expect(page.getByText(/Dernière étape/)).toHaveCount(0);
+  await expect(page.locator('.handoff')).toHaveAccessibleName('Commande enregistrée : envoyez-la-nous aussi sur WhatsApp');
+  await expect(page.getByText(/non confirmée sous 24 heures|pas confirmée sous 24 heures/)).toBeVisible();
   await expect(page.locator('form.report')).toHaveCount(0);
   const message = decodeURIComponent((await page.locator('.handoff-wa').getAttribute('href')) ?? '');
   expect(message).toContain('Téléphone 2 : +212712345678');
@@ -80,6 +82,10 @@ test('delivery, collection and receipt are three steps: the delivery and the mon
   // the order before 24 hours: its deadline says it ends unless it is confirmed
   await expect(staff.getByText(/annulée automatiquement si elle n’est pas confirmée/)).toBeVisible();
   for (const s of ['Confirmée', 'En production', 'Expédiée']) await step(staff, s);
+  // the customer's page once the order is confirmed: no "we call you to confirm", no 24-hour warning
+  await page.reload();
+  await expect(page.getByText('Une question sur votre commande ? Écrivez-nous sur WhatsApp')).toBeVisible();
+  await expect(page.getByText(/sous 24 heures/)).toHaveCount(0);
   const deliver = staff.getByRole('button', { name: 'Passer à : Livrée' });
   await expect(deliver).toBeDisabled();
   await expect(deliver).toHaveAccessibleDescription('Paiement à la livraison : seul le propriétaire marque la commande livrée.');

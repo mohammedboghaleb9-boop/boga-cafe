@@ -1,4 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { COD_UNCONFIRMED_HOURS } from '@/core/order';
 import { useDb } from '@/data/hooks';
 import { fmt, useI18n } from '@/i18n';
 import { whatsappLink, type MessageDraft } from '@/services/notifications';
@@ -8,7 +9,7 @@ import { BrandIcon } from '../ui/BrandIcon';
 import './channels.css';
 
 /** The team reads French: the message keeps one language from greeting to signature. */
-const GREETING = 'Bonjour BOGA CAFÉ,';
+export const GREETING = 'Bonjour BOGA CAFÉ,';
 
 /**
  * After an order or a B2B quote: the full request, ready to
@@ -28,7 +29,7 @@ export function SendToBoga({
   refNumber,
   showSaved = true,
   reveal = false,
-  cod = false,
+  cod,
 }: {
   /** Which message this is: its automatic delivery status is followed by kind and reference. */
   event: DeliverableEvent;
@@ -36,8 +37,11 @@ export function SendToBoga({
   refNumber: string;
   showSaved?: boolean;
   reveal?: boolean;
-  /** A cash on delivery order: the order is saved, the message only speeds up its confirmation call. */
-  cod?: boolean;
+  /**
+   * A cash on delivery order: saved either way. Unconfirmed, the message speeds up its confirmation call (and the
+   * order ends after COD_UNCONFIRMED_HOURS); confirmed, it is only a way to ask about it.
+   */
+  cod?: 'unconfirmed' | 'confirmed';
 }) {
   const { t } = useI18n();
   const { settings } = useDb();
@@ -55,22 +59,24 @@ export function SendToBoga({
   const whatsappText = `${GREETING}\n\n${draft.whatsapp}`;
   const emailText = `${GREETING}\n\n${draft.email}`;
   const payment = event === 'payment.reported';
-  const codOrder = cod && event === 'order.created';
+  const codOrder = event === 'order.created' ? cod : undefined;
   const title =
     status === 'sent' ? t.handoff.titleAuto
     : status === 'pending' ? t.handoff.pending
     : payment ? t.handoff.titlePayment
-    : codOrder ? t.handoff.titleOrder
+    : codOrder === 'unconfirmed' ? t.handoff.titleOrder
+    : codOrder === 'confirmed' ? t.handoff.titleOrderLater
     : t.handoff.title;
   const text =
     status === 'sent' ? t.handoff.textAuto
     : status === 'slow' ? t.handoff.slow
     : payment ? t.handoff.textPayment
-    : codOrder ? t.handoff.textOrder
+    : codOrder === 'unconfirmed' ? fmt(t.handoff.textOrder, { hours: COD_UNCONFIRMED_HOURS })
+    : codOrder === 'confirmed' ? t.handoff.textOrderLater
     : t.handoff.text;
 
   return (
-    <section className={`handoff handoff-${status}`} aria-label={t.handoff.title}>
+    <section className={`handoff handoff-${status}`} aria-label={title}>
       <p className="handoff-text" ref={head} tabIndex={-1} role="status" aria-live="polite">
         {showSaved && <span className="handoff-saved">{fmt(t.handoff.saved, { ref: refNumber })}</span>}
         <strong>{title}</strong>
