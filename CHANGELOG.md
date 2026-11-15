@@ -4,6 +4,9 @@ One dated line per meaningful change, newest first. Built from `git log`. Hashes
 merge into `main` when one exists). Trivial commits (initial commits, link fixes, review follow-ups) are left out.
 `[branch]` = made on `fix/remediation-3-7`, merged into `main` on 2026-09-30 (901c8af).
 
+## 2026-11-15
+- 2026-11-15 [claude/sweet-hopper-4bqf9z] Cash on delivery, owner decisions of 2026-11-14: a cod order still `new` 24 h after it was placed expires (cancelled, stock back once; fixed in code, not a setting), a confirmed one never does; only the owner marks a cod order delivered (prepaid unchanged); the backup phone may be the first one (tests only). Migration `20261115090000_cod_unconfirmed_expiry` with md5 guards, SQL Editor block and rollback, NOT applied. Order page: a WhatsApp link with the order number only when the order is opened in another tab or browser; cod confirmation wording ("order saved", no "last step"); checkout shows no total until the city is chosen. Docs: COD state corrected (applied on live, read 2026-11-14), test-day runbook `docs/13-cod-test-runbook.md`. The `storefront` bundle is unchanged (no redeploy).
+
 ## 2026-11-11
 - 2026-11-11 [feat/cod-payment] Cash on delivery: method `cod`, second phone required, email optional; delivery, carrier collection (`collected`) and BOGA receipt (`paid`) kept apart, money the owner's alone; failed delivery with its reason, then retried or returned (stock untouched); cod exempt from the prepaid rules (payment before production, 48 h expiry, "I paid" report), which prepaid orders keep; dashboard sales and cash report. Migration `20261110120000_cod` with md5 guards, SQL Editor block and rollback, NOT applied. Local checks: typecheck, oxlint, 503/503 unit, SQL suite exit 0 (cod.sql 49/49), all builds, `npm audit` 0, Playwright 131/131. Reviews (Sonnet `code-reviewer` and `security-auditor`): no blocker; accepted findings applied.
 

@@ -8,7 +8,7 @@ import { useDb, useOrder } from '@/data/hooks';
 import { SERVER_DATA } from '@/data/mode';
 import { LineDetails } from '@/shared/cart/CartLineView';
 import { fmt, useI18n } from '@/i18n';
-import { orderHandoff } from '@/services/notifications';
+import { orderHandoff, whatsappLink } from '@/services/notifications';
 import { SendToBoga } from '@/shared/layout/SendToBoga';
 import { CopyButton } from '@/shared/ui/bits';
 import { PaymentPanel } from './PaymentPanel';
@@ -16,6 +16,9 @@ import './checkout.css';
 import { usePageTitle } from '@/shared/layout/usePageTitle';
 
 const FLOW: OrderStatus[] = ['new', 'confirmed', 'in_production', 'shipped', 'delivered'];
+
+/** The team reads French; the order number is the only thing this message carries (no name, phone or address). */
+const fallbackMessage = (number: string) => `Bonjour BOGA CAFÉ,\n\nCommande ${number}`;
 
 export function OrderPage() {
   const { id } = useParams();
@@ -59,6 +62,10 @@ function OrderView({ order }: { order: Order }) {
   const justReported = handoff?.event === 'payment.reported' && statusOnArrival !== 'awaiting_verification';
   const reached = FLOW.indexOf(order.status);
   const firstName = order.customer.fullName.split(' ')[0];
+  // opened in another tab or browser, the order has no phone or address to rebuild the full message from:
+  // the customer can still tell the team which order is theirs while it waits for its confirmation call
+  const whatsapp = db.settings.contact.whatsapp;
+  const fallback = !handoff && order.status === 'new' && whatsapp;
 
   return (
     <div className="container page order-page">
@@ -73,7 +80,24 @@ function OrderView({ order }: { order: Order }) {
       <div className="order-grid">
         <div className="stack" style={{ ['--gap' as string]: '20px' }}>
           {handoff && (
-            <SendToBoga key={handoff.event} event={handoff.event} draft={handoff.draft} refNumber={order.number} showSaved={false} reveal={justReported} />
+            <SendToBoga
+              key={handoff.event}
+              event={handoff.event}
+              draft={handoff.draft}
+              refNumber={order.number}
+              showSaved={false}
+              reveal={justReported}
+              cod={order.paymentMethod === 'cod'}
+            />
+          )}
+          {fallback && (
+            <section className="panel stack" style={{ alignItems: 'flex-start' }}>
+              <h2 className="checkout-h2">{t.order.fallbackTitle}</h2>
+              <p className="small muted">{t.order.fallbackText}</p>
+              <a className="btn btn-primary" href={whatsappLink(whatsapp, fallbackMessage(order.number))} target="_blank" rel="noreferrer">
+                {t.handoff.whatsapp}
+              </a>
+            </section>
           )}
           <PaymentPanel order={order} />
 

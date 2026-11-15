@@ -1,7 +1,8 @@
 /**
- * Cash on delivery (owner 2026-11-10), in the demo build: the customer orders with a second phone and pays the
- * carrier; staff moves the delivery; only the owner records the carrier's collection, then BOGA's receipt; a failed
- * delivery keeps its reason. Phone first (390 px), as the shop is mobile-first.
+ * Cash on delivery (owner 2026-11-10 and 2026-11-14), in the demo build: the customer orders with a second phone (it
+ * may be the first one) and pays the carrier; staff moves the order up to its shipping; only the owner marks it
+ * delivered, records the carrier's collection, then BOGA's receipt; a failed delivery keeps its reason. Phone first
+ * (390 px), as the shop is mobile-first.
  */
 import { expect, test, type Page } from '@playwright/test';
 import { addSignatureBag, fillCheckout, signIn, watchErrors } from './helpers';
@@ -26,7 +27,12 @@ test('a cash on delivery order: no payment step, the second phone in the message
   // the second phone is required, checked like the first
   await page.fill('#co-name', 'Client Test');
   await page.fill('#co-phone', '0612345678');
+  // no total while the delivery fee is unknown: the city comes first
+  await expect(page.locator('.co-total strong')).toHaveText('—');
+  await expect(page.locator('button[type=submit]').last()).toHaveText('Commander');
   await page.selectOption('#co-city', 'oujda');
+  await expect(page.locator('.co-total strong')).not.toHaveText('—');
+  await expect(page.locator('button[type=submit]').last()).toHaveText(/^Commander · \d+/);
   await page.fill('#co-address', '12 rue Test, quartier Al Qods');
   await page.locator('input[value=cod]').check();
   await page.locator('button[type=submit]').last().click();
@@ -37,6 +43,9 @@ test('a cash on delivery order: no payment step, the second phone in the message
   await page.waitForURL(/\/order\//);
 
   await expect(page.getByText(/À payer au livreur à la réception/)).toBeVisible();
+  // the order is saved: the message only speeds up its confirmation call (no "last step" wording)
+  await expect(page.getByText('Commande enregistrée : envoyez-la-nous aussi sur WhatsApp')).toBeVisible();
+  await expect(page.getByText(/Dernière étape/)).toHaveCount(0);
   await expect(page.locator('form.report')).toHaveCount(0);
   const message = decodeURIComponent((await page.locator('.handoff-wa').getAttribute('href')) ?? '');
   expect(message).toContain('Téléphone 2 : +212712345678');
@@ -46,21 +55,46 @@ test('a cash on delivery order: no payment step, the second phone in the message
   errors.check();
 });
 
-test('delivery, collection and receipt are three steps, the money the owner\'s alone', async ({ page, context }) => {
+test('the second phone may be the first one', async ({ page }) => {
+  await addSignatureBag(page);
+  await page.goto('/checkout');
+  await page.fill('#co-name', 'Client Test');
+  await page.fill('#co-phone', '0612345678');
+  await page.fill('#co-phone-alt', '06 12 34 56 78');
+  await page.selectOption('#co-city', 'oujda');
+  await page.fill('#co-address', '12 rue Test, quartier Al Qods');
+  await page.locator('input[value=cod]').check();
+  await page.locator('button[type=submit]').last().click();
+  await page.waitForURL(/\/order\//);
+  const message = decodeURIComponent((await page.locator('.handoff-wa').getAttribute('href')) ?? '');
+  expect(message).toContain('Téléphone 2 : +212612345678');
+});
+
+test('delivery, collection and receipt are three steps: the delivery and the money the owner\'s alone', async ({ page, context }) => {
   const id = await codOrder(page);
 
   const staff = await context.newPage();
   await signIn(staff, 'staff');
   await staff.goto(`/admin/orders/${id}`);
   await expect(staff.getByText('+212712345678')).toBeVisible();
-  for (const s of ['Confirmée', 'En production', 'Expédiée', 'Livrée']) await step(staff, s);
-  await expect(staff.locator('.admin-head .pill').first()).toHaveText('Livrée');
-  await expect(staff.getByRole('button', { name: 'Encaissé par le transporteur' })).toHaveCount(0);
-  await expect(staff.getByText('Seul le propriétaire enregistre les paiements.')).toBeVisible();
+  // the order before 24 hours: its deadline says it ends unless it is confirmed
+  await expect(staff.getByText(/annulée automatiquement si elle n’est pas confirmée/)).toBeVisible();
+  for (const s of ['Confirmée', 'En production', 'Expédiée']) await step(staff, s);
+  const deliver = staff.getByRole('button', { name: 'Passer à : Livrée' });
+  await expect(deliver).toBeDisabled();
+  await expect(deliver).toHaveAccessibleDescription('Paiement à la livraison : seul le propriétaire marque la commande livrée.');
 
   const owner = await context.newPage();
   await signIn(owner, 'owner');
   await owner.goto(`/admin/orders/${id}`);
+  await step(owner, 'Livrée');
+  await expect(owner.locator('.admin-head .pill').first()).toHaveText('Livrée');
+
+  await staff.reload();
+  await expect(staff.locator('.admin-head .pill').first()).toHaveText('Livrée');
+  await expect(staff.getByRole('button', { name: 'Encaissé par le transporteur' })).toHaveCount(0);
+  await expect(staff.getByText('Seul le propriétaire enregistre les paiements.')).toBeVisible();
+
   await expect(owner.getByRole('button', { name: 'Reçu par BOGA' })).toHaveCount(0);
   await owner.getByRole('button', { name: 'Encaissé par le transporteur' }).click();
   await expect(owner.locator('.admin-head .pill').nth(1)).toHaveText('Chez le transporteur');

@@ -28,6 +28,7 @@ export function SendToBoga({
   refNumber,
   showSaved = true,
   reveal = false,
+  cod = false,
 }: {
   /** Which message this is: its automatic delivery status is followed by kind and reference. */
   event: DeliverableEvent;
@@ -35,6 +36,8 @@ export function SendToBoga({
   refNumber: string;
   showSaved?: boolean;
   reveal?: boolean;
+  /** A cash on delivery order: the order is saved, the message only speeds up its confirmation call. */
+  cod?: boolean;
 }) {
   const { t } = useI18n();
   const { settings } = useDb();
@@ -52,8 +55,19 @@ export function SendToBoga({
   const whatsappText = `${GREETING}\n\n${draft.whatsapp}`;
   const emailText = `${GREETING}\n\n${draft.email}`;
   const payment = event === 'payment.reported';
-  const title = status === 'sent' ? t.handoff.titleAuto : status === 'pending' ? t.handoff.pending : payment ? t.handoff.titlePayment : t.handoff.title;
-  const text = status === 'sent' ? t.handoff.textAuto : status === 'slow' ? t.handoff.slow : payment ? t.handoff.textPayment : t.handoff.text;
+  const codOrder = cod && event === 'order.created';
+  const title =
+    status === 'sent' ? t.handoff.titleAuto
+    : status === 'pending' ? t.handoff.pending
+    : payment ? t.handoff.titlePayment
+    : codOrder ? t.handoff.titleOrder
+    : t.handoff.title;
+  const text =
+    status === 'sent' ? t.handoff.textAuto
+    : status === 'slow' ? t.handoff.slow
+    : payment ? t.handoff.textPayment
+    : codOrder ? t.handoff.textOrder
+    : t.handoff.text;
 
   return (
     <section className={`handoff handoff-${status}`} aria-label={t.handoff.title}>

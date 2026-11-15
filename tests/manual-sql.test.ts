@@ -7,8 +7,12 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-/** Written, reviewed and merged before it is applied on live (owner 2026-10-21: merge, then the SQL Editor block). */
-const PENDING: string[] = ['20261028090000_outbox_sender', '20261110120000_cod'];
+/**
+ * Written and reviewed, not applied on live yet. outbox_sender and cod are applied (Supabase history, read 2026-11-14);
+ * cod_unconfirmed_expiry goes through its SQL Editor block before its merge (the site must not show a deadline the
+ * database does not keep).
+ */
+const PENDING: string[] = ['20261115090000_cod_unconfirmed_expiry'];
 
 describe('SQL Editor blocks', () => {
   it('catalog_trim: the block holds the migration unchanged, between begin and commit', () => {
@@ -246,7 +250,7 @@ describe('expiry_lock_order (the expiry cron in the orders\' lock order)', () =>
   });
 });
 
-/** The migration files carry the versions recorded in live's history (read 2026-10-20: 18 rows), in order; a new one comes after. */
+/** The migration files carry the versions recorded in live's history (read 2026-10-20: 18 rows; 2026-11-14: 23), in order; a new one comes after. */
 describe('migration versions', () => {
   const files = readdirSync(new URL('../supabase/migrations/', import.meta.url)).filter((f) => f.endsWith('.sql')).sort();
   const LIVE = [
@@ -256,6 +260,7 @@ describe('migration versions', () => {
     '20261009200000_catalog_writes', '20261012183912_settings_writes', '20261013090048_config_trim', '20261013100000_catalog_trim',
     '20261016120000_catalog_ready', '20261019200936_expiry_lock_order', '20261020090000_city_shown_needs_fee',
     '20261021120000_catalog_showcase', '20261027090000_quote_lines_for_sale', '20261027100000_policies_fk_indexes',
+    '20261028090000_outbox_sender', '20261110120000_cod',
   ];
 
   it('the applied ones are named as live recorded them (the expiry fix: 20261019200936, the apply tool\'s version)', () => {
@@ -286,6 +291,8 @@ describe('migration versions', () => {
     '20261021120000_catalog_showcase': '089ac8c1a3a84bc5',
     '20261027090000_quote_lines_for_sale': 'bd955b2ebb19b77a',
     '20261027100000_policies_fk_indexes': '34c0638c8dd044f9',
+    '20261028090000_outbox_sender': '464efc044810296c',
+    '20261110120000_cod': 'e60583c764bcc4dc',
     };
     expect(Object.keys(APPLIED)).toEqual(LIVE);
     for (const [name, sha] of Object.entries(APPLIED)) {
@@ -521,6 +528,63 @@ describe('cod (cash on delivery, owner 2026-11-10)', () => {
     expect(rollback).toContain("where payment_method = 'cod' or status in ('delivery_failed', 'returned') or payment_status = 'collected'");
     expect(rollback.indexOf("raise exception 'stop: an order uses")).toBeLessThan(rollback.indexOf('create or replace function'));
     expect(rollback).toContain('drop function public.record_delivery_failure(uuid, text);');
+    expect(rollback.match(/^commit;$/gm)).toHaveLength(1);
+  });
+});
+
+describe('cod_unconfirmed_expiry (owner decisions of 2026-11-14)', () => {
+  const migration = read('supabase/migrations/20261115090000_cod_unconfirmed_expiry.sql').trimEnd();
+  const block = read('supabase/manual/20261115090000_cod_unconfirmed_expiry.editor.sql');
+  const rollback = read('supabase/manual/20261115090000_cod_unconfirmed_expiry.rollback.sql');
+  const cod = read('supabase/migrations/20261110120000_cod.sql');
+  const md5 = async (text: string) => (await import('node:crypto')).createHash('md5').update(text.replace(/\r/g, '')).digest('hex');
+  const body = (sql: string, name: string) => new RegExp(`create or replace function public\\.${name}\\(.*?\\$\\$(.*?)\\$\\$`, 's').exec(sql)![1];
+  const fn = (sql: string, name: string) => new RegExp(`create or replace function public\\.${name}\\(.*?\\nend \\$\\$;\\n`, 's').exec(sql)![0];
+  const NAMES = ['set_order_status', 'expire_unpaid_orders'];
+
+  it('replaces each function only if it is cod\'s or its own (md5 guard), before anything else, and changes no row', async () => {
+    for (const name of NAMES) {
+      expect(migration, name).toContain(`["${await md5(body(cod, name))}", "${await md5(body(migration, name))}"]`);
+    }
+    expect(migration.indexOf("raise exception 'stop:")).toBeLessThan(migration.indexOf('create or replace function'));
+    const outside = migration.replace(/\$\$.*?\$\$/gs, '');
+    expect(outside).not.toMatch(/\b(insert into|update public\.|delete from|drop |alter table)/i);
+  });
+
+  it('changes only the two decisions: everything else of each function is cod\'s, word for word', () => {
+    const delivered = "    -- a 'cod' order is marked delivered by the owner alone (owner, 2026-11-14): what follows is the money's\n" +
+      "    -- (set_payment_status, also the owner's). A prepaid order keeps init's rule: any admin.\n" +
+      "    if p_status = 'delivered' and v_order.payment_method = 'cod' and not public.is_admin(array['owner']) then\n" +
+      "      raise exception 'owner_only';\n    end if;\n";
+    expect(body(migration, 'set_order_status').replace(delivered, '')).toBe(body(cod, 'set_order_status'));
+    const before = /     where o\.status in \('new', 'confirmed'\)\n.*?     order by o\.created_at\n/s;
+    expect(body(migration, 'expire_unpaid_orders').replace(before, '')).toBe(body(cod, 'expire_unpaid_orders').replace(before, ''));
+    expect(body(migration, 'expire_unpaid_orders')).toContain(
+      "or (o.payment_method = 'cod' and o.status = 'new' and o.created_at <= now() - interval '24 hours'))\n",
+    );
+    // the prepaid conditions are cod's, unchanged, for every method but cod
+    expect(body(migration, 'expire_unpaid_orders')).toContain(
+      "and ((o.payment_method <> 'cod'\n             and ((o.payment_status in ('pending', 'failed') and o.created_at < now() - make_interval(secs => v_hours * 3600))\n" +
+      "               or (o.payment_status = 'awaiting_verification' and o.created_at < now() - make_interval(secs => v_check * 3600))))\n",
+    );
+    for (const name of NAMES) expect(fn(migration, name), name).toContain('set search_path = public, pg_temp as $$');
+  });
+
+  it('the editor block holds the migration unchanged, after its guards, with its version, in one commit', () => {
+    expect(block).toContain(`-- >>> 20261115090000_cod_unconfirmed_expiry.sql\n${migration}\n-- <<< 20261115090000_cod_unconfirmed_expiry.sql`);
+    expect(block.indexOf('\nbegin;')).toBeLessThan(block.indexOf("raise exception 'stop:"));
+    expect(block.indexOf("raise exception 'stop:")).toBeLessThan(block.indexOf('-- >>>'));
+    expect(block.match(/insert into supabase_migrations\.schema_migrations \(version, name\) values \('20261115090000', 'cod_unconfirmed_expiry'\);/g)).toHaveLength(1);
+    expect(block.indexOf('-- <<<')).toBeLessThan(block.indexOf('insert into supabase_migrations'));
+    expect(block.match(/^commit;$/gm)).toHaveLength(1);
+  });
+
+  it('the rollback puts back cod\'s two functions, guarded by the md5 of this migration\'s', async () => {
+    for (const name of NAMES) {
+      expect(rollback, name).toContain(fn(cod, name));
+      expect(rollback, name).toContain(await md5(body(migration, name)));
+    }
+    expect(rollback.indexOf("raise exception 'stop:")).toBeLessThan(rollback.indexOf('create or replace function'));
     expect(rollback.match(/^commit;$/gm)).toHaveLength(1);
   });
 });

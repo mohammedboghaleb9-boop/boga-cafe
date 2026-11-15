@@ -124,6 +124,8 @@ export function buildOrder(
 /** Used when a setting is missing or not a real limit: a reservation never lasts forever. */
 const DEFAULT_UNPAID_TIMEOUT_HOURS = 48;
 const DEFAULT_PAYMENT_CHECK_TIMEOUT_HOURS = 120;
+/** A cash on delivery order nobody confirmed by then ends (fixed, owner 2026-11-14; not a setting). */
+export const COD_UNCONFIRMED_HOURS = 24;
 
 const limitHours = (value: unknown, fallback: number) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 1 ? value : fallback;
@@ -145,8 +147,11 @@ export function reservationDeadline(
   settings: Pick<Settings, 'unpaidOrderTimeoutHours' | 'paymentCheckTimeoutHours'>,
 ): number | null {
   if (order.status !== 'new' && order.status !== 'confirmed') return null;
-  // cash on delivery is unpaid by design until it is delivered: it never expires
-  if (order.paymentMethod === 'cod') return null;
+  // cash on delivery is unpaid by design until it is delivered: only an order nobody confirmed ends,
+  // COD_UNCONFIRMED_HOURS after it was placed; once confirmed it never expires
+  if (order.paymentMethod === 'cod') {
+    return order.status === 'new' ? new Date(order.createdAt).getTime() + COD_UNCONFIRMED_HOURS * 3_600_000 : null;
+  }
   if (order.paymentStatus !== 'pending' && order.paymentStatus !== 'failed' && order.paymentStatus !== 'awaiting_verification') return null;
   const unpaid = limitHours(settings.unpaidOrderTimeoutHours, DEFAULT_UNPAID_TIMEOUT_HOURS);
   const hours =
@@ -164,6 +169,8 @@ export function expiredUnpaidOrders(
 ): Order[] {
   return orders.filter((o) => {
     const deadline = reservationDeadline(o, settings);
-    return deadline !== null && deadline < now.getTime();
+    if (deadline === null) return false;
+    // as expire_unpaid_orders: a cash on delivery order ends at its deadline, a prepaid one just after it
+    return o.paymentMethod === 'cod' ? deadline <= now.getTime() : deadline < now.getTime();
   });
 }

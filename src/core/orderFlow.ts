@@ -46,6 +46,8 @@ export function statusChangeRefusal(
   const allowed = order.status === 'delivery_failed' ? next === 'shipped' || next === 'returned' : NEXT_STATUS[order.status] === next;
   if (!allowed) return 'not_next';
   if (NEEDS_PAYMENT.includes(next) && order.paymentStatus !== 'paid' && order.paymentMethod !== 'cod') return 'needs_payment';
+  // a cash on delivery order is marked delivered by the owner alone (owner, 2026-11-14); a prepaid one by any admin
+  if (next === 'delivered' && order.paymentMethod === 'cod' && role !== 'owner') return 'owner_only';
   return null;
 }
 
