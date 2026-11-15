@@ -1,4 +1,5 @@
--- Cash on delivery (20261110120000_cod): a 'cod' order is prepared, shipped and delivered unpaid, never expires and
+-- Cash on delivery (20261110120000_cod): a 'cod' order is prepared, shipped and delivered unpaid, never expires once
+-- confirmed (unconfirmed: 24 hours, supabase/tests/cod_expiry.sql) and
 -- takes no "I have paid" report; its money is the owner's, in two separate steps after the delivery; a failed
 -- delivery keeps its reason and moves no stock; a prepaid order keeps every rule it had.
 -- pgTAP, run by run-local.sh on a fresh database; the count is checked against plan().
@@ -21,7 +22,7 @@ insert into public.payment_methods (id, label) values ('cashplus', '{"fr": "Cash
 select is((select enabled::text || ' ' || (label ->> 'fr') from public.payment_methods where id = 'cod'),
           'true Paiement à la livraison', 'the migration adds the method, switched on');
 
--- C1: the whole path; C2: cancelled; C3: old, must not expire; C4: fails and comes back; P1: prepaid and old; P2: prepaid
+-- C1: the whole path; C2: cancelled; C3: old and confirmed, must not expire; C4: fails and comes back; P1: prepaid and old; P2: prepaid
 insert into public.orders (id, number, created_at, customer_name, phone, phone_alt, city_id, address, lines, weight_kg, subtotal,
                            shipping_fee, total, payment_method, stock_deductions) values
   ('10000000-0000-4000-8000-0000000000c1', 'BC-TEST-C1', now(), 'TEST', '+212600000000', '+212700000000', 'oujda', 'TEST', '[]', 0.25, 60, 20, 80,
@@ -51,10 +52,12 @@ create function pg_temp.state(p_id uuid) returns text language sql as $$
 $$;
 create function pg_temp.stock() returns numeric language sql as $$ select stock_kg from public.origins where id = 'brazil' $$;
 
--- the expiry (the server's own job): the old prepaid order goes, the old 'cod' order stays
+-- the expiry (the server's own job): the old prepaid order goes, the old confirmed 'cod' order stays
+-- (an unconfirmed cod order ends after 24 hours since 20261115090000: supabase/tests/cod_expiry.sql)
+update public.orders set status = 'confirmed' where id = '10000000-0000-4000-8000-0000000000c3';
 select is(public.expire_unpaid_orders(), 1, 'expiry: one order expires');
 select is(pg_temp.state('10000000-0000-4000-8000-0000000000a1'), 'cancelled pending', 'expiry: the old unpaid Cash Plus order is cancelled, as before');
-select is(pg_temp.state('10000000-0000-4000-8000-0000000000c3'), 'new pending', 'expiry: the old unpaid cod order is left alone');
+select is(pg_temp.state('10000000-0000-4000-8000-0000000000c3'), 'confirmed pending', 'expiry: the old unpaid confirmed cod order is left alone');
 select is(pg_temp.stock(), 10.250, 'expiry: the stock of the expired order is back, as before');
 
 -- the customer's "I have paid": not for a cod order, still for a prepaid one

@@ -318,7 +318,8 @@ function CheckoutForm() {
             )}
             <div className="spread co-total">
               <span>{t.common.total}</span>
-              <strong className="num">{money(summary.subtotal + (fee ?? 0))}</strong>
+              {/* no amount while the delivery fee is unknown: a total without it would be wrong */}
+              <strong className="num">{fee === null ? '—' : money(summary.subtotal + fee)}</strong>
             </div>
           </div>
           {captcha.widget}
@@ -336,7 +337,7 @@ function CheckoutForm() {
             className="btn btn-primary btn-block"
             disabled={busy || summary.isB2B || summary.hasProblems}
           >
-            {busy ? t.common.loading : fmt(t.checkout.place, { total: money(summary.subtotal + (fee ?? 0)) })}
+            {busy ? t.common.loading : fee === null ? t.checkout.placeNoCity : fmt(t.checkout.place, { total: money(summary.subtotal + fee) })}
           </button>
         </aside>
       </form>

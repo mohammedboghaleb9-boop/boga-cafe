@@ -1,15 +1,17 @@
 /**
  * Protection of the public forms against floods and fake orders that would
- * hold the stock (an unpaid order reserves it for 48 h). What it does:
+ * hold the stock (an order reserves it until it ends: 48 h unpaid for a prepaid
+ * one, 24 h unconfirmed for cash on delivery). What it does:
  *  - every request that passes Turnstile costs from a per-connection budget,
  *    before the catalog is even read;
  *  - accepted requests are counted per phone number and per connection, by the
  *    hour and by the day (rate_limit_hit);
  *  - Cloudflare Turnstile on every form, checked first (storefront.ts).
  * What it does not do: stop someone with many phone numbers and many connections.
- * Turnstile is what makes that expensive; the 48 h expiry bounds the damage of what gets through.
+ * Turnstile is what makes that expensive; the expiry (48 h unpaid, 24 h unconfirmed cash
+ * on delivery) bounds the damage of what gets through.
  * No cap on open unpaid orders per phone: phone numbers are not verified, so a cap
- * would let anyone lock a real customer out for 48 h with two cheap orders, unseen;
+ * would let anyone lock a real customer out with two cheap orders, unseen;
  * a fake order is visible and the owner frees its stock by cancelling it.
  * The IP is never stored: buckets carry a keyed hash of it (HMAC with a server secret),
  * an IPv6 address counted by its /64 network (what one host can use freely).

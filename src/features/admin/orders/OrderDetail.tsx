@@ -84,15 +84,15 @@ function OrderView({ id }: { id: string | undefined }) {
               className="btn btn-primary btn-sm"
               disabled={nextRefusal !== null}
               aria-disabled={busy || undefined}
-              aria-describedby={nextRefusal === 'needs_payment' ? 'next-hint' : undefined}
+              aria-describedby={nextRefusal === 'needs_payment' || nextRefusal === 'owner_only' ? 'next-hint' : undefined}
               onClick={() => setStatus(next)}
             >
               {fmt(t.admin.orders.next, { status: t.orderStatus[next] })}
             </button>
           )}
-          {nextRefusal === 'needs_payment' && (
+          {(nextRefusal === 'needs_payment' || nextRefusal === 'owner_only') && (
             <span id="next-hint" className="small muted">
-              {t.admin.orders.needsPayment}
+              {nextRefusal === 'needs_payment' ? t.admin.orders.needsPayment : t.admin.orders.deliverOwnerOnly}
             </span>
           )}
           {canReturn && (
@@ -342,7 +342,7 @@ function OrderView({ id }: { id: string | undefined }) {
               {role !== 'owner' && <span className="small muted">{t.admin.orders.ownerPayments}</span>}
             </div>
             {cod ? <p className="small muted">{t.admin.orders.codMeans}</p> : pay('paid') && <p className="small muted">{t.admin.orders.paidMeans}</p>}
-            {deadline !== null && <p className="small muted">{fmt(t.admin.orders.reservedUntil, { date: date(new Date(deadline).toISOString(), true) })}</p>}
+            {deadline !== null && <p className="small muted">{fmt(order.paymentMethod === 'cod' ? t.admin.orders.reservedUntilCod : t.admin.orders.reservedUntil, { date: date(new Date(deadline).toISOString(), true) })}</p>}
           </section>
 
           <section className="panel stack">
