@@ -8,11 +8,10 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 /**
- * Written and reviewed, not applied on live yet. outbox_sender and cod are applied (Supabase history, read 2026-11-14);
- * cod_unconfirmed_expiry goes through its SQL Editor block before its merge (the site must not show a deadline the
- * database does not keep).
+ * Written and reviewed, not applied on live yet: none. outbox_sender and cod are applied (Supabase history, read
+ * 2026-11-14); cod_unconfirmed_expiry was applied by its SQL Editor block on 2026-11-15, before its merge.
  */
-const PENDING: string[] = ['20261115090000_cod_unconfirmed_expiry'];
+const PENDING: string[] = [];
 
 describe('SQL Editor blocks', () => {
   it('catalog_trim: the block holds the migration unchanged, between begin and commit', () => {
@@ -250,7 +249,7 @@ describe('expiry_lock_order (the expiry cron in the orders\' lock order)', () =>
   });
 });
 
-/** The migration files carry the versions recorded in live's history (read 2026-10-20: 18 rows; 2026-11-14: 23), in order; a new one comes after. */
+/** The migration files carry the versions recorded in live's history (read 2026-10-20: 18 rows; 2026-11-14: 23; 2026-11-15: 24), in order; a new one comes after. */
 describe('migration versions', () => {
   const files = readdirSync(new URL('../supabase/migrations/', import.meta.url)).filter((f) => f.endsWith('.sql')).sort();
   const LIVE = [
@@ -260,7 +259,7 @@ describe('migration versions', () => {
     '20261009200000_catalog_writes', '20261012183912_settings_writes', '20261013090048_config_trim', '20261013100000_catalog_trim',
     '20261016120000_catalog_ready', '20261019200936_expiry_lock_order', '20261020090000_city_shown_needs_fee',
     '20261021120000_catalog_showcase', '20261027090000_quote_lines_for_sale', '20261027100000_policies_fk_indexes',
-    '20261028090000_outbox_sender', '20261110120000_cod',
+    '20261028090000_outbox_sender', '20261110120000_cod', '20261115090000_cod_unconfirmed_expiry',
   ];
 
   it('the applied ones are named as live recorded them (the expiry fix: 20261019200936, the apply tool\'s version)', () => {
@@ -293,6 +292,7 @@ describe('migration versions', () => {
     '20261027100000_policies_fk_indexes': '34c0638c8dd044f9',
     '20261028090000_outbox_sender': '464efc044810296c',
     '20261110120000_cod': 'e60583c764bcc4dc',
+    '20261115090000_cod_unconfirmed_expiry': '8f3654363eb4d600',
     };
     expect(Object.keys(APPLIED)).toEqual(LIVE);
     for (const [name, sha] of Object.entries(APPLIED)) {

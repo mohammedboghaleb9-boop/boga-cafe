@@ -1,14 +1,14 @@
 # 13 · Runbook: أول تجربة COD حقيقية من التليفون
 
 كُتب 2026-11-15 (فرع `claude/sweet-hopper-4bqf9z`). الهدف: طلب COD واحد حقيقي من تليفون، من البداية حتى الآخر، بلا ما يبقى البيع مفتوح لحد آخر.
-الحالة اللي تبنى عليها (قراءة Supabase 2026-11-14، قراية فقط): 23 migration مطبّقين، `cod` مفعّل والباقي مطفي، `salesOpen` = NULL، 0 طلب، 0 منتج active، 0 مدينة active، 0 كغ ستوك، `storefront` v12 (2026-11-13)، الـ job `expire-unpaid-orders` خدام كل 15 دقيقة، `notify-outbox` ما منشوراش، Vault خاوي.
+الحالة اللي تبنى عليها (قراءة Supabase 2026-11-14، قراية فقط): 23 migration مطبّقين (2026-11-15: 24، آخرها `20261115090000`)، `cod` مفعّل والباقي مطفي، `salesOpen` = NULL، 0 طلب، 0 منتج active، 0 مدينة active، 0 كغ ستوك، `storefront` v12 (2026-11-13)، الـ job `expire-unpaid-orders` خدام كل 15 دقيقة، `notify-outbox` ما منشوراش، Vault خاوي.
 
 ## 0. شكون كيدير شنو
 
 | الخطوة | شكون | واش كتبدّل production |
 |---|---|---|
 | الكود، الاختبارات، الـ PR | Claude | لا |
-| تطبيق الـ migration `20261115090000` (SQL Editor) | المالك | نعم |
+| تطبيق الـ migration `20261115090000` (SQL Editor) | Claude بموافقة المالك، تدار 2026-11-15 | نعم (سالات) |
 | الدمج فـ `main` (كينشر الموقع أوتوماتيكياً) | المالك | نعم |
 | منتج TEST، الستوك، المدينة والثمن ديال التوصيل | المالك (Admin) | نعم |
 | فتح وإغلاق البيع | المالك (Admin، TOTP) | نعم |
@@ -17,7 +17,7 @@
 
 ## 1. قبل نهار التجربة (مرة وحدة)
 
-1. **الـ migration أولاً، الدمج من بعد.** فالـ SQL Editor: الصق `supabase/manual/20261115090000_cod_unconfirmed_expiry.editor.sql` كامل، Run. النتيجة المنتظرة: `set_order_status_ok = true`، `expire_ok = true`، `history_rows = 1`. إلا طلع `stop: ...`: ما تبدل والو، صيفط الرسالة لـ Claude.
+1. **الـ migration: تدارت 2026-11-15** (Claude، بموافقة المالك): النتيجة `true / true / 1`، والـ job ديال الانتهاء خدم بيها 09:00 و09:15 و09:30Z. **ما تعاودش تشغّل الـ block:** دابا كيوقف بـ `stop: 20261115090000 is already in the history`، وهادا عادي (حماية).
 2. **من بعد الدمج:** تأكد أن الموقع الحي تبدّل (Claude يقارن البصمة ديال الملفات). الـ `storefront` ما خاصهاش redeploy: الـ bundle ديالها هو نفسو (SHA-256 `5aebf1b1…8271`).
 3. **Turnstile:** فـ Supabase ← Edge Functions ← Secrets، تأكد بعينك (بلا ما تنقل القيم) أن `TURNSTILE_SECRET_KEY` و `TURNSTILE_HOSTNAMES` كاينين، وأن `TURNSTILE_HOSTNAMES` فيه `bogacafe.ma`. بلا هادشي كل طلب كيترفض (`captcha`)، وما كيضيع والو.
 4. **الحسابات:** جوج حسابات admin فقط (أنت و Abderrahim)، بجوج `owner` بـ TOTP (مقروء 2026-11-14). ما كاين حتى حساب ثالث يتزاد.
