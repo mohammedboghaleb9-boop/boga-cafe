@@ -774,7 +774,7 @@ export const en = {
       maxOrigins: 'Maximum coffees per blend',
       feeBySize: 'Bag & blending fee by size (MAD)',
       roastLoss: 'Roasting loss (%) — 0 if stock is counted as roasted coffee',
-      unpaidTimeout: 'Cancel unpaid orders after (hours since the order; prepaid only, cash on delivery: a fixed 24 h without confirmation)',
+      unpaidTimeout: 'Cancel unpaid orders after (hours since the order; prepaid only)',
       paymentCheckTimeout: 'Payment reported by the customer (transfer / Cash Plus): cancel if not confirmed after (hours since the order)',
       permissions: 'Roles & permissions',
       section: 'Section',

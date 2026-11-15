@@ -769,7 +769,7 @@ export const fr: Dict = {
       maxOrigins: 'Nombre maximum de cafés par blend',
       feeBySize: 'Frais sachet & assemblage par format (MAD)',
       roastLoss: 'Perte à la torréfaction (%) — 0 si le stock est compté en café torréfié',
-      unpaidTimeout: 'Annuler les commandes non payées après (heures depuis la commande ; paiement anticipé uniquement, paiement à la livraison : 24 h fixes sans confirmation)',
+      unpaidTimeout: 'Annuler les commandes non payées après (heures depuis la commande ; paiement anticipé uniquement)',
       paymentCheckTimeout: 'Paiement signalé par le client (virement / Cash Plus) : annuler s’il n’est pas confirmé après (heures depuis la commande)',
       permissions: 'Rôles & permissions',
       section: 'Section',

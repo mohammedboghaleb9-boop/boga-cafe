@@ -47,7 +47,7 @@ test('a cash on delivery order: no payment step, the second phone in the message
   await expect(page.getByText('Commande enregistrée : envoyez-la-nous aussi sur WhatsApp')).toBeVisible();
   await expect(page.getByText(/Dernière étape/)).toHaveCount(0);
   await expect(page.locator('.handoff')).toHaveAccessibleName('Commande enregistrée : envoyez-la-nous aussi sur WhatsApp');
-  await expect(page.getByText(/non confirmée sous 24 heures|pas confirmée sous 24 heures/)).toBeVisible();
+  await expect(page.getByText(/pas confirmée sous 24 heures/)).toBeVisible();
   await expect(page.locator('form.report')).toHaveCount(0);
   const message = decodeURIComponent((await page.locator('.handoff-wa').getAttribute('href')) ?? '');
   expect(message).toContain('Téléphone 2 : +212712345678');
